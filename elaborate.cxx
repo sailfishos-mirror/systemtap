@@ -5405,28 +5405,12 @@ struct autocast_expanding_visitor: public var_expanding_visitor
     }
 };
 
-
-struct initial_typeresolution_info : public typeresolution_info
-{
-  initial_typeresolution_info (systemtap_session& s): typeresolution_info(s)
-  {}
-
-  // these expressions are not supposed to make its way to the typeresolution
-  // pass. they probably get substituted/replaced, but since this is an initial pass
-  // and not all substitutions are done, replace the functions that throw errors.
-  void visit_target_symbol (target_symbol*) {}
-  void visit_atvar_op (atvar_op*) {}
-  void visit_defined_op (defined_op*) {}
-  void visit_entry_op (entry_op*) {}
-  void visit_cast_op (cast_op*) {}
-};
-
 static void initial_typeres_pass(systemtap_session& s)
 {
   // an initial type analysis pass. just go over the functions
   // and probe bodies with doing too much
-  initial_typeresolution_info ti(s);
-  ti.assert_resolvability = false;
+  typeresolution_info ti(s);
+      ti.assert_resolvability = false;
   while (1)
     {
       assert_no_interrupts();
