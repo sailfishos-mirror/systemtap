@@ -4161,6 +4161,34 @@ const_folder::visit_binary_expression (binary_expression* e)
   literal_number* left = get_number (e->left);
   literal_number* right = get_number (e->right);
 
+  // Before we fold constants, we want to make sure the types match up
+  // on both sides of the binary expression. This way we get an error
+  // on something like:
+  //   println(0 + "string")
+  typeresolution_info ti(session);
+  while (1)
+    {
+      ti.num_newly_resolved = 0;
+      ti.num_still_unresolved = 0;
+      ti.num_available_autocasts = 0;
+      e->visit(&ti);
+      if (ti.num_newly_resolved == 0) // converged
+        {
+	  // found a mismatch
+          if (!ti.assert_resolvability && ti.mismatch_complexity > 0)
+	    {
+	      ti.assert_resolvability = true; // report errors
+	      // print out mismatched but not unresolved type mismatches
+	      if (session.verbose > 0)
+		ti.mismatch_complexity = 1;
+	    }
+          else
+	    break;
+	}	  
+      else
+	ti.mismatch_complexity = 0;
+    }
+
   if (right && !right->value && (e->op == "/" || e->op == "%"))
     {
       // Give divide-by-zero a chance to be optimized out elsewhere,
