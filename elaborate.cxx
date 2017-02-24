@@ -6914,8 +6914,8 @@ typeresolution_info::mismatch (const token *tok, exp_type type,
         {
           session.print_error (SEMANTIC_ERROR (
             _F("type mismatch: expected %s but found %s",
-               lex_cast(type).c_str(),
-               lex_cast(decl->type).c_str()),
+               lex_cast(decl->type).c_str(),
+               lex_cast(type).c_str()),
             tok));
           return;
         }
