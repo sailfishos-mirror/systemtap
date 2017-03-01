@@ -1,8 +1,12 @@
 #! stap -uwp2
 
+global m
+
 probe begin {
   println(h-0)
   println(i*0)
   println(0+j)
   println(0*k)
+  println(0+m)
+  println(0*m)
 }

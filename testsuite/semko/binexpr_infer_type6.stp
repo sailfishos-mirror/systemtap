@@ -1,0 +1,7 @@
+#! stap -up2
+
+global i = "asdf" // obviously a string
+
+probe begin {
+  println(0+i);
+}
