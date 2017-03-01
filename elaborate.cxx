@@ -1762,6 +1762,10 @@ int gen_dfa_table (systemtap_session& s)
 static int semantic_pass_symbols (systemtap_session&);
 static int semantic_pass_optimize1 (systemtap_session&);
 static int semantic_pass_optimize2 (systemtap_session&);
+static void semantic_pass_types_resolved (systemtap_session &,
+					  const token *, exp_type,
+					  const symboldecl* decl = NULL,
+					  int index = -1);
 static int semantic_pass_types (systemtap_session&);
 static int semantic_pass_vars (systemtap_session&);
 static int semantic_pass_stats (systemtap_session&);
@@ -4161,34 +4165,6 @@ const_folder::visit_binary_expression (binary_expression* e)
   literal_number* left = get_number (e->left);
   literal_number* right = get_number (e->right);
 
-  // Before we fold constants, we want to make sure the types match up
-  // on both sides of the binary expression. This way we get an error
-  // on something like:
-  //   println(0 + "string")
-  typeresolution_info ti(session);
-  while (1)
-    {
-      ti.num_newly_resolved = 0;
-      ti.num_still_unresolved = 0;
-      ti.num_available_autocasts = 0;
-      e->visit(&ti);
-      if (ti.num_newly_resolved == 0) // converged
-        {
-	  // found a mismatch
-          if (!ti.assert_resolvability && ti.mismatch_complexity > 0)
-	    {
-	      ti.assert_resolvability = true; // report errors
-	      // print out mismatched but not unresolved type mismatches
-	      if (session.verbose > 0)
-		ti.mismatch_complexity = 1;
-	    }
-          else
-	    break;
-	}	  
-      else
-	ti.mismatch_complexity = 0;
-    }
-
   if (right && !right->value && (e->op == "/" || e->op == "%"))
     {
       // Give divide-by-zero a chance to be optimized out elsewhere,
@@ -4234,24 +4210,50 @@ const_folder::visit_binary_expression (binary_expression* e)
                       (right->value ==-1 && (e->op == "%" || e->op == "|")))))
     {
       expression* other = left ? e->right : e->left;
-      varuse_collecting_visitor vu(session);
-      other->visit(&vu);
-      if (!vu.side_effect_free())
-        {
-          provide (e);
-          return;
-        }
 
-      // if other is a symbol, we'll pass on type=pe_long to the vardecl to avoid
-      // any issue with an unresolved type if the symbol is not used elsewhere
-      // dont need to set the other's type since it'll be ignored in future
-      // visitors
-      symbol* other_sym = NULL;
-      other->is_symbol(other_sym);
-      if (other_sym && other->type == pe_unknown)
+      // If we don't know what type "other" is, try to treat it as a
+      // pe_long (and remember that treatment.
+      if (other->type == pe_unknown)
         {
-          other_sym->referent->type = pe_long;
-        }
+	  varuse_collecting_visitor vu(session);
+	  other->visit(&vu);
+	  if (!vu.side_effect_free())
+	    {
+	      provide (e);
+	      return;
+	    }
+
+	  // If 'other' is a symbol, we need to remember that we're
+	  // treating it as a pe_long, since we're about to fold away this
+	  // use of that symbol. This way if the symbol turns out not to
+	  // be a pe_long, we'll complain later (during
+	  // semantic_pass_types()).
+	  symbol* other_sym = NULL;
+	  other->is_symbol(other_sym);
+	  if (other_sym && other_sym->referent)
+	  {
+	      if (other_sym->referent->type == pe_unknown)
+	        {
+		  other_sym->referent->type = pe_long;
+		  semantic_pass_types_resolved(session, other->tok, pe_long,
+					       other_sym->referent);
+		}
+	      other->type = other_sym->referent->type;
+	  }
+
+	  if (other->type == pe_unknown)
+	    other->type = pe_long;
+	}
+
+      // If we're trying to const fold away something that that we
+      // know isn't a pe_long, quit. We'll go ahead and provide the
+      // original binary expression and let semantic_pass_types()
+      // provide an error.
+      if (other->type != pe_long)
+        {
+	  provide (e);
+	  return;
+	}
 
       if (left)
         value = left->value;
@@ -4273,14 +4275,29 @@ const_folder::visit_binary_expression (binary_expression* e)
                       (right->value <= 0 && (e->op == ">>" || e->op == "<<")))))
     {
       if (session.verbose>2)
-        clog << _("Collapsing constant-identity binary operator ") << *e->tok << endl;
+        clog << _("Collapsing constant-identity binary operator ")
+	     << *e->tok << endl;
       relaxed_p = false;
 
-      // we'll pass on type=pe_long to the expression
       expression* other = left ? e->right : e->left;
-      if (other->type == pe_unknown)
-        other->type = pe_long;
 
+      // If we don't know what type "other" is, just mark it as a
+      // pe_long.
+      if (other->type == pe_unknown)
+	other->type = pe_long;
+
+      // If we know that "other" isn't a pe_long, we need to go ahead
+      // and report a type mismatch error, since otherwise we'll have
+      // folded away the part that causes the error.
+      else if (other->type != pe_long)
+        {
+	  // Note that if we try to provide the original binary
+	  // expression here, we end up in an infinite loop. So, go
+	  // ahead and manually error.
+	  typeresolution_info ti(session);
+	  ti.assert_resolvability = true;
+	  ti.mismatch(e);
+	}
       provide (other);
       return;
     }
@@ -5435,14 +5452,13 @@ struct autocast_expanding_visitor: public var_expanding_visitor
     }
 };
 
-static int
-semantic_pass_types (systemtap_session& s)
-{
-  int rc = 0;
 
-  // next pass: type inference
-  unsigned iterations = 0;
-  typeresolution_info ti (s);
+static typeresolution_info *spt_ti = NULL;
+
+static void
+setup_semantic_pass_types (systemtap_session& s)
+{
+  spt_ti = new typeresolution_info (s);
 
   // Globals never have detailed types.
   // If we null them now, then all remaining vardecls can be detailed.
@@ -5450,18 +5466,47 @@ semantic_pass_types (systemtap_session& s)
     {
       vardecl* gd = s.globals[j];
       if (!gd->type_details)
-        gd->type_details = ti.null_type;
+        gd->type_details = spt_ti->null_type;
     }
+}
 
-  ti.assert_resolvability = false;
+static void
+semantic_pass_types_resolved (systemtap_session &s ,const token *tok,
+			      exp_type type, const symboldecl* decl,
+			      int index)
+{
+  if (spt_ti == NULL)
+    setup_semantic_pass_types (s);
+
+  spt_ti->resolved(tok, type, decl, index);
+}
+
+static int
+semantic_pass_types (systemtap_session& s)
+{
+  int rc = 0;
+
+  // next pass: type inference
+  unsigned iterations = 0;
+
+  if (spt_ti == NULL)
+    setup_semantic_pass_types (s);
+
+  // Since we reuse 'spt_ti' between runs, try to reset most things.
+  spt_ti->assert_resolvability = false;
+  spt_ti->mismatch_complexity = 0;
+  spt_ti->current_function = NULL;
+  spt_ti->current_probe = NULL;
+  spt_ti->t = pe_unknown;
+
   while (1)
     {
       assert_no_interrupts();
 
       iterations ++;
-      ti.num_newly_resolved = 0;
-      ti.num_still_unresolved = 0;
-      ti.num_available_autocasts = 0;
+      spt_ti->num_newly_resolved = 0;
+      spt_ti->num_still_unresolved = 0;
+      spt_ti->num_available_autocasts = 0;
 
       for (map<string,functiondecl*>::iterator it = s.functions.begin();
                                                it != s.functions.end(); it++)
@@ -5470,24 +5515,24 @@ semantic_pass_types (systemtap_session& s)
             assert_no_interrupts();
             
             functiondecl* fd = it->second;
-            ti.current_probe = 0;
-            ti.current_function = fd;
-            ti.t = pe_unknown;
+            spt_ti->current_probe = 0;
+            spt_ti->current_function = fd;
+            spt_ti->t = pe_unknown;
 
-            fd->body->visit (& ti);
+            fd->body->visit (spt_ti);
             // NB: we don't have to assert a known type for
             // functions here, to permit a "void" function.
             // The translator phase will omit the "retvalue".
             //
             // if (fd->type == pe_unknown)
-            //   ti.unresolved (fd->tok);
+            //   spt_ti->unresolved (fd->tok);
             for (unsigned i=0; i < fd->locals.size(); ++i)
-              ti.check_local (fd->locals[i]);
+              spt_ti->check_local (fd->locals[i]);
             
             // Check and run the autocast expanding visitor.
-            if (ti.num_available_autocasts > 0)
+            if (spt_ti->num_available_autocasts > 0)
               {
-                autocast_expanding_visitor aev (s, ti);
+                autocast_expanding_visitor aev (s, *spt_ti);
                 aev.replace (fd->body);
 
                 // PR18079, rerun the const-folder / dead-block-remover
@@ -5505,7 +5550,7 @@ semantic_pass_types (systemtap_session& s)
                     (void) relaxed_p; // we judge success later by num_still_unresolved, not this flag
                   }
 
-                ti.num_available_autocasts = 0;
+                spt_ti->num_available_autocasts = 0;
               }
           }
         catch (const semantic_error& e)
@@ -5520,18 +5565,18 @@ semantic_pass_types (systemtap_session& s)
             assert_no_interrupts();
             
             derived_probe* pn = s.probes[j];
-            ti.current_function = 0;
-            ti.current_probe = pn;
-            ti.t = pe_unknown;
+            spt_ti->current_function = 0;
+            spt_ti->current_probe = pn;
+            spt_ti->t = pe_unknown;
 
-            pn->body->visit (& ti);
+            pn->body->visit (spt_ti);
             for (unsigned i=0; i < pn->locals.size(); ++i)
-              ti.check_local (pn->locals[i]);
+              spt_ti->check_local (pn->locals[i]);
             
             // Check and run the autocast expanding visitor.
-            if (ti.num_available_autocasts > 0)
+            if (spt_ti->num_available_autocasts > 0)
               {
-                autocast_expanding_visitor aev (s, ti);
+                autocast_expanding_visitor aev (s, *spt_ti);
                 var_expand_const_fold_loop (s, pn->body, aev);
                 // PR18079, rerun the const-folder / dead-block-remover
                 // if autocast evaluation enabled a @defined()
@@ -5543,16 +5588,16 @@ semantic_pass_types (systemtap_session& s)
                     (void) relaxed_p; // we judge success later by num_still_unresolved, not this flag
                   }
 
-                ti.num_available_autocasts = 0;
+                spt_ti->num_available_autocasts = 0;
               }
             
             probe_point* pp = pn->sole_location();
             if (pp->condition)
               {
-                ti.current_function = 0;
-                ti.current_probe = 0;
-                ti.t = pe_long; // NB: expected type
-                pp->condition->visit (& ti);
+                spt_ti->current_function = 0;
+                spt_ti->current_probe = 0;
+                spt_ti->t = pe_long; // NB: expected type
+                pp->condition->visit (spt_ti);
               }
           }
         catch (const semantic_error& e)
@@ -5565,18 +5610,18 @@ semantic_pass_types (systemtap_session& s)
         {
           vardecl* gd = s.globals[j];
           if (gd->type == pe_unknown)
-            ti.unresolved (gd->tok);
+            spt_ti->unresolved (gd->tok);
           if(gd->arity == 0 && gd->wrap == true)
             {
               throw SEMANTIC_ERROR(_("wrapping not supported for scalars"), gd->tok);
             }
         }
 
-      if (ti.num_newly_resolved == 0) // converged
+      if (spt_ti->num_newly_resolved == 0) // converged
         {
-          if (ti.num_still_unresolved == 0)
+          if (spt_ti->num_still_unresolved == 0)
             break; // successfully
-          else if (! ti.assert_resolvability)
+          else if (! spt_ti->assert_resolvability)
             {
               // PR18079, before we go asserting anything, try to nullify any
               // still-unresolved @defined ops.
@@ -5592,12 +5637,12 @@ semantic_pass_types (systemtap_session& s)
                 semantic_pass_dead_control (s, relaxed_p);
 
               if (! relaxed_p)
-                ti.mismatch_complexity = 0; // reset for next pass
+                spt_ti->mismatch_complexity = 0; // reset for next pass
               else
                 {
-                  ti.assert_resolvability = true; // last pass, with error msgs
+                  spt_ti->assert_resolvability = true; // last pass, with error msgs
                   if (s.verbose > 0)
-                    ti.mismatch_complexity = 0; // print every kind of mismatch
+                    spt_ti->mismatch_complexity = 0; // print every kind of mismatch
                 }
             }
           else
@@ -5607,7 +5652,7 @@ semantic_pass_types (systemtap_session& s)
             }
         }
       else
-        ti.mismatch_complexity = 0; // reset for next pass
+        spt_ti->mismatch_complexity = 0; // reset for next pass
     }
 
   return rc + s.num_errors();
