@@ -1,5 +1,6 @@
 #! stap -p4
 
-probe kernel.function("sys_sendto").return { 
+probe kernel.function("sys_sendto") { 
 	 if (@defined(@entry($call))) println(@entry($call))  else println("yo")
 }
+

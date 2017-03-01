@@ -1,5 +1,6 @@
-#! stap -p4
+#! stap -p2
 
-probe kernel.function("sys_sendto").return { 
+probe timer.s(2) {
 	 if (@defined(@entry($call))) println(@entry($call))  else println("yo")
 }
+
