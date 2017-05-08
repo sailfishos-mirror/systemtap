@@ -32,6 +32,17 @@ extern "C" {
 
 using namespace std;
 
+struct pod {
+  string name;
+  string node;
+  vector <string> containers;
+};
+
+struct container {
+  string name;
+  pod hostpod;
+};
+
 // Decode URIs as per RFC 3986, though not bothering to be strict
 class uri_decoder {
   public:
@@ -449,7 +460,6 @@ class stapsh : public remote {
     virtual int prepare()
       {
         int rc = 0;
-
         string extension = s->runtime_mode == systemtap_session::dyninst_runtime ? ".so" : ".ko";
         string localmodule = s->tmpdir + "/" + s->module_name + extension;
         string remotemodule = s->module_name + extension;
@@ -1141,6 +1151,71 @@ class ssh_legacy_remote : public remote {
       }
 };
 
+class kubectl_remote : public stapsh {
+ private:
+    pid_t child;
+  pod targetpod;
+  string targetcontainer;
+
+  kubectl_remote(systemtap_session& s, pod tpod, string tcon): stapsh(s), child(0)
+  {
+    targetpod = tpod;
+    targetcontainer = tcon;
+  }
+
+  int connect ()
+    {
+      int rc = 0;
+      int in, out;
+      vector<string> cmd { "kubectl","exec","-i", targetpod.name,"-c", targetcontainer, "--", "stapsh"};
+
+      {
+        stap_sigmasker masked;
+	child = stap_spawn_piped(s->verbose, cmd, &in, &out);
+      }
+
+      if (child <= 0)
+        throw runtime_error(_("error launching stapsh"));
+
+      try
+       {
+          set_child_fds(in, out);
+       }
+      catch (runtime_error& e)
+        {
+
+          rc = finish();
+	  cout << e.what() << endl;
+
+          if (rc == 255)
+            throw runtime_error(_("error establishing connection"));
+
+          // If rc == 127, that's command-not-found, so we let ::create()
+          // try again in legacy mode.  But only do this if there's a single
+          // remote, as the old code didn't handle ttys well with multiple
+          // remotes.  Otherwise, throw up again. *barf*
+          if (rc != 127 || s->remote_uris.size() > 1)
+            throw;
+        }
+      return rc;
+    }
+
+   int finish()
+    {
+      int rc = stapsh::finish();
+      if (child <= 0)
+        return rc;
+
+      int rc2 = stap_waitpid(s->verbose, child);
+      child = 0;
+      return rc ?: rc2;
+    }
+
+  public:
+
+  static vector<remote*> create(systemtap_session& s, const string& uri);
+
+};
 
 // Try to establish a stapsh connection to the remote, but fallback
 // to the older mechanism if the command is not found.
@@ -1179,55 +1254,205 @@ ssh_remote::create(systemtap_session& s, const uri_decoder& ud)
   return create(s, ud.authority);
 }
 
-
-remote*
-remote::create(systemtap_session& s, const string& uri, int idx)
+vector<remote*>
+kubectl_remote::create(systemtap_session& s, const string& uri)
 {
-  remote *it = 0;
-  try
+  // 000 - not k8s
+  // 001 - specified container of specified pod - k8s-container:POD:CONTAINER
+  // 010 - all containers of specified pod - k8s-pod:POD
+  // 011 - first container of all pods on specified node - k8s-pods:NODE (from kubectl describe)
+  // 100 - all containers of all pods on specified node - ????????
+  // 101 - run on specified node - k8s-node:NODE
+  // 110 - run on all nodes - k8s-nodes:CLUSTER
+  // 111 - daemonset
+  // some sort of default - k8s:
+
+  vector<remote*> remotes;
+  vector <pod> pods;
+  vector <container> containers;
+  unsigned k8scount = 0;
+  pod targetpod;
+  string targetpodname;
+  string targetcontainername;
+
+  const char* cmd = "kubectl describe pods | grep \"^Name:\\|^Node:\\|Container ID:\" \
+ -B1 | grep \"^--\\|Container ID:\\|^Namespace:\" -v";
+
+  FILE *process = popen(cmd, "r");
+  if (!process)
     {
-      if (uri.find(':') != string::npos)
+      cout << "Error executing 'kubectl describe pods'." << endl;
+      return remotes;
+    }
+
+  char buffer[256];
+  string result = "";
+  while (!feof(process))
+    {
+      if (fgets(buffer, 256, process) != NULL)
+        result +=buffer;
+    }
+    pclose(process);
+
+  while (result.find(':', 0) != string::npos)
+   {
+     pod temppod;
+     int startpos = result.find_first_not_of(9, 5); //ignore 'Name:'
+     int endpos = result.find_first_of(10, startpos + 1);
+     temppod.name = result.substr(startpos, endpos - startpos);
+     result = result.substr(endpos + 1);
+
+     startpos = result.find_first_not_of(9, 5); //ignore 'Node:'
+     endpos = result.find_first_of(10, startpos + 1);
+     temppod.node = result.substr(startpos, endpos - startpos);
+     result = result.substr(endpos + 1);
+
+       while (result[0] == ' ' && result[2] != ' ')
         {
-          const uri_decoder ud(uri);
-
-          // An ssh "host:port" is ambiguous with a URI "scheme:path".
-          // So if it looks like a number, just assume ssh.
-          if (!ud.has_authority && !ud.has_query &&
-              !ud.has_fragment && !ud.path.empty() &&
-              ud.path.find_first_not_of("1234567890") == string::npos)
-            it = ssh_remote::create(s, uri);
-          else if (ud.scheme == "direct")
-            it = new direct(s);
-          else if (ud.scheme == "stapsh")
-            it = new direct_stapsh(s);
-          else if (ud.scheme == "unix")
-            it = new unix_stapsh(s, ud);
-          else if (ud.scheme == "libvirt")
-            it = new libvirt_stapsh(s, ud);
-          else if (ud.scheme == "ssh")
-            it = ssh_remote::create(s, ud);
-          else
-            throw runtime_error(_F("unrecognized URI scheme '%s' in remote: %s",
-                                   ud.scheme.c_str(), uri.c_str()));
+          container tempcontainer;
+          startpos = 2; //ignore '  '
+          endpos = result.find_first_of(58, startpos + 1); // ignore ':' before '\n'
+          tempcontainer.name = result.substr(startpos, endpos - startpos);
+          tempcontainer.hostpod = temppod;
+          temppod.containers.push_back(tempcontainer.name);
+          result = result.substr(endpos + 2);
+          containers.push_back(tempcontainer);
         }
-      else
-        // XXX assuming everything else is ssh for now...
-        it = ssh_remote::create(s, uri);
-    }
-  catch (std::runtime_error& e)
+
+       if (result[0] == 10)
+         result = result.substr(1); //ignore new line after list of containers
+
+       pods.push_back(temppod);
+     }
+
+  while (1)
     {
-      cerr << e.what() << " on remote '" << uri << "'" << endl;
-      it = 0;
+      if (uri.find("k8s-container:")!= string::npos)
+        {
+          if (k8scount > 0)
+            break;
+          //extract :POD:CONTAINER
+          targetpodname = uri.substr(14,uri.find_first_of(58,14)-14);
+          targetcontainername = uri.substr(uri.find_first_of(58,14) + 1, string::npos);
+          for (unsigned i = 0; i < pods.size(); i++)
+            {
+              if (pods[i].name == targetpodname)
+                targetpod = pods[i];
+            }
+         }
+       if (uri.find("k8s-pod:") != string::npos)
+         {
+	   targetpodname = uri.substr(8,string::npos);
+	   for (unsigned i = 0; i < pods.size(); i++)
+	     {
+	       if (pods[i].name == targetpodname)
+	         targetpod = pods[i];
+	     }
+	   if (k8scount >= targetpod.containers.size())
+	     break;
+	   targetcontainername = targetpod.containers[k8scount];
+	 }
+       if (uri.find("k8s-pods:") != string::npos)
+         {
+           string targetnodename = uri.substr(9,string::npos);
+           vector <pod> targetpodlist;
+           for (unsigned i = 0; i < pods.size(); i++)
+             {
+               if (pods[i].node == targetnodename)
+	         targetpodlist.push_back(pods[i]);
+	     }
+	   if (k8scount >= targetpodlist.size())
+	     break;
+	   targetpod = targetpodlist[k8scount];
+	   targetcontainername = targetpod.containers[0];
+         }
+      k8scount++;
+
+      unique_ptr<kubectl_remote> p (new kubectl_remote(s,targetpod,targetcontainername));
+      int rc = p->connect();
+      if (rc == 0)
+        remotes.push_back(p.release());
+
+      else if (rc == 127) // stapsh command not found
+          cout << "Stapsh not found on " << targetpodname << ":" <<  targetcontainername << endl;
     }
 
-  if (it && idx >= 0) // PR13354: remote metadata for staprun -r IDX:URI
+  return remotes;
+}
+
+vector<remote*>
+remote::create(systemtap_session& s, vector<string>& uris)
+{
+  vector <remote*> itvector;
+  remote *it = 0;
+  unsigned index = 0;
+  for (unsigned i = 0; i < uris.size() ; i++)
     {
-      stringstream r_arg;
-      r_arg << idx << ":" << uri;
-      it->staprun_r_arg = r_arg.str();
+      try
+        {
+	  const uri_decoder ud(uris[i]);
+          if (uris[i].find(':') != string::npos)
+            {
+
+              // An ssh "host:port" is ambiguous with a URI "scheme:path".
+              // So if it looks like a number, just assume ssh.
+              if (!ud.has_authority && !ud.has_query &&
+                  !ud.has_fragment && !ud.path.empty() &&
+                  ud.path.find_first_not_of("1234567890") == string::npos)
+                it = ssh_remote::create(s, uris[i]);
+              else if (ud.scheme == "direct")
+                it = new direct(s);
+              else if (ud.scheme == "stapsh")
+                it = new direct_stapsh(s);
+              else if (ud.scheme == "unix")
+                it = new unix_stapsh(s, ud);
+              else if (ud.scheme == "libvirt")
+                it = new libvirt_stapsh(s, ud);
+              else if (ud.scheme == "ssh")
+                it = ssh_remote::create(s, ud);
+	      else if (ud.scheme.find("k8s") != string::npos)
+		{
+	          vector<remote*> k8svector = kubectl_remote::create(s, uris[i]);
+		  if (k8svector.size() == 0)
+		    {
+                      cout << "No targets found on " << uris[i] << endl;
+		      continue;
+		    }
+	          itvector.insert(itvector.end(), k8svector.begin(), k8svector.end());
+		  for (unsigned j = itvector.size() - k8svector.size(); j < itvector.size(); j++)
+		    {
+                      stringstream r_arg;
+                      r_arg << index++ << ":" << uris[i];
+                      itvector[j]->staprun_r_arg = r_arg.str();
+		    }
+		  continue;
+		}
+              else
+                throw runtime_error(_F("unrecognized URI scheme '%s' in remote: %s",
+                                   ud.scheme.c_str(), uris[i].c_str()));
+            }
+          else
+            // XXX assuming everything else is ssh for now...
+            it = ssh_remote::create(s, uris[i]);
+
+          itvector.push_back(it);
+
+          if (itvector[index] && ud.scheme != "direct") // PR13354: remote metadata for staprun -r IDX:URI
+            {
+              stringstream r_arg;
+              r_arg << index << ":" << uris[i];
+              itvector[index++]->staprun_r_arg = r_arg.str();
+            }
+        }
+      catch (std::runtime_error& e)
+        {
+          cerr << e.what() << " on remote '" << uris[i] << "'" << endl;
+          it = 0;
+        }
+
     }
 
-  return it;
+  return itvector;
 }
 
 int
