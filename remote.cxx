@@ -460,6 +460,7 @@ class stapsh : public remote {
     virtual int prepare()
       {
         int rc = 0;
+
         string extension = s->runtime_mode == systemtap_session::dyninst_runtime ? ".so" : ".ko";
         string localmodule = s->tmpdir + "/" + s->module_name + extension;
         string remotemodule = s->module_name + extension;
