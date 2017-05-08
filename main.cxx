@@ -1296,24 +1296,14 @@ main (int argc, char * const argv [])
       return run_sdt_benchmark(s);
 
     // Prepare connections for each specified remote target.
-    vector<remote*> targets;
     bool fake_remote=false;
     if (s.remote_uris.empty())
       {
         fake_remote=true;
         s.remote_uris.push_back("direct:");
       }
-    for (unsigned i = 0; rc == 0 && i < s.remote_uris.size(); ++i)
-      {
-        // PR13354: pass remote id#/url only in non --remote=HOST cases
-        remote *target = remote::create(s, s.remote_uris[i],
-                                        fake_remote ? -1 : (int)i);
-        if (target)
-          targets.push_back(target);
-        else
-          rc = 1;
-      }
-
+    vector<remote*> targets = remote::create(s, s.remote_uris);
+    
     // Discover and loop over each unique session created by the remote targets.
     set<systemtap_session*> sessions;
     for (unsigned i = 0; i < targets.size(); ++i)
