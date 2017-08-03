@@ -460,10 +460,7 @@ class stapsh : public remote {
     virtual int prepare()
       {
         int rc = 0;
-<<<<<<< 001007f57485d67e3e27ad8624e8cdbefb864bea
 
-=======
->>>>>>> Initial k8s commit
         string extension = s->runtime_mode == systemtap_session::dyninst_runtime ? ".so" : ".ko";
         string localmodule = s->tmpdir + "/" + s->module_name + extension;
         string remotemodule = s->module_name + extension;
