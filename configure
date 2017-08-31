@@ -633,6 +633,8 @@ NEED_BASE_CLIENT_CODE_FALSE
 NEED_BASE_CLIENT_CODE_TRUE
 HAVE_HTTP_SUPPORT_FALSE
 HAVE_HTTP_SUPPORT_TRUE
+HAVE_K8S_SUPPORT_FALSE
+HAVE_K8S_SUPPORT_TRUE
 libcurl_LIBS
 libcurl_CFLAGS
 uuid_LIBS
@@ -12895,6 +12897,30 @@ $as_echo "#define NEED_BASE_CLIENT_CODE 1" >>confdefs.h
 
 fi
 
+have_k8s_support=no
+if "x$have_jsonc" = "xyes"; then :
+  have_k8s_jsonc_support=yes
+fi
+
+if test "x$have_k8s_support" = "xyes"; then :
+
+$as_echo "#define HAVE_K8S_SUPPORT 1" >>confdefs.h
+
+else
+  if test "x$enable_k8s" = "xyes"; then
+  as_fn_error $? "kuberenetes service support requested but not found" "$LINENO" 5
+fi
+
+fi
+if test "x$have_k8s_support" = "xyes"; then
+   HAVE_K8S_SUPPORT_TRUE=
+   HAVE_K8S_SUPPORT_FALSE='#'
+  else
+   HAVE_K8S_SUPPORT_TRUE='#'
+   HAVE_K8S_SUPPORT_FALSE=
+fi
+
+
 
 stap_prefix=$prefix
 test "$stap_prefix" = NONE && stap_prefix=$ac_default_prefix
@@ -13201,6 +13227,10 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${NEED_BASE_CLIENT_CODE_TRUE}" && test -z "${NEED_BASE_CLIENT_CODE_FALSE}"; then
   as_fn_error $? "conditional \"NEED_BASE_CLIENT_CODE\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${HAVE_K8S_SUPPORT_TRUE}" && test -z "${HAVE_K8S_SUPPORT_FALSE}"; then
+  as_fn_error $? "conditional \"HAVE_K8S_SUPPORT\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 

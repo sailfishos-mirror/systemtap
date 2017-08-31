@@ -161,6 +161,10 @@ stap_SOURCES += client-http.cxx
 stap_LDADD += $(libcurl_LIBS) $(jsonc_LIBS)
 endif
 
+if HAVE_K8S_SUPPORT
+stap_LDADD += $(jsonc_LIBS)
+endif
+
 if BUILD_ELFUTILS
 stap_CPPFLAGS += -Iinclude-elfutils
 stap_LDFLAGS += -Llib-elfutils -Wl,-rpath-link,lib-elfutils \

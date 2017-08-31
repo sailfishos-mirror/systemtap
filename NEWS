@@ -1,5 +1,8 @@
 * What's new in version 3.2, PRERELEASE
 
+- Experimental openshift support, runs on containers with systemtap runtime
+  installed.  Currently targetable by container name, pod name and node name.
+
 - The translator produces better diagnostics for common/annoying case
   of missing debuginfo that blocks use of context $variables. 
 

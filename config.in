@@ -52,6 +52,9 @@
 /* Define to 1 to enable http web service support in systemtap. */
 #undef HAVE_HTTP_SUPPORT
 
+/* Define to 1 to enable kubernetes service support in systemtap. */
+#undef HAVE_K8S_SUPPORT
+
 /* Define if you have the iconv() function and it works. */
 #undef HAVE_ICONV
 

@@ -16,6 +16,7 @@ extern "C" {
 #include <unistd.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <json-c/json.h>
 }
 
 #include <cstdio>
@@ -1271,18 +1272,18 @@ kubectl_remote::create(systemtap_session& s, const string& uri)
   vector<remote*> remotes;
   vector <pod> pods;
   vector <container> containers;
+  //used to track number of targets
   unsigned k8scount = 0;
   pod targetpod;
   string targetpodname;
   string targetcontainername;
 
-  const char* cmd = "kubectl describe pods | grep \"^Name:\\|^Node:\\|Container ID:\" \
- -B1 | grep \"^--\\|Container ID:\\|^Namespace:\" -v";
+  const char* cmd = "kubectl get pods -o json";
 
   FILE *process = popen(cmd, "r");
   if (!process)
     {
-      cout << "Error executing 'kubectl describe pods'." << endl;
+      cout << "Error executing 'kubectl describe pods -o json'." << endl;
       return remotes;
     }
 
@@ -1291,45 +1292,52 @@ kubectl_remote::create(systemtap_session& s, const string& uri)
   while (!feof(process))
     {
       if (fgets(buffer, 256, process) != NULL)
-        result +=buffer;
+        result += buffer;
     }
     pclose(process);
 
-  while (result.find(':', 0) != string::npos)
-   {
-     pod temppod;
-     int startpos = result.find_first_not_of(9, 5); //ignore 'Name:'
-     int endpos = result.find_first_of(10, startpos + 1);
-     temppod.name = result.substr(startpos, endpos - startpos);
-     result = result.substr(endpos + 1);
+    json_object* jobjtotal = json_tokener_parse(result.c_str());
+    json_object* jsonitems;
+    json_object* jsondata;
+    json_object* jsonidx;
+    json_object* jsoncontainers;
 
-     startpos = result.find_first_not_of(9, 5); //ignore 'Node:'
-     endpos = result.find_first_of(10, startpos + 1);
-     temppod.node = result.substr(startpos, endpos - startpos);
-     result = result.substr(endpos + 1);
+    if (!json_object_object_get_ex(jobjtotal, (char*)"items", &jsonitems))
+      {
+        cout << "items not found" << endl;
+	return remotes;
+      }
 
-       while (result[0] == ' ' && result[2] != ' ')
-        {
-          container tempcontainer;
-          startpos = 2; //ignore '  '
-          endpos = result.find_first_of(58, startpos + 1); // ignore ':' before '\n'
-          tempcontainer.name = result.substr(startpos, endpos - startpos);
-          tempcontainer.hostpod = temppod;
-          temppod.containers.push_back(tempcontainer.name);
-          result = result.substr(endpos + 2);
-          containers.push_back(tempcontainer);
-        }
-
-       if (result[0] == 10)
-         result = result.substr(1); //ignore new line after list of containers
-
+    for (unsigned int i = 0; i < json_object_array_length(jsonitems); i++)
+    {
+      pod temppod;
+       jsonidx = json_object_array_get_idx(jsonitems, i);
+       json_object_object_get_ex(jsonidx, (char*)"metadata", &jsondata);
+       json_object_object_get_ex(jsondata, (char*)"name", &jsondata);
+       temppod.name = json_object_get_string(jsondata);
+       json_object_object_get_ex(jsonidx, (char*)"spec", &jsondata);
+       json_object_object_get_ex(jsondata, (char*)"containers", &jsoncontainers);
+       json_object_object_get_ex(jsondata, (char*)"nodeName", &jsondata);
+       temppod.node = json_object_get_string(jsondata);
+       for (unsigned int j = 0; j < json_object_array_length(jsoncontainers); j++)
+	 {
+           container tempcontainer;
+	   jsonidx = json_object_array_get_idx(jsoncontainers, j);
+	   json_object_object_get_ex(jsonidx, (char*)"name", &jsondata);
+	   tempcontainer.name = json_object_get_string(jsondata);
+	   tempcontainer.hostpod = temppod;
+	   temppod.containers.push_back(tempcontainer.name);
+	 }
        pods.push_back(temppod);
      }
+
+    json_object_put(jobjtotal);
 
   while (1)
     {
       if (uri.find("k8s-container:")!= string::npos)
         {
+	  //only want one target in the case of k8s-container
           if (k8scount > 0)
             break;
           //extract :POD:CONTAINER
