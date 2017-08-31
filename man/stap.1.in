@@ -689,6 +689,15 @@ prepare the domain for stap probing.
 This mode connects to a UNIX socket. This can be used with a QEMU virtio-serial
 port for executing scripts inside a running virtual machine.
 .TP
+\fBk8s-container:POD:CONTAINER, k8s-pod:POD, k8s-pods:NODE\fR
+This (currently experimental) mode uses kubectl and targets specific containers.
+k8s-container will run on CONTAINER in POD.  k8s-pod will run on every container
+of POD.  k8s-pods will run on the first container of every pod on NODE.  The
+targets must be in the current kubernetes namespace.
+
+This feature requires the command line interface kubectl and the json-c library.
+Additionally, containers must have systemtap-runtime installed on them.
+.TP
 \fBdirect://\fR
 Special loopback mode to run on the local host.
 .RE
