@@ -675,10 +675,10 @@ revoke_server_trust (
 // Obtain information about servers from the certificates in the given database.
 static void
 get_server_info_from_db (
-  systemtap_session &s,
-  vector<compile_server_info> &servers,
-  const string &cert_db_path
-)
+    systemtap_session &s,
+    vector<compile_server_info> &servers,
+    const string &cert_db_path
+  )
 {
   // Make sure the given path exists.
   if (! file_exists (cert_db_path))
@@ -700,8 +700,6 @@ get_server_info_from_db (
       return;
     }
 
-  // Must predeclare this because of jumps to cleanup: below.
-  PRArenaPool *tmpArena = NULL;
   CERTCertList *certs = get_cert_list_from_db (server_cert_nickname ());
   if (! certs)
     {
@@ -710,14 +708,6 @@ get_server_info_from_db (
       goto cleanup;
     }
 
-  // A memory pool to work in
-  tmpArena = PORT_NewArena(DER_DEFAULT_CHUNKSIZE);
-  if (! tmpArena) 
-    {
-      clog << _("Out of memory:");
-      nssError ();
-      goto cleanup;
-    }
   for (CERTCertListNode *node = CERT_LIST_HEAD (certs);
        ! CERT_LIST_END (node, certs);
        node = CERT_LIST_NEXT (node))
@@ -727,35 +717,8 @@ get_server_info_from_db (
       // The certificate we're working with.
       CERTCertificate *db_cert = node->cert;
 
-      // Get the host name. It is in the alt-name extension of the
-      // certificate.
-      SECItem subAltName;
-      subAltName.data = NULL;
-      secStatus = CERT_FindCertExtension (db_cert,
-					  SEC_OID_X509_SUBJECT_ALT_NAME,
-					  & subAltName);
-      if (secStatus != SECSuccess || ! subAltName.data)
-	{
-	  clog << _("Unable to find alt name extension on server certificate: ") << endl;
-	  nssError ();
-	  continue;
-	}
-
-      // Decode the extension.
-      CERTGeneralName *nameList = CERT_DecodeAltNameExtension (tmpArena, & subAltName);
-      SECITEM_FreeItem(& subAltName, PR_FALSE);
-      if (! nameList)
-	{
-	  clog << _("Unable to decode alt name extension on server certificate: ") << endl;
-	  nssError ();
-	  continue;
-	}
-
-      // We're interested in the first alternate name.
-      assert (nameList->type == certDNSName);
-      server_info.host_name = string ((const char *)nameList->name.other.data,
-				      nameList->name.other.len);
-      // Don't free nameList. It's part of the tmpArena.
+      if (get_host_name (db_cert, server_info.host_name) == false)
+        continue;
 
       // Get the serial number.
       server_info.certinfo = get_cert_serial_number (db_cert);
@@ -774,8 +737,6 @@ get_server_info_from_db (
  cleanup:
   if (certs)
     CERT_DestroyCertList (certs);
-  if (tmpArena)
-    PORT_FreeArena (tmpArena, PR_FALSE);
 
   nssCleanup (cert_db_path.c_str ());
 }

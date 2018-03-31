@@ -14,6 +14,7 @@
 #include "util.h"
 #include "staptree.h"
 #include "elaborate.h"
+#include "nsscommon.h"
 
 #include <iostream>
 #include <sstream>
@@ -50,15 +51,18 @@ public:
     curl(0),
     retry(0),
     location(nullptr) { }
-  ~http_client () {if (curl) curl_easy_cleanup(curl);};
+  ~http_client () {if (curl) curl_easy_cleanup(curl);
+                  remove_file_or_dir (pem_cert_file.c_str());}
 
   json_object *root;
   std::string host;
   std::map<std::string, std::string> header_values;
   std::vector<std::tuple<std::string, std::string>> env_vars;
   enum download_type {json_type, file_type};
+  std::string pem_cert_file;
 
   bool download (const std::string & url, enum download_type type);
+  bool download_pem_cert (const std::string & url, std::string & certs);
   bool post (const string & url, vector<tuple<string, string>> & request_parameters);
   void add_file (std::string filename);
   void add_module (std::string module);
@@ -70,6 +74,7 @@ public:
   void get_buildid (string fname);
   void get_kernel_buildid (void);
   long get_response_code (void);
+  bool add_server_cert_to_client (std::string & tmpdir);
   static int trace (CURL *, curl_infotype type, unsigned char *data, size_t size, void *);
 
 private:
@@ -82,7 +87,7 @@ private:
   std::vector<std::string> modules;
   std::vector<std::tuple<std::string, std::string>> buildids;
   systemtap_session &s;
-  void *curl;
+  CURL *curl;
   int retry;
   std::string *location;
   std::string buildid;
@@ -231,7 +236,68 @@ http_client::trace(CURL *, curl_infotype type, unsigned char *data, size_t size,
 }
 
 
-// Do a download of type TYPE from URL
+static size_t
+null_writefunction (void *ptr,  size_t  size,  size_t  nmemb,  void *stream)
+{
+  (void)stream;
+  (void)ptr;
+  return size * nmemb;
+}
+
+bool
+http_client::download_pem_cert (const std::string & url, string & certs)
+{
+  CURL *dpc_curl;
+  CURLcode res;
+  bool have_certs = false;
+  struct curl_certinfo *certinfo;
+
+  // Get the certificate info for the url
+  curl_global_init (CURL_GLOBAL_DEFAULT);
+  dpc_curl = curl_easy_init ();
+
+  curl_easy_setopt(dpc_curl, CURLOPT_URL, url.c_str());
+  curl_easy_setopt(dpc_curl, CURLOPT_WRITEFUNCTION, null_writefunction);
+  curl_easy_setopt(dpc_curl, CURLOPT_SSL_VERIFYPEER, 0L);
+  curl_easy_setopt(dpc_curl, CURLOPT_SSL_VERIFYHOST, 0L);
+  curl_easy_setopt(dpc_curl, CURLOPT_VERBOSE, 0L);
+  curl_easy_setopt(dpc_curl, CURLOPT_CERTINFO, 1L);
+
+  res = curl_easy_perform (dpc_curl);
+
+  if (res)
+    return false;
+
+  res = curl_easy_getinfo (dpc_curl, CURLINFO_CERTINFO, &certinfo);
+
+  // Create a certificate bundle from the certificate info
+  if (!res && certinfo)
+    {
+      for (int i = 0; i < certinfo->num_of_certs; i++)
+        {
+          struct curl_slist *slist;
+
+          for (slist = certinfo->certinfo[i]; slist; slist = slist->next)
+            {
+              string one_cert;
+              string slist_data = string (slist->data);
+              size_t cert_begin, cert_end;
+              if ((cert_begin = slist_data.find("-----BEGIN CERTIFICATE-----")) == string::npos)
+                continue;
+              if ((cert_end = slist_data.find("-----END CERTIFICATE-----", cert_begin)) == string::npos)
+                continue;
+              certs += string (slist_data.substr(cert_begin, cert_end - cert_begin + 28));
+              have_certs = true;
+            }
+        }
+    }
+
+  curl_easy_cleanup(dpc_curl);
+  curl_global_cleanup();
+
+  return have_certs;
+}
+
 
 bool
 http_client::download (const std::string & url, http_client::download_type type)
@@ -254,12 +320,16 @@ http_client::download (const std::string & url, http_client::download_type type)
   headers = curl_slist_append (headers, "Content-Type: text/html");
   curl_easy_setopt (curl, CURLOPT_HTTPHEADER, headers);
   curl_easy_setopt (curl, CURLOPT_HTTPGET, 1);
+  curl_easy_setopt (curl, CURLOPT_SSLCERTTYPE, "PEM");
+  curl_easy_setopt (curl, CURLOPT_SSL_VERIFYPEER, 1L);
+  curl_easy_setopt (curl, CURLOPT_SSL_VERIFYHOST, 2L);
+  curl_easy_setopt (curl, CURLOPT_CAINFO, pem_cert_file.c_str());
 
   if (type == json_type)
     {
       curl_easy_setopt (curl, CURLOPT_WRITEDATA, http);
       curl_easy_setopt (curl, CURLOPT_WRITEFUNCTION,
-			http_client::get_data_shim);
+                       http_client::get_data_shim);
     }
   else if (type == file_type)
     {
@@ -744,6 +814,34 @@ http_client::add_module (std::string module)
 }
 
 
+bool
+http_client::add_server_cert_to_client (string &tmpdir)
+{
+  const char *certificate;
+  json_object *cert_obj;
+
+  // Get the certificate returned by the server
+  if  (json_object_object_get_ex (root, "certificate", &cert_obj))
+    certificate = json_object_get_string(cert_obj);
+  else
+    return false;
+  string pem_tmp = tmpdir + "pemXXXXXX";
+  int fd = mkstemp ((char*)pem_tmp.c_str());
+  close(fd);
+  std::ofstream pem_out(pem_tmp);
+  pem_out << certificate;
+  pem_out.close();
+
+  // Add the certificate to the client nss certificate database
+  if (add_client_cert(pem_tmp, local_client_cert_db_path()) == SECSuccess)
+    {
+      remove_file_or_dir (pem_tmp.c_str());
+      return true;
+    }
+  return false;
+ }
+
+
 http_client_backend::http_client_backend (systemtap_session &s)
   : client_backend(s), files_seen(false)
 {
@@ -755,6 +853,7 @@ http_client_backend::initialize ()
 {
   http = new http_client (s);
   request_parameters.clear();
+
   return 0;
 }
 
@@ -904,6 +1003,9 @@ http_client_backend::find_and_connect_to_server ()
 	}
     }
 
+  const string cert_db = local_client_cert_db_path ();
+  const string nick = server_cert_nickname ();
+
   for (vector<std::string>::const_iterator i = s.http_servers.begin ();
       i != s.http_servers.end ();
       ++i)
@@ -911,7 +1013,45 @@ http_client_backend::find_and_connect_to_server ()
       // Try to connect to the server. We'll try to grab the base
       // directory of the server just to see if we can make a
       // connection.
-      if (http->download (*i + "/", http->json_type))
+      string pem_cert;
+      bool add_cert = false;
+      string url = *i;
+      // scheme:[//[user[:password]@]host[:port]]
+      // TODO more elaborate url component extractor?
+      // scheme:[//[user[:password]@]host[:port]
+
+      const char *scheme = "https://";
+      unsigned long host_begin = url.find(scheme);
+      if (host_begin == string::npos)
+        {
+          host_begin = 0;
+          url = "https://" + *i;
+        }
+      host_begin += strlen (scheme);
+      unsigned long host_end = url.find(":", host_begin);
+      if (host_end == string::npos)
+        {
+          clog << _F("Incorrect url syntax: expected https://host:port got %s\n", url.c_str());
+          return 1;
+        }
+      string host = url.substr(host_begin, host_end - host_begin);
+      // We don't have a suitable certificate so download the server certificate bundle
+      if (get_pem_cert(cert_db, nick, host, pem_cert) == false)
+        {
+          if (http->download_pem_cert (url, pem_cert) == false)
+            continue;
+          else
+            add_cert = true;
+        }
+      string pem_tmp = client_tmpdir + "/pemXXXXXX";
+      int fd = mkstemp ((char*)pem_tmp.c_str());
+      close(fd);
+      std::ofstream pem_out(pem_tmp);
+      pem_out << pem_cert;
+      pem_out.close();
+      http->pem_cert_file = pem_tmp;
+
+      if (http->download (url + "/", http->json_type))
         {
 	  // FIXME: The server returns its version number. We might
 	  // need to check it for compatibility.
@@ -920,10 +1060,12 @@ http_client_backend::find_and_connect_to_server ()
 	  // need to check and see if it is trusted.
 
 	  // Send our build request.
-	  if (http->post (*i + "/builds", request_parameters))
+	  if (http->post (url + "/builds", request_parameters))
 	    {
-	      s.winning_server = *i;
-	      http->host = *i;
+	      s.winning_server = url;
+	      http->host = url;
+	      if (add_cert)
+	        http->add_server_cert_to_client (client_tmpdir);
 	      return 0;
 	    }
 	}
@@ -1059,6 +1201,7 @@ http_client_backend::unpack_response ()
       clog << "Couldn't find 'stdout' in JSON results data" << endl;
       return 1;
     }
+  delete http;
   return 0;
 }
 
