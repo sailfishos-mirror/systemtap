@@ -339,6 +339,13 @@ static char * path_insert_sysroot(string sysroot, string path)
 
 void debuginfo_path_insert_sysroot(string sysroot)
 {
+  // FIXME: This is a short-term fix, until we expect sysroot paths to
+  // always end with a '/' (and never be empty).
+  //
+  // The path_insert_sysroot() function assumes that sysroot has a '/'
+  // on the end. Make sure that is true.
+  if (! sysroot.empty() && *(sysroot.end() - 1) != '/')
+    sysroot.append(1, '/');
   debuginfo_path = path_insert_sysroot(sysroot, debuginfo_path);
   debuginfo_usr_path = path_insert_sysroot(sysroot, debuginfo_usr_path);
 }
@@ -358,13 +365,19 @@ setup_dwfl_kernel (unsigned *modules_found, systemtap_session &s)
   // no way to set the dwfl_callback.debuginfo_path and always
   // passs the plain kernel_release here.  So instead we have to
   // hard-code this magic here.
-   string lib_path = "/lib/modules/" + s.kernel_release + "/build";
-   if (s.kernel_build_tree == string(s.sysroot + lib_path) ||
-       (s.kernel_build_tree == lib_path
-	&& s.sysroot == "/"))
-      elfutils_kernel_path = s.kernel_release;
-   else
-      elfutils_kernel_path = s.kernel_build_tree;
+  string lib_path = s.sysroot + "/lib/modules/" + s.kernel_release + "/build";
+  if (s.kernel_build_tree == lib_path)
+    {
+      if (s.sysroot != "")
+        // If we have sysroot set does not make sense to pass
+        // short release to dwfl, it won't take a sysroot into
+        // account. Let's construct full path in such case.
+	elfutils_kernel_path = string(s.sysroot + "/lib/modules/" + s.kernel_release);
+      else
+	elfutils_kernel_path = s.kernel_release;
+    }
+  else
+    elfutils_kernel_path = s.kernel_build_tree;
   offline_modules_found = 0;
 
   // First try to report full path modules.
@@ -626,18 +639,6 @@ internal_find_debuginfo (Dwfl_Module *mod,
               ((long)tv_after.tv_usec - (long)tv_before.tv_usec) / 1000) << "real ms"<< endl;
 
   call_dwfl_standard_find_debuginfo:
-
-  if (current_session_for_find_debuginfo)
-    {
-      string sysroot = current_session_for_find_debuginfo->sysroot + "/*";
-      int    found   = fnmatch(sysroot.c_str(), file_name, 0);
-
-      if (found)
-	{
-	  file_name = file_name
-	    + current_session_for_find_debuginfo->sysroot.length() - 1;
-	}
-    }
 
   /* Call the original dwfl_standard_find_debuginfo */
   return dwfl_standard_find_debuginfo(mod, userdata, modname, base,

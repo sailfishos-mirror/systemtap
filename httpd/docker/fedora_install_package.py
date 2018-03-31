@@ -1,4 +1,12 @@
 #! /usr/bin/python
+#
+# Note that the above interpreter choice is correct -
+# '/usr/bin/python'. It isn't '/usr/bin/python2' or
+# '/usr/bin/python3'. But, this is OK. This script is run in a
+# container, and we won't know which python we're executing (or even
+# which will be installed), but we should be assured of one or the
+# other. This script was written to be executable by either version of
+# python (checked by running pylint-2 and pylint-3 on it).
 
 """Install specific versions of packages."""
 
@@ -75,8 +83,10 @@ class PkgSystem(object):
         #
         # Find the package manager for this system.
         self.__pkgmgr_path = which("dnf")
+        self.__debuginfo_install = [self.__pkgmgr_path, 'debuginfo-install']
         if self.__pkgmgr_path is None:
             self.__pkgmgr_path = which("yum")
+            self.__debuginfo_install = [which('debuginfo-install')]
         if self.__pkgmgr_path is None:
             _eprint("Can't find a package manager (either 'dnr' or 'yum').")
             sys.exit(1)
@@ -128,8 +138,7 @@ class PkgSystem(object):
             if self.__verbose:
                 print("Package %s installed." % pkg_nvr)
             return 1
-        if subprocess.call([self.__pkgmgr_path, 'debuginfo-install',
-                            '-y', pkg_nvr]) != 0:
+        if subprocess.call(self.__debuginfo_install + ['-y', pkg_nvr]) != 0:
             return 0
 
         # OK, at this point we know the package and its debuginfo has

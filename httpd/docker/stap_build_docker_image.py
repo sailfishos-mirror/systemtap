@@ -1,4 +1,7 @@
-#! /usr/bin/python
+# Note that this script was written to be executable by either version
+# of python (checked by running pylint-2 and pylint-3 on it). Also
+# note that the python version this script gets executed by is decided
+# on by httpd/backends.cxx.
 
 """Build a docker file and container image based on a JSON template."""
 
@@ -190,7 +193,10 @@ def main():
         if os.WIFEXITED(cmd_rc):
             cmd_rc = os.WEXITSTATUS(cmd_rc)
         _eprint("Error: \"%s\" failed, status %d" % (cmd, cmd_rc))
-        sys.exit(1)
+
+    # We're done with our temporary directory.
+    shutil.rmtree(tmpdir_path, True)
+    sys.exit(cmd_rc)
 
 if __name__ == '__main__':
     main()

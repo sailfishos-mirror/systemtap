@@ -34,8 +34,8 @@
 %endif
 %{!?with_pyparsing: %global with_pyparsing 0%{?fedora} >= 18 || 0%{?rhel} >= 7}
 %{!?with_python3: %global with_python3 0%{?fedora} >= 23 || 0%{?rhel} > 7}
-%{!?with_python2_probes: %global with_python2_probes 1}
-%{!?with_python3_probes: %global with_python3_probes 0%{?fedora} >= 23}
+%{!?with_python2_probes: %global with_python2_probes (0%{?fedora} <= 28 && 0%{?rhel} <= 7)}
+%{!?with_python3_probes: %global with_python3_probes (0%{?fedora} >= 23 || 0%{?rhel} > 7)}
 %{!?with_httpd: %global with_httpd 0}
 
 %ifarch ppc64le aarch64
@@ -115,7 +115,6 @@ URL: http://sourceware.org/systemtap/
 Source: ftp://sourceware.org/pub/systemtap/releases/systemtap-%{version}.tar.gz
 
 # Build*
-BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildRequires: gcc-c++
 BuildRequires: gettext-devel
 BuildRequires: pkgconfig(nss)
@@ -183,8 +182,12 @@ BuildRequires: readline-devel
 BuildRequires: pkgconfig(ncurses)
 %endif
 %if %{with_python2_probes}
-BuildRequires: python-devel
+BuildRequires: python2-devel
+%if 0%{?fedora} >= 1
+BuildRequires: python2-setuptools
+%else
 BuildRequires: python-setuptools
+%endif
 %endif
 %if %{with_python3_probes}
 BuildRequires: python3-devel
@@ -214,10 +217,7 @@ Group: Development/System
 License: GPLv2+
 URL: http://sourceware.org/systemtap/
 Requires: systemtap-devel = %{version}-%{release}
-# On RHEL[45], /bin/mktemp comes from the 'mktemp' package.  On newer
-# distributions, /bin/mktemp comes from the 'coreutils' package.  To
-# avoid a specific RHEL[45] Requires, we'll do a file-based require.
-Requires: nss /bin/mktemp
+Requires: nss coreutils
 Requires: zip unzip
 Requires(pre): shadow-utils
 Requires(post): chkconfig
@@ -320,7 +320,11 @@ URL: http://sourceware.org/systemtap/
 %if %{with_python3}
 Requires: python3-pyparsing
 %else
+%if 0%{?rhel} >= 7
 Requires: pyparsing
+%else
+Requires: python2-pyparsing
+%endif
 %endif
 %endif
 
@@ -424,6 +428,11 @@ Group: Development/System
 License: GPLv2+
 URL: http://sourceware.org/systemtap/
 Requires: systemtap-runtime = %{version}-%{release}
+
+%if ! (%{with_python2_probes})
+# Provide an clean upgrade path when the python2 package is removed
+Obsoletes: %{name}-runtime-python2 < %{version}-%{release}
+%endif
 
 %description runtime-python3
 This package includes support files needed to run systemtap scripts
@@ -704,9 +713,6 @@ done
    install -p -m 755 initscript/99stap/start-staprun.sh $RPM_BUILD_ROOT%{dracutstap}
    touch $RPM_BUILD_ROOT%{dracutstap}/params.conf
 %endif
-
-%clean
-rm -rf ${RPM_BUILD_ROOT}
 
 %pre runtime
 getent group stapusr >/dev/null || groupadd -g 156 -r stapusr 2>/dev/null || groupadd -r stapusr
@@ -1192,7 +1198,7 @@ done
 - Upstream release.
 
 * Mon Jul 07 2014 Josh Stone <jistone@redhat.com>
-- Flip with_dyninst to an %ifarch whitelist.
+- Flip with_dyninst to an %%ifarch whitelist.
 
 * Wed Apr 30 2014 Jonathan Lebon <jlebon@redhat.com> - 2.5-1
 - Upstream release.

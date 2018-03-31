@@ -443,6 +443,64 @@ split_lines(const char *buf, size_t n)
   return lines;
 }
 
+static string
+follow_link(const string& name, const string& sysroot)
+{
+  char *linkname;
+  ssize_t r;
+  string retpath;
+  struct stat st;
+
+  const char *f = name.c_str();
+
+  lstat(f, &st);
+
+  linkname = (char *) malloc(st.st_size + 1);
+
+  if (linkname)
+    {
+      r = readlink(f, linkname, st.st_size + 1);
+      linkname[st.st_size] = '\0';
+      /*
+       * If we have non-empty sysroot and we got link that
+       * points to absolute path name, we need to look at
+       * this path relative to sysroot itself. access and
+       * stat will follow symbolic links correctly only in
+       * case with empty sysroot.
+       */
+      while (r != -1 && linkname && linkname[0] == '/')
+	{
+	  string fname1 = sysroot + linkname;
+	  const char *f1 = fname1.c_str();
+	  if (access(f1, X_OK) == 0
+	      && stat(f1, &st) == 0
+	      && S_ISREG(st.st_mode))
+	    {
+	      retpath = fname1;
+	      break;
+	    }
+	  else if (lstat(f1, &st) == 0
+		   && S_ISLNK(st.st_mode))
+	    {
+	      free(linkname);
+	      linkname = (char *) malloc(st.st_size + 1);
+	      if (linkname)
+		{
+		  r = readlink(f1, linkname, st.st_size + 1);
+		  linkname[st.st_size] = '\0';
+		}
+	    }
+	  else
+	    {
+	      break;
+	    }
+	}
+    }
+  free(linkname);
+
+  return retpath;
+}
+
 // Resolve an executable name to a canonical full path name, with the
 // same policy as execvp().  A program name not containing a slash
 // will be searched along the $PATH.
@@ -467,6 +525,14 @@ string find_executable(const string& name, const string& sysroot,
   if (name.find('/') != string::npos) // slash in the path already?
     {
       retpath = sysroot + name;
+
+      const char *f = retpath.c_str();
+      if (sysroot != ""
+	  && lstat(f, &st) == 0
+	  && S_ISLNK(st.st_mode))
+	{
+	  retpath = follow_link(f, sysroot);
+	}
     }
   else // Nope, search $PATH.
     {
@@ -495,6 +561,16 @@ string find_executable(const string& name, const string& sysroot,
                   retpath = fname;
                   break;
                 }
+              else if (sysroot != ""
+                       && lstat(f, &st) == 0
+                       && S_ISLNK(st.st_mode))
+		{
+		  retpath = follow_link(f, sysroot);
+		  if (retpath != "")
+		    {
+		      break;
+		    }
+		}
             }
         }
     }
@@ -1558,13 +1634,20 @@ get_distro_info(vector<string> &info)
 	    while (getline(infile, line)) {
 		vector<string> components;
 		tokenize(line, components, "=");
+		if (components.empty())
+		    continue;
 		transform(components[0].begin(), components[0].end(),
 			  components[0].begin(), ::tolower);
 		if (components[0] == "name") {
-		    name = components[1];
+		    string::size_type pos = components[1].find(' ');
+		    if (pos == string::npos)
+			name = components[1];
 		}
 		else if (components[0] == "version_id") {
 		    version = components[1];
+		}
+		else if (components[0] == "id" && name.empty()) {
+		    name = components[1];
 		}
 	    }
 	    infile.close();
@@ -1575,10 +1658,24 @@ get_distro_info(vector<string> &info)
     // etc.) or /etc/*_version ('debian', etc.), if needed.
 
     info.clear();
-    if (! name.empty())
+    if (! name.empty()) {
 	trim(name);
-    if (! version.empty())
+	// If the string is quoted, remove the quotes.
+	if (*name.begin() == '"') {
+	    name.erase(0, 1);
+	    name.erase(name.size() - 1);
+	    trim(name);
+	}
+    }
+    if (! version.empty()) {
 	trim(version);
+	// If the string is quoted, remove the quotes.
+	if (*version.begin() == '"') {
+	    version.erase(0, 1);
+	    version.erase(version.size() - 1);
+	    trim(version);
+	}
+    }
     if (! name.empty()) {
 	info.push_back(name);
 	info.push_back(version);
