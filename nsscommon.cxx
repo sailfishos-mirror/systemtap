@@ -1271,8 +1271,14 @@ cert_db_is_valid (const string &db_path, const string &nss_cert_name,
 	  string cert_host_name;
 	  if (get_host_name (c, cert_host_name) == false)
 	      continue;
-	  if (host_name != cert_host_name)
-	    continue;
+
+	  if (cert_host_name != host_name)
+	    {
+	      size_t dot;
+	      if ((dot = host_name.find ('.')) == string::npos
+	          || cert_host_name != host_name.substr(0,dot))
+	        continue;
+	    }
 	}
 #endif
       

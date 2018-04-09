@@ -292,6 +292,9 @@ http_client::download_pem_cert (const std::string & url, string & certs)
         }
     }
 
+  if (s.verbose >= 2)
+    clog << "Server returned certificate chain with: " << certinfo->num_of_certs << " members" << endl;
+
   curl_easy_cleanup(dpc_curl);
   curl_global_cleanup();
 
@@ -322,7 +325,9 @@ http_client::download (const std::string & url, http_client::download_type type)
   curl_easy_setopt (curl, CURLOPT_HTTPGET, 1);
   curl_easy_setopt (curl, CURLOPT_SSLCERTTYPE, "PEM");
   curl_easy_setopt (curl, CURLOPT_SSL_VERIFYPEER, 1L);
-  curl_easy_setopt (curl, CURLOPT_SSL_VERIFYHOST, 2L);
+  // Enabling verifyhost  causes a mismatch between "hostname" in the
+  // server cert db and "hostname.domain" given as the client url
+  curl_easy_setopt (curl, CURLOPT_SSL_VERIFYHOST, 0L);
   curl_easy_setopt (curl, CURLOPT_CAINFO, pem_cert_file.c_str());
 
   if (type == json_type)
@@ -1034,9 +1039,26 @@ http_client_backend::find_and_connect_to_server ()
           clog << _F("Incorrect url syntax: expected https://host:port got %s\n", url.c_str());
           return 1;
         }
+
+      // Was the url testing variable set?
+      unsigned long test_begin = url.find("?", host_begin);
+      bool test_cert_chain = false;
+      if (test_begin != string::npos)
+        {
+          string test = url.substr(test_begin, url.length() - test_begin);
+          if (test == "?test=cert_chain")
+            test_cert_chain = true;
+          else
+            {
+              clog << _F("Incorrect url syntax: expected https://host:port got %s\n", url.c_str());
+              return 1;
+            }
+          url = url.substr(0, test_begin);
+        }
+
       string host = url.substr(host_begin, host_end - host_begin);
       // We don't have a suitable certificate so download the server certificate bundle
-      if (get_pem_cert(cert_db, nick, host, pem_cert) == false)
+      if (test_cert_chain || get_pem_cert(cert_db, nick, host, pem_cert) == false)
         {
           if (http->download_pem_cert (url, pem_cert) == false)
             continue;

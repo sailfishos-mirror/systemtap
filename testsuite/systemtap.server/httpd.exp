@@ -1,0 +1,63 @@
+# exp_internal 1
+
+set test "httpd"
+set host [exec hostname]
+set stap_httpd $env(PKGLIBDIR)/stap-httpd
+set stap_path $env(SYSTEMTAP_PATH)/stap
+
+proc start_httpd { } {
+    global test
+    global stap_httpd
+    verbose "httpd is $stap_httpd"
+    set res [remote_spawn host "$stap_httpd"]
+    sleep 5
+    if { $res < 0 || $res == "" } {
+        perror "$test Spawning $stap_httpd failed."
+        return 1
+    }
+    return $res
+}
+
+proc cleanup_server_and_clients { } {
+    global strace_spawn_id
+    
+    catch {exec kill -KILL [exp_pid -i $strace_spawn_id]}
+}
+
+set httpd_spawn_id [start_httpd]
+if { $httpd_spawn_id == 0 || $httpd_spawn_id == ""} {
+    return 0
+}
+
+
+# -------------------------------------------------------
+# Building and running a simple module.
+set subtest "simple"
+spawn $stap_path $srcdir/systemtap.server/hello.stp --use-http-server=${host}:1234
+set ok 0
+expect {
+    -timeout 180
+    -re {Hello From Server} { incr ok }
+}
+catch {close}; catch {wait}
+switch $ok {
+    1 { pass "$test $subtest" }
+    0 { fail "$test $subtest" }
+}
+
+# -------------------------------------------------------
+# Building and running a simple module with a cert chain
+set subtest "simple with cert chain"
+spawn $stap_path $srcdir/systemtap.server/hello.stp --use-http-server=${host}:1234\?test=cert_chain
+set ok 0
+expect {
+    -timeout 180
+    -re {Hello From Server} { incr ok }
+}
+catch {close}; catch {wait}
+switch $ok {
+    1 { pass "$test $subtest" }
+    0 { fail "$test $subtest" }
+}
+
+cleanup_server_and_clients
