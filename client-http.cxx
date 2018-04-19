@@ -78,6 +78,7 @@ public:
   long get_response_code (void);
   bool add_server_cert_to_client (std::string & tmpdir);
   static int trace (CURL *, curl_infotype type, unsigned char *data, size_t size, void *);
+  bool delete_op (const std::string & url);
 
 private:
   size_t get_header (void *ptr, size_t size, size_t nitems);
@@ -426,19 +427,20 @@ http_client::get_rpmname (std::string &search_file)
     rpmReadConfigFiles (NULL, NULL);
 
     int metrics[] =
-      { RPMTAG_ARCH, RPMTAG_EVR, RPMTAG_FILENAMES, RPMTAG_NAME };
+      { RPMTAG_NAME, RPMTAG_EVR, RPMTAG_ARCH, RPMTAG_FILENAMES, };
 
     struct
     {
-      string arch;
-      string evr;
-      string filename;
       string name;
+      string evr;
+      string arch;
     } rpmhdr;
 
+    bool found = false;
     mi = rpmtsInitIterator (ts, RPMDBI_PACKAGES, NULL, 0);
     while (NULL != (hdr = rpmdbNextIterator (mi)))
       {
+	hdr = headerLink(hdr);
         for (unsigned int i = 0; i < (sizeof (metrics) / sizeof (int)); i++)
           {
             headerGet (hdr, metrics[i], td, HEADERGET_EXT);
@@ -449,47 +451,47 @@ http_client::get_rpmname (std::string &search_file)
                   const char *rpmval = rpmtdGetString (td);
                   switch (metrics[i])
                     {
-                    case RPMTAG_ARCH:
-                      rpmhdr.arch = strdup (rpmval);
-                      break;
                     case RPMTAG_NAME:
-                      rpmhdr.name = strdup (rpmval);
+                      rpmhdr.name = rpmval;
                       break;
                     case RPMTAG_EVR:
-                      rpmhdr.evr = strdup (rpmval);
+                      rpmhdr.evr = rpmval;
+		      break;
+                    case RPMTAG_ARCH:
+                      rpmhdr.arch = rpmval;
+                      break;
                     }
                   break;
                 }
               case RPM_STRING_ARRAY_TYPE:
-                {
-                  char **strings;
-                  strings = (char**)td->data;
-                  rpmhdr.filename = "";
-
-                  for (unsigned int idx = 0; idx < td->count; idx++)
-                    {
-                      if (strcmp (strings[idx], search_file.c_str()) == 0)
-                        rpmhdr.filename = strdup (strings[idx]);
-                    }
-                  free (td->data);
-                  break;
-                }
+		while (rpmtdNext(td) >= 0)
+		  {
+		    const char *rpmval = rpmtdGetString (td);
+		    if (strcmp (rpmval, search_file.c_str()) == 0)
+		      {
+			found = true;
+			break;
+		      }
+		  }
+		break;
               }
-
-            if (metrics[i] == RPMTAG_EVR && rpmhdr.filename.length())
-              {
-                rpmdbFreeIterator (mi);
-                rpmtsFree (ts);
-                return rpmhdr.name + "-" + rpmhdr.evr + "." + rpmhdr.arch;
-              }
-
+	    rpmtdFreeData (td);
             rpmtdReset (td);
-          }
+	  }
+	headerFree (hdr);
+	if (found)
+	  break;
       }
-
     rpmdbFreeIterator (mi);
     rpmtsFree (ts);
+    rpmtdFree (td);
 
+    if (found)
+      {
+	return rpmhdr.name + "-" + rpmhdr.evr + "." + rpmhdr.arch;
+      }
+
+    // There wasn't an rpm that contains SEARCH_FILE.
     return search_file;
 }
 
@@ -890,6 +892,34 @@ http_client::add_server_cert_to_client (string &tmpdir)
   return false;
  }
 
+// Ask the server to delete a URL.
+
+bool
+http_client::delete_op (const std::string & url)
+{
+  if (curl)
+    curl_easy_reset (curl);
+  curl = curl_easy_init ();
+  curl_global_init (CURL_GLOBAL_ALL);
+  if (s.verbose > 2)
+    {
+      curl_easy_setopt (curl, CURLOPT_VERBOSE, 1L);
+      curl_easy_setopt (curl, CURLOPT_DEBUGFUNCTION, trace);
+    }
+  curl_easy_setopt (curl, CURLOPT_URL, url.c_str ());
+  curl_easy_setopt (curl, CURLOPT_NOSIGNAL, 1); //Prevent "longjmp causes uninitialized stack frame" bug
+  curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
+
+  CURLcode res = curl_easy_perform (curl);
+  if (res != CURLE_OK)
+    {
+      clog << "curl_easy_perform() failed: " << curl_easy_strerror (res)
+	   << endl;
+      return false;
+    }
+  return true;
+}
+
 
 http_client_backend::http_client_backend (systemtap_session &s)
   : client_backend(s), files_seen(false)
@@ -1112,12 +1142,15 @@ http_client_backend::find_and_connect_to_server ()
 int
 http_client_backend::unpack_response ()
 {
-  std::string uri;
+  std::string build_uri;
   std::map<std::string, std::string>::iterator it_loc;
   it_loc = http->header_values.find("Location");
   if (it_loc == http->header_values.end())
-    clog << "Cannot get location from server" << endl;
-  uri = http->host + http->header_values["Location"];
+    {
+      clog << "Cannot get location from server" << endl;
+      return 1;
+    }
+  build_uri = http->host + http->header_values["Location"];
 
   if (s.verbose >= 2)
     clog << "Initial response code: " << http->get_response_code() << endl;
@@ -1232,6 +1265,7 @@ http_client_backend::unpack_response ()
       clog << "Couldn't find 'stdout' in JSON results data" << endl;
       return 1;
     }
+
   delete http;
   return 0;
 }

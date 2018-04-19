@@ -96,6 +96,7 @@ get_key_values(void *cls, enum MHD_ValueKind /*kind*/,
               break;
             }
           }
+	json_object_put(root);
         return MHD_YES;
       }
 

@@ -138,7 +138,7 @@ parse_cmdline(int argc, char *const argv[])
 	    cert_db_path = optarg;
 	    break;
 	  case LONG_OPT_LOG:
-	    start_log(optarg);
+	    start_log(optarg, true);
 	    break;
 	  default:
 	    break;
@@ -153,6 +153,14 @@ int
 main(int argc, char *const argv[])
 {
     pthread_t tid;
+
+    // Get rid of a few standard environment variables (which might
+    // cause us to do unintended things).
+    if (unsetenv("IFS") || unsetenv("CDPATH") || unsetenv("ENV")
+	|| unsetenv("BASH_ENV")) {
+	server_error(_F("unsetenv failed: %s", strerror(errno)));
+	return 1;
+    }
 
     setup_main_signals(&tid);
 

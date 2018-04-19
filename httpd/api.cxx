@@ -97,6 +97,16 @@ public:
     {
     }
 
+    ~result_info()
+    {
+	if (!files.empty()) {
+	    for (auto it = files.begin(); it != files.end(); it++) {
+		delete it->second;
+	    }
+	    files.clear();
+	}
+    }
+
     void generate_response(response &r);
     void generate_file_response(response &r, string &f);
 
@@ -129,6 +139,8 @@ protected:
     string content;
 };
 
+static void result_infos_erase(result_info *r);
+
 class build_info : public resource
 {
 public:
@@ -154,12 +166,15 @@ public:
 	    tmp_dir.clear();
 	}
 	if (result) {
+	    // If this build has an associated result, be sure to delete it
+	    // from the results list.
+	    result_infos_erase(result);
 	    delete result;
 	    result = NULL;
 	}
 	if (crd) {
 	    delete crd;
-	    crd = (client_request_data *)(void *)0xdeadbeef;
+	    crd = NULL;
 	}
     }
 
@@ -353,6 +368,20 @@ vector<build_info *> build_infos;
 mutex results_mutex;
 vector<result_info *> result_infos;
 
+static void
+result_infos_erase(result_info *r)
+{
+    // Use a lock_guard to ensure the mutex gets released
+    // even if an exception is thrown.
+    lock_guard<mutex> lock(results_mutex);
+    for (auto it = result_infos.begin(); it != result_infos.end(); it++) {
+	if (r->get_uuid_str() == (*it)->get_uuid_str()) {
+	    result_infos.erase(it);
+	    break;
+	}
+    }
+}
+
 
 class build_collection_rh : public request_handler
 {
@@ -408,7 +437,20 @@ response build_collection_rh::POST(const request &req)
 	    file_pkg = it->second;
 	}
 	else if (it->first == "env_vars") {
-	    crd->env_vars = it->second;
+	    // Get rid of a few standard environment variables (which
+	    // might cause us to do unintended things) from the list
+	    // the client sent us.
+	    for (auto it2 = it->second.begin(); it2 != it->second.end();
+		 it2++) {
+		if (*it2 == "IFS" || *it2 == "CDPATH" || *it2 == "ENV"
+		    || *it2 == "BASH_ENV") {
+		    server_error(_F("ignoring client environment variable: %s",
+				    (*it2).c_str()));
+		}
+		else {
+		    crd->env_vars.push_back(*it2);
+		}
+	    }
 	}
 	// Notice we silently ignore any "extra" parameters.
     }
@@ -480,6 +522,7 @@ public:
     individual_build_rh(string n) : request_handler(n) {}
 
     response GET(const request &req);
+    response DELETE(const request &req);
 };
 
 response individual_build_rh::GET(const request &req)
@@ -509,6 +552,37 @@ response individual_build_rh::GET(const request &req)
 
     response rsp(0);
     b->generate_response(rsp);
+    return rsp;
+}
+
+response individual_build_rh::DELETE(const request &req)
+{
+    // matches[0] is the entire string '/builds/XXXX'. matches[1] is
+    // just the buildid 'XXXX'.
+    string buildid = req.matches[1];
+    build_info *b = NULL;
+    {
+	// Use a lock_guard to ensure the mutex gets released even if an
+	// exception is thrown.
+	lock_guard<mutex> lock(builds_mutex);
+	for (auto it = build_infos.begin(); it != build_infos.end(); it++) {
+	    if (buildid == (*it)->get_uuid_str()) {
+		b = *it;
+		build_infos.erase(it);
+		break;
+	    }
+	}
+    }
+
+    if (b == NULL) {
+	server_error(_F("Couldn't find build '%s'", buildid.c_str()));
+	return get_404_response();
+    }
+
+    // At this point we've found a matching build. Delete it.
+    delete b;
+    response rsp(300);
+    rsp.content = "";
     return rsp;
 }
 
