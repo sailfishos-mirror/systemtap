@@ -33,7 +33,6 @@ extern "C" {
 #include <glob.h>
 #include <sys/stat.h>
 #include <sys/utsname.h>
-
 #include <nss.h>
 #include <nspr.h>
 #include <ssl.h>
@@ -47,6 +46,7 @@ extern "C" {
 #include <openssl/bio.h>
 #include <openssl/x509.h>
 #include <openssl/pem.h>
+#include <openssl/x509v3.h>
 }
 
 #include "nsscommon.h"
@@ -1347,6 +1347,54 @@ get_pem_cert (const string &db_path, const string &nss_cert_name, const string &
       return true;
     }
   return false;
+}
+
+bool
+have_san_match (string & hostname, string & cert_file)
+{
+  bool have_match = false;
+  STACK_OF (GENERAL_NAME) * san_names = NULL;
+  FILE* fd = NULL;
+
+  fd = fopen (cert_file.c_str(),"rb");
+  X509* server_cert = NULL;
+  server_cert = PEM_read_X509 (fd, &server_cert, NULL, NULL);
+
+  // Try to extract the names within the SAN extension from the certificate
+  san_names =
+    (stack_st_GENERAL_NAME *) X509_get_ext_d2i ((X509 *) server_cert,
+                                                NID_subject_alt_name, NULL,
+                                                NULL);
+  if (san_names == NULL)
+    {
+      return false;
+    }
+
+  // Check each name within the extension
+  for (int i = 0; i < sk_GENERAL_NAME_num (san_names); i++)
+    {
+      const GENERAL_NAME *current_name = sk_GENERAL_NAME_value (san_names, i);
+
+      if (current_name->type == GEN_DNS)
+        {
+          const int scheme_len = 8; // https://
+          string dns_name =
+              string ((char *) ASN1_STRING_get0_data (current_name->d.dNSName));
+
+          if ((size_t) ASN1_STRING_length (current_name->d.dNSName) ==
+              dns_name.length ())
+            {
+              if (hostname.compare(scheme_len,dns_name.length()-1,dns_name))
+                {
+                  have_match = true;
+                  break;
+                }
+            }
+        }
+    }
+  sk_GENERAL_NAME_pop_free (san_names, GENERAL_NAME_free);
+
+  return have_match;
 }
 #endif
 

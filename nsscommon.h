@@ -69,6 +69,7 @@ bool get_host_name (CERTCertificate *c, std::string &host_name);
 #ifdef HAVE_HTTP_SUPPORT
 bool cvt_nss_to_pem (CERTCertificate *c, std::string &cert_pem);
 bool get_pem_cert (const std::string &db_path, const std::string &nss_cert_name, const std::string &host, std::string &cert);
+bool have_san_match (std::string & hostname, std::string & server_cert);
 #endif
 
 int check_cert (const std::string &db_path, const std::string &nss_cert_name, bool use_db_password = false);

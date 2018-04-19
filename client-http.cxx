@@ -55,12 +55,14 @@ public:
                   remove_file_or_dir (pem_cert_file.c_str());}
 
   json_object *root;
-  std::string host;
   std::map<std::string, std::string> header_values;
   std::vector<std::tuple<std::string, std::string>> env_vars;
   enum download_type {json_type, file_type};
   std::string pem_cert_file;
+  std::string host;
+  bool test_cert_chain;
 
+  bool resolve_url (string &url);
   bool download (const std::string & url, enum download_type type);
   bool download_pem_cert (const std::string & url, std::string & certs);
   bool post (const string & url, vector<tuple<string, string>> & request_parameters);
@@ -96,6 +98,48 @@ private:
 // TODO is there a better way than making this static?
 static http_client *http;
 
+
+bool
+http_client::resolve_url (string &url)
+{
+  // scheme:[//[user[:password]@]host[:port]]
+  // TODO more elaborate url component extractor?
+  // scheme:[//[user[:password]@]host[:port]
+
+  const char *scheme = "https://";
+  unsigned long host_begin = url.find(scheme);
+  if (host_begin == string::npos)
+    {
+      host_begin = 0;
+      url = "https://" + url;
+    }
+  host_begin += strlen (scheme);
+  unsigned long host_end = url.find(":", host_begin);
+  if (host_end == string::npos)
+    {
+      clog << _F("Incorrect url syntax: expected https://host:port got %s\n", url.c_str());
+      return 1;
+    }
+
+  // Was the url testing variable set?
+  unsigned long test_begin = url.find("?", host_begin);
+  test_cert_chain = false;
+  if (test_begin != string::npos)
+    {
+      string test = url.substr(test_begin, url.length() - test_begin);
+      if (test == "?test=cert_chain")
+        test_cert_chain = true;
+      else
+        {
+          clog << _F("Incorrect url syntax: expected https://host:port got %s\n", url.c_str());
+          return 1;
+        }
+      url = url.substr(0, test_begin);
+    }
+
+  host = url.substr(host_begin, host_end - host_begin);
+  return true;
+}
 
 size_t
 http_client::get_data_shim (void *ptr, size_t size, size_t nitems, void *client)
@@ -1021,44 +1065,10 @@ http_client_backend::find_and_connect_to_server ()
       string pem_cert;
       bool add_cert = false;
       string url = *i;
-      // scheme:[//[user[:password]@]host[:port]]
-      // TODO more elaborate url component extractor?
-      // scheme:[//[user[:password]@]host[:port]
+      http->resolve_url (url);
 
-      const char *scheme = "https://";
-      unsigned long host_begin = url.find(scheme);
-      if (host_begin == string::npos)
-        {
-          host_begin = 0;
-          url = "https://" + *i;
-        }
-      host_begin += strlen (scheme);
-      unsigned long host_end = url.find(":", host_begin);
-      if (host_end == string::npos)
-        {
-          clog << _F("Incorrect url syntax: expected https://host:port got %s\n", url.c_str());
-          return 1;
-        }
-
-      // Was the url testing variable set?
-      unsigned long test_begin = url.find("?", host_begin);
-      bool test_cert_chain = false;
-      if (test_begin != string::npos)
-        {
-          string test = url.substr(test_begin, url.length() - test_begin);
-          if (test == "?test=cert_chain")
-            test_cert_chain = true;
-          else
-            {
-              clog << _F("Incorrect url syntax: expected https://host:port got %s\n", url.c_str());
-              return 1;
-            }
-          url = url.substr(0, test_begin);
-        }
-
-      string host = url.substr(host_begin, host_end - host_begin);
       // We don't have a suitable certificate so download the server certificate bundle
-      if (test_cert_chain || get_pem_cert(cert_db, nick, host, pem_cert) == false)
+      if (http->test_cert_chain || get_pem_cert(cert_db, nick, http->host, pem_cert) == false)
         {
           if (http->download_pem_cert (url, pem_cert) == false)
             continue;
@@ -1072,6 +1082,9 @@ http_client_backend::find_and_connect_to_server ()
       pem_out << pem_cert;
       pem_out.close();
       http->pem_cert_file = pem_tmp;
+      // Similar to CURLOPT_VERIFYHOST: compare source alternate names to hostname
+      if (have_san_match (url, http->pem_cert_file) == false)
+        continue;
 
       if (http->download (url + "/", http->json_type))
         {
@@ -1099,16 +1112,12 @@ http_client_backend::find_and_connect_to_server ()
 int
 http_client_backend::unpack_response ()
 {
-  std::string::size_type found = http->host.find ("/builds");
   std::string uri;
   std::map<std::string, std::string>::iterator it_loc;
   it_loc = http->header_values.find("Location");
   if (it_loc == http->header_values.end())
     clog << "Cannot get location from server" << endl;
-  if (found != std::string::npos)
-    uri = http->host.substr (0, found) + http->header_values["Location"];
-  else
-    uri = http->host + http->header_values["Location"];
+  uri = http->host + http->header_values["Location"];
 
   if (s.verbose >= 2)
     clog << "Initial response code: " << http->get_response_code() << endl;
