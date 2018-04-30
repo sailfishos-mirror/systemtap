@@ -112,7 +112,7 @@ http_client::resolve_url (string &url)
   if (host_begin == string::npos)
     {
       host_begin = 0;
-      url = "https://" + url;
+      url = scheme + url;
     }
   host_begin += strlen (scheme);
   unsigned long host_end = url.find(":", host_begin);
@@ -456,7 +456,7 @@ http_client::get_rpmname (std::string &search_file)
                       break;
                     case RPMTAG_EVR:
                       rpmhdr.evr = rpmval;
-		      break;
+                      break;
                     case RPMTAG_ARCH:
                       rpmhdr.arch = rpmval;
                       break;
@@ -1113,7 +1113,7 @@ http_client_backend::find_and_connect_to_server ()
       pem_out.close();
       http->pem_cert_file = pem_tmp;
       // Similar to CURLOPT_VERIFYHOST: compare source alternate names to hostname
-      if (have_san_match (url, http->pem_cert_file) == false)
+      if (have_san_match (url, pem_cert) == false)
         continue;
 
       if (http->download (url + "/", http->json_type))

@@ -1352,17 +1352,16 @@ get_pem_cert (const string &db_path, const string &nss_cert_name, const string &
 }
 
 bool
-have_san_match (string & hostname, string & cert_file)
+have_san_match (string & hostname, string & pem_cert)
 {
   bool have_match = false;
   STACK_OF (GENERAL_NAME) * san_names = NULL;
-  FILE* fd = NULL;
 
-  fd = fopen (cert_file.c_str(),"rb");
-  X509* server_cert = NULL;
-  server_cert = PEM_read_X509 (fd, &server_cert, NULL, NULL);
+  BIO *bio = BIO_new(BIO_s_mem());
+  BIO_puts(bio, pem_cert.c_str());
+  X509 *server_cert = PEM_read_bio_X509(bio, NULL, NULL, NULL);
 
-  // Try to extract the names within the SAN extension from the certificate
+  // Extract the source alternate names from the certificate
   san_names =
     (stack_st_GENERAL_NAME *) X509_get_ext_d2i ((X509 *) server_cert,
                                                 NID_subject_alt_name, NULL,
@@ -1372,7 +1371,6 @@ have_san_match (string & hostname, string & cert_file)
       return false;
     }
 
-  // Check each name within the extension
   for (int i = 0; i < sk_GENERAL_NAME_num (san_names); i++)
     {
       const GENERAL_NAME *current_name = sk_GENERAL_NAME_value (san_names, i);
@@ -1386,7 +1384,7 @@ have_san_match (string & hostname, string & cert_file)
           if ((size_t) ASN1_STRING_length (current_name->d.dNSName) ==
               dns_name.length ())
             {
-              if (hostname.compare(scheme_len,dns_name.length()-1,dns_name))
+              if (hostname.compare(scheme_len,dns_name.length(), dns_name))
                 {
                   have_match = true;
                   break;
@@ -1395,6 +1393,8 @@ have_san_match (string & hostname, string & cert_file)
         }
     }
   sk_GENERAL_NAME_pop_free (san_names, GENERAL_NAME_free);
+  BIO_free(bio);
+  X509_free(server_cert);
 
   return have_match;
 }
