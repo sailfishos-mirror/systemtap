@@ -1,5 +1,5 @@
 // -*- C++ -*-
-// Copyright (C) 2017 Red Hat Inc.
+// Copyright (C) 2017, 2018 Red Hat Inc.
 //
 // This file is part of systemtap, and is free software.  You can
 // redistribute it and/or modify it under the terms of the GNU General
@@ -53,7 +53,7 @@ public:
     retry(0),
     location(nullptr) { }
   ~http_client () {if (curl) curl_easy_cleanup(curl);
-                  remove_file_or_dir (pem_cert_file.c_str());}
+                   remove_file_or_dir (pem_cert_file.c_str());}
 
   json_object *root;
   std::map<std::string, std::string> header_values;
@@ -61,11 +61,9 @@ public:
   enum download_type {json_type, file_type};
   std::string pem_cert_file;
   std::string host;
-  bool test_cert_chain;
   enum cert_type {signer_trust, ssl_trust};
 
 
-  bool resolve_url (string &url);
   bool download (const std::string & url, enum download_type type);
   bool download_pem_cert (const std::string & url, std::string & certs);
   bool post (const string & url, vector<tuple<string, string>> & request_parameters);
@@ -103,48 +101,6 @@ private:
 // TODO is there a better way than making this static?
 static http_client *http;
 
-
-bool
-http_client::resolve_url (string &url)
-{
-  // scheme:[//[user[:password]@]host[:port]]
-  // TODO more elaborate url component extractor?
-  // scheme:[//[user[:password]@]host[:port]
-
-  const char *scheme = "https://";
-  unsigned long host_begin = url.find(scheme);
-  if (host_begin == string::npos)
-    {
-      host_begin = 0;
-      url = scheme + url;
-    }
-  host_begin += strlen (scheme);
-  unsigned long host_end = url.find(":", host_begin);
-  if (host_end == string::npos)
-    {
-      clog << _F("Incorrect url syntax: expected https://host:port got %s\n", url.c_str());
-      return 1;
-    }
-
-  // Was the url testing variable set?
-  unsigned long test_begin = url.find("?", host_begin);
-  test_cert_chain = false;
-  if (test_begin != string::npos)
-    {
-      string test = url.substr(test_begin, url.length() - test_begin);
-      if (test == "?test=cert_chain")
-        test_cert_chain = true;
-      else
-        {
-          clog << _F("Incorrect url syntax: expected https://host:port got %s\n", url.c_str());
-          return 1;
-        }
-      url = url.substr(0, test_begin);
-    }
-
-  host = url.substr(host_begin, host_end - host_begin);
-  return true;
-}
 
 size_t
 http_client::get_data_shim (void *ptr, size_t size, size_t nitems, void *client)
@@ -495,8 +451,9 @@ http_client::get_rpmname (std::string &search_file)
 	return rpmhdr.name + "-" + rpmhdr.evr + "." + rpmhdr.arch;
       }
 
-    // There wasn't an rpm that contains SEARCH_FILE.
-    return search_file;
+    // There wasn't an rpm that contains SEARCH_FILE. Return the empty
+    // string.
+    return "";
 }
 
 
@@ -1006,7 +963,8 @@ http_client_backend::initialize ()
 // and zip it up and send the one zip file.
 int
 http_client_backend::include_file_or_directory (const string &subdir,
-						const string &path)
+						const string &path,
+						const bool add_arg)
 {
   // Must predeclare these because we do use 'goto done' to
   // exit from error situations.
@@ -1080,8 +1038,9 @@ http_client_backend::include_file_or_directory (const string &subdir,
       if (rc) goto done;
     }
 
-  // Name this file or directory in the packaged arguments.
-  rc = add_cmd_arg (subdir + "/" + rpath.substr (1));
+  // If the caller asks us, add this file or directory to the arguments.
+  if (add_arg)
+    rc = add_cmd_arg (subdir + "/" + rpath.substr (1));
 
  done:
   if (rc != 0)
@@ -1104,6 +1063,30 @@ int
 http_client_backend::package_request ()
 {
   int rc = 0;
+
+  http->add_module ("kernel-" + s.kernel_release);
+  http->get_kernel_buildid ();
+
+  for (set<std::string>::const_iterator i = s.unwindsym_modules.begin();
+      i != s.unwindsym_modules.end();
+      ++i)
+    {
+      string module = (*i);
+      if (module != "kernel")
+        {
+	  string rpmname = http->get_rpmname (module);
+	  if (! rpmname.empty())
+	    {
+	      http->get_buildid (module);
+	      http->add_module (rpmname);
+	    }
+	  else if (module[0] == '/')
+	    {
+		include_file_or_directory ("files", module, false);
+	    }
+	}
+    }
+
   // Package up the temporary directory into a zip file, if needed.
   if (files_seen)
     {
@@ -1123,22 +1106,6 @@ http_client_backend::package_request ()
 int
 http_client_backend::find_and_connect_to_server ()
 {
-  http->add_module ("kernel-" + s.kernel_release);
-  http->get_kernel_buildid ();
-
-  for (set<std::string>::const_iterator i = s.unwindsym_modules.begin();
-      i != s.unwindsym_modules.end();
-      ++i)
-    {
-      string module = (*i);
-      if (module != "kernel")
-        {
-	  string rpmname = http->get_rpmname (module);
-	  http->get_buildid (module);
-	  http->add_module (rpmname);
-	}
-    }
-
   const string cert_db = local_client_cert_db_path ();
   const string nick = server_cert_nickname ();
 
@@ -1165,7 +1132,7 @@ http_client_backend::find_and_connect_to_server ()
       http->host = i->host_name;
 
       // We don't have a suitable certificate so download the server certificate bundle
-      if (http->test_cert_chain || get_pem_cert(cert_db, nick, http->host, pem_cert) == false)
+      if (get_pem_cert(cert_db, nick, http->host, pem_cert) == false)
         {
           if (http->download_pem_cert (url, pem_cert) == false)
             continue;

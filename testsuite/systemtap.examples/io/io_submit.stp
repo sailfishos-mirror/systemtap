@@ -28,12 +28,7 @@ probe syscall.io_submit {
  * when we return from sys_io_submit, record that we're no longer there
  */
 probe syscall.io_submit.return {
-  /* this assumes a given proc will do lots of io_submit calls, and
-   * so doesn't do the more expensive "delete in_iosubmit[p]".  If
-   * there are lots of procs doing small number of io_submit calls,
-   * the hash may grow pretty big, so using delete may be better
-   */
-  in_iosubmit[tid()] = 0
+  delete in_iosubmit[tid()]
 }
 
 /*
@@ -42,7 +37,7 @@ probe syscall.io_submit.return {
  */
 probe kernel.function("schedule") {
   if (tid() in in_iosubmit) {
-    traces[backtrace()]++
+    traces[backtrace()] <<< 1
 
     /*
      * change this to if (1) if you want a backtrace every time
@@ -58,13 +53,17 @@ probe kernel.function("schedule") {
   }
 }
 
+probe begin {
+  printf("Ready!\n")
+}
+
 /*
  * when stap is done (via ctrl-c) go through the record of all the
  * trace paths and print the 30 most common.
  */
 probe end {
   foreach (stack in traces- limit 30) {
-    printf("%d:", traces[stack])
+    printf("%d:", @count(traces[stack]))
     print_syms(stack);
   }
 }
