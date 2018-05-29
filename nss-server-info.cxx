@@ -267,7 +267,7 @@ static void
 revoke_server_trust (systemtap_session &s, const string &cert_db_path,
 		     const vector<compile_server_info> &server_list);
 
-static void
+void
 get_server_info_from_db (systemtap_session &s,
 			 vector<compile_server_info> &servers,
 			 const string &cert_db_path);
@@ -290,7 +290,7 @@ global_ssl_cert_db_path ()
   return global_client_cert_db_path ();
 }
 
-static string
+string
 signing_cert_db_path ()
 {
   return SYSCONFDIR "/systemtap/staprun";
@@ -673,7 +673,7 @@ revoke_server_trust (
 }
 
 // Obtain information about servers from the certificates in the given database.
-static void
+void
 get_server_info_from_db (
     systemtap_session &s,
     vector<compile_server_info> &servers,
@@ -1508,13 +1508,17 @@ isDomain (const string &server, compile_server_info &server_info)
   assert (! server.empty());
   string host = server;
   vector<string> components;
+  unsigned scheme_offset = 0;
+  if (host.substr (0, 6) == "https:")
+    scheme_offset = 1;
   tokenize (host, components, ":");
   switch (components.size ())
     {
+    case 3:
     case 2:
       if (! isPort (components.back().c_str(), server_info))
 	return false; // not a valid port
-      host = host.substr (0, host.find_last_of (':'));
+      host = components[(0 + scheme_offset)].substr (scheme_offset * 2);
       // fall through
     case 1:
       server_info.host_name = host;
@@ -1993,7 +1997,10 @@ resolve_host (
 	    new_server.address.ipv6.ip = it->address.ipv6.ip;
 	  }
 	if (!it->host_name.empty())
-	  new_server.host_name = it->host_name;
+	  {
+	    new_server.unresolved_host_name = new_server.host_name;
+	    new_server.host_name = it->host_name;
+	  }
 	nss_add_server_info (new_server, new_servers);
       }
 

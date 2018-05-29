@@ -37,6 +37,7 @@ extern "C" {
 #include <elfutils/libdwfl.h>
 #include <elfutils/libdw.h>
 #include <fcntl.h>
+#include <nss3/nss.h>
 }
 
 using namespace std;
@@ -61,6 +62,8 @@ public:
   std::string pem_cert_file;
   std::string host;
   bool test_cert_chain;
+  enum cert_type {signer_trust, ssl_trust};
+
 
   bool resolve_url (string &url);
   bool download (const std::string & url, enum download_type type);
@@ -79,6 +82,7 @@ public:
   bool add_server_cert_to_client (std::string & tmpdir);
   static int trace (CURL *, curl_infotype type, unsigned char *data, size_t size, void *);
   bool delete_op (const std::string & url);
+  bool check_trust (enum cert_type, vector<compile_server_info> &specified_servers);
 
 private:
   size_t get_header (void *ptr, size_t size, size_t nitems);
@@ -401,7 +405,7 @@ http_client::download (const std::string & url, http_client::download_type type)
 
   CURLcode res = curl_easy_perform (curl);
 
-  if (res != CURLE_OK)
+  if (res != CURLE_OK && res != CURLE_GOT_NOTHING)
     {
       clog << "curl_easy_perform() failed: " << curl_easy_strerror (res) << endl;
       return false;
@@ -921,6 +925,57 @@ http_client::delete_op (const std::string & url)
 }
 
 
+bool
+http_client::check_trust (enum cert_type this_cert, vector<compile_server_info> &specified_servers)
+{
+  vector<compile_server_info> server_list;
+
+  string cert_db_path;
+  string cert_string;
+    
+
+  if (this_cert == signer_trust)
+    {
+      cert_db_path = signing_cert_db_path ();
+      cert_string = "signing";
+    }
+  else if (this_cert == ssl_trust)
+      {
+	cert_db_path = local_client_cert_db_path ();
+	cert_string = "trusted";
+      }
+  
+  get_server_info_from_db (s, server_list, cert_db_path);
+  vector<compile_server_info>::iterator i = specified_servers.begin ();
+  while (i != specified_servers.end ())
+    {
+      bool have_match = false;
+      for (vector<compile_server_info>::const_iterator j = server_list.begin ();
+	   j != server_list.end ();
+	   ++j)
+	{
+	  if (j->host_name == i->host_name
+	      || j->host_name == i->unresolved_host_name.substr(0,j->host_name.length()))
+	    {
+	      have_match = true;
+	      break;
+	    }
+	}
+      if (!have_match)
+	i = specified_servers.erase (i);
+      else
+	++i;
+    }
+  if (specified_servers.size() == 0)
+    {
+      clog << "No matching " << cert_string << " server; the " << cert_string << " servers are\n" << server_list << endl;
+      return false;
+    }
+  else
+    return true;
+}
+
+
 http_client_backend::http_client_backend (systemtap_session &s)
   : client_backend(s), files_seen(false)
 {
@@ -930,7 +985,8 @@ http_client_backend::http_client_backend (systemtap_session &s)
 int
 http_client_backend::initialize ()
 {
-  http = new http_client (s);
+  if (!http)
+    http = new http_client (s);
   request_parameters.clear();
 
   return 0;
@@ -1063,6 +1119,7 @@ http_client_backend::package_request ()
   return rc;
 }
 
+
 int
 http_client_backend::find_and_connect_to_server ()
 {
@@ -1085,17 +1142,27 @@ http_client_backend::find_and_connect_to_server ()
   const string cert_db = local_client_cert_db_path ();
   const string nick = server_cert_nickname ();
 
-  for (vector<std::string>::const_iterator i = s.http_servers.begin ();
-      i != s.http_servers.end ();
-      ++i)
+  vector<compile_server_info> specified_servers;
+  nss_get_specified_server_info (s, specified_servers);
+
+  if (! pr_contains (s.privilege, pr_stapdev))
+    if (! http->check_trust (http->signer_trust, specified_servers))
+      return 1;
+
+  if (! http->check_trust (http->ssl_trust, specified_servers))
+    return 1;
+
+  for (vector<compile_server_info>::const_iterator i = specified_servers.begin ();
+       i != specified_servers.end ();
+       ++i)
     {
       // Try to connect to the server. We'll try to grab the base
       // directory of the server just to see if we can make a
       // connection.
       string pem_cert;
       bool add_cert = false;
-      string url = *i;
-      http->resolve_url (url);
+      string url = "https://" + i->host_specification();
+      http->host = i->host_name;
 
       // We don't have a suitable certificate so download the server certificate bundle
       if (http->test_cert_chain || get_pem_cert(cert_db, nick, http->host, pem_cert) == false)
