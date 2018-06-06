@@ -757,7 +757,7 @@ done:
 }
 
 SECStatus
-add_client_cert (const string &inFileName, const string &db_path)
+add_client_cert (const string &inFileName, const string &db_path, bool init_db)
 {
   FILE *inFile = fopen (inFileName.c_str (), "rb");
   if (! inFile)
@@ -797,32 +797,38 @@ add_client_cert (const string &inFileName, const string &db_path)
       return SECFailure;
     }
 
-  // See if the database already exists and can be initialized.
-  SECStatus secStatus = nssInit (db_path.c_str (), 1/*readwrite*/, 0/*issueMessage*/);
-  if (secStatus != SECSuccess)
+  SECStatus secStatus;
+  if (init_db)
     {
-      // Try again with a fresh database.
-      if (clean_cert_db (db_path.c_str ()) != 0)
-	{
-	  // Message already issued.
-	  return SECFailure;
-	}
-
-      // Make sure the given path exists.
-      if (create_client_cert_db (db_path.c_str ()) != 0)
-	{
-	  nsscommon_error (_F("Could not create certificate database directory %s",
-			      db_path.c_str ()));
-	  return SECFailure;
-	}
-
-      // Initialize the new database.
-      secStatus = nssInit (db_path.c_str (), 1/*readwrite*/);
+      // The http client adds a cert by calling us via add_server_trust which
+      // first has already called nssInit; we don't want to call nssInit twice
+      // See if the database already exists and can be initialized.
+      secStatus = nssInit (db_path.c_str (), 1/*readwrite*/, 0/*issueMessage*/);
       if (secStatus != SECSuccess)
-	{
-	  // Message already issued.
-	  return SECFailure;
-	}
+        {
+          // Try again with a fresh database.
+          if (clean_cert_db (db_path.c_str ()) != 0)
+            {
+              // Message already issued.
+              return SECFailure;
+            }
+
+          // Make sure the given path exists.
+          if (create_client_cert_db (db_path.c_str ()) != 0)
+            {
+              nsscommon_error (_F("Could not create certificate database directory %s",
+                  db_path.c_str ()));
+              return SECFailure;
+            }
+
+          // Initialize the new database.
+          secStatus = nssInit (db_path.c_str (), 1/*readwrite*/);
+          if (secStatus != SECSuccess)
+            {
+              // Message already issued.
+              return SECFailure;
+            }
+        }
     }
 
   // Predeclare these to keep C++ happy about jumps to the label 'done'.
@@ -896,7 +902,8 @@ add_client_cert (const string &inFileName, const string &db_path)
     CERT_DestroyCertificate (cert);
   if (certDER.data)
     PORT_Free (certDER.data);
-  nssCleanup (db_path.c_str ());
+  if (init_db)
+    nssCleanup (db_path.c_str ());
 
   // Make sure that the cert database files are read/write by the owner and
   // readable by all.

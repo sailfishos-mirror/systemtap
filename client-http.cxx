@@ -845,7 +845,7 @@ http_client::add_server_cert_to_client (string &tmpdir)
   pem_out.close();
 
   // Add the certificate to the client nss certificate database
-  if (add_client_cert(pem_tmp, local_client_cert_db_path()) == SECSuccess)
+  if (add_client_cert(pem_tmp, local_client_cert_db_path(), false) == SECSuccess)
     {
       remove_file_or_dir (pem_tmp.c_str());
       return true;
@@ -1366,14 +1366,33 @@ http_client_backend::add_mok_fingerprint (const std::string &)
 void
 http_client_backend::fill_in_server_info (compile_server_info &info)
 {
-  // Try to connect to the server. We'll try to grab the base
+  const string cert_db = local_client_cert_db_path ();
+  const string nick = server_cert_nickname ();
+  string host = info.unresolved_host_name;
+  string url = "https://" + host + ":" + std::to_string(info.port);
+  string pem_cert;
+
+  // Try to get the server certificate and the base
   // directory of the server just to see if we can make a
   // connection.
-  string host_spec = info.host_specification ();
-  if (host_spec.empty())
+  if (host.empty())
     return;
 
-  string url = host_spec + "/";
+  if (file_exists (cert_db) == false
+      || get_pem_cert(cert_db, nick, info.unresolved_host_name, pem_cert) == false)
+     {
+       if (http->download_pem_cert (url, pem_cert) == false)
+         return;
+     }
+  string pem_tmp = s.tmpdir + "/pemXXXXXX";
+  int fd = mkstemp ((char*)pem_tmp.c_str());
+  close(fd);
+  std::ofstream pem_out(pem_tmp);
+  pem_out << pem_cert;
+  pem_out.close();
+  http->pem_cert_file = pem_tmp;
+
+
   if (http->download (url, http->json_type))
     {
       json_object *ver_obj;
@@ -1400,11 +1419,32 @@ http_client_backend::fill_in_server_info (compile_server_info &info)
 }
 
 int
-http_client_backend::trust_server_info (const compile_server_info &)
+http_client_backend::trust_server_info (const compile_server_info &server)
 {
-    // FIXME: need to implement!
-    clog << "Unimplemented HTTP client trust support" << endl;
-    return NSS_GENERAL_ERROR;
+  const string cert_db = local_client_cert_db_path ();
+  const string nick = server_cert_nickname ();
+  string pem_cert;
+  string host = server.unresolved_host_name;
+  string url = "https://" + host + ":" + std::to_string(server.port);
+
+  if (http->download_pem_cert (url, pem_cert) == false)
+    return 1;
+
+  string pem_tmp = s.tmpdir + "/pemXXXXXX";
+  int fd = mkstemp ((char*)pem_tmp.c_str());
+  close(fd);
+  std::ofstream pem_out(pem_tmp);
+  pem_out << pem_cert;
+  pem_out.close();
+  http->pem_cert_file = pem_tmp;
+  // Similar to CURLOPT_VERIFYHOST: compare source alternate names to hostname
+  if (have_san_match (url, pem_cert) == false)
+    return 1;
+
+  if (http->download (url + "/", http->json_type))
+    http->add_server_cert_to_client (s.tmpdir);
+
+  return 0;
 }
 
 #endif /* HAVE_HTTP_SUPPORT */

@@ -473,11 +473,14 @@ add_server_trust (
 	}
 
       // At a minimum we need an ip_address along with a port
-      // number in order to contact the server.
-      if (! server->hasAddress() || server->port == 0)
-	continue;
-      // Set the port within the address.
-      server->setAddressPort (server->port);
+      // number in order to contact an nss server.
+      if (s.http_servers.empty ())
+        {
+          if (! server->hasAddress() || server->port == 0)
+            continue;
+          // Set the port within the address.
+          server->setAddressPort (server->port);
+        }
 
       int rc = backend->trust_server_info (*server);
       if (rc != NSS_SUCCESS)
@@ -1622,13 +1625,14 @@ nss_get_specified_server_info (
 		   ++i)
 		{
 		  // If this item was fully specified, then just add it.
-		  if (i->fully_specified) {
+		  if (i->fully_specified || ! s.http_servers.empty ()) {
 		    // In this instance, "fully specified" means
 		    // address and port. At this point we haven't
 		    // tried to contact the server to get online
 		    // information, certificate information,
 		    // etc. Certain server types need us to connect to
 		    // the server directly to get this information.
+		    // Assume http servers are fully specified
 		    if (backend)
 		      backend->fill_in_server_info (*i);
 		    nss_add_server_info (*i, new_servers);
