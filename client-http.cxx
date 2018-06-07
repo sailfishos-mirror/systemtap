@@ -77,7 +77,7 @@ public:
   void get_buildid (string fname);
   void get_kernel_buildid (void);
   long get_response_code (void);
-  bool add_server_cert_to_client (std::string & tmpdir);
+  bool add_server_cert_to_client (std::string & tmpdir, bool init_db);
   static int trace (CURL *, curl_infotype type, unsigned char *data, size_t size, void *);
   bool delete_op (const std::string & url);
   bool check_trust (enum cert_type, vector<compile_server_info> &specified_servers);
@@ -827,7 +827,7 @@ http_client::add_module (std::string module)
 
 
 bool
-http_client::add_server_cert_to_client (string &tmpdir)
+http_client::add_server_cert_to_client (string &tmpdir, bool init_db)
 {
   const char *certificate;
   json_object *cert_obj;
@@ -845,7 +845,7 @@ http_client::add_server_cert_to_client (string &tmpdir)
   pem_out.close();
 
   // Add the certificate to the client nss certificate database
-  if (add_client_cert(pem_tmp, local_client_cert_db_path(), false) == SECSuccess)
+  if (add_client_cert(pem_tmp, local_client_cert_db_path(), init_db) == SECSuccess)
     {
       remove_file_or_dir (pem_tmp.c_str());
       return true;
@@ -1164,7 +1164,7 @@ http_client_backend::find_and_connect_to_server ()
 	      s.winning_server = url;
 	      http->host = url;
 	      if (add_cert)
-	        http->add_server_cert_to_client (client_tmpdir);
+	        http->add_server_cert_to_client (client_tmpdir, true);
 	      return 0;
 	    }
 	}
@@ -1419,13 +1419,13 @@ http_client_backend::fill_in_server_info (compile_server_info &info)
 }
 
 int
-http_client_backend::trust_server_info (const compile_server_info &server)
+http_client_backend::trust_server_info (const compile_server_info &info)
 {
   const string cert_db = local_client_cert_db_path ();
   const string nick = server_cert_nickname ();
   string pem_cert;
-  string host = server.unresolved_host_name;
-  string url = "https://" + host + ":" + std::to_string(server.port);
+  string host = info.unresolved_host_name;
+  string url = "https://" + host + ":" + std::to_string(info.port);
 
   if (http->download_pem_cert (url, pem_cert) == false)
     return 1;
@@ -1442,7 +1442,7 @@ http_client_backend::trust_server_info (const compile_server_info &server)
     return 1;
 
   if (http->download (url + "/", http->json_type))
-    http->add_server_cert_to_client (s.tmpdir);
+    http->add_server_cert_to_client (s.tmpdir, false);
 
   return 0;
 }
