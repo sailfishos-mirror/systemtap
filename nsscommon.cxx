@@ -1223,7 +1223,6 @@ get_host_name (CERTCertificate *c, string &host_name)
 
 static bool
 cert_db_is_valid (const string &db_path, const string &nss_cert_name, 
-		  const string &host_name __attribute__ ((unused)),
 		  CERTCertificate *this_cert)
 {
   // Make sure the given path exists.
@@ -1273,24 +1272,6 @@ cert_db_is_valid (const string &db_path, const string &nss_cert_name,
       if (format_cert_validity_time (v.notAfter, timeString, sizeof (timeString)) == 0)
 	log (_F("  Not Valid After: %s UTC", timeString));
 
-#ifdef HAVE_HTTP_SUPPORT
-      // An http client searches for the corresponding server's certificate
-      if (host_name.length() > 0)
-	{
-	  string cert_host_name;
-	  if (get_host_name (c, cert_host_name) == false)
-	      continue;
-
-	  if (cert_host_name != host_name)
-	    {
-	      size_t dot;
-	      if ((dot = host_name.find ('.')) == string::npos
-	          || cert_host_name != host_name.substr(0,dot))
-	        continue;
-	    }
-	}
-#endif
-      
       // Now ask NSS to check the validity.
       if (cert_is_valid (c))
 	{
@@ -1310,6 +1291,72 @@ cert_db_is_valid (const string &db_path, const string &nss_cert_name,
  done:
   nssCleanup (db_path.c_str ());
   return valid_p;
+}
+
+
+/*
+ * Similar to cert_db_is_valid; additionally it checks host_name and does no logging
+ */
+static bool
+get_pem_cert_is_valid (const string &db_path, const string &nss_cert_name,
+                       const string &host_name, CERTCertificate *this_cert)
+{
+  bool nss_already_init_p = false;
+
+  if (! file_exists (db_path))
+    return false;
+
+  if (file_exists (db_path + "/pw"))
+    return false;
+
+  if (NSS_IsInitialized ())
+    nss_already_init_p = true;
+
+  if (nssInit (db_path.c_str ()) != SECSuccess)
+    return false;
+
+  CERTCertList *certs = get_cert_list_from_db (nss_cert_name);
+  if (! certs)
+    {
+      nssCleanup (db_path.c_str ());
+      return false;
+    }
+
+  for (CERTCertListNode *node = CERT_LIST_HEAD (certs);
+       ! CERT_LIST_END (node, certs);
+       node = CERT_LIST_NEXT (node))
+    {
+      CERTCertificate *c = node->cert;
+      // An http client searches for the corresponding server's certificate
+      if (host_name.length() > 0)
+	{
+	  string cert_host_name;
+	  if (get_host_name (c, cert_host_name) == false)
+	      continue;
+
+	  if (cert_host_name != host_name)
+	    {
+	      size_t dot;
+	      if ((dot = host_name.find ('.')) == string::npos
+	          || cert_host_name != host_name.substr(0,dot))
+	        continue;
+	    }
+	}
+
+      // Now ask NSS to check the validity.
+      if (cert_is_valid (c))
+	{
+	  if (this_cert)
+	    *this_cert = *c;
+	  break;
+	}
+    }
+  CERT_DestroyCertList (certs);
+
+  // NSS shutdown is global and is forceful
+  if (!nss_already_init_p)
+    nssCleanup (db_path.c_str ());
+  return true;
 }
 
 
@@ -1349,7 +1396,7 @@ get_pem_cert (const string &db_path, const string &nss_cert_name, const string &
   CERTCertificate cc;
   CERTCertificate *c = &cc;
   // Do we have an nss certificate in the nss cert db for server host?
-  if (cert_db_is_valid (db_path, nss_cert_name, host, c))
+  if (get_pem_cert_is_valid (db_path, nss_cert_name, host, c))
     {
       // If we do, then convert to PEM form
       cvt_nss_to_pem (c, cert);
@@ -1413,7 +1460,7 @@ int
 check_cert (const string &db_path, const string &nss_cert_name, bool use_db_password)
 {
   // Generate a new cert database if the current one does not exist or is not valid.
-  if (! cert_db_is_valid (db_path, nss_cert_name, "", NULL))
+  if (! cert_db_is_valid (db_path, nss_cert_name, NULL))
     {
       if (gen_cert_db (db_path, "", use_db_password) != 0)
 	{

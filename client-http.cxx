@@ -64,7 +64,7 @@ public:
   enum cert_type {signer_trust, ssl_trust};
 
 
-  bool download (const std::string & url, enum download_type type);
+  bool download (const std::string & url, enum download_type type, bool report_errors);
   bool download_pem_cert (const std::string & url, std::string & certs);
   bool post (const string & url, vector<tuple<string, string>> & request_parameters);
   void add_file (std::string filename);
@@ -308,7 +308,7 @@ http_client::download_pem_cert (const std::string & url, string & certs)
 
 
 bool
-http_client::download (const std::string & url, http_client::download_type type)
+http_client::download (const std::string & url, http_client::download_type type, bool report_errors)
 {
   struct curl_slist *headers = NULL;
 
@@ -363,7 +363,8 @@ http_client::download (const std::string & url, http_client::download_type type)
 
   if (res != CURLE_OK && res != CURLE_GOT_NOTHING)
     {
-      clog << "curl_easy_perform() failed: " << curl_easy_strerror (res) << endl;
+      if (report_errors)
+        clog << "curl_easy_perform() failed: " << curl_easy_strerror (res) << endl;
       return false;
     }
   else
@@ -1129,7 +1130,7 @@ http_client_backend::find_and_connect_to_server ()
       string pem_cert;
       bool add_cert = false;
       string url = "https://" + i->host_specification();
-      http->host = i->host_name;
+      http->host = i->unresolved_host_name;
 
       // We don't have a suitable certificate so download the server certificate bundle
       if (get_pem_cert(cert_db, nick, http->host, pem_cert) == false)
@@ -1150,7 +1151,7 @@ http_client_backend::find_and_connect_to_server ()
       if (have_san_match (url, pem_cert) == false)
         continue;
 
-      if (http->download (url + "/", http->json_type))
+      if (http->download (url + "/", http->json_type, true))
         {
 	  // FIXME: The server returns its version number. We might
 	  // need to check it for compatibility.
@@ -1201,7 +1202,7 @@ http_client_backend::unpack_response ()
 	clog << "Waiting " << retry << " seconds" << endl;
       sleep (retry);
       if (http->download (http->host + http->header_values["Location"],
-			  http->json_type))
+			  http->json_type, true))
         {
 	  // We need to wait until we get a 303 (See Other)
 	  long response_code = http->get_response_code();
@@ -1223,7 +1224,7 @@ http_client_backend::unpack_response ()
   // If we're here, we got a '303' (See Other). Read the "other"
   // location, which should contain our results.
   if (! http->download (http->host + http->header_values["Location"],
-			http->json_type))
+			http->json_type, true))
     {
       clog << "Couldn't read result information" << endl;
       return 1;
@@ -1270,7 +1271,7 @@ http_client_backend::unpack_response ()
 	  json_object *loc;
 	  jfound = json_object_object_get_ex (files_element, "location", &loc);
 	  string location = json_object_get_string (loc);
-	  http->download (http->host + location, http->file_type);
+	  http->download (http->host + location, http->file_type, true);
 	}
     }
 
@@ -1280,7 +1281,7 @@ http_client_backend::unpack_response ()
   if (jfound)
     {
       string loc_str = json_object_get_string (loc_obj);
-      http->download (http->host + loc_str, http->file_type);
+      http->download (http->host + loc_str, http->file_type, true);
     }
   else
     {
@@ -1292,7 +1293,7 @@ http_client_backend::unpack_response ()
   if (jfound)
     {
       string loc_str = json_object_get_string (loc_obj);
-      http->download (http->host + loc_str, http->file_type);
+      http->download (http->host + loc_str, http->file_type, true);
     }
   else
     {
@@ -1393,7 +1394,7 @@ http_client_backend::fill_in_server_info (compile_server_info &info)
   http->pem_cert_file = pem_tmp;
 
 
-  if (http->download (url, http->json_type))
+  if (http->download (url, http->json_type, false))
     {
       json_object *ver_obj;
       json_bool jfound;
@@ -1441,7 +1442,7 @@ http_client_backend::trust_server_info (const compile_server_info &info)
   if (have_san_match (url, pem_cert) == false)
     return 1;
 
-  if (http->download (url + "/", http->json_type))
+  if (http->download (url + "/", http->json_type, false))
     http->add_server_cert_to_client (s.tmpdir, false);
 
   return 0;

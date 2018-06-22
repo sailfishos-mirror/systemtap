@@ -1,6 +1,9 @@
 # In this test, we are using arrays as sets. The key itself does not matter,
 # only the value
 
+set test "server_trust"
+exp_internal 1
+
 if {! [installtest_p]} { untested "client"; return }
 if {! [nss_p]} { untested "client (no nss)"; return }
 
@@ -106,6 +109,19 @@ proc array_diff {array_new array_old} {
         return -code error "$array_old is not an array"
     }
 
+    if {[array size anew] == 0} {
+        verbose -log "array_diff $array_new size = 0"
+    }
+    foreach {index value} [array get anew] {
+	verbose -log "array_diff $array_new index: $index, value: $value" 
+    }
+    if {[array size aold] == 0} {
+        verbose -log "array_diff $array_old size = 0"
+    }
+    foreach {index value} [array get aold] {
+	verbose -log "array_diff $array_old index: $index, value: $value" 
+    }
+
     set n 0
     foreach key [array names anew] {
         if {![array_has [array get aold] $anew($key)]} {
@@ -117,10 +133,11 @@ proc array_diff {array_new array_old} {
 
 # Test the --list-servers option and return an array of the servers found.
 proc list_servers { TEST_NAME SERVER_SPEC args } {
+    global systemtap_http_server_spec
     set failed 0
     set n 0
     array unset ::servers
-    set cmd [concat stap --list-servers=$SERVER_SPEC $args]
+    set cmd [concat stap --list-servers=$SERVER_SPEC $args --use-http-server=$systemtap_http_server_spec]
     send_log "executing: $cmd\n"
     eval spawn $cmd
     expect {
@@ -160,10 +177,11 @@ proc list_servers { TEST_NAME SERVER_SPEC args } {
 # Test the --list-servers option and return an array of the servers
 # found in the custom namespace.
 proc ns_list_servers { TEST_NAME SERVER_SPEC args } {
+    global systemtap_http_server_spec
     set failed 0
     set n 0
     array unset ::servers
-    set cmd "stap --list-servers=$SERVER_SPEC $args"
+    set cmd "stap --list-servers=$SERVER_SPEC $args --use-http-server=$systemtap_http_server_spec"
     send_log "executing: $cmd\n"
     lassign [server_ns_as_root $cmd] rc output
     if {$rc == 0} {
@@ -186,71 +204,22 @@ proc ns_list_servers { TEST_NAME SERVER_SPEC args } {
     }
 }
 
-# There may be other servers running. Let's keep track of them.
-#
-# Sometimes, we'll see a server running from the last test, if it
-# hasn't quite died yet. So, make sure we get the same result twice.
-list_servers "List existing online servers" online
-array set existing_online_servers [array get servers]
-set i 0
-while {1} {
-    list_servers "List existing online servers" online
-    array unset eos2
-    array set eos2 [array get servers]
-    set i [expr $i + 1]
-    if {$i > 10} {
-	fail "List existing online servers: never got stable"
-	return
-    }
+array set existing_online_servers {}
+array set existing_trusted_servers {}
+# array set existing_signing_servers {}
 
-    verbose -log "verify existing online servers - attempt $i: [array size existing_online_servers] [array size eos2]"
-    if {[array_equal existing_online_servers eos2]} {
-	# Arrays are equal, we're done
-	break
-    }
-    array unset existing_online_servers
-    array set existing_online_servers [array get eos2]
+# Now start our own server and make sure we can work with it.
+if {[http_start_server] == 0} {
+    pass "$test server start"
+} else {
+    untested "$test server start"
+    return
 }
-
-# There may be existing trusted servers. Keep track of them.
-list_servers "List existing trusted servers" trusted
-array unset existing_trusted_servers
-array set existing_trusted_servers [array get servers]
 
 # There may be existing trusted signers. Keep track of them.
 list_servers "List existing signing servers" signer
 array unset existing_signing_servers
 array set existing_signing_servers [array get servers]
-
-# If we query all known servers, it should contain exactly the union of the
-# above three queries.
-list_servers "List all existing servers" all
-array unset all_existing_servers
-array set all_existing_servers [array get servers]
-
-# First we create a union
-array_union existing_online_servers \
-            existing_trusted_servers \
-            existing_signing_servers
-array set existing_unioned_servers [array get union]
-
-# Now we can compare
-set test "Verify existing server list"
-if {[array_equal existing_unioned_servers all_existing_servers]} {
-    pass "$test"
-} else {
-    fail "$test"
-}
-
-list_servers "List existing online servers (before start)" online
-array unset existing_online_servers
-array set existing_online_servers [array get servers]
-
-# Now start our own server and make sure we can work with it.
-if {! [setup_server] || $avahi_ok_p != 1} {
-    untested "Compile-server client tests against a server"
-    return
-}
 
 # Our server should now appear online, separate from the previously
 # discovered online servers. Note that our server could generate
@@ -320,18 +289,22 @@ if {[array_equal current_signing_servers existing_signing_servers]} {
 
 # Revoke trust in our server. Specify the server by host name.
 set test "Server has host name"
-if {[regexp {^ host=([^ ]*).*} $our_servers(0) match host_name]} {
-    pass $test
+if {[array size our_servers] > 0} {
+    if {[regexp {^ host=([^ ]*).*} $our_servers(0) match host_name]} {
+	pass $test
+    } else {
+	fail $test
+    }
 } else {
-    fail $test
+    fail "$test no servers in list"
 }
 
 # Compile and run a simple hello test, selecting the server automatically
 set test "Hello from server"
-set rc [stap_run_batch $srcdir/systemtap.server/hello.stp $use_server]
+set rc [stap_run_batch $srcdir/systemtap.server/hello.stp --use-http-server=$systemtap_http_server_spec]
 if {$rc == 0} { pass $test } else { fail $test }
 
-set cmd [concat stap --trust-servers=ssl,revoke,no-prompt --use-server=$host_name]
+set cmd [concat stap --trust-servers=ssl,revoke,no-prompt --use-http-server=$systemtap_http_server_spec]
 send_log "executing: $cmd\n"
 eval spawn $cmd
 expect {
@@ -359,12 +332,16 @@ if {[array_equal current_trusted_servers existing_trusted_servers]} {
 # Reinstate trust in our server. Specify the server by ip address.
 # The default for --trusted servers is 'ssl'.
 set test "Server has ip address"
-if {[regexp {^.*address=([^ ]*).*} $our_servers(0) match ip_address]} {
-    pass $test
+if {[array size our_servers] > 0} {
+    if {[regexp {^.*address=([^ ]*).*} $our_servers(0) match ip_address]} {
+	pass $test
+    } else {
+	fail $test
+    }
 } else {
-    fail $test
+    fail "$test no servers in list"
 }
-set cmd [concat stap --trust-servers=no-prompt --use-server=$ip_address]
+set cmd [concat stap --trust-servers=no-prompt --use-http-server=$systemtap_http_server_spec]
 send_log "executing: $cmd\n"
 eval spawn $cmd
 expect {
@@ -398,11 +375,12 @@ if {[array size new_trusted_servers] > 0} {
 # array, since the our_servers array is a copy of the original
 # new_trusted_servers array.
 set test "New trusted servers matches after reinstatement by ip address"
-if {[array_equal new_trusted_servers our_servers]} {
-    pass "$test"
-} else {
-    fail "$test"
-    verbose -log "new_trusted_servers:"
+if {[array size our_servers] > 0} {
+    if {[array_equal new_trusted_servers our_servers]} {
+	pass "$test"
+    } else {
+	fail "$test"
+	verbose -log "new_trusted_servers:"
 	foreach {index value} [array get new_trusted_servers] {
 	    verbose -log "  index: $index, value: $value" 
 	}
@@ -410,15 +388,23 @@ if {[array_equal new_trusted_servers our_servers]} {
 	foreach {index value} [array get our_servers] {
 	    verbose -log "  index: $index, value: $value" 
 	}
+    }
+} else {
+	fail "$test no servers in list"
 }
+
 
 # Trust our server as a module signer. This must be done as root and
 # in the namespace. Specify the server by certificate serial number.
 set test "Server has certificate serial number"
-if {[regexp {^.*certinfo="([^ ]*)".*} $our_servers(0) match cert_info]} {
-    pass $test
+if {[array size our_servers] > 0} {
+    if {[regexp {^.*certinfo="([^ ]*)".*} $our_servers(0) match cert_info]} {
+	pass $test
+    } else {
+	fail $test
+    }
 } else {
-    fail $test
+    fail "$test no servers in list"
 }
 
 # Grab the existing trusted signers in the namespace. There should be
@@ -436,7 +422,7 @@ if {[array size ns_existing_signing_servers] == 0} {
 # We only want to change the system's trusted signer list in our mount
 # namespace, not in the real system.
 set test "Adding trusted signer (in a namespace)"
-set cmd "stap --trust-servers=signer,no-prompt --use-server=$cert_info"
+set cmd "stap --trust-servers=signer,no-prompt --use-http-server=$systemtap_http_server_spec"
 lassign [server_ns_as_root $cmd] rc output
 if {$rc == 0} {
     pass "$test"
@@ -479,10 +465,14 @@ if {[array size new_signing_servers] == 0} {
 }
 
 set test "Server has port number"
-if {[regexp {^.*port=([^ ]*).*} $ns_new_signing_servers(0) match port_num]} {
-    pass $test
+if {[array size ns_new_signing_servers] > 0} {
+    if {[regexp {^.*port=([^ ]*).*} $ns_new_signing_servers(0) match port_num]} {
+	pass $test
+    } else {
+	fail $test
+    }
 } else {
-    fail $test
+    fail "$test no new signing servers"
 }
 
 foreach privilege {"--unprivileged" "--privilege=stapusr" "--privilege=stapsys"} {
@@ -496,7 +486,7 @@ foreach privilege {"--unprivileged" "--privilege=stapusr" "--privilege=stapsys"}
     set test "Compile module using server with $privilege"
     set failed 1
     set module_name ""
-    set cmd [concat stap -p4 $privilege $srcdir/systemtap.server/hello.stp --use-server=$host_name:$port_num]
+    set cmd [concat stap -p4 $privilege $srcdir/systemtap.server/hello.stp --use-http-server=$systemtap_http_server_spec]
     send_log "executing: $cmd\n"
     eval spawn $cmd
     expect {
@@ -603,6 +593,12 @@ array unset ns_current_signing_servers
 array set ns_current_signing_servers [array get servers]
 
 set test "No longer trusted as a signer after revocation"
+    foreach {index value} [array get ns_current_signing_servers] {
+	verbose -log "ns_current_signing_servers: $index, value: $value" 
+    }
+    foreach {index value} [array get ns_existing_signing_servers] {
+	verbose -log "ns_existing_signing_servers: $index, value: $value" 
+    }
 if {[array_in ns_current_signing_servers ns_existing_signing_servers]} {
     pass "$test"
 } else {
@@ -637,4 +633,4 @@ if {$no_module == 1 || !$systemtap_stapsys_user_exists} {
 }
 
 # Shutdown the server we started
-shutdown_server
+http_shutdown_server

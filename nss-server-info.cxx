@@ -2244,7 +2244,7 @@ nss_get_or_keep_online_server_info (
   // We only need to obtain this once per session. This is a good thing(tm)
   // since obtaining this information is expensive.
   vector<compile_server_info>& online_servers = cscache(s)->online_servers;
-  if (online_servers.empty ())
+  if (online_servers.empty () && s.http_servers.empty ())
     {
       // Maintain an empty entry to indicate that this search has been
       // performed, in case the search comes up empty.
@@ -2334,6 +2334,24 @@ nss_get_or_keep_online_server_info (
 	  clog << online_servers;
 	}
     } // Server information is not cached.
+
+  if (!s.http_servers.empty ())
+    {
+      // http server does not depend on avahi, so discover which servers are online by
+      // getting a list of potential servers and trying to connect to them
+      vector<compile_server_info>& specified_servers = cscache(s)->specified_servers;
+
+      nss_get_specified_server_info (s, specified_servers);
+
+      for (vector<compile_server_info>::const_iterator i = specified_servers.begin ();
+           i != specified_servers.end ();
+           ++i)
+        {
+	  client_backend *backend = nss_get_client_backend (s);
+	  if (backend)
+	    backend->fill_in_server_info ((compile_server_info&)*i);
+        }
+    }
 
   if (keep)
     {
