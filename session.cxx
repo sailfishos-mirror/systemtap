@@ -101,6 +101,7 @@ systemtap_session::systemtap_session ():
   suppressed_errors(0),
   warningerr_count(0),
   target_namespaces_pid(0),
+  suppress_costly_diagnostics(0),
   last_token (0)
 {
   struct utsname buf;
@@ -176,10 +177,12 @@ systemtap_session::systemtap_session ():
   update_release_sysroot = false;
   suppress_time_limits = false;
   target_namespaces_pid = 0;
+  suppress_costly_diagnostics = 0;
   color_mode = color_auto;
   color_errors = isatty(STDERR_FILENO) // conditions for coloring when
     && strcmp(getenv("TERM") ?: "notdumb", "dumb"); // on auto
   interactive_mode = false;
+  run_example = false;
   pass_1a_complete = false;
   timeout = 0;
 
@@ -293,6 +296,7 @@ systemtap_session::systemtap_session (const systemtap_session& other,
   suppressed_errors(0),
   warningerr_count(0),
   target_namespaces_pid(0),
+  suppress_costly_diagnostics(0),
   last_token (0)
 {
   release = kernel_release = kern;
@@ -365,6 +369,7 @@ systemtap_session::systemtap_session (const systemtap_session& other,
   color_errors = other.color_errors;
   color_mode = other.color_mode;
   interactive_mode = other.interactive_mode;
+  run_example = other.run_example;
   pass_1a_complete = other.pass_1a_complete;
   timeout = other.timeout;
 
@@ -480,13 +485,11 @@ systemtap_session::version_string ()
 void
 systemtap_session::version ()
 {
-  // PRERELEASE
   cout << _F("Systemtap translator/driver (version %s)\n"
-             "Copyright (C) 2005-2017 Red Hat, Inc. and others\n"
+             "Copyright (C) 2005-2018 Red Hat, Inc. and others\n"   // PRERELEASE
              "This is free software; see the source for copying conditions.\n",
              version_string().c_str());
-  // PRERELEASE
-  cout << _F("tested kernel versions: %s ... %s\n", "2.6.18", "4.16-rc4");
+  cout << _F("tested kernel versions: %s ... %s\n", "2.6.18", "4.18-rc0");   // PRERELEASE
   
   cout << _("enabled features:")
 #ifdef HAVE_AVAHI
@@ -1238,6 +1241,10 @@ systemtap_session::parse_cmdline (int argc, char * const argv [])
 
 	case LONG_OPT_HELP:
 	  usage (0);
+	  break;
+
+	case LONG_OPT_RUN_EXAMPLE:
+	  run_example = true;
 	  break;
 
 	  // The caching options should not be available to server clients
@@ -2281,6 +2288,15 @@ systemtap_session::register_library_aliases()
             }
 	}
     }
+}
+
+// The name of the primary stap file, if any -- usually user_files[0]->name:
+string
+systemtap_session::script_name()
+{
+  if (user_files.empty())
+    return "<unknown>";
+  return user_files[0]->name;
 }
 
 

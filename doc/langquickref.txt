@@ -1,0 +1,302 @@
+  Keywords
+
+Keywords used in the systemtap language:
+
+• break control statement
+
+• continue control statement
+
+• delete array statement
+
+• else selection statement
+
+• exit control statement
+
+• foreach iteration statement
+
+• for iteration statement
+
+• function declaration statement
+
+• global storage class
+
+• if selection statement
+
+• in array statement
+
+• next control statement
+
+• probe declaration statement
+
+• return control statement
+
+• try/catch control statement
+
+• while iteration statement
+
+  Operators
+
+• () [] ++ -- .
+
+• ++ -- + - * @cast()
+
+• * / %
+
+• + - 
+
+• << >>
+
+• < <= > >=
+
+• == != =~ !~
+
+• &
+
+• |
+
+• &&
+
+• ||
+
+• ?:
+
+• = += -= *= /= %= >>= <<= &= ~= |= .=
+
+• <<<
+
+• $ 
+
+  Statements
+
+  Jump Statements
+
+• continue
+
+• break
+
+• next
+
+• return expression
+
+• try statement catch (message)
+
+  Selection Statements
+
+• if (expression) statement 
+
+• else statement
+
+  Iteration Statements
+
+• foreach (variable in array) statement
+
+• for (expression; expression; expression) statement
+
+• while (expression) statement
+
+  Declaration Statements
+
+• function name : type (variable : type, ...) { statement }
+
+• function name : type (variable : type, ...) %{ c_statement %}
+
+• probe probepoint { statement }
+
+• probe label = probepoint { statement }
+
+  Preprocessor
+
+• %( expression %? true_tokens %: false_tokens %)
+
+• @define label (variable, ...) %{ statement %}
+
+  Builtin Functions
+
+  Aggregation Builtin Functions
+
+• @avg (variable)
+
+• @count (variable)
+
+• @hist_linear (variable, N, N, N)
+
+• @hist_log (variable)
+
+• @max (variable)
+
+• @min (variable)
+
+• @sum (variable)
+
+  Output Builtin Functions
+
+• print (variable)
+
+• printf (format:string, variable, ...) 
+
+•   where format is of the form: 
+  %[flags][width][.precision][length]specifier
+
+• printd (delimiter:string, variable, ...)
+
+• printdln (delimiter:string, variable, ...)
+
+• println ()
+
+• sprint:string (variable)
+
+• sprintf:string (format:string, variable, ...)
+
+  Variable Access Builtin Functions
+
+• @cast (variable, "type_name"[, "module"])
+
+• @defined (variable)
+
+  Probepoints
+
+Some of the more commonly used probepoints
+
+kernel.function(PATTERN) kernel.function(PATTERN).call 
+
+kernel.function(PATTERN).return
+
+kernel.FUNCTION(PATTERN).return.maxactive(VALUE )
+
+kernel.FUNCTION(PATTERN).inline 
+
+kernel.FUNCTION(PATTERN).label(LPATTERN) 
+
+module(MPATTERN).FUNCTION(PATTERN) 
+
+module(MPATTERN).FUNCTION(PATTERN).call 
+
+module(MPATTERN).FUNCTION(PATTERN).return.maxactive(VALUE) 
+
+module(MPATTERN).FUNCTION(PATTERN).inline 
+
+kernel.statement(PATTERN) 
+
+kernel.statement(ADDRESS).absolute 
+
+module(MPATTERN).statement(PATTERN)
+
+kprobe.FUNCTION(FUNCTION)
+
+kprobe.FUNCTION(FUNCTION).return 
+
+kprobe.module(NAME).FUNCTION(FUNCTION) 
+
+kprobe.module(NAME).FUNCTION(FUNCTION).return 
+
+kprobe.statement(ADDRESS).absolute
+
+process.begin process("PATH").begin 
+
+process(PID).begin process.thread.begin 
+
+process("PATH").thread.begin 
+
+process(PID).thread.begin 
+
+process.end 
+
+process("PATH").end 
+
+process(PID).end 
+
+process.thread.end 
+
+process("PATH").thread.end 
+
+process(PID).thread.end
+
+process("PATH").syscall 
+
+process(PID).syscall 
+
+process.syscall.return 
+
+process("PATH").syscall.return 
+
+process(PID).syscall.return
+
+process("PATH").FUNCTION("NAME") 
+
+process("PATH").statement("*@FILE.c:123") 
+
+process("PATH").FUNCTION("*").return 
+
+process("PATH").FUNCTION("myfun").label("foo")
+
+process("PATH").mark("LABEL")
+
+java("PNAME").class("CLASSNAME").method("PATTERN) 
+
+java("PNAME").class("CLASSNAME").method("PATTERN").return 
+
+java(PID).class("CLASSNAME").method("PATTERN") 
+
+java(PID).class("CLASSNAME").method("PATTERN").return
+
+  Tapset Functions
+
+Some of the more commonly used tapset functions
+
+addr:long () 
+
+backtrace:string () 
+
+caller:string () 
+
+caller_addr:long () 
+
+cmdline_arg:string (N:long) 
+
+cmdline_args:string (N:long,m:long,delim:string) 
+
+cmdline_str:string () 
+
+env_var:string (name:string) 
+
+execname:string () 
+
+int_arg:long (N:long) 
+
+isinstr:long(s1:string,s2:string)
+
+long_arg:long (N:long) 
+
+modname:string () 
+
+module_name:string () 
+
+pid:long ()
+
+pn:string () 
+
+pointer_arg:string (N:long) 
+
+pp:string () 
+
+print_backtrace () 
+
+probefunc:string ()
+
+register:long(name:string) 
+
+
+str_replace:string(prnt_str:string,srch_str:string,rplc_str:string) 
+
+stringat:long(str:string,pos:long) 
+
+strlen:long(str:string) 
+
+strtol:long(str:string,base:long) 
+
+substr:string(str:string,start:long,length:long)
+
+user_long:long(addr:long)
+
+user_string:string(addr:long) 
+

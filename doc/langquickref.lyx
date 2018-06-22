@@ -1,0 +1,1150 @@
+#LyX 2.1 created this file. For more info see http://www.lyx.org/
+\lyxformat 474
+\begin_document
+\begin_header
+\textclass article
+\use_default_options true
+\maintain_unincluded_children false
+\language english
+\language_package default
+\inputencoding auto
+\fontencoding global
+\font_roman default
+\font_sans default
+\font_typewriter default
+\font_math auto
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100
+\font_tt_scale 100
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\paperfontsize default
+\spacing single
+\use_hyperref false
+\papersize default
+\use_geometry false
+\use_package amsmath 1
+\use_package amssymb 1
+\use_package cancel 1
+\use_package esint 1
+\use_package mathdots 1
+\use_package mathtools 1
+\use_package mhchem 1
+\use_package stackrel 1
+\use_package stmaryrd 1
+\use_package undertilde 1
+\cite_engine basic
+\cite_engine_type default
+\biblio_style plain
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\justification true
+\use_refstyle 1
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\quotes_language english
+\papercolumns 1
+\papersides 1
+\paperpagestyle plain
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Section*
+Keywords
+\end_layout
+
+\begin_layout Standard
+Keywords used in the systemtap language:
+\end_layout
+
+\begin_layout Itemize
+break control statement
+\end_layout
+
+\begin_layout Itemize
+continue control statement
+\end_layout
+
+\begin_layout Itemize
+delete array statement
+\end_layout
+
+\begin_layout Itemize
+else selection statement
+\end_layout
+
+\begin_layout Itemize
+exit control statement
+\end_layout
+
+\begin_layout Itemize
+foreach iteration statement
+\end_layout
+
+\begin_layout Itemize
+for iteration statement
+\end_layout
+
+\begin_layout Itemize
+function declaration statement
+\end_layout
+
+\begin_layout Itemize
+global storage class
+\end_layout
+
+\begin_layout Itemize
+if selection statement
+\end_layout
+
+\begin_layout Itemize
+in array statement
+\end_layout
+
+\begin_layout Itemize
+next control statement
+\end_layout
+
+\begin_layout Itemize
+probe declaration statement
+\end_layout
+
+\begin_layout Itemize
+return control statement
+\end_layout
+
+\begin_layout Itemize
+try/catch control statement
+\end_layout
+
+\begin_layout Itemize
+while iteration statement
+\end_layout
+
+\begin_layout Section*
+Operators
+\end_layout
+
+\begin_layout Itemize
+() [] ++ -- .
+\end_layout
+
+\begin_layout Itemize
+++ -- + - * @cast()
+\end_layout
+
+\begin_layout Itemize
+* / %
+\end_layout
+
+\begin_layout Itemize
++ - 
+\end_layout
+
+\begin_layout Itemize
+<< >>
+\end_layout
+
+\begin_layout Itemize
+< <= > >=
+\end_layout
+
+\begin_layout Itemize
+== != =~ !~
+\end_layout
+
+\begin_layout Itemize
+&
+\end_layout
+
+\begin_layout Itemize
+|
+\end_layout
+
+\begin_layout Itemize
+&&
+\end_layout
+
+\begin_layout Itemize
+||
+\end_layout
+
+\begin_layout Itemize
+?:
+\end_layout
+
+\begin_layout Itemize
+= += -= *= /= %= >>= <<= &= ~= |= .=
+\end_layout
+
+\begin_layout Itemize
+<<<
+\end_layout
+
+\begin_layout Itemize
+$ 
+\end_layout
+
+\begin_layout Section*
+Statements
+\end_layout
+
+\begin_layout Subsection*
+Jump Statements
+\end_layout
+
+\begin_layout Itemize
+continue
+\end_layout
+
+\begin_layout Itemize
+break
+\end_layout
+
+\begin_layout Itemize
+next
+\end_layout
+
+\begin_layout Itemize
+return 
+\emph on
+expression
+\end_layout
+
+\begin_layout Itemize
+try 
+\emph on
+statement
+\emph default
+ catch
+\emph on
+ (message)
+\end_layout
+
+\begin_layout Subsection*
+Selection Statements
+\end_layout
+
+\begin_layout Itemize
+if 
+\emph on
+(expression) statement 
+\end_layout
+
+\begin_layout Itemize
+else
+\emph on
+ statement
+\end_layout
+
+\begin_layout Subsection*
+Iteration Statements
+\end_layout
+
+\begin_layout Itemize
+foreach (
+\emph on
+variable
+\emph default
+ in 
+\emph on
+array
+\emph default
+) 
+\emph on
+statement
+\end_layout
+
+\begin_layout Itemize
+for (
+\emph on
+expression; expression; expression
+\emph default
+) 
+\emph on
+statement
+\end_layout
+
+\begin_layout Itemize
+while (
+\emph on
+expression
+\emph default
+) 
+\emph on
+statement
+\end_layout
+
+\begin_layout Subsection*
+Declaration Statements
+\end_layout
+
+\begin_layout Itemize
+function 
+\emph on
+name
+\emph default
+ : 
+\emph on
+type
+\emph default
+ (
+\emph on
+variable
+\emph default
+ : 
+\emph on
+type
+\emph default
+, ...) { 
+\emph on
+statement
+\emph default
+ }
+\end_layout
+
+\begin_layout Itemize
+function 
+\emph on
+name
+\emph default
+ : 
+\emph on
+type
+\emph default
+ (
+\emph on
+variable
+\emph default
+ : 
+\emph on
+type
+\emph default
+, ...) %{ 
+\emph on
+c_statement 
+\emph default
+%}
+\end_layout
+
+\begin_layout Itemize
+probe 
+\emph on
+probepoint { 
+\emph default
+statement
+\emph on
+ }
+\end_layout
+
+\begin_layout Itemize
+probe 
+\emph on
+label
+\emph default
+ = probepoint { 
+\emph on
+statement
+\emph default
+ }
+\end_layout
+
+\begin_layout Section*
+Preprocessor
+\end_layout
+
+\begin_layout Itemize
+%( 
+\emph on
+expression
+\emph default
+ %? 
+\emph on
+true_tokens 
+\emph default
+%: 
+\emph on
+false_tokens 
+\emph default
+%)
+\end_layout
+
+\begin_layout Itemize
+@define 
+\emph on
+label
+\emph default
+ (
+\emph on
+variable
+\emph default
+, ...) %{ 
+\emph on
+statement 
+\emph default
+%}
+\end_layout
+
+\begin_layout Section*
+Builtin Functions
+\end_layout
+
+\begin_layout Subsection*
+Aggregation Builtin Functions
+\end_layout
+
+\begin_layout Itemize
+@avg (
+\emph on
+variable
+\emph default
+)
+\end_layout
+
+\begin_layout Itemize
+@count (
+\emph on
+variable
+\emph default
+)
+\end_layout
+
+\begin_layout Itemize
+@hist_linear (
+\emph on
+variable, N, N, N
+\emph default
+)
+\end_layout
+
+\begin_layout Itemize
+@hist_log (
+\emph on
+variable
+\emph default
+)
+\end_layout
+
+\begin_layout Itemize
+@max (
+\emph on
+variable
+\emph default
+)
+\end_layout
+
+\begin_layout Itemize
+@min (
+\emph on
+variable)
+\end_layout
+
+\begin_layout Itemize
+@sum (
+\emph on
+variable
+\emph default
+)
+\end_layout
+
+\begin_layout Subsection*
+Output Builtin Functions
+\end_layout
+
+\begin_layout Itemize
+print (
+\emph on
+variable
+\emph default
+)
+\end_layout
+
+\begin_layout Itemize
+printf (
+\emph on
+format:string, variable, ...) 
+\end_layout
+
+\begin_layout Itemize
+\begin_inset space \qquad{}
+\end_inset
+
+where format is of the form: %[flags][width][.precision][length]specifier
+\end_layout
+
+\begin_layout Itemize
+printd (
+\emph on
+delimiter:string, variable, ...)
+\end_layout
+
+\begin_layout Itemize
+printdln (
+\emph on
+delimiter:string, variable, ...)
+\end_layout
+
+\begin_layout Itemize
+println ()
+\end_layout
+
+\begin_layout Itemize
+sprint:string (
+\emph on
+variable
+\emph default
+)
+\end_layout
+
+\begin_layout Itemize
+sprintf:string (
+\emph on
+format:string, variable, ...)
+\end_layout
+
+\begin_layout Subsection*
+Variable Access Builtin Functions
+\end_layout
+
+\begin_layout Itemize
+@cast (
+\emph on
+variable, "type_name"[, "module"])
+\end_layout
+
+\begin_layout Itemize
+@defined (
+\emph on
+variable)
+\end_layout
+
+\begin_layout Section*
+Probepoints
+\end_layout
+
+\begin_layout Standard
+Some of the more commonly used probepoints
+\end_layout
+
+\begin_layout Standard
+kernel.function(
+\emph on
+PATTERN
+\emph default
+) kernel.function(
+\emph on
+PATTERN
+\emph default
+).call 
+\end_layout
+
+\begin_layout Standard
+kernel.function(
+\emph on
+PATTERN
+\emph default
+).return
+\end_layout
+
+\begin_layout Standard
+kernel.
+\emph on
+FUNCTION
+\emph default
+(
+\emph on
+PATTERN
+\emph default
+).return.maxactive(
+\emph on
+VALUE
+\emph default
+ )
+\end_layout
+
+\begin_layout Standard
+kernel.
+\emph on
+FUNCTION
+\emph default
+(
+\emph on
+PATTERN
+\emph default
+).inline 
+\end_layout
+
+\begin_layout Standard
+kernel.
+\emph on
+FUNCTION
+\emph default
+(
+\emph on
+PATTERN
+\emph default
+).label(L
+\emph on
+PATTERN
+\emph default
+) 
+\end_layout
+
+\begin_layout Standard
+module(
+\emph on
+MPATTERN
+\emph default
+).
+\emph on
+FUNCTION
+\emph default
+(
+\emph on
+PATTERN
+\emph default
+) 
+\end_layout
+
+\begin_layout Standard
+module(
+\emph on
+MPATTERN
+\emph default
+).
+\emph on
+FUNCTION
+\emph default
+(
+\emph on
+PATTERN
+\emph default
+).call 
+\end_layout
+
+\begin_layout Standard
+module(
+\emph on
+MPATTERN
+\emph default
+).
+\emph on
+FUNCTION
+\emph default
+(
+\emph on
+PATTERN
+\emph default
+).return.maxactive(
+\emph on
+VALUE
+\emph default
+) 
+\end_layout
+
+\begin_layout Standard
+module(
+\emph on
+MPATTERN
+\emph default
+).
+\emph on
+FUNCTION
+\emph default
+(
+\emph on
+PATTERN
+\emph default
+).inline 
+\end_layout
+
+\begin_layout Standard
+kernel.statement(
+\emph on
+PATTERN
+\emph default
+) 
+\end_layout
+
+\begin_layout Standard
+kernel.statement(
+\emph on
+ADDRESS
+\emph default
+).absolute 
+\end_layout
+
+\begin_layout Standard
+module(
+\emph on
+MPATTERN
+\emph default
+).statement(
+\emph on
+PATTERN
+\emph default
+)
+\end_layout
+
+\begin_layout Standard
+kprobe.
+\emph on
+FUNCTION
+\emph default
+(
+\emph on
+FUNCTION
+\emph default
+)
+\end_layout
+
+\begin_layout Standard
+kprobe.
+\emph on
+FUNCTION
+\emph default
+(
+\emph on
+FUNCTION
+\emph default
+).return 
+\end_layout
+
+\begin_layout Standard
+kprobe.module(NAME).
+\emph on
+FUNCTION
+\emph default
+(
+\emph on
+FUNCTION
+\emph default
+) 
+\end_layout
+
+\begin_layout Standard
+kprobe.module(NAME).
+\emph on
+FUNCTION
+\emph default
+(
+\emph on
+FUNCTION
+\emph default
+).return 
+\end_layout
+
+\begin_layout Standard
+kprobe.statement(
+\emph on
+ADDRESS
+\emph default
+).absolute
+\end_layout
+
+\begin_layout Standard
+process.begin process("
+\emph on
+PATH
+\emph default
+").begin 
+\end_layout
+
+\begin_layout Standard
+process(
+\emph on
+PID
+\emph default
+).begin process.thread.begin 
+\end_layout
+
+\begin_layout Standard
+process("
+\emph on
+PATH
+\emph default
+").thread.begin 
+\end_layout
+
+\begin_layout Standard
+process(
+\emph on
+PID
+\emph default
+).thread.begin 
+\end_layout
+
+\begin_layout Standard
+process.end 
+\end_layout
+
+\begin_layout Standard
+process("
+\emph on
+PATH
+\emph default
+").end 
+\end_layout
+
+\begin_layout Standard
+process(
+\emph on
+PID
+\emph default
+).end 
+\end_layout
+
+\begin_layout Standard
+process.thread.end 
+\end_layout
+
+\begin_layout Standard
+process("
+\emph on
+PATH
+\emph default
+").thread.end 
+\end_layout
+
+\begin_layout Standard
+process(
+\emph on
+PID
+\emph default
+).thread.end
+\end_layout
+
+\begin_layout Standard
+process("
+\emph on
+PATH
+\emph default
+").syscall 
+\end_layout
+
+\begin_layout Standard
+process(
+\emph on
+PID
+\emph default
+).syscall 
+\end_layout
+
+\begin_layout Standard
+process.syscall.return 
+\end_layout
+
+\begin_layout Standard
+process("
+\emph on
+PATH
+\emph default
+").syscall.return 
+\end_layout
+
+\begin_layout Standard
+process(
+\emph on
+PID
+\emph default
+).syscall.return
+\end_layout
+
+\begin_layout Standard
+process("
+\emph on
+PATH
+\emph default
+").
+\emph on
+FUNCTION
+\emph default
+("NAME") 
+\end_layout
+
+\begin_layout Standard
+process("
+\emph on
+PATH
+\emph default
+").statement("*@FILE.c:123") 
+\end_layout
+
+\begin_layout Standard
+process("
+\emph on
+PATH
+\emph default
+").
+\emph on
+FUNCTION
+\emph default
+("*").return 
+\end_layout
+
+\begin_layout Standard
+process("
+\emph on
+PATH
+\emph default
+").
+\emph on
+FUNCTION
+\emph default
+("myfun").label("foo")
+\end_layout
+
+\begin_layout Standard
+process("
+\emph on
+PATH
+\emph default
+").mark("LABEL")
+\end_layout
+
+\begin_layout Standard
+java("
+\emph on
+PNAME
+\emph default
+").class("
+\emph on
+CLASSNAME
+\emph default
+").method("
+\emph on
+PATTERN
+\emph default
+) 
+\end_layout
+
+\begin_layout Standard
+java("
+\emph on
+PNAME"
+\emph default
+).class("
+\emph on
+CLASSNAME"
+\emph default
+).method("
+\emph on
+PATTERN
+\emph default
+").return 
+\end_layout
+
+\begin_layout Standard
+java(
+\emph on
+PID
+\emph default
+).class("
+\emph on
+CLASSNAME
+\emph default
+").method("
+\emph on
+PATTERN
+\emph default
+") 
+\end_layout
+
+\begin_layout Standard
+java(
+\emph on
+PID
+\emph default
+).class("
+\emph on
+CLASSNAME
+\emph default
+").method("
+\emph on
+PATTERN
+\emph default
+").return
+\end_layout
+
+\begin_layout Section*
+Tapset Functions
+\end_layout
+
+\begin_layout Standard
+Some of the more commonly used tapset functions
+\end_layout
+
+\begin_layout Standard
+addr:long () 
+\end_layout
+
+\begin_layout Standard
+backtrace:string () 
+\end_layout
+
+\begin_layout Standard
+caller:string () 
+\end_layout
+
+\begin_layout Standard
+caller_addr:long () 
+\end_layout
+
+\begin_layout Standard
+cmdline_arg:string (
+\emph on
+N:long
+\emph default
+) 
+\end_layout
+
+\begin_layout Standard
+cmdline_args:string (
+\emph on
+N:long,m:long,delim:string)
+\emph default
+ 
+\end_layout
+
+\begin_layout Standard
+cmdline_str:string () 
+\end_layout
+
+\begin_layout Standard
+env_var:string (name:string) 
+\end_layout
+
+\begin_layout Standard
+execname:string () 
+\end_layout
+
+\begin_layout Standard
+int_arg:long (
+\emph on
+N:long)
+\emph default
+ 
+\end_layout
+
+\begin_layout Standard
+isinstr:long(
+\emph on
+s1:string,s2:string)
+\end_layout
+
+\begin_layout Standard
+long_arg:long (
+\emph on
+N:long)
+\emph default
+ 
+\end_layout
+
+\begin_layout Standard
+modname:string () 
+\end_layout
+
+\begin_layout Standard
+module_name:string () 
+\end_layout
+
+\begin_layout Standard
+pid:long ()
+\end_layout
+
+\begin_layout Standard
+pn:string () 
+\end_layout
+
+\begin_layout Standard
+pointer_arg:string (
+\emph on
+N:long) 
+\end_layout
+
+\begin_layout Standard
+pp:string () 
+\end_layout
+
+\begin_layout Standard
+print_backtrace () 
+\end_layout
+
+\begin_layout Standard
+probefunc:string ()
+\end_layout
+
+\begin_layout Standard
+register:long(name:string) 
+\end_layout
+
+\begin_layout Standard
+str_replace:string(
+\emph on
+prnt_str:string,srch_str:string,rplc_str:string) 
+\end_layout
+
+\begin_layout Standard
+stringat:long(s
+\emph on
+tr:string,pos:long) 
+\end_layout
+
+\begin_layout Standard
+strlen:long(str:string) 
+\end_layout
+
+\begin_layout Standard
+strtol:long(
+\emph on
+str:string
+\emph default
+,base:long) 
+\end_layout
+
+\begin_layout Standard
+sub
+\emph on
+str:string
+\emph default
+(
+\emph on
+str:string
+\emph default
+,start:long,length:long)
+\end_layout
+
+\begin_layout Standard
+user_long:long(
+\emph on
+addr:long)
+\end_layout
+
+\begin_layout Standard
+user_string:string(
+\emph on
+addr:long) 
+\end_layout
+
+\end_body
+\end_document

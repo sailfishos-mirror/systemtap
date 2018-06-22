@@ -1,5 +1,5 @@
 // -*- C++ -*-
-// Copyright (C) 2005-2016 Red Hat Inc.
+// Copyright (C) 2005-2018 Red Hat Inc.
 //
 // This file is part of systemtap, and is free software.  You can
 // redistribute it and/or modify it under the terms of the GNU General
@@ -253,6 +253,7 @@ public:
   bool suppress_time_limits;
   bool color_errors;
   bool interactive_mode;
+  bool run_example;
   bool pass_1a_complete;
 
   enum { color_never, color_auto, color_always } color_mode;
@@ -344,6 +345,8 @@ public:
   // parse trees for the various script files
   std::vector<stapfile*> user_files;
   std::vector<stapfile*> library_files;
+
+  std::string script_name(); // usually user_files[0]->name
 
   // filters to run over all code before symbol resolution
   //   e.g. @cast expansion
@@ -438,6 +441,8 @@ public:
   translator_output* op_create_auxiliary(bool trailer_p = false);
 
   int target_namespaces_pid;
+
+  unsigned suppress_costly_diagnostics; /* set during processing of optional probes */
 
   const token* last_token;
   void print_token (std::ostream& o, const token* tok);

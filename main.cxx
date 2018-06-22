@@ -1,5 +1,5 @@
 // systemtap translator/driver
-// Copyright (C) 2005-2016 Red Hat Inc.
+// Copyright (C) 2005-2018 Red Hat Inc.
 // Copyright (C) 2005 IBM Corp.
 // Copyright (C) 2006 Intel Corporation.
 //
@@ -511,6 +511,37 @@ passes_0_4 (systemtap_session &s)
 	}
       else if (s.script_file != "")
         {
+          if (s.run_example)
+            {
+              files.clear();
+              path_dir = string(PKGDATADIR) + "/examples";
+              (void) nftw(path_dir.c_str(), collect_stp, 1, FTW_ACTIONRETVAL);
+
+              vector<string> examples;
+              for (auto it = files.begin(); it != files.end(); ++it)
+                {
+                  string::size_type last_slash_index = it->find_last_of('/');
+                  string example_name = it->substr(last_slash_index + 1);
+                  if (s.script_file == example_name)
+                    examples.push_back(*it);
+                }
+
+              if (examples.size() > 1)
+                {
+                  cerr << "Multiple examples found: " << endl;
+                  for (auto it = examples.begin(); it != examples.end(); ++it)
+                    cerr << "  " << *it << endl;
+                  return 1;
+                }
+              else if (examples.size() == 0)
+                {
+                  cerr << _F("Example '%s' was not found under '%s'", s.script_file.c_str(), path_dir.c_str()) << endl;
+                  return 1;
+                }
+              else
+                  s.script_file = examples[0];
+            }
+
 	  user_file_stat_rc = stat (s.script_file.c_str(), & user_file_stat);
 	}
       // otherwise, rc is 0 for a command line script

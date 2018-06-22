@@ -1,0 +1,7 @@
+Add http signer and ssl trust handling
+
+* client-http.cxx (http_client::check_trust):  New.  Check ssl and
+  signer certificate trust.
+  (http_client_backend::find_and_connect_to_server):  Call it.
+
+* nss-server-info.cxx (isDomain):  Make http aware.

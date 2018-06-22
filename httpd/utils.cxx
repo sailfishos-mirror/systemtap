@@ -18,7 +18,11 @@ extern "C" {
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <unistd.h>
 #include <spawn.h>
+#include <sys/mman.h>
+#include "../mdfour.h"
+#include <limits.h>
 }
 
 using namespace std;
@@ -106,3 +110,72 @@ execute_and_capture(int verbose, const vector<string> &args,
     return rc;
 }
 
+int
+get_file_hash(const string &pathname, string &result)
+{
+    struct mdfour md4;
+    ostringstream rstream;
+    unsigned char sum[16];
+
+    result.clear();
+    int fd = open(pathname.c_str(), O_RDONLY);
+    if (fd == -1) {
+	server_error(_F("open failed: %s", strerror(errno)));
+	return -1;
+    }
+
+    struct stat sb;
+    if (fstat (fd, &sb) == -1) {
+	server_error(_F("fstat failed: %s", strerror(errno)));
+	return -1;
+    }
+    if (!S_ISREG (sb.st_mode)) {
+	server_error(_F("%s is not a file", pathname.c_str()));
+	return -1;
+    }
+
+    // Since this is meant to be used on fairly small docker files,
+    // let's just mmap the entire file (instead of trying to read it
+    // into a buffer).
+    unsigned char *p = (unsigned char *)mmap(NULL, sb.st_size, PROT_READ,
+					     MAP_SHARED, fd, 0);
+    if (p == MAP_FAILED) {
+	server_error(_F("mmap failed: %s", strerror(errno)));
+	return -1;
+    }
+
+    // Calculate the mdfour.
+    mdfour_begin(&md4);
+    mdfour_update(&md4, p, sb.st_size);
+    mdfour_update(&md4, NULL, 0);
+    mdfour_result(&md4, sum);
+
+    // We're finished with the mapping and the file.
+    munmap(p, sb.st_size);
+    close(fd);
+
+    // Convert the mdfour to a string.
+    for (int i = 0; i < 16; i++) {
+	rstream << hex << setfill('0') << setw(2) << (unsigned)sum[i];
+    }
+    rstream << "_" << setw(0) << dec << (unsigned)md4.totalN;
+    result = rstream.str();
+    return 0;
+}
+
+bool
+make_temp_dir(string &path)
+{
+    // Create the temp directory
+    char tmpdir[PATH_MAX];
+    snprintf(tmpdir, PATH_MAX, "%s/stap-http.XXXXXX",
+	     (getenv("TMPDIR") ?: "/tmp"));
+    const char *tmpdir_name = mkdtemp(tmpdir);
+    if (! tmpdir_name) {
+	server_error(_F("Cannot create temporary directory (\"%s\"): %s", tmpdir, strerror(errno)));
+	path.clear();
+	return false;
+    }
+    path = tmpdir_name;
+    return true;
+}

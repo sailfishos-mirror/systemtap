@@ -67,17 +67,23 @@
    %define dracutstap %{_prefix}/share/dracut/modules.d/99stap
 %endif
 
-%if 0%{?rhel} >= 6
+%if 0%{?rhel} == 6 || 0%{?rhel} == 7
     %define dracutbindir /sbin
 %else
     %define dracutbindir %{_bindir}
+%endif
+
+%if 0%{?rhel} == 6
+    %{!?_rpmmacrodir: %define _rpmmacrodir /etc/rpm/}
+%else
+    %{!?_rpmmacrodir: %define _rpmmacrodir %{_rpmconfigdir}/macros.d}
 %endif
 
 # To avoid testsuite/*/*.stp has shebang which doesn't start with '/'
 %undefine __brp_mangle_shebangs  
 
 Name: systemtap
-Version: 3.3
+Version: 4.0
 Release: 1%{?dist}
 # for version, see also configure.ac
 
@@ -648,6 +654,8 @@ mv $RPM_BUILD_ROOT%{_datadir}/doc/systemtap/SystemTap_Beginners_Guide docs.insta
 %endif
 %endif
 
+install -D -m 644 macros.systemtap $RPM_BUILD_ROOT%{_rpmmacrodir}/macros.systemtap
+
 mkdir -p $RPM_BUILD_ROOT%{_sysconfdir}/stap-server
 mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/lib/stap-server
 mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/lib/stap-server/.systemtap
@@ -1118,6 +1126,7 @@ done
 %{_includedir}/sys/sdt.h
 %{_includedir}/sys/sdt-config.h
 %{_mandir}/man1/dtrace.1*
+%{_rpmmacrodir}/macros.systemtap
 %doc README AUTHORS NEWS 
 %{!?_licensedir:%global license %%doc}
 %license COPYING
@@ -1177,6 +1186,9 @@ done
 
 # PRERELEASE
 %changelog
+* Thu Jun 07 2018 Frank Ch. Eigler <fche@redhat.com> - 3.3-1
+- Upstream release.
+
 * Wed Oct 18 2017 Frank Ch. Eigler <fche@redhat.com> - 3.2-1
 - Upstream release.
 

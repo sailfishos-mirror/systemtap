@@ -23,4 +23,10 @@ execute_and_capture(int verbose,
 		    const std::vector<std::string> &env_vars,
 		    std::string stdout_path, std::string stderr_path);
 
+int
+get_file_hash(const std::string &pathname, std::string &result);
+
+bool
+make_temp_dir(std::string &path);
+
 #endif /* __UTILS_H__ */

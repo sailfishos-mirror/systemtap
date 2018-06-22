@@ -1,5 +1,5 @@
 // elaboration functions
-// Copyright (C) 2005-2017 Red Hat Inc.
+// Copyright (C) 2005-2018 Red Hat Inc.
 // Copyright (C) 2008 Intel Corporation
 //
 // This file is part of systemtap, and is free software.  You can
@@ -439,6 +439,9 @@ match_node::find_and_build (systemtap_session& s,
                             vector<derived_probe *>& results,
                             set<string>& builders)
 {
+  save_and_restore<unsigned> costly(& s.suppress_costly_diagnostics,
+                                    s.suppress_costly_diagnostics + (loc->optional || loc->sufficient ? 1 : 0));
+  
   assert (pos <= loc->components.size());
   if (pos == loc->components.size()) // matched all probe point components so far
     {
@@ -963,24 +966,6 @@ alias_expansion_builder::checkForRecursiveExpansion (probe *use)
 // Pattern matching
 // ------------------------------------------------------------------------
 
-static unsigned max_recursion = 100;
-
-struct
-recursion_guard
-{
-  unsigned & i;
-  recursion_guard(unsigned & i) : i(i)
-    {
-      if (i > max_recursion)
-	throw SEMANTIC_ERROR(_("recursion limit reached"));
-      ++i;
-    }
-  ~recursion_guard()
-    {
-      --i;
-    }
-};
-
 // The match-and-expand loop.
 void
 derive_probes (systemtap_session& s,
@@ -1010,8 +995,8 @@ derive_probes (systemtap_session& s,
 
       probe_point *loc = p->locations[i];
 
-      if (s.verbose > 4)
-        clog << "derive-probes " << *loc << endl;
+      if (s.verbose > 1)
+        clog << "derive-probes (location #" << i << "): " << *loc << " of " << *p->tok << endl;
 
       try
         {
@@ -1109,7 +1094,9 @@ derive_probes (systemtap_session& s,
     }
 
   if (undo_parent_optional)
-    parent_optional = false;
+    {
+      parent_optional = false;
+    }
 }
 
 
@@ -2342,11 +2329,15 @@ static void monitor_mode_write(systemtap_session& s)
           if (v->type == pe_long)
             {
               literal_number* ln = dynamic_cast<literal_number*>(v->init);
+              if (ln == 0)
+                throw SEMANTIC_ERROR (_("expected literal number"), 0);
               code << v->name << " = " << ln->value << endl;
             }
           else if (v->type == pe_string)
             {
               literal_string* ln = dynamic_cast<literal_string*>(v->init);
+              if (ln == 0)
+                throw SEMANTIC_ERROR (_("expected literal string"), 0);
               code << v->name << " = " << lex_cast_qstring(ln->value) << endl;
             }
         }

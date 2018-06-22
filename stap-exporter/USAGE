@@ -1,0 +1,10 @@
+$ ./exporter.py &
+
+$ curl localhost:9900/example1.stp
+Script successfully started. Refresh page to access metrics.
+
+$ curl localhost:9900/example1.stp
+count [tid=15262,cpu=5] 20
+count [tid=2221,cpu=3] 13
+count [tid=15265,cpu=6] 46
+[...]
