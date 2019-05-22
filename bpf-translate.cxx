@@ -2816,11 +2816,21 @@ bpf_unparser::visit_array_in(array_in* e)
       } while (element);
       this_prog.use_tmp_space(-key_ofs);
 
-      // TODO: Handle map_id < 0 for pe_stats or assert otherwise.
-      if (g->second.map_id < 0)
-        throw SEMANTIC_ERROR (_("unsupported array-in operation on statistics aggregate"), s->tok); // TODOXXX PR23476
-      this_prog.load_map(this_ins, this_prog.lookup_reg(BPF_REG_1),
-                         g->second.map_id);
+      int map_id = g->second.map_id;
+      // PR23476: Handle array-in operation for stats arrays.
+      assert (!g->second.is_scalar());
+      if (g->second.is_stat())
+        {
+          auto all_fields = glob.array_stats.find(v);
+          if (all_fields == glob.array_stats.end())
+            throw SEMANTIC_ERROR(_("unknown stats array"), v->tok);
+          auto one_field = all_fields->second.find(globals::stat_iter_field);
+          assert (one_field != all_fields->second.end());
+          map_id = one_field->second;
+          // XXX: Since array-in only handles keys, it's sufficient
+          // to simply check one of the stat field maps.
+        }
+      this_prog.load_map(this_ins, this_prog.lookup_reg(BPF_REG_1), map_id);
       this_prog.mk_call(this_ins, BPF_FUNC_map_lookup_elem, 2);
 
       value *r0 = this_prog.lookup_reg(BPF_REG_0);
