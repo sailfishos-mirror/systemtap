@@ -1,4 +1,5 @@
 // PR23476 :: stat arrays and foreach
+// XXX: rarely flaky, depending on timing?
 
 global count
 global a
