@@ -953,8 +953,17 @@ bpf_interpret(size_t ninsns, const struct bpf_insn insns[],
 	    {
 	    case BPF_FUNC_map_lookup_elem:
 	      {
+                // XXX: percpu array lookup in userspace returns data
+                // for all the CPUs. For now, we do percpu map_lookup
+                // at this point only for the array-in operation, so
+                // the diverging behaviour is not a problem.
+                //
                 // allocate correctly sized buffer and store it in map_values
-                uint64_t *lookup_tmp = (uint64_t *)malloc(map_attrs[regs[1]].value_size);
+                bool percpu = map_attrs[regs[1]].type == BPF_MAP_TYPE_PERCPU_ARRAY
+                  || map_attrs[regs[1]].type == BPF_MAP_TYPE_PERCPU_HASH;
+                unsigned arity = percpu ? ctx->ncpus : 1;
+                uint64_t *lookup_tmp
+                  = (uint64_t *)malloc(map_attrs[regs[1]].value_size * arity);
                 map_values.push_back(lookup_tmp);
 
 	        int res = bpf_lookup_elem(map_fds[regs[1]], as_ptr(regs[2]),
