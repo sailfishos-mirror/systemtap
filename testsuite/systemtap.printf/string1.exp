@@ -3,7 +3,7 @@ set ::result_string {The string is <Foobar!>
 Foobar!XYZZY
 XYZZYFoobar!XYZZYFoobar!}
 
-foreach runtime [get_runtime_list] {
+foreach runtime [get_runtime_list -bpf yes] {
     if {$runtime != ""} {
 	stap_run2 $srcdir/$subdir/$test.stp --runtime=$runtime
 	stap_run2 $srcdir/$subdir/$test.stp --runtime=$runtime -DSTP_LEGACY_PRINT

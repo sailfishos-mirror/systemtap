@@ -186,12 +186,19 @@ proc bpf_p {} {
     return [file exists "/usr/include/linux/bpf.h"]
 }
 
-proc get_runtime_list {} {
+# XXX: For now, call [get_runtime_list -bpf yes] to enable BPF.
+proc get_runtime_list {args} {
+    array set options {-bpf no}
+    array set options $args
+
     # Always return the default runtime.
     set runtime_list [list ""]
 
     if {[dyninst_p]} {
 	lappend runtime_list "dyninst"
+    }
+    if {[bpf_p] && $options(-bpf)} {
+        lappend runtime_list "bpf"
     }
     return $runtime_list
 }

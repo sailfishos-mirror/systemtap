@@ -2,7 +2,7 @@ set test "basic3"
 set ::result_string {Hello
 World}
 
-foreach runtime [get_runtime_list] {
+foreach runtime [get_runtime_list -bpf yes] {
     if {$runtime != ""} {
 	stap_run2 $srcdir/$subdir/$test.stp --runtime=$runtime
 	stap_run2 $srcdir/$subdir/$test.stp --runtime=$runtime -DSTP_LEGACY_PRINT
