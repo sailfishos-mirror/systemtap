@@ -545,7 +545,7 @@ bpf_unparser::emit_statmap_update(globals::map_idx map_id, value *idx,
   this_prog.mk_call(this_ins, BPF_FUNC_map_update_elem, 4);
 }
 
-// XXX Based on __stap_stat_add in runtime/stat-common.c.
+// XXX Based on __stp_stat_add in runtime/stat-common.c.
 // There might be a clever way to avoid code duplication later,
 // but right now the code format is too different. Just reimplement.
 void
@@ -592,14 +592,21 @@ bpf_unparser::emit_aggregation(vardecl *var, globals::map_slot& ms,
     assert(sd.find(f) != sd.end());
 
   // TODO PR23476: Emit simplified code for now.
+  // Some of the sophistications around bit_shift
+  // and stat_ops are still missing.
   //
   // ??? lock stat
   // if (idx not in sd[stat_iter_field] || sd->count == 0) {
+  //   TODO consider if(stat_op_*) for these map ops
   //   sd->count = 1;
-  //   sd->sum = val;
+  //   sd->sum = sd->min = sd->max = val;
+  //   TODO avg_s, M2
   // } else {
   //   if(stat_op_count) sd->count++;
   //   if(stat_op_sum) sd->sum += val;
+  //   if(stat_op_max && (val > sd->max)) sd->max = val;
+  //   if(stat_op_min && (val < sd->min)) sd->min = val;
+  //   TODO if (stat_op_variance) ...
   // }
   // ??? unlock stat
 
@@ -616,6 +623,8 @@ bpf_unparser::emit_aggregation(vardecl *var, globals::map_slot& ms,
   set_block (then_block);
   emit_statmap_update(sd["count"], idx, idx_ofs, this_prog.new_imm(1));
   emit_statmap_update(sd["sum"], idx, idx_ofs, val);
+  emit_statmap_update(sd["min"], idx, idx_ofs, val);
+  emit_statmap_update(sd["max"], idx, idx_ofs, val);
   emit_jmp (join_block);
 
   set_block (else_block);
@@ -630,6 +639,31 @@ bpf_unparser::emit_aggregation(vardecl *var, globals::map_slot& ms,
       emit_statmap_lookup(tmp, sd["sum"], idx);
       this_prog.mk_binary(this_ins, BPF_ADD, tmp, tmp, val);
       emit_statmap_update(sd["sum"], idx, idx_ofs, tmp);
+    }
+  if (1) // TODO: if (stat_op_min)
+    {
+      block *update_block = this_prog.new_block();
+      block *min_join_block = this_prog.new_block();
+      emit_statmap_lookup(tmp, sd["min"], idx);
+      this_prog.mk_jcond(this_ins, LT, val, tmp,
+                         update_block, min_join_block);
+
+      set_block(update_block);
+      emit_statmap_update(sd["min"], idx, idx_ofs, val);
+      update_block->fallthru = new edge(update_block, min_join_block);
+
+      set_block(min_join_block);
+    }
+  if (1) // TODO: if (stat_op_max)
+    {
+      block *update_block = this_prog.new_block();
+      emit_statmap_lookup(tmp, sd["max"], idx);
+      this_prog.mk_jcond(this_ins, GT, val, tmp,
+                         update_block, join_block);
+
+      set_block(update_block);
+      emit_statmap_update(sd["max"], idx, idx_ofs, val);
+      // XXX fallthru to join_block!
     }
   emit_jmp (join_block);
 
@@ -3742,14 +3776,14 @@ bpf_unparser::visit_stat_op (stat_op* e)
     case sc_average:
     case sc_count:
     case sc_sum:
+    case sc_min:
+    case sc_max:
       break; // ok to pass to the helper
 
     case sc_none:
       assert (0); // should not happen, as sc_none is only used in foreach slots
 
     // TODO PR23476: Not yet implemented.
-    case sc_min:
-    case sc_max:
     case sc_variance:
     default:
       throw SEMANTIC_ERROR (_("unhandled stat op"), e->tok);

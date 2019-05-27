@@ -484,9 +484,11 @@ stapbpf_stat_get(bpf::globals::agg_idx agg_id, uint64_t idx,
   // XXX Based on struct stat_data in runtime/stat.h:
   struct stapbpf_stat_data {
     int shift;
-    int64_t count;
-    int64_t sum;
-    int64_t avg_s;
+    uint64_t count;
+    uint64_t sum;
+    uint64_t min;
+    uint64_t max;
+    uint64_t avg_s;
     // TODO PR23476: Add more fields.
   } agg;
   // TODO: Consider caching each agg for the duration of userspace program execution.
@@ -497,16 +499,34 @@ stapbpf_stat_get(bpf::globals::agg_idx agg_id, uint64_t idx,
   // bpf_map_lookup_elem() for percpu map returns an array.
   uint64_t *count_data = stapbpf_stat_get_percpu(sd["count"], idx, ctx);
   uint64_t *sum_data = stapbpf_stat_get_percpu(sd["sum"], idx, ctx);
+  uint64_t *min_data = stapbpf_stat_get_percpu(sd["min"], idx, ctx);
+  uint64_t *max_data = stapbpf_stat_get_percpu(sd["max"], idx, ctx);
+
+  // XXX PR23476: count_data required for min/max calculation!
+  assert(count_data || !min_data);
+  assert(count_data || !max_data);
 
   // TODO PR23476: Simplified code for now.
   agg.shift = 0;
   agg.count = 0;
   agg.sum = 0;
+  agg.min = 0;
+  agg.max = 0;
 
   // XXX for_each_possible_cpu(i)
   if (count_data) {
     for (unsigned i = 0; i < ctx->ncpus; i++)
+      {
+        if (agg.count == 0) {
+          if (min_data) agg.min = min_data[i];
+          if (max_data) agg.max = max_data[i];
+        }
 	agg.count += count_data[i];
+        if (max_data && max_data[i] > agg.max)
+          agg.max = max_data[i];
+        if (min_data && min_data[i] < agg.min)
+          agg.min = min_data[i];
+      }
     free(count_data);
   }
 
@@ -536,13 +556,21 @@ stapbpf_stat_get(bpf::globals::agg_idx agg_id, uint64_t idx,
     case sc_sum:
       return agg.sum;
 
+    case sc_min:
+      if (agg.count == 0)
+        abort(); // TODO: Should produce 'empty aggregate' error.
+      return agg.min;
+
+    case sc_max:
+      if (agg.count == 0)
+        abort(); // TODO: Should produce 'empty aggregate' error.
+      return agg.max;
+
     case sc_none:
       // should not happen, as sc_none is only used in foreach slots
       stapbpf_abort("unexpected sc_none");
 
     // TODO PR23476: Not yet implemented.
-    case sc_min:
-    case sc_max:
     case sc_variance:
     default:
       stapbpf_abort("unsupported aggregate");

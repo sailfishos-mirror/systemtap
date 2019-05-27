@@ -15,7 +15,7 @@ namespace bpf {
 std::vector<globals::stat_field> globals::stat_fields {
   "count", "sum", // for @count(), @sum(), @avg()
   // TODO: also "shift"
-  // TODO: "min", "max", // for @min(), @max()
+  "min", "max", // for @min(), @max()
   // TODO: "avg_s", "_M2", "variance", "variance_s", // for @variance()
   // TODO: "histogram", // PR24424 for @hist_linear(), @hist_log()
 };
