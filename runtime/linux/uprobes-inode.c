@@ -76,7 +76,7 @@ struct stapiu_target {
 	 * This may not be system-wide, e.g. only the -c process.
 	 * We use task_finder to manage this list.  */
 	struct list_head processes; /* stapiu_process */
-	rwlock_t process_lock;
+	stp_rwlock_t process_lock;
 
 	struct stap_task_finder_target finder;
 

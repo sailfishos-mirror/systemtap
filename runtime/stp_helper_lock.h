@@ -4,7 +4,7 @@
  *
  * Author: Santosh Shukla <sshukla@mvista.com>
  *
- * Copyright (C) 2014 Red Hat Inc.
+ * Copyright (C) 2014-2019 Red Hat Inc.
  * 
  * This file is part of systemtap, and is free software.  You can
  * redistribute it and/or modify it under the terms of the GNU General
@@ -20,6 +20,7 @@
 #ifdef CONFIG_PREEMPT_RT_FULL
 
 #define stp_spinlock_t raw_spinlock_t
+#define stp_rwlock_t raw_spinlock_t
 
 #define STP_DEFINE_SPINLOCK(lock)	DEFINE_RAW_SPINLOCK(lock)
 
@@ -39,6 +40,9 @@ static inline void stp_read_unlock(raw_spinlock_t *lock)	{ raw_spin_unlock(lock)
 static inline void stp_write_lock(raw_spinlock_t *lock)		{ raw_spin_lock(lock); }
 static inline void stp_write_unlock(raw_spinlock_t *lock)	{ raw_spin_unlock(lock); }
 
+static inline void stp_read_trylock(rwlock_t *lock)	{ read_trylock(lock); }
+static inline void stp_write_trylock(rwlock_t *lock)	{ write_trylock(lock); }
+
 #define stp_read_lock_irqsave(lock, flags)		raw_spin_lock_irqsave(lock, flags)
 #define stp_read_unlock_irqrestore(lock, flags)		raw_spin_unlock_irqrestore(lock, flags)
 #define stp_write_lock_irqsave(lock, flags)		raw_spin_lock_irqsave(lock, flags)
@@ -47,6 +51,7 @@ static inline void stp_write_unlock(raw_spinlock_t *lock)	{ raw_spin_unlock(lock
 #else
 
 #define stp_spinlock_t spinlock_t
+#define stp_rwlock_t rwlock_t
 
 #define STP_DEFINE_SPINLOCK(lock)	DEFINE_SPINLOCK(lock)
 
@@ -64,6 +69,9 @@ static inline void stp_read_lock(rwlock_t *lock)	{ read_lock(lock); }
 static inline void stp_read_unlock(rwlock_t *lock)	{ read_unlock(lock); }
 static inline void stp_write_lock(rwlock_t *lock)	{ write_lock(lock); }
 static inline void stp_write_unlock(rwlock_t *lock)	{ write_unlock(lock); }
+
+static inline void stp_read_trylock(rwlock_t *lock)	{ read_trylock(lock); }
+static inline void stp_write_trylock(rwlock_t *lock)	{ write_trylock(lock); }
 
 #define stp_read_lock_irqsave(lock, flags)		read_lock_irqsave(lock, flags)
 #define stp_read_unlock_irqrestore(lock, flags)		read_unlock_irqrestore(lock, flags)
