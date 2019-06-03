@@ -16,13 +16,13 @@ set -e
 STRACE_SRC=${STRACE_SRC:-$HOME/strace-code}
 TAPSET_SRC=$(readlink -f $(dirname $0)/../tapset)
 
-TAPSET_X86_64=$TAPSET_SRC/linux/x86_64/syscall_num.stp
-TAPSET_I386=$TAPSET_SRC/linux/i386/syscall_num.stp
-TAPSET_POWERPC=$TAPSET_SRC/linux/powerpc/syscall_num.stp
-TAPSET_S390=$TAPSET_SRC/linux/s390/syscall_num.stp
-TAPSET_ARM=$TAPSET_SRC/linux/arm/syscall_num.stp
-TAPSET_AARCH64=$TAPSET_SRC/linux/arm64/syscall_num.stp
-TAPSET_MIPS=$TAPSET_SRC/linux/mips/syscall_num.stp
+TAPSET_X86_64=$TAPSET_SRC/x86_64/syscall_num.stp
+TAPSET_I386=$TAPSET_SRC/i386/syscall_num.stp
+TAPSET_POWERPC=$TAPSET_SRC/powerpc/syscall_num.stp
+TAPSET_S390=$TAPSET_SRC/s390/syscall_num.stp
+TAPSET_ARM=$TAPSET_SRC/arm/syscall_num.stp
+TAPSET_AARCH64=$TAPSET_SRC/arm64/syscall_num.stp
+TAPSET_MIPS=$TAPSET_SRC/mips/syscall_num.stp
 
 SYSCALLS_32=$(mktemp)
 SYSCALLS_64=$(mktemp)

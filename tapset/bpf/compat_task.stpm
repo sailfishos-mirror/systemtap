@@ -1,0 +1,4 @@
+@define __compat_task
+%(
+	0 /* FIXME: This is currently disabled */
+%)
