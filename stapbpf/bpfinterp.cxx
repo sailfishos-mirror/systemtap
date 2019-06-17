@@ -517,6 +517,8 @@ stapbpf_stat_get(bpf::globals::agg_idx agg_id, uint64_t idx,
   if (count_data) {
     for (unsigned i = 0; i < ctx->ncpus; i++)
       {
+        if (count_data[i] == 0)
+          continue; // no data points on this CPU; skip to avoid zeroing @min
         if (agg.count == 0) {
           if (min_data) agg.min = min_data[i];
           if (max_data) agg.max = max_data[i];
@@ -542,6 +544,11 @@ stapbpf_stat_get(bpf::globals::agg_idx agg_id, uint64_t idx,
     agg.avg_s = 0;
   else
     agg.avg_s = (agg.sum << agg.shift) / agg.count;
+
+  free(count_data);
+  free(sum_data);
+  free(min_data);
+  free(max_data);
 
   switch (sc_op)
     {
