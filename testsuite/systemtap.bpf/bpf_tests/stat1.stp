@@ -18,7 +18,9 @@ probe kernel.function("vfs_read") {
 probe end {
   count = @count(s); sum = @sum(s); avg = @avg(s)
   printf("@count:%d, @sum:%d, @avg:%d\n", count, sum, avg)
-  if (count == 5 && sum == 26)
+  min = @min(s); max = @max(s)
+  printf("@min:%d, @max:%d\n", min, max)
+  if (count == 5 && sum == 26 && min == 1 && max == 10)
     println("END PASS")
   else
     println("END FAIL")
