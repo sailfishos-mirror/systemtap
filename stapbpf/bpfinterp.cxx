@@ -1030,7 +1030,7 @@ bpf_interpret(size_t ninsns, const struct bpf_insn insns[],
               dr = (tr != LIBBPF_PERF_EVENT_ERROR) ? 0 : -1;
               break;
 	    case BPF_FUNC_trace_printk:
-              /* XXX no longer need this code after PR22330 */
+               /* XXX used only for debugging */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wformat-nonliteral"
               // regs[2] is the strlen(regs[1]) - not used by printf(3);

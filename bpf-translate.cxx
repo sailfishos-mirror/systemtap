@@ -268,6 +268,10 @@ struct bpf_unparser : public throwing_visitor
                            bool print_to_stream = true,
                            const token *tok = NULL);
 
+  // Used for debugging purposes only:
+  void emit_trace_printk(const std::string &format,
+                         value *v1 = NULL, value *v2 = NULL, value *v3 = NULL);
+
   // Used for the embedded-code assembler:
   int64_t parse_imm (const asm_stmt &stmt, const std::string &str);
   size_t parse_asm_stmt (embeddedcode *s, size_t start,
@@ -3602,6 +3606,32 @@ printf_arg_type (value *arg, const print_format::format_component &c)
     default:
       assert(false); // XXX: Should be caught earlier.
     }
+}
+
+// Used for debugging purposes only.
+//
+// The transport tag mechanism is no longer used, so output will only
+// appear in /sys/kernel/debug/tracing/trace_pipe.
+void
+bpf_unparser::emit_trace_printk(const std::string &format,
+                                value *v1, value *v2, value *v3)
+{
+  std::vector<value *> actual;
+  if (v1 != NULL) actual.push_back(v1);
+  if (v2 != NULL) actual.push_back(v2);
+  if (v3 != NULL) actual.push_back(v3);
+  unsigned nargs = actual.size();
+
+  // The bpf verifier requires that the format string be stored on the
+  // bpf program stack.  This is handled by bpf-opt.cxx lowering STR values.
+  size_t format_bytes = format.size() + 1;
+  this_prog.mk_mov(this_ins, this_prog.lookup_reg(BPF_REG_1),
+                   this_prog.new_str(format, true /*format_str*/));
+  emit_mov(this_prog.lookup_reg(BPF_REG_2), this_prog.new_imm(format_bytes));
+  for (size_t i = 0; i < nargs; ++i)
+    emit_mov(this_prog.lookup_reg(BPF_REG_3 + i), actual[i]);
+
+  this_prog.mk_call(this_ins, BPF_FUNC_trace_printk, nargs + 2);
 }
 
 value *
