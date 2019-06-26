@@ -604,13 +604,24 @@ bpf_unparser::emit_aggregation(vardecl *var, globals::map_slot& ms,
   //   TODO consider if(stat_op_*) for these map ops
   //   sd->count = 1;
   //   sd->sum = sd->min = sd->max = val;
-  //   TODO avg_s, M2
+  //   avg_s = val; // TODO val << sd->shift;
+  //   _M2 = 0;
   // } else {
   //   if(stat_op_count) sd->count++;
   //   if(stat_op_sum) sd->sum += val;
   //   if(stat_op_max && (val > sd->max)) sd->max = val;
   //   if(stat_op_min && (val < sd->min)) sd->min = val;
-  //   TODO if (stat_op_variance) ...
+  //    /*
+  //     * Below, we use Welford's online algorithm for computing variance.
+  //     * https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance
+  //	 */
+  //   if (stat_op_variance) {
+  //     val_s = val; // TODO: val_s = val << sd->shift;
+  //     delta = val - sd->avg_s;
+  //     sd->avg_s += _stp_div64(NULL, delta, sd->count);
+  //     sd->_M2 += delta * (val_s - sd->avg_s);
+  //     sd->variance_s = (sd->count < 2) ? -1 : _stp_div64(NULL, sd->_M2, (sd->count - 1));
+  //   }
   // }
   // ??? unlock stat
 
@@ -620,22 +631,26 @@ bpf_unparser::emit_aggregation(vardecl *var, globals::map_slot& ms,
 
   value *tmp = this_prog.new_reg();
 
+  value *i0 = this_prog.new_imm(0);
+  value *i1 = this_prog.new_imm(1);
+
   emit_statmap_lookup(tmp, sd["count"], idx);
-  this_prog.mk_jcond (this_ins, EQ, tmp, this_prog.new_imm(0),
-                      then_block, else_block);
+  this_prog.mk_jcond (this_ins, EQ, tmp, i0, then_block, else_block);
 
   set_block (then_block);
-  emit_statmap_update(sd["count"], idx, idx_ofs, this_prog.new_imm(1));
+  emit_statmap_update(sd["count"], idx, idx_ofs, i1);
   emit_statmap_update(sd["sum"], idx, idx_ofs, val);
   emit_statmap_update(sd["min"], idx, idx_ofs, val);
   emit_statmap_update(sd["max"], idx, idx_ofs, val);
+  emit_statmap_update(sd["avg_s"], idx, idx_ofs, val); // TODO val << sd->shift
+  emit_statmap_update(sd["_M2"], idx, idx_ofs, i0);
   emit_jmp (join_block);
 
   set_block (else_block);
   if (1) // TODO: if (stat_op_count)
     {
       emit_statmap_lookup(tmp, sd["count"], idx);
-      this_prog.mk_binary(this_ins, BPF_ADD, tmp, tmp, this_prog.new_imm(1));
+      this_prog.mk_binary(this_ins, BPF_ADD, tmp, tmp, i1);
       emit_statmap_update(sd["count"], idx, idx_ofs, tmp);
     }
   if (1) // TODO: if (stat_op_sum)
@@ -661,20 +676,85 @@ bpf_unparser::emit_aggregation(vardecl *var, globals::map_slot& ms,
   if (1) // TODO: if (stat_op_max)
     {
       block *update_block = this_prog.new_block();
+      block *max_join_block = this_prog.new_block();
       emit_statmap_lookup(tmp, sd["max"], idx);
       this_prog.mk_jcond(this_ins, GT, val, tmp,
-                         update_block, join_block);
+                         update_block, max_join_block);
 
       set_block(update_block);
       emit_statmap_update(sd["max"], idx, idx_ofs, val);
-      // XXX fallthru to join_block!
+      update_block->fallthru = new edge(update_block, max_join_block);
+
+      set_block(max_join_block);
     }
-  emit_jmp (join_block);
+  if (1) // TODO: if (stat_op_variance)
+    {
+      value *tmp_val_s = this_prog.new_reg();
+      value *tmp_avg_s = this_prog.new_reg();
+      value *tmp_count = this_prog.new_reg();
+      value *tmp_delta = this_prog.new_reg();
+      value *tmp__M2 = this_prog.new_reg();
+      value *tmp_variance_s = this_prog.new_reg();
+
+      block *div1_block = this_prog.new_block();
+      block *div2_block = this_prog.new_block();
+      block *join1_block = this_prog.new_block();
+      block *join2_block = this_prog.new_block();
+
+#ifdef DEBUG_CODEGEN
+  this_ins.notes.push("variance");
+#endif
+      emit_mov(tmp_val_s, val); // TODO: tmp_val_s = val << sd->shift;
+
+      emit_statmap_lookup(tmp_avg_s, sd["avg_s"], idx);
+      this_prog.mk_binary(this_ins, BPF_SUB, tmp_delta, tmp_val_s, tmp_avg_s);
+
+      emit_statmap_lookup(tmp_count, sd["count"], idx);
+
+      // XXX Simplified version of _stp_div64():
+      emit_mov(tmp, i0); // if tmp_count == 0
+      this_prog.mk_jcond(this_ins, EQ, tmp_count, i0,
+                         join1_block, div1_block);
+      set_block(div1_block);
+      this_prog.mk_binary(this_ins, BPF_DIV, tmp, tmp_delta, tmp_count);
+      emit_jmp(join1_block);
+      set_block(join1_block);
+
+      this_prog.mk_binary(this_ins, BPF_ADD, tmp_avg_s, tmp_avg_s, tmp);
+      emit_statmap_update(sd["avg_s"], idx, idx_ofs, tmp_avg_s);
+
+      this_prog.mk_binary(this_ins, BPF_SUB, tmp, tmp_val_s, tmp_avg_s);
+      this_prog.mk_binary(this_ins, BPF_MUL, tmp, tmp_delta, tmp);
+      emit_statmap_lookup(tmp__M2, sd["_M2"], idx);
+      this_prog.mk_binary(this_ins, BPF_ADD, tmp__M2, tmp__M2, tmp);
+      emit_statmap_update(sd["_M2"], idx, idx_ofs, tmp__M2);
+      // XXX to check variance calculation
+      //emit_trace_printk("<%d/%d/%d", val, tmp_avg_s, tmp__M2);
+
+      // XXX Simplified/modified version of _stp_div64():
+      emit_mov(tmp_variance_s, this_prog.new_imm(-1)); // if tmp_count < 2
+      this_prog.mk_jcond(this_ins, LT, tmp_count, this_prog.new_imm(2),
+                         join2_block, div2_block);
+      set_block(div2_block);
+      this_prog.mk_binary(this_ins, BPF_SUB, tmp, tmp_count, i1);
+      this_prog.mk_binary(this_ins, BPF_DIV, tmp_variance_s, tmp__M2, tmp);
+      // XXX to check variance calculation
+      //emit_trace_printk(">%d/%d/%d\n", val, tmp_count, tmp_variance_s);
+      emit_jmp(join2_block);
+      set_block(join2_block);
+
+      emit_statmap_update(sd["variance_s"], idx, idx_ofs, tmp_variance_s);
+#ifdef DEBUG_CODEGEN
+      this_ins.notes.pop(); // variance
+#endif
+    }
+  // fallthru from possibly-empty join block in one of the previous ifs
+  emit_jmp (join_block); // XXX: could be empty block
 
   set_block(join_block);
 
 #ifdef DEBUG_CODEGEN
-  this_ins.notes.pop();
+  this_ins.notes.pop(); // agg
 #endif
 }
 
@@ -3812,13 +3892,12 @@ bpf_unparser::visit_stat_op (stat_op* e)
     case sc_sum:
     case sc_min:
     case sc_max:
+    case sc_variance:
       break; // ok to pass to the helper
 
     case sc_none:
       assert (0); // should not happen, as sc_none is only used in foreach slots
 
-    // TODO PR23476: Not yet implemented.
-    case sc_variance:
     default:
       throw SEMANTIC_ERROR (_("unhandled stat op"), e->tok);
     }

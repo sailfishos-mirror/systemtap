@@ -460,8 +460,12 @@ stapbpf_stat_get_percpu(bpf::globals::map_idx map, uint64_t idx,
 {
   uint64_t *ret = (uint64_t *)calloc(ctx->ncpus, sizeof(uint64_t));
   int res = bpf_lookup_elem((*ctx->map_fds)[map], as_ptr(idx), ret);
-  if (res) {
-      // element could not be found
+  if (res)
+    {
+      // element could not be found, default to 0's
+      // XXX 1st try -- bpf returns zeros for us, no need to memset?
+      //memset(ret, 0, ctx->ncpus * sizeof(uint64_t));
+      // XXX 2nd try -- see commit 77d4ab4782 by wcohen
       free(ret);
       return 0;
     }
@@ -489,6 +493,8 @@ stapbpf_stat_get(bpf::globals::agg_idx agg_id, uint64_t idx,
     uint64_t min;
     uint64_t max;
     uint64_t avg_s;
+    uint64_t variance;
+    uint64_t variance_s;
     // TODO PR23476: Add more fields.
   } agg;
   // TODO: Consider caching each agg for the duration of userspace program execution.
@@ -501,6 +507,9 @@ stapbpf_stat_get(bpf::globals::agg_idx agg_id, uint64_t idx,
   uint64_t *sum_data = stapbpf_stat_get_percpu(sd["sum"], idx, ctx);
   uint64_t *min_data = stapbpf_stat_get_percpu(sd["min"], idx, ctx);
   uint64_t *max_data = stapbpf_stat_get_percpu(sd["max"], idx, ctx);
+  uint64_t *avg_data = stapbpf_stat_get_percpu(sd["avg_s"], idx, ctx);
+  uint64_t *variance_data = stapbpf_stat_get_percpu(sd["variance_s"], idx, ctx);
+  // TODO: Handle the case when some/all sections missing.
 
   // XXX PR23476: count_data required for min/max calculation!
   assert(count_data || !min_data);
@@ -545,10 +554,37 @@ stapbpf_stat_get(bpf::globals::agg_idx agg_id, uint64_t idx,
   else
     agg.avg_s = (agg.sum << agg.shift) / agg.count;
 
+  /*
+   * For aggregating variance over available CPUs, the Total Variance
+   * formula is being used.  This formula is mentioned in following
+   * paper: Niranjan Kamat, Arnab Nandi: A Closer Look at Variance
+   * Implementations In Modern Database Systems: SIGMOD Record 2015.
+   * Available at: http://web.cse.ohio-state.edu/~kamatn/variance.pdf
+   */
+  int64_t S1 = 0, S2 = 0;
+  for (unsigned i = 0; i < ctx->ncpus; i++) // XXX for_each_possible_cpu(i)
+    {
+      if (count_data[i] != 0)
+        {
+          S1 += count_data[i] * (avg_data[i] - agg.avg_s)
+            * (avg_data[i] - agg.avg_s);
+          S2 += (count_data[i] - 1) * variance_data[i];
+        }
+    }
+
+  // XXX Simplified version of _stp_div64():
+  if (agg.count - 1 == 0)
+    agg.variance_s = 0;
+  else
+    agg.variance_s = (S1 + S2) / (agg.count - 1);
+  agg.variance = agg.variance_s; // TODO: agg.variance_s >> (2 * agg.shift)
+
   free(count_data);
   free(sum_data);
   free(min_data);
   free(max_data);
+  free(avg_data);
+  free(variance_data);
 
   switch (sc_op)
     {
@@ -573,12 +609,16 @@ stapbpf_stat_get(bpf::globals::agg_idx agg_id, uint64_t idx,
         abort(); // TODO: Should produce 'empty aggregate' error.
       return agg.max;
 
+    case sc_variance:
+      if (agg.count == 0)
+        abort(); // TODO: Should produce 'empty aggregate' error.
+      return agg.variance;
+
     case sc_none:
       // should not happen, as sc_none is only used in foreach slots
       stapbpf_abort("unexpected sc_none");
 
     // TODO PR23476: Not yet implemented.
-    case sc_variance:
     default:
       stapbpf_abort("unsupported aggregate");
     }
