@@ -1,18 +1,29 @@
 // PR23476 :: the most basic stat operations thinkable
 
 global s
+global N, done
 
 probe begin {
   println("BEGIN")
+  done = 0
+  N = 1 // TODO command line argument, test several
 }
 
+// TODO also test probe begin {
 probe kernel.function("vfs_read") {
-  s <<< 1
-  s <<< 2
-  s <<< 3
-  s <<< 10
-  s <<< 10
-  exit()
+  if (done < N) {
+    s <<< 1
+    s <<< 2
+    s <<< 3
+    s <<< 10
+    s <<< 10
+    done++
+  }
+  // XXX alas, putting exit() here would run out of stack space
+}
+
+probe timer.s(2) {
+  if (done >= N) exit()
 }
 
 probe end {
@@ -20,7 +31,10 @@ probe end {
   printf("@count:%d, @sum:%d, @avg:%d\n", count, sum, avg)
   min = @min(s); max = @max(s)
   printf("@min:%d, @max:%d\n", min, max)
-  if (count == 5 && sum == 26 && min == 1 && max == 10)
+  variance = @variance(s)
+  printf("@variance:%d\n", variance)
+  if (count == 5 && sum == 26 && min == 1 && max == 10
+	&& variance == 28) // TODO for N == 1
     println("END PASS")
   else
     println("END FAIL")

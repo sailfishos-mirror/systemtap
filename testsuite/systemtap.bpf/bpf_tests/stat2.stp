@@ -20,8 +20,11 @@ probe end {
   c5 = @count(a[5]); s5 = @sum(a[5]); a5 = @avg(a[5])
   printf("[0] - @count:%d, @sum:%d, @avg:%d\n", c0,s0,a0)
   printf("[5] - @count:%d, @sum:%d, @avg:%d\n", c5,s5,a5)
+  v0 = @variance(a[0]); v5 = @variance(a[5])
+  printf("[*] - @variance[0]:%d, @variance[5]:%d\n", v0,v5)
   if (c0 == 10 && s0 == 20 && a0 == 2
-      && c5 == 1 && s5 == 5 && a5 == 5)
+      && c5 == 1 && s5 == 5 && a5 == 5
+      && v0 == 0 && v5 == 0)
     println("END PASS")
   else
     println("END FAIL")
