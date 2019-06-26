@@ -2147,9 +2147,9 @@ bpf_unparser::visit_next_statement (next_statement* s)
 }
 
 void
-bpf_unparser::visit_delete_statement (delete_statement *s)
+bpf_unparser::visit_delete_statement (delete_statement *stmt)
 {
-  expression *e = s->value;
+  expression *e = stmt->value;
   if (symbol *s = dynamic_cast<symbol *>(e))
     {
       vardecl *var = s->referent;
