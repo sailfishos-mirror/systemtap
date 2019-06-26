@@ -1035,7 +1035,7 @@ bpf_interpret(size_t ninsns, const struct bpf_insn insns[],
 #pragma GCC diagnostic ignored "-Wformat-nonliteral"
               // regs[2] is the strlen(regs[1]) - not used by printf(3);
               // instead we assume regs[1] string is \0 terminated
-	      dr = fprintf(output_f, remove_tag(as_str(regs[1])).c_str(),
+	      dr = fprintf(output_f, as_str(regs[1]),
                            /*regs[2],*/ regs[3], regs[4], regs[5]);
               fflush(output_f);
 #pragma GCC diagnostic pop

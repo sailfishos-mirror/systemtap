@@ -3626,7 +3626,11 @@ bpf_unparser::emit_trace_printk(const std::string &format,
   // bpf program stack.  This is handled by bpf-opt.cxx lowering STR values.
   size_t format_bytes = format.size() + 1;
   this_prog.mk_mov(this_ins, this_prog.lookup_reg(BPF_REG_1),
-                   this_prog.new_str(format, true /*format_str*/));
+                   this_prog.new_str(format, false /*format_str*/));
+  // XXX We disable format_str (top-of-stack allocation) for this
+  // since trace_printk tends to be put in places where
+  // format_str=true will clobber crucial registers and produce a
+  // confusing Heisenbug.
   emit_mov(this_prog.lookup_reg(BPF_REG_2), this_prog.new_imm(format_bytes));
   for (size_t i = 0; i < nargs; ++i)
     emit_mov(this_prog.lookup_reg(BPF_REG_3 + i), actual[i]);
