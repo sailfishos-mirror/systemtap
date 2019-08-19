@@ -6,7 +6,10 @@ global N, done
 probe begin {
   println("BEGIN")
   done = 0
-  N = 1 // TODO command line argument, test several
+  N = 1
+
+  // XXX customize for stat-variance.exp
+  %( $# > 0 %? N = $1 %)
 }
 
 // TODO also test probe begin {

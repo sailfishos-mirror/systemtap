@@ -1,0 +1,53 @@
+# bpf-variance.exp
+#
+# An additional test for the variance calculation.
+
+set testdir "$srcdir/$subdir/bpf_tests"
+
+# Skip irrelevant environment.
+if {![bpf_p]} {
+    untested "bpf-variance.exp"
+    return
+}
+
+proc get_variance { cmd } {
+    set result -1
+    send_log "executing: $cmd\n"
+    eval spawn $cmd
+    set mypid [exp_pid -i $spawn_id]
+    expect {
+        -timeout 30
+        -re {@variance:(-?[0-9]+)} {set result $expect_out(1,string); exp_continue}
+        timeout {
+            kill -INT -$mypid
+        }
+        eof { }
+    }
+    # again for good measure with KILL after 3s
+    kill -INT -$mypid 3
+    catch close
+    wait
+    return $result
+}
+
+set test stat1.stp
+set rc 0
+#for {set N 1} {$N < 25} {incr N} { # XXX takes longer
+for {set N 1} {$N < 25} {incr N 5} {
+    set cmd [concat stap -v $testdir/stat1.stp $N]
+    set cmd_bpf [concat stap -v --runtime=bpf $testdir/stat1.stp $N]
+    # run both tests and extract variance
+    set variance [get_variance $cmd]
+    set variance_bpf [get_variance $cmd_bpf]
+
+    send_log "Variance: $variance vs $variance_bpf (bpf) at N=$N\n"
+    if {$variance != $variance_bpf} {
+        set rc 1
+        break
+    }
+}
+switch $rc {
+    0 { pass $test }
+    1 { fail "$test variance did not match at N=$N" }
+    default { fail "$test unknown return value" }
+}
