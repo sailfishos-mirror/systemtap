@@ -1707,26 +1707,94 @@ skip:
 	      c = input_get();
 	      switch (c)
 		{
-                case 'x':
-                  if (!has_version("2.3"))
-                    goto the_default;
-                  /* FALLTHROUGH */
-		case 'a':
-		case 'b':
-		case 't':
-		case 'n':
-		case 'v':
-		case 'f':
-		case 'r':
-		case '0' ... '7': // NB: need only match the first digit
-		case '\\':
-		  // Pass these escapes through to the string value
-		  // being parsed; it will be emitted into a C literal.
-                  // XXX: PR13371: perhaps we should evaluate them here
-                  // (and re-quote them during translate.cxx emission).
-                  token_str.push_back ('\\');
+                case 'x': // hex sequence
+                  {
+                    if (!has_version("2.3"))
+                      goto the_default;
 
-                  // fall through
+                    // used for error message
+                    n->location.line = cursor_line;
+                    n->location.column = cursor_column;
+
+                    unsigned number = 0;
+                    bool exists = false; 
+
+                    while (true)
+                      {
+                        int next = input_peek(0);
+
+                        if (next >= '0' && next <= '9')
+                          number = number * 16 + (next - '0');
+                        else if (next >= 'A' && next <= 'F')
+                          number = number * 16 + (next - 'A' + 10);
+                        else if (next >= 'a' && next <= 'f')
+                          number = number * 16 + (next - 'a' + 10);
+                        else
+                          break;
+
+                        c = input_get(); // consume character
+                        exists = true;   // there's atleast one digit
+
+                        if (number > 0xff)
+                          throw PARSE_ERROR (_("hex sequence out of range"), n);
+                      }
+
+                    if (!exists)
+                      throw PARSE_ERROR (_("\\x used with no following hex digits"), n);
+                    else
+                      token_str.push_back((unsigned char) number);
+                  }
+                  break;
+		case 'a':
+                  token_str.push_back('\a');
+                  break;
+		case 'b':
+                  token_str.push_back('\b');
+                  break;
+		case 't':
+                  token_str.push_back('\t');
+                  break;
+		case 'n':
+                  token_str.push_back('\n');
+                  break;
+		case 'v':
+                  token_str.push_back('\v');
+                  break;
+		case 'f':
+                  token_str.push_back('\f');
+                  break;
+		case 'r':
+                  token_str.push_back('\r');
+                  break;
+		case '0' ... '7': // octal sequence
+                  {
+                    // used for error message
+                    n->location.line = cursor_line;
+                    n->location.column = cursor_column - 1;
+
+                    unsigned number = c - '0';
+
+                    for (unsigned i = 0; i < 2;  ++i)
+                      {
+                        int next = input_peek(0);
+ 
+                        if (next >= '0' && next <= '7')
+                          number = number * 8 + (next - '0');
+                        else
+                          break;
+
+                        c = input_get(); // consume character
+                      }
+
+                    if (number > 0xff /* \377 */)
+                      throw PARSE_ERROR (_("octal sequence out of range"), n);
+                    else
+                      token_str.push_back((unsigned char) number);
+                  }
+                  break;
+		case '\\':
+                  token_str.push_back ('\\');
+                  break;
 		default: the_default:
                   token_str.push_back (c);
                   break;

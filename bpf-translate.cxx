@@ -920,7 +920,6 @@ bpf_unparser::parse_asm_stmt (embeddedcode *s, size_t start,
       }
     else if (in_string)
       {
-        // resulting string will be processed by translate_escapes()
         if (c == '"')
           arg.push_back(c), in_string = false; // include quote
         else if (c == '\\' && c2 == '"')
@@ -1094,9 +1093,6 @@ bpf_unparser::parse_asm_stmt (embeddedcode *s, size_t start,
   return pos;
 }
 
-/* forward declaration */
-std::string translate_escapes (const interned_string &str, const token* tok);
-
 /* Convert a <reg> or <imm> operand to a value.
    May emit code to store a string constant on the stack. */
 value *
@@ -1171,8 +1167,7 @@ bpf_unparser::emit_asm_arg (const asm_stmt &stmt, const std::string &arg,
         throw SEMANTIC_ERROR (_F("BUG: improper string %s",
                                  arg.c_str()), stmt.tok);
       std::string escaped_str = arg.substr(1,arg.size()-2); /* strip quotes */
-      std::string str = translate_escapes(escaped_str, stmt.tok);
-      return emit_literal_string(str, stmt.tok);
+      return emit_literal_string(escaped_str, stmt.tok);
     }
   else if (arg == "BPF_MAXSTRINGLEN" || arg == "BPF_F_CURRENT_CPU")
     {
@@ -1528,7 +1523,6 @@ bpf_unparser::visit_embeddedcode (embeddedcode *s)
                                          "but first parameter is not a string literal",
                                          func_name.c_str()), stmt.tok);
               format = format.substr(1,format.size()-2); /* strip quotes */
-              format = translate_escapes(format, stmt.tok);
 
               size_t format_bytes = format.size() + 1;
               if (format_bytes > BPF_MAXFORMATLEN)
@@ -1995,99 +1989,6 @@ bpf_unparser::visit_delete_statement (delete_statement *s)
   throw SEMANTIC_ERROR (_("unknown lvalue"), e->tok);
 }
 
-// Translate string escape characters.
-// Accepts strings produced by parse.cxx lexer::scan and
-// by the eBPF embedded-code assembler.
-//
-// PR23559: This is currently an eBPF-only version of the function
-// that does not translate octal escapes.
-std::string
-translate_escapes (const interned_string &str, const token* tok)
-{
-  std::string result;
-  bool saw_esc = false;
-  for (interned_string::const_iterator j = str.begin();
-       j != str.end(); ++j)
-    {
-      if (saw_esc)
-        {
-          saw_esc = false;
-          switch (*j)
-            {
-            case 'f': result += '\f'; break;
-            case 'n': result += '\n'; break;
-            case 'r': result += '\r'; break;
-            case 't': result += '\t'; break;
-            case 'v': result += '\v'; break;
-
-            // Translate octal and hex escapes:
-            case '0' ... '7':
-              {
-                unsigned int c = 0;
-                // An octal escape sequence is at most 3 characters.
-                for (unsigned k = 0; k < 3; ++k)
-                  {
-                    c = c * 8 + (*j - '0');
-                    ++j;
-                    if (j == str.end() || *j < '0' || *j > '7')
-                      {
-                        --j; // avoid swallowing extra char
-                        break;
-                      }
-                  }
-                
-                // TODO: this check should be performed by the parser
-                if (c > 255 /* \377 */)
-                  throw SEMANTIC_ERROR (_("octal escape sequence out of range"), tok);
-
-                if (c != 0) // XXX skip '\0' as it can break a transport tag
-                  result += (char) c;
-              }
-              break;
-            case 'x':
-              {
-                unsigned int c = 0; ++j;
-                // A hex escape sequence is arbitrarily long.
-                // XXX: Behaviour is 'undefined' when overflowing char.
-                for (; j != str.end(); ++j)
-                  {
-                    if (*j >= '0' && *j <= '9')
-                      c = c * 16 + (*j - '0');
-                    else if (*j >= 'a' && *j <= 'f')
-                      c = c * 16 + (*j - 'a' + 10);
-                    else if (*j >= 'A' && *j <= 'F')
-                      c = c * 16 + (*j - 'A' + 10);
-                    else
-                      {
-                        --j; // avoid swallowing extra char
-                        break;
-                      }
-                  }
-
-                // TODO: this check should be performed by the parser
-                if (c > 0xff)
-                  throw SEMANTIC_ERROR (_("hex escape sequence out of range"), tok);
-
-                if (c != 0) // XXX skip '\0' as it can break a transport tag
-                  result += (char) c;
-
-                // If we've hit the end of the string , then return the result.
-                if (j == str.end())
-                  return result;
-              }
-              break;
-
-            default:  result += *j; break;
-            }
-        }
-      else if (*j == '\\')
-        saw_esc = true;
-      else
-        result += *j;
-    }
-  return result;
-}
-
 value *
 bpf_unparser::emit_literal_string (const std::string &str, const token *tok)
 {
@@ -2101,8 +2002,7 @@ void
 bpf_unparser::visit_literal_string (literal_string* e)
 {
   interned_string v = e->value;
-  std::string str = translate_escapes(v, e->tok);
-  result = emit_literal_string(str, e->tok);
+  result = emit_literal_string(v.to_string(), e->tok);
 }
 
 void
@@ -3412,7 +3312,7 @@ bpf_unparser::visit_print_format (print_format *e)
       // If this is a long string with no actual arguments, it will be
       // interned in the format string table as usual.
       interned_string fstr = e->raw_components;
-      format += translate_escapes(fstr, e->tok);
+      format += fstr.to_string();
     }
   else
     {

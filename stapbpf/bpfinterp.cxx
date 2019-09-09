@@ -414,9 +414,9 @@ bpf_text_str(std::vector<std::string> &strings, char* input, bool quoted)
         {
           stream << '\\';
           switch (c) {
-            case '\0': stream << '0'; break; // Not handled by translate_escapes
-            case '\a': stream << 'a'; break; // Not handled by translate_escapes
-            case '\b': stream << 'b'; break; // Not handled by translate_escapes
+            case '\0': stream << '0'; break;
+            case '\a': stream << 'a'; break;
+            case '\b': stream << 'b'; break;
             case '\f': stream << 'f'; break;
             case '\n': stream << 'n'; break;
             case '\r': stream << 'r'; break;

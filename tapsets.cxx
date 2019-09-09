@@ -8481,8 +8481,11 @@ dwarf_builder::build(systemtap_session & sess,
         }
 
       // PR13338: unquote glob results
+      //std::cout << "Path (1): " << module_name << std::endl;
       module_name = unescape_glob_chars (module_name);
+      //std::cout << "Path (2): " << module_name << std::endl;
       user_path = find_executable (module_name, sess.sysroot, sess.sysenv); // canonicalize it
+      //std::cout << "Path (3): " << user_path << std::endl;
       // Note we don't need to pass the sysroot to
       // is_fully_resolved(), since we just passed it to
       // find_executable().

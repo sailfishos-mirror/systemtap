@@ -815,11 +815,12 @@ print_format::components_to_string(vector<format_component> const & components)
 	       j != i->literal_string.end(); ++j)
 	    {
               // See also: c_unparser::visit_literal_string and lex_cast_qstring
-	      if (*j == '%')
-		oss << '%';
-              else if(*j == '"')
-                oss << '\\';
-	      oss << *j;
+              if (!isprint(*j) || *j == '\\' || *j == '"')
+                oss << "\\x" << "0123456789ABCEF"[(*j & 0xf0) >> 4] << "0123456789ABCEF"[(*j & 0x0f) >> 0];
+              else if (*j == '%')
+                oss << '%' << *j;
+              else
+                oss << *j;
 	    }
 	}
       else

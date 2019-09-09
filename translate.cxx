@@ -4663,17 +4663,17 @@ c_unparser::visit_literal_string (literal_string* e)
 {
   interned_string v = e->value;
   o->line() << '"';
+
   for (unsigned i=0; i<v.size(); i++)
-    // NB: The backslash character is specifically passed through as is.
-    // This is because our parser treats "\" as an ordinary character, not
-    // an escape sequence, leaving it to the C compiler (and this function)
-    // to treat it as such.  If we were to escape it, there would be no way
-    // of generating C-level escapes from script code.
     // See also print_format::components_to_string and lex_cast_qstring
-    if (v[i] == '"') // or other escapeworthy characters?
-      o->line() << '\\' << '"';
-    else
-      o->line() << v[i];
+    {
+      if (!isprint(v[i]) || v[i] == '"' || v[i] == '\\') 
+        o->line() << "\\x" << "0123456789ABCEF"[(v[i] & 0xf0) >> 4] << "0123456789ABCEF"[(v[i] & 0x0f) >> 0];
+      else 
+        o->line() << v[i]; 
+      
+    }
+
   o->line() << '"';
 }
 

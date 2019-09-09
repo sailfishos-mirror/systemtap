@@ -609,6 +609,18 @@ bool is_fully_resolved(const string& path, const string& sysroot,
 		       const map<string, string>& sysenv,
 		       const string& env_path)
 {
+  /* TODO:
+  bool b1 = !path.empty();
+  bool b2 = !contains_glob_chars(path);
+  bool b3 = path.find('/') != string::npos;
+  string s1 = path;
+  string s2 =  find_executable(path, sysroot, sysenv, env_path);
+  bool b4 = s1 == s2;
+
+  std::cout << "Variables: " << b1 << "-" << b2 << "-" << b3 << "-" << b4 << std::endl;
+  std::cout << "Original Path: " << s1 << " - New Path: " << s2 << std::endl; 
+  */
+
   return !path.empty()
       && !contains_glob_chars(path)
       && path.find('/') != string::npos
