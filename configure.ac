@@ -619,9 +619,9 @@ no) ;;
      old_LIBS="$LIBS"
      old_LDFLAGS="$LDFLAGS"
      AC_LANG_PUSH(C++)
-     for location in /usr/lib64/dyninst /usr/lib/dyninst; do
+     for location in /usr/lib64/dyninst /usr/lib/dyninst ${libdir}/dyninst; do
        LDFLAGS="-L${location}"
-         LIBS=-lparseAPI
+         LIBS="-lparseAPI ${BOOST_SYSTEM_LIB}"
 	   AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <dyninst/CodeSource.h>]],
 					   [[char *s; Dyninst::ParseAPI::SymtabCodeSource *sts = new Dyninst::ParseAPI::SymtabCodeSource(s);]])],
 
