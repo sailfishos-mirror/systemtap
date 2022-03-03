@@ -1,0 +1,262 @@
+#!/usr/bin/python3
+
+# This script uses tapset/hit-count.stp to profile a specific process
+# or the kernel. It may take a context width, module path, pid, cmd, and timeout.
+# It generates folders based on buildid, containing subdirectories
+# leading to sourcefiles where one may read how many times the pc
+# was at a certain line in that sourcefile.
+
+
+import argparse
+import sys
+import os
+import re
+import subprocess
+from collections import defaultdict
+
+tapset_dir = os.path.join(os.getcwd(), "../tapset/")
+
+parser = argparse.ArgumentParser()
+parser.add_argument('-d',help='Enable SystemTap to add symbol/unwind information into the kernel object module.', type=str)
+parser.add_argument("-w", "--context-width", help='Number of lines of context around each hit. 0 only prints the hit lines. Defaults to all lines in the file.', type=str)
+pid_cmd_group = parser.add_mutually_exclusive_group()
+pid_cmd_group.add_argument("-x", "--pid", help='PID for systemtap to target.', type=int)
+pid_cmd_group.add_argument("-c", "--cmd", help='Command for systemtap to target.', type=str, nargs='*')
+parser.add_argument("-T", "--timeout", help="Exit in 'timeout' seconds.", type=int)
+args = parser.parse_args()
+
+stap_script="""global count;
+probe timer.profile {
+  try {
+    if (user_mode() && target_set_pid(pid()))
+      {
+        buildid = umodbuildid(uaddr());
+        addr= umodaddr(uaddr());
+        count[buildid,addr] <<< 1;
+      }
+  }
+  catch(e) { printf ("%s", e) }
+}
+
+probe end
+{
+  print (\"\\nBEGIN\\n\");
+  foreach ( [buildid, addr] in count)
+    {
+      c = @count(count[buildid,addr]);
+      print(buildid, " " , addr, " ", c, "\\n");
+    }
+  print (\"END\\n");
+  exit()
+}
+"""
+
+# buildid
+class BuildIDProfile:
+    def __init__(self,buildid):
+        self.counts = defaultdict(lambda: 0)
+        self.buildid = buildid
+        self.filename = self.buildid + 'addrs.txt'
+        self.sources = {}
+
+    def __str__(self):
+        return "BuildIDProfile(buildid %s) items: %s sources: %s" % (self.buildid, self.counts.items(), self.sources.items())
+    
+    # Build the 'counts' dict by adding the hit count to its associated address
+    def accumulate(self,pc,count):
+        self.counts[pc] += count
+
+    # Get the Find the sources of relative addresses from self.counts.keys()
+    def get_sources(self):
+        # Used to maintain order of writing
+        ordered_keys = list(self.counts.keys())
+        # create addr file in /tmp/
+        with open('/tmp/'+self.filename, 'w') as f:
+            for k in ordered_keys:
+                f.write(str(hex(k)) + '\n')
+        # Get source:linenum info 
+        dbginfo = self.get_debuginfo()
+        # Split the lines into a list divided by newlines
+        lines = dbginfo.split('\n')
+
+        for i in range(0,len(lines)):
+            if lines[i] == '':
+                continue
+            split = lines[i].split(':')
+            src = split[0]
+            line_number = split[1]
+            if line_number == None:
+                continue
+            if src not in self.sources.keys():
+                self.sources[src] = SourceLineProfile(self.buildid,src)
+ 
+            # Sometimes addr2line reponds with a string of format ("linenum" discriminator "num")
+            # trim this to yield "linenum" using a regular expression:
+            m = re.search('[0-9]+',line_number)
+            # If m doesn't contain the above regex, it has no number so don't accumulate it
+            if m == None:
+                continue
+            line_number = int(m.group(0))
+            self.sources[src].accumulate(line_number, self.counts[ordered_keys[i]])
+        # Remove tempfile
+        os.remove('/tmp/'+self.filename)
+
+    # Report information for this buildid's source files
+    def report(self):
+        for so in self.sources.values():
+            so.report()
+
+    # Get source:linenum information. Assumes self.filename has relative address information
+    def get_debuginfo(self):
+        try:
+            #Get the debuginfo of the bulidid retrieved from stap
+            p = subprocess.Popen(['debuginfod-find', 'debuginfo', self.buildid],stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE)
+            dbg_file,err = p.communicate()
+            #Use the debuginfo attained from the above process
+            process = subprocess.Popen(['sh','-c', 'eu-addr2line -A -e '  + dbg_file.decode('utf-8').rstrip() + ' < /tmp/' + self.filename],  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            out,err = process.communicate()
+        except Exception as e:
+            print (e)
+            pass
+        return out.decode('utf-8')
+
+# Contains information related to each source of a buildid
+class SourceLineProfile:
+    def __init__(self,  bid, source):
+        self.bid = bid
+        self.source = source
+        self.counts = defaultdict(lambda: 0)
+
+    def __str__(self):
+        return "SourceLineProfile(bid %s, source %s) counts: %s" % (self.bid, self.source, self.counts.items())
+
+    def accumulate(self, line, count):
+        self.counts[int(line)] += count
+
+    # Get the source file associated with a buildid
+    def get_source_file(self):
+        try: 
+            p = subprocess.Popen(['debuginfod-find', 'source', self.bid, self.source],stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE)
+            sourcefile,err = p.communicate()
+            return sourcefile.decode('utf-8').rstrip()
+        except Exception as e:
+            err = err.decode('utf-8').rstrip('\n',"")
+            print (e)
+
+    def report(self):
+        if self.source == '??' or self.source == '':
+            path = 'profile-'+self.bid
+            if not os.path.exists(path):
+                os.makedirs(path)
+            i=0
+            ufile = None
+            for i in range(0,999):
+                ufile = os.path.join(path, 'unknown-'+ str(i))
+                if not os.path.exists(ufile):
+                    break
+            with open(ufile, 'w') as of:
+                of.write("Buildid %s has an unknown source with %s hits" % (self.bid, sum(self.counts.values())))
+            return
+
+        # Retrieve the sourcefile's name 
+        sourcefile = self.get_source_file()
+        outfile = os.path.join('profile-'+self.bid, (sourcefile.split('/')[-1]).replace('##','/'))
+        path = os.path.dirname(outfile)
+
+        #If the path to output to doesn't exist create it
+        if not os.path.exists(path):
+            os.makedirs(path)
+
+        # Output source code to 'outfile' and if a line has associated hits (read out of sourcefile)
+        # then add the line number and hit count before that line. If a context_width is present use
+        # print the surrounding lines for context in accordance with context_width
+        with open(sourcefile,'r') as f, open(outfile, 'w') as of: 
+            hitlines = sorted( list(self.counts.keys()) )
+            width = 0
+            if args.context_width:
+                width = int(args.context_width) 
+            # Set the first upper bound 
+            upper_bound = hitlines[0]+width
+            for linenum, line, in list(enumerate(f)):
+                # The lines by default have a new line at the end, remove those
+                line = line.rstrip()
+
+                # Adjust upper bound and next key if necessary. When there is only one
+                # key left there is no need to adjust, it also causes an error
+                if upper_bound < linenum and len(hitlines) > 1:
+                    hitlines.pop(0)
+                    upper_bound = hitlines[0] + width
+                
+                # If we have found a line with hits, output info
+                # otherwise if there is no width, don't take it into account
+                # otherwise if the current line is within the desired width
+                #  print it for context
+                if linenum in hitlines:
+                    of.write("%s, %s: %s\n" % (linenum, self.counts[linenum], line)) 
+                elif not args.context_width:
+                    of.write("%s\n" % (line))
+                elif hitlines[0] - width <= linenum and upper_bound >= linenum:
+                    of.write("%s: %s\n" % (linenum, line))
+
+def __main__():
+    #Run SystemTap
+    stap_args = ['/usr/bin/sudo', 'stap', '--ldd', '-g']
+
+    if type(args.cmd) == list:
+        stap_args += ['-c', ' '.join(args.cmd)]
+    elif type(args.cmd) == str:
+        stap_args += ['-c', args.cmd]
+    if args.timeout:
+        if args.timeout < 0:
+            raise Exception("Timeout must be positive")
+        stap_args += ['-T', str(args.timeout)]
+    if args.pid:
+        if args.pid < 0:
+            raise Exception("pid must be positive")
+        stap_args += ['-x', str(args.pid)]
+    if args.d:
+        stap_args += ['-d', args.d]
+    if args.context_width and int(args.context_width) < 0:
+        raise Exception("context_width must be positive")
+    stap_args += ['-e', stap_script]
+
+    p = subprocess.Popen(stap_args, stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+    buildids = {} # dict from buildid hexcode to BuildIdProfile object
+    bidp = {}
+
+    err = []
+    for line in p.stderr:
+        err += [line.decode('utf-8')]
+    if err:
+        raise Exception(''.join(err))
+        exit()
+    outp_begin = False
+    # Iterate over relevant output from the tapset
+    for line in p.stdout:
+        line = line.decode('utf-8')
+        # All relevant output is after BEGIN and before END
+        if "BEGIN" in line:
+            outp_begin = True
+            continue
+        elif "END" in line:
+            break
+        elif outp_begin == False:
+            continue
+        try:
+            (buildid,pc,hits) = line.split()
+            bidp = buildids.setdefault(buildid, BuildIDProfile(buildid))
+            # Accumulate hits for offset pc
+            bidp.accumulate(int(pc),int(hits))
+        except Exception as e: # parse error?
+            print (e)
+            pass
+
+    # Output source information for each buildid
+    for buildid, bidp in buildids.items():
+        bidp.get_sources()
+        bidp.report()
+
+if __name__ == '__main__':
+    __main__()
