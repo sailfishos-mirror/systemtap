@@ -1,0 +1,88 @@
+.TH STAP-PROFILE-ANNOTATE 1
+.SH NAME
+stap-profile-annotate \- Annotate source files of running programs.
+
+.\" macros
+.\" do not nest SAMPLEs
+.de SAMPLE
+.br
+
+.nr oldin \\n(.i
+.RS
+.nf
+.nh
+..
+.de ESAMPLE
+.hy
+.fi
+.RE
+.in \\n[oldin]u
+
+..
+
+.SH SYNOPSIS
+
+.br
+.B strace-profile-annotate [ \fIOPTIONS\fR ]
+.br
+.B strace-profile-annotate [ \fIOPTIONS\fR ] \-x \fIPID\fR 
+.br
+.B strace-profile-annotate [ \fIOPTIONS\fR ] \-c \fICMD\fR
+
+.SH DESCRIPTION
+
+The stap-profile-annotate command probes running processes recording
+where their pc addresses are at the time of probing. It then
+determines what source files those recorded pc addresses lie in
+using debuginfod and outputs those same source files annotated with
+the number of times that line was probed. These source files are
+stored in directories with root \fIprofile-buildid/\fR, where
+\fIbuildid\fR is the probed proccess's buildid.
+
+
+.SH OPTIONS
+.PP
+
+.TP
+.B \fB\-h\fR
+Show help message.
+
+.TP
+.B \fB\-v\fR, \fB\-\-verbose\fR
+Increase verbosity.
+
+.TP
+.B \fB\-w\fR, \fB\-\-context\-width\fR \fIWIDTH\fR
+Number of lines of context around each hit. 0 only prints the hit
+lines. Defaults to all lines in the file.
+
+.TP
+.B \fB\-T\fR, \fB\-\-timeout \fITIMEOUT\fR
+Exit in 'timeout' seconds.
+
+.TP
+.B \fB\-x\fR, \fB\-\-pid\fR \fIPID\fR
+PID for systemtap to target.
+
+.TP
+.B \fB\-c\fR, \fB\-\-cmd\fR \fIPID\fR
+Command for systemtap to target.
+
+.TP
+.B \fB\-s\fR, \fB\-\-stap\fR \fIPATH\fR
+Override the path to the stap interpreter.
+
+.TP
+.B \fB\-d\fR \fIMODULE\fR
+Enable SystemTap to add symbol/unwind information into the kernel
+object module.
+
+.SH EXAMPLE
+.PP
+.TP 
+sudo stap-profile-annotate -vvv -T 5 -d /usr/bin/stress -c '/usr/bin/stress -t 5 --cpu 2'
+
+.SH SEE ALSO
+.nh
+.nf
+.IR stap (1)

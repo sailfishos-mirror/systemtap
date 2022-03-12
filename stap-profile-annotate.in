@@ -14,40 +14,68 @@ import re
 import subprocess
 from collections import defaultdict
 
-tapset_dir = os.path.join(os.getcwd(), "../tapset/")
-
 parser = argparse.ArgumentParser()
 parser.add_argument('-d',help='Enable SystemTap to add symbol/unwind information into the kernel object module.', type=str)
 parser.add_argument("-w", "--context-width", help='Number of lines of context around each hit. 0 only prints the hit lines. Defaults to all lines in the file.', type=str)
+parser.add_argument("-s", "--stap", help='Override the path to the stap interpreter.', type=str)
+parser.add_argument("-T", "--timeout", help="Exit in 'timeout' seconds.", type=int)
+parser.add_argument("-v", "--verbose", help="Increase verbosity.", action='count', default=0)
 pid_cmd_group = parser.add_mutually_exclusive_group()
 pid_cmd_group.add_argument("-x", "--pid", help='PID for systemtap to target.', type=int)
 pid_cmd_group.add_argument("-c", "--cmd", help='Command for systemtap to target.', type=str, nargs='*')
-parser.add_argument("-T", "--timeout", help="Exit in 'timeout' seconds.", type=int)
-args = parser.parse_args()
 
-stap_script="""global count;
+args = parser.parse_args()
+verbosity = args.verbose
+
+def vprint(level,*args):
+    if (verbosity >= level):
+        print(*args)
+
+
+stap_script="""
+global count
+global unknown
+global kernel
+global user
+probe begin {
+  println(\"Starting stap data collector.\")
+}
 probe timer.profile {
+  if (! user_mode()) {
+    kernel <<< 1
+    next
+  }
   try {
-    if (user_mode() && target_set_pid(pid()))
+    if (target()==0 || target_set_pid(pid()))
       {
         buildid = umodbuildid(uaddr());
         addr= umodaddr(uaddr());
         count[buildid,addr] <<< 1;
+        user <<< 1
       }
   }
-  catch(e) { printf ("%s", e) }
+  catch /*(e)*/ { unknown <<< 1 /* printf ("%s", e) */ }
 }
 
-probe end
+probe timer.s(1),end
 {
-  print (\"\\nBEGIN\\n\");
+  println (\"BEGIN\");
   foreach ( [buildid, addr] in count)
     {
       c = @count(count[buildid,addr]);
-      print(buildid, " " , addr, " ", c, "\\n");
+      println(buildid, " " , addr, " ", c);
     }
-  print (\"END\\n");
-  exit()
+  println (\"END\");
+  delete count
+}
+probe end,error
+{
+  printf (\"Counted %d known userspace hits.\\n\", @count(user))
+  if (@count(kernel))
+    printf (\"Ignored %d kernel hits.\\n\", @count(kernel))
+  if (@count(unknown))
+    printf (\"Ignored %d unknown userspace hits.\\n\", @count(unknown))
+  println(\"Stopped stap data collector.\")
 }
 """
 
@@ -68,12 +96,14 @@ class BuildIDProfile:
 
     # Get the Find the sources of relative addresses from self.counts.keys()
     def get_sources(self):
+        vprint(1,"Computing addr2line for %s" % (self.buildid,))
         # Used to maintain order of writing
         ordered_keys = list(self.counts.keys())
         # create addr file in /tmp/
         with open('/tmp/'+self.filename, 'w') as f:
             for k in ordered_keys:
                 f.write(str(hex(k)) + '\n')
+        vprint(2,"Dumped addresses")
         # Get source:linenum info 
         dbginfo = self.get_debuginfo()
         # Split the lines into a list divided by newlines
@@ -98,28 +128,29 @@ class BuildIDProfile:
                 continue
             line_number = int(m.group(0))
             self.sources[src].accumulate(line_number, self.counts[ordered_keys[i]])
+        vprint(2,"Mapped to %d source files" % (len(self.sources),))
         # Remove tempfile
         os.remove('/tmp/'+self.filename)
 
     # Report information for this buildid's source files
-    def report(self):
+    def report(self,totalhits):
         for so in self.sources.values():
-            so.report()
+            so.report(totalhits)
 
     # Get source:linenum information. Assumes self.filename has relative address information
     def get_debuginfo(self):
         try:
             #Get the debuginfo of the bulidid retrieved from stap
-            p = subprocess.Popen(['debuginfod-find', 'debuginfo', self.buildid],stdout=subprocess.PIPE,
-                                    stderr=subprocess.PIPE)
+            p = subprocess.Popen(['debuginfod-find', 'debuginfo', self.buildid],stdout=subprocess.PIPE)
             dbg_file,err = p.communicate()
             #Use the debuginfo attained from the above process
-            process = subprocess.Popen(['sh','-c', 'eu-addr2line -A -e '  + dbg_file.decode('utf-8').rstrip() + ' < /tmp/' + self.filename],  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            process = subprocess.Popen(['sh','-c', 'eu-addr2line -A -e '  + dbg_file.decode('utf-8').rstrip() + ' < /tmp/' + self.filename],  stdout=subprocess.PIPE)
             out,err = process.communicate()
         except Exception as e:
             print (e)
             pass
         return out.decode('utf-8')
+
 
 # Contains information related to each source of a buildid
 class SourceLineProfile:
@@ -132,47 +163,42 @@ class SourceLineProfile:
         return "SourceLineProfile(bid %s, source %s) counts: %s" % (self.bid, self.source, self.counts.items())
 
     def accumulate(self, line, count):
-        self.counts[int(line)] += count
+        self.counts[line] += count
 
     # Get the source file associated with a buildid
     def get_source_file(self):
         try: 
-            p = subprocess.Popen(['debuginfod-find', 'source', self.bid, self.source],stdout=subprocess.PIPE,
-                                    stderr=subprocess.PIPE)
+            p = subprocess.Popen(['debuginfod-find', 'source', self.bid, self.source],stdout=subprocess.PIPE)
             sourcefile,err = p.communicate()
             return sourcefile.decode('utf-8').rstrip()
         except Exception as e:
             err = err.decode('utf-8').rstrip('\n',"")
             print (e)
 
-    def report(self):
+    def report(self, totalhits):
+        filehits=sum(self.counts.values())
         if self.source == '??' or self.source == '':
-            path = 'profile-'+self.bid
-            if not os.path.exists(path):
-                os.makedirs(path)
-            i=0
-            ufile = None
-            for i in range(0,999):
-                ufile = os.path.join(path, 'unknown-'+ str(i))
-                if not os.path.exists(ufile):
-                    break
-            with open(ufile, 'w') as of:
-                of.write("Buildid %s has an unknown source with %s hits" % (self.bid, sum(self.counts.values())))
+            vprint(0,"%08d (%.2f%%) hits in buildid %s with unknown source" % (filehits, filehits/totalhits*100,
+                                                                               self.bid))
             return
 
         # Retrieve the sourcefile's name 
         sourcefile = self.get_source_file()
         outfile = os.path.join('profile-'+self.bid, (sourcefile.split('/')[-1]).replace('##','/'))
-        path = os.path.dirname(outfile)
 
-        #If the path to output to doesn't exist create it
-        if not os.path.exists(path):
-            os.makedirs(path)
+        # Try creating the appropriate directory
+        try:
+            os.makedirs(os.path.dirname(outfile))
+        except:
+            pass
+        # XXX: what if outfile has lots of ../../../../../'s in it?
 
         # Output source code to 'outfile' and if a line has associated hits (read out of sourcefile)
         # then add the line number and hit count before that line. If a context_width is present use
         # print the surrounding lines for context in accordance with context_width
-        with open(sourcefile,'r') as f, open(outfile, 'w') as of: 
+        vprint(0,"%07d (%.2f%%) hits in %s over %d lines." % (filehits, filehits/totalhits*100,
+                                                             outfile, len(self.counts)))
+        with open(sourcefile,'r') as f, open(outfile, 'w') as of:
             hitlines = sorted( list(self.counts.keys()) )
             width = 0
             if args.context_width:
@@ -194,15 +220,20 @@ class SourceLineProfile:
                 # otherwise if the current line is within the desired width
                 #  print it for context
                 if linenum in hitlines:
-                    of.write("%s, %s: %s\n" % (linenum, self.counts[linenum], line)) 
+                    of.write("%07d %s\n" % (self.counts[linenum], line)) 
                 elif not args.context_width:
-                    of.write("%s\n" % (line))
+                    of.write("%7s %s\n" % ("", line))
                 elif hitlines[0] - width <= linenum and upper_bound >= linenum:
-                    of.write("%s: %s\n" % (linenum, line))
+                    of.write("%7s %s\n" % ("", line))
 
 def __main__():
-    #Run SystemTap
-    stap_args = ['/usr/bin/sudo', 'stap', '--ldd', '-g']
+    # We require $DEBUGINFOD_URLS
+    if (not os.getenv("DEBUGINFOD_URLS")):
+        raise Exception("Required DEBUGINFOD_URLS is unset.")
+    
+    # Run SystemTap
+    stap_cmd = "@prefix@/bin/stap"  # not @ bindir @ because autoconf expands that to shell $var expressions
+    stap_args = ['--ldd']
 
     if type(args.cmd) == list:
         stap_args += ['-c', ' '.join(args.cmd)]
@@ -218,45 +249,60 @@ def __main__():
         stap_args += ['-x', str(args.pid)]
     if args.d:
         stap_args += ['-d', args.d]
+    if args.stap:
+        stap_cmd = args.stap
     if args.context_width and int(args.context_width) < 0:
         raise Exception("context_width must be positive")
     stap_args += ['-e', stap_script]
 
-    p = subprocess.Popen(stap_args, stdout=subprocess.PIPE,stderr=subprocess.PIPE)
-    buildids = {} # dict from buildid hexcode to BuildIdProfile object
-    bidp = {}
+    vprint(1,"Building stap data collector.")
+    vprint(2,"%s %s" % (stap_cmd, stap_args))
 
-    err = []
-    for line in p.stderr:
-        err += [line.decode('utf-8')]
-    if err:
-        raise Exception(''.join(err))
-        exit()
+    p = subprocess.Popen([stap_cmd] + stap_args, stdout=subprocess.PIPE)
+    buildids = {} # dict from buildid hexcode to BuildIdProfile object
+
     outp_begin = False
     # Iterate over relevant output from the tapset
-    for line in p.stdout:
-        line = line.decode('utf-8')
-        # All relevant output is after BEGIN and before END
-        if "BEGIN" in line:
-            outp_begin = True
-            continue
-        elif "END" in line:
-            break
-        elif outp_begin == False:
-            continue
+    proflines = 0
+    totalhits = 0
+    while True:
         try:
-            (buildid,pc,hits) = line.split()
-            bidp = buildids.setdefault(buildid, BuildIDProfile(buildid))
-            # Accumulate hits for offset pc
-            bidp.accumulate(int(pc),int(hits))
-        except Exception as e: # parse error?
-            print (e)
-            pass
+            for line in p.stdout:
+                line = line.decode('utf-8').rstrip()
+                # All relevant output is after BEGIN and before END
+                if "BEGIN" in line:
+                    outp_begin = True
+                elif "END" in line:
+                    outp_begin = False
+                elif outp_begin == False:
+                    if line != "": # diagnostic message
+                        vprint(0,line)
+                else:
+                    try:
+                        proflines += 1
+                        (buildid,pc,hits) = line.split()
+                        vprint(3,"(%s,%s,%s)" % (buildid,pc,hits))
+                        totalhits += int(hits)
+                        bidp = buildids.setdefault(buildid, BuildIDProfile(buildid))
+                        # Accumulate hits for offset pc
+                        bidp.accumulate(int(pc),int(hits))
+                    except Exception as e: # parse error?
+                        vprint(2,e)
+            p.kill()
+            break
 
+        except KeyboardInterrupt:
+            pass # don't abort the while loop - we may have additional stap outputs after a ^C
+        except:
+            pass # Swallow other errors
+            
+    vprint(0, "Consumed %d profile records of %d hits across %d buildids." % (proflines, totalhits, len(buildids)))
+        
     # Output source information for each buildid
+    totalhits = sum([sum(bid.counts.values()) for bid in buildids.values()])
     for buildid, bidp in buildids.items():
         bidp.get_sources()
-        bidp.report()
+        bidp.report(totalhits)
 
 if __name__ == '__main__':
     __main__()
