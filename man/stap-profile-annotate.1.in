@@ -39,6 +39,23 @@ the number of times that line was probed. These source files are
 stored in directories with root \fIprofile-buildid/\fR, where
 \fIbuildid\fR is the probed proccess's buildid.
 
+A profiling session can end before the process it's targeting
+finishes. In this case, sending SIGINT to stap-profile-annotate
+will yield the script's desired output if sent after
+"Stopped stap data collector" is in stdout. You must still
+manually kill the targeted process after sending 
+stap-profile-annotate SIGINT.
+
+When stap is run it adds user-space libraries into the kernel
+module by default. However, when profiling a module which is not a
+user-space shared library the -d option must be used to add that
+module's information into the SystemTap kernel module.
+
+stap-profile-annotate relies heavily on the use of debuginfod. Debuginfod
+allows the script to fetch debuginfo and translate virtual memory
+offsets into source line numbers. It is also used to fetch the
+actual source files to annotate. For these reasons, ensure your
+debuginfod client is properly configured for use.
 
 .SH OPTIONS
 .PP
@@ -53,34 +70,87 @@ Increase verbosity.
 
 .TP
 .B \fB\-w\fR, \fB\-\-context\-width\fR \fIWIDTH\fR
-Number of lines of context around each hit. 0 only prints the hit
-lines. Defaults to all lines in the file.
+This option determines the number of lines of context around each
+hit line. -w 0 prints only the hit lines. -w 1 prints three lines
+in total: the line immediately preceding the hit line, the hit line,
+and the line immediately following the hit line. -w WIDTH follows
+the pattern seen with -w 1, printing a total of 2 * WIDTH+1 lines.
+Defaults to printing all lines in the source file.
 
 .TP
 .B \fB\-T\fR, \fB\-\-timeout \fITIMEOUT\fR
-Exit in 'timeout' seconds.
+stap-profile-annotate will exit after TIMEOUT seconds. If using
+\fB\-x\fR or \fB\-c\fR, any targeted processes will not be killed
+after TIMEOUT seconds. Targeted processes either need their own
+timeouts specified or to be killed manually.
 
 .TP
 .B \fB\-x\fR, \fB\-\-pid\fR \fIPID\fR
-PID for systemtap to target.
+PID for SystemTap to target.
 
 .TP
-.B \fB\-c\fR, \fB\-\-cmd\fR \fIPID\fR
-Command for systemtap to target.
+.B \fB\-c\fR, \fB\-\-cmd\fR \fICMD\fR
+Command for SystemTap to run and then target.
 
 .TP
 .B \fB\-s\fR, \fB\-\-stap\fR \fIPATH\fR
-Override the path to the stap interpreter.
+Override the path to the stap interpreter. By default
+/usr/bin/stap is used.
 
 .TP
 .B \fB\-d\fR \fIMODULE\fR
 Enable SystemTap to add symbol/unwind information into the kernel
-object module.
+object module. By default, all user-space libraries are added.
 
-.SH EXAMPLE
+.SH EXAMPLES
+
+.SS EXAMPLE COMMAND
 .PP
 .TP 
-sudo stap-profile-annotate -vvv -T 5 -d /usr/bin/stress -c '/usr/bin/stress -t 5 --cpu 2'
+sudo stap-profile-annotate -w 1 -d /usr/bin/stress 
+-c '/usr/bin/stress -t 5 --cpu 2'
+
+.SS EXAMPLE COMMAND LINE OUTPUT
+
+.nf
+Starting stap data collector.
+stress: info: [88582] dispatching hogs: 4 cpu, 0 io, 0 vm, 0 hdd
+stress: info: [88582] successful run completed in 5s
+Counted 19798 known userspace hits.
+Ignored 12342 kernel hits.
+Stopped stap data collector.
+Consumed 321 profile records of 19798 hits across 3 buildids.
+0001228 (6.20%) hits in profile-10da92de76b289c2e9cfb145ca1edc4e850ec4da/source/usr/src/debug/
+	glibc-2.32-10.fc33.x86_64/stdlib/rand.c over 3 lines.
+0004241 (21.42%) hits in profile-10da92de76b289c2e9cfb145ca1edc4e850ec4da/source/usr/src/debug/
+	glibc-2.32-10.fc33.x86_64/stdlib/random_r.c over 18 lines.
+0000094 (0.47%) hits in profile-10da92de76b289c2e9cfb145ca1edc4e850ec4da/source/usr/src/debug/
+	glibc-2.32-10.fc33.x86_64/stdlib/../sysdeps/unix/sysv/linux/x86/lowlevellock.h over 1 lines.
+0004769 (24.09%) hits in profile-10da92de76b289c2e9cfb145ca1edc4e850ec4da/source/usr/src/debug/
+	glibc-2.32-10.fc33.x86_64/stdlib/random.c over 6 lines.
+0001401 (7.08%) hits in profile-520e2b0352d6ac72cb3b58df4f44137e29a94250/source/usr/src/debug/
+	stress-1.0.4-26.fc33.x86_64/src/stress.c over 1 lines.
+00001038 (5.24%) hits in buildid 520e2b0352d6ac72cb3b58df4f44137e29a94250 with unknown source
+0003109 (15.70%) hits in profile-07ae52cfc7f4eda1d13383c04564e3236e059993/source/usr/src/debug/
+	glibc-2.32-10.fc33.x86_64/math/../sysdeps/ieee754/dbl-64/e_sqrt.c over 3 lines.
+0003918 (19.79%) hits in profile-07ae52cfc7f4eda1d13383c04564e3236e059993/source/usr/src/debug/
+	glibc-2.32-10.fc33.x86_64/math/w_sqrt_compat.c over 3 lines.
+.nf
+
+.SS EXAMPLE SOURCE OUTPUT
+.TP 
+Found in: \fBprofile-07ae52cfc7f4eda1d13383c04564e3236e059993/source/\fR
+\fBusr/src/debug/glibc-2.32-10.fc33.x86_64/math/w_sqrt_compat.c\fR
+
+.nf
+        {
+0000730   if (__builtin_expect (isless (x, 0.0), 0) && _LIB_VERSION != _IEEE_)
+0000353     return __kernel_standard (x, x, 26); /* sqrt(negative) */
+        
+          return __ieee754_sqrt (x);
+0002799 }
+        libm_alias_double (__sqrt, sqrt)
+.fi
 
 .SH SEE ALSO
 .nh

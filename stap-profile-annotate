@@ -12,7 +12,6 @@ import sys
 import os
 import re
 import subprocess
-import tempfile
 from collections import defaultdict
 
 parser = argparse.ArgumentParser()
@@ -39,7 +38,7 @@ global unknown
 global kernel
 global user
 probe begin {
-  system(\"echo Starting stap data collector.\") # sent to stdout of stap-profile-annotate process
+  println(\"Starting stap data collector.\")
 }
 probe timer.profile {
   if (! user_mode()) {
@@ -233,9 +232,8 @@ def __main__():
         raise Exception("Required DEBUGINFOD_URLS is unset.")
     
     # Run SystemTap
-    (tmpfd,tmpfilename) = tempfile.mkstemp()
-    stap_cmd = "@prefix@/bin/stap"  # not @ bindir @ because autoconf expands that to shell $var expressions
-    stap_args = ['--ldd', '-o'+tmpfilename]
+    stap_cmd = "/usr/local/bin/stap"  # not @ bindir @ because autoconf expands that to shell $var expressions
+    stap_args = ['--ldd']
 
     if type(args.cmd) == list:
         stap_args += ['-c', ' '.join(args.cmd)]
@@ -260,45 +258,44 @@ def __main__():
     vprint(1,"Building stap data collector.")
     vprint(2,"%s %s" % (stap_cmd, stap_args))
 
-    try:
-        p = subprocess.Popen([stap_cmd] + stap_args)
-        p.communicate() # wait until process exits
-    except KeyboardInterrupt:
-        pass
-    p.kill()
-    
+    p = subprocess.Popen([stap_cmd] + stap_args, stdout=subprocess.PIPE)
     buildids = {} # dict from buildid hexcode to BuildIdProfile object
-    
+
     outp_begin = False
+    # Iterate over relevant output from the tapset
     proflines = 0
     totalhits = 0
+    while True:
+        try:
+            for line in p.stdout:
+                line = line.decode('utf-8').rstrip()
+                # All relevant output is after BEGIN and before END
+                if "BEGIN" in line:
+                    outp_begin = True
+                elif "END" in line:
+                    outp_begin = False
+                elif outp_begin == False:
+                    if line != "": # diagnostic message
+                        vprint(0,line)
+                else:
+                    try:
+                        proflines += 1
+                        (buildid,pc,hits) = line.split()
+                        vprint(3,"(%s,%s,%s)" % (buildid,pc,hits))
+                        totalhits += int(hits)
+                        bidp = buildids.setdefault(buildid, BuildIDProfile(buildid))
+                        # Accumulate hits for offset pc
+                        bidp.accumulate(int(pc),int(hits))
+                    except Exception as e: # parse error?
+                        vprint(2,e)
+            p.kill()
+            break
 
-    for line in open(tmpfilename,"r"): # read stap output, text mode
-        line = line.rstrip()
-        # All relevant output is after BEGIN and before END
-        if "BEGIN" in line:
-            outp_begin = True
-        elif "END" in line:
-            outp_begin = False
-        elif outp_begin == False:
-            if line != "": # diagnostic message
-                vprint(0,line)
-            else:
-                pass
-        else: # an actual profile record
-            try:
-                proflines += 1
-                (buildid,pc,hits) = line.split()
-                vprint(3,"(%s,%s,%s)" % (buildid,pc,hits))
-                totalhits += int(hits)
-                bidp = buildids.setdefault(buildid, BuildIDProfile(buildid))
-                # Accumulate hits for offset pc
-                bidp.accumulate(int(pc),int(hits))
-            except Exception as e: # parse error?
-                vprint(2,e)
-
-    os.remove(tmpfilename)
-        
+        except KeyboardInterrupt:
+            pass # don't abort the while loop - we may have additional stap outputs after a ^C
+        except:
+            pass # Swallow other errors
+            
     vprint(0, "Consumed %d profile records of %d hits across %d buildids." % (proflines, totalhits, len(buildids)))
         
     # Output source information for each buildid
