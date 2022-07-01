@@ -37,6 +37,19 @@
 #endif
 
 
+#define write_uleb128(ptr,val) ({	\
+  uint32_t valv = (val);		\
+  do					\
+    {					\
+      unsigned char c = valv & 0x7f;	\
+      valv >>= 7;			\
+      if (valv)				\
+	c |= 0x80;			\
+      *(ptr)++ = c;			\
+    }					\
+  while (valv);				\
+})
+
 
 extern "C" {
 #include <elfutils/libdwfl.h>

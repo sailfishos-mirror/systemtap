@@ -71,6 +71,15 @@ using namespace __gnu_cxx;
 
 static string TOK_KERNEL("kernel");
 
+// Function take the DW_AT_data_bit_offset and produces
+// what would be expected for the DW_AT_data_member_location.
+// This assume the containing type has natural alignment.
+static Dwarf_Word
+data_bit_to_byte_offset(Dwarf_Word byte_size, Dwarf_Word bit_offset)
+{
+	return  (((bit_offset/8) / byte_size) * byte_size);
+}
+
 
 dwflpp::dwflpp(systemtap_session & session, const string& name, bool kernel_p, bool debuginfo_needed):
   sess(session), module(NULL), module_bias(0), mod_info(NULL),
@@ -3474,14 +3483,34 @@ success:
     }
   else if (dwarf_attr_integrate (&die, DW_AT_data_bit_offset, &attr))
     {
-      /* dwarf_getlocation_addr doesn't understand DW_AT_data_bit offset */
-      Dwarf_Attribute data_member_location = attr;
-      data_member_location.code = DW_AT_data_member_location;
-      /* FIXME need to:
-	 -get the byte_size of the field
-	 -adjust valp to be the appropriate location
-	   (bit_offset / byte_size) * byte_size;
-      */
+      /* dwarf_getlocation_addr doesn't understand DW_AT_data_bit offset,
+       * so generate an equivalent DW_AT_data_member_location attr.
+       * FIXME:
+       *   properly clean up the allocated memory from mallocs
+       */
+      Dwarf_Attribute attr_mem;
+      Dwarf_Die typedie;
+      Dwarf_Word bit_offset, byte_size, member_location;
+      if (dwarf_attr_integrate (&die, DW_AT_data_bit_offset, &attr_mem) == NULL
+	  || dwarf_formudata (&attr_mem, &bit_offset) != 0
+          || dwarf_attr_die (&die, DW_AT_type, &typedie) == NULL
+	  || dwarf_aggregate_size (&typedie, &byte_size) != 0)
+	  throw SEMANTIC_ERROR (_F("cannot get bit field parameters: %s",
+				       dwarf_errmsg(-1)), c.tok);
+
+      member_location = data_bit_to_byte_offset(byte_size, bit_offset);
+      if (sess.verbose > 2)
+      clog << _F("member_location=%lu, bit_offset=%lu, byte_size=%lu\n",
+		 member_location, bit_offset, byte_size);
+      unsigned char *loc = (unsigned char *) malloc(8);
+      assert(loc);
+      write_uleb128(loc, member_location);
+
+      Dwarf_Attribute data_member_location = {
+	      .code = DW_AT_data_member_location, .form = DW_FORM_udata,
+	      .valp = loc, .cu = attr.cu
+      };
+
       dies.insert(dies.begin(), die);
       locs.insert(locs.begin(), data_member_location);
     }
@@ -3704,7 +3733,7 @@ get_bitfield (const target_symbol *e, Dwarf_Die *die, Dwarf_Word byte_size,
 			  dwarf_errmsg(-1)), e->tok);
 
     /* Convert the bit_offset from start of struct to start of field. */
-    Dwarf_Word member_location = (*bit_offset / byte_size) * byte_size;
+    Dwarf_Word member_location = data_bit_to_byte_offset(byte_size, *bit_offset);
     *bit_offset = *bit_offset - member_location;
   }
 }
