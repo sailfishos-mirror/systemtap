@@ -3735,6 +3735,12 @@ get_bitfield (const target_symbol *e, Dwarf_Die *die, Dwarf_Word byte_size,
     /* Convert the bit_offset from start of struct to start of field. */
     Dwarf_Word member_location = data_bit_to_byte_offset(byte_size, *bit_offset);
     *bit_offset = *bit_offset - member_location;
+#if __BYTE_ORDER == __BIG_ENDIAN
+    /* Convert the big-bit-endian bit offset to little-endian
+       suitable for shifts and masking.  */
+    *bit_offset = byte_size * 8 - *bit_offset - *bit_size;
+#endif
+
   }
 }
 
