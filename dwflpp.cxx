@@ -124,6 +124,7 @@ dwflpp::~dwflpp()
   delete_map(cu_lines_cache);
 
   delete_map(cu_entry_pc_cache);
+  delete_map(dw_at_member_location_cache);
 
   if (dwfl)
     dwfl_end(dwfl);
@@ -3485,8 +3486,6 @@ success:
     {
       /* dwarf_getlocation_addr doesn't understand DW_AT_data_bit offset,
        * so generate an equivalent DW_AT_data_member_location attr.
-       * FIXME:
-       *   properly clean up the allocated memory from mallocs
        */
       Dwarf_Attribute attr_mem;
       Dwarf_Die typedie;
@@ -3500,11 +3499,17 @@ success:
 
       member_location = data_bit_to_byte_offset(byte_size, bit_offset);
       if (sess.verbose > 2)
-      clog << _F("member_location=%lu, bit_offset=%lu, byte_size=%lu\n",
+	clog << _F("member_location=%lu, bit_offset=%lu, byte_size=%lu\n",
 		 member_location, bit_offset, byte_size);
-      unsigned char *loc = (unsigned char *) malloc(8);
-      assert(loc);
-      write_uleb128(loc, member_location);
+      unsigned char *loc;
+      if (dw_at_member_location_cache.find(member_location) != dw_at_member_location_cache.end()) {
+	      loc = dw_at_member_location_cache[member_location];
+      }else {
+	      loc = new unsigned char[16];
+	      dw_at_member_location_cache[member_location] = loc;
+	      // write_uleb128 modifies loc, so do after the cache assignment
+	      write_uleb128(loc, member_location);
+      }
 
       Dwarf_Attribute data_member_location = {
 	      .code = DW_AT_data_member_location, .form = DW_FORM_udata,
