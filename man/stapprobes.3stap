@@ -171,9 +171,9 @@ process.function, .statement	begin, end, error, never	process.function\fI*\fP
 process.mark\fI*\fP	timer
 \.function.callee	perf
 python2, python3	procfs
-	kernel.statement.absolute
-\fBAUTO-GENERATED-DWARF\fP	kernel.data
-	kprobe.function
+debuginfod	kernel.statement.absolute
+	kernel.data
+\fBAUTO-GENERATED-DWARF\fP	kprobe.function
 kernel.trace	process.statement.absolute
 	process.begin, .end
 	netfilter
@@ -467,6 +467,7 @@ process(PID).plt("NAME").return
 process(PID).statement("*@FILE.c:123")
 process(PID).statement("*@FILE.c:123").nearest
 process(PID).statement(ADDRESS).absolute
+debuginfod.process("PATH").**
 .ESAMPLE
 (See the USER-SPACE section below for more information on the process
 probes.)
@@ -949,6 +950,7 @@ process("PATH").function("*").return
 process("PATH").function("myfun").label("foo")
 process("PATH").function("foo").callee("bar")
 process("PATH").plt("NAME").return
+debuginfod.process("PATH").**
 process(PID).function("NAME")
 process(PID).statement("*@FILE.c:123")
 process(PID).plt("NAME")
@@ -962,6 +964,12 @@ to the working directory if they contain a "/" character, otherwise in
 .BR $PATH .
 If PATH names refer to scripts, the actual interpreters (specified in the
 script in the first line after the #! characters) are probed.
+In the debuginfod probe family
+.I PATH
+names likewise refer to executables, but are searched for in the currently
+defined
+.BR $DEBUGINFOD_URLS .
+
 
 .PP
 Tapset process probes placed in the special directory
@@ -1011,6 +1019,33 @@ If systemtap was invoked with the
 .IR \-c " or " \-x
 options, then process probes are restricted to the process
 hierarchy associated with the target process.
+
+.SS DEBUGINFOD
+These probes take the form
+.SAMPLE
+debuginfod.process("PATH").**
+.ESAMPLE
+.PP
+They are very similar to the process("PATH").** probe family.
+The key difference is that the process probes search for
+.I PATH
+in the host filesystem, while debuginfod probes
+search the current federation of debuginfod servers, using the
+currently defined
+.BR $DEBUGINFOD_URLS 
+(see
+.I debuginfod(8)
+).
+
+.PP
+In order to probe the contents of one or more elf/archive files
+and/or elf/archive containing directories, the below will create
+a debuginfod server which will scan and process the elf files within
+and prepare them for systemtap.
+.SAMPLE
+$ debuginfod [options] [-F -R -Z etc.] /path1 /path2
+$ env DEBUGINFOD_URLS=http://localhost:8002/ stap ...
+.ESAMPLE
 
 .SS JAVA
 Support for probing Java methods is available using Byteman as a

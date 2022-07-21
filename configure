@@ -11639,6 +11639,51 @@ else
 printf "%s\n" "$as_me: WARNING: debuginfod support disabled; some features may be unavailable." >&2;}
 fi
 
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for debuginfod_find_metadata in -ldebuginfod" >&5
+printf %s "checking for debuginfod_find_metadata in -ldebuginfod... " >&6; }
+if test ${ac_cv_lib_debuginfod_debuginfod_find_metadata+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-ldebuginfod  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+char debuginfod_find_metadata ();
+int
+main (void)
+{
+return debuginfod_find_metadata ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"
+then :
+  ac_cv_lib_debuginfod_debuginfod_find_metadata=yes
+else $as_nop
+  ac_cv_lib_debuginfod_debuginfod_find_metadata=no
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_debuginfod_debuginfod_find_metadata" >&5
+printf "%s\n" "$ac_cv_lib_debuginfod_debuginfod_find_metadata" >&6; }
+if test "x$ac_cv_lib_debuginfod_debuginfod_find_metadata" = xyes
+then :
+
+
+printf "%s\n" "#define METADATA_QUERY_ENABLED 1" >>confdefs.h
+
+
+fi
+
+
 # Check whether --enable-sqlite was given.
 if test ${enable_sqlite+y}
 then :
@@ -13732,12 +13777,12 @@ if test -n "$jsonc_CFLAGS"; then
     pkg_cv_jsonc_CFLAGS="$jsonc_CFLAGS"
  elif test -n "$PKG_CONFIG"; then
     if test -n "$PKG_CONFIG" && \
-    { { printf "%s\n" "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"json-c >= 0.11\""; } >&5
-  ($PKG_CONFIG --exists --print-errors "json-c >= 0.11") 2>&5
+    { { printf "%s\n" "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"json-c >= 0.13\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "json-c >= 0.13") 2>&5
   ac_status=$?
   printf "%s\n" "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
   test $ac_status = 0; }; then
-  pkg_cv_jsonc_CFLAGS=`$PKG_CONFIG --cflags "json-c >= 0.11" 2>/dev/null`
+  pkg_cv_jsonc_CFLAGS=`$PKG_CONFIG --cflags "json-c >= 0.13" 2>/dev/null`
 		      test "x$?" != "x0" && pkg_failed=yes
 else
   pkg_failed=yes
@@ -13749,12 +13794,12 @@ if test -n "$jsonc_LIBS"; then
     pkg_cv_jsonc_LIBS="$jsonc_LIBS"
  elif test -n "$PKG_CONFIG"; then
     if test -n "$PKG_CONFIG" && \
-    { { printf "%s\n" "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"json-c >= 0.11\""; } >&5
-  ($PKG_CONFIG --exists --print-errors "json-c >= 0.11") 2>&5
+    { { printf "%s\n" "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"json-c >= 0.13\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "json-c >= 0.13") 2>&5
   ac_status=$?
   printf "%s\n" "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
   test $ac_status = 0; }; then
-  pkg_cv_jsonc_LIBS=`$PKG_CONFIG --libs "json-c >= 0.11" 2>/dev/null`
+  pkg_cv_jsonc_LIBS=`$PKG_CONFIG --libs "json-c >= 0.13" 2>/dev/null`
 		      test "x$?" != "x0" && pkg_failed=yes
 else
   pkg_failed=yes
@@ -13775,9 +13820,9 @@ else
         _pkg_short_errors_supported=no
 fi
         if test $_pkg_short_errors_supported = yes; then
-	        jsonc_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors --cflags --libs "json-c >= 0.11" 2>&1`
+	        jsonc_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors --cflags --libs "json-c >= 0.13" 2>&1`
         else
-	        jsonc_PKG_ERRORS=`$PKG_CONFIG --print-errors --cflags --libs "json-c >= 0.11" 2>&1`
+	        jsonc_PKG_ERRORS=`$PKG_CONFIG --print-errors --cflags --libs "json-c >= 0.13" 2>&1`
         fi
 	# Put the nasty error message in config.log where it belongs
 	echo "$jsonc_PKG_ERRORS" >&5

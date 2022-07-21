@@ -571,21 +571,21 @@ struct dwarf_derived_probe: public generic_kprobe_derived_probe
 
   // Pattern registration helpers.
   static void register_statement_variants(match_node * root,
-					  dwarf_builder * dw,
-					  privilege_t privilege);
+                                         dwarf_builder * dw,
+                                         privilege_t privilege);
   static void register_function_variants(match_node * root,
-					 dwarf_builder * dw,
-					 privilege_t privilege);
+                                        dwarf_builder * dw,
+                                        privilege_t privilege);
   static void register_function_and_statement_variants(systemtap_session& s,
-						       match_node * root,
-						       dwarf_builder * dw,
-						       privilege_t privilege);
+                                                      match_node * root,
+                                                      dwarf_builder * dw,
+                                                      privilege_t privilege);
   static void register_sdt_variants(systemtap_session& s,
-				    match_node * root,
-				    dwarf_builder * dw);
+                                   match_node * root,
+                                   dwarf_builder * dw);
   static void register_plt_variants(systemtap_session& s,
-				    match_node * root,
-				    dwarf_builder * dw);
+                                   match_node * root,
+                                   dwarf_builder * dw);
   static void register_patterns(systemtap_session& s);
 
 protected:
@@ -13183,6 +13183,7 @@ register_standard_tapsets(systemtap_session & s)
   register_tapset_timers(s);
   register_tapset_netfilter(s);
   register_tapset_utrace(s);
+  register_tapset_debuginfod(s);
 
   // dwarf-based kprobe/uprobe parts
   dwarf_derived_probe::register_patterns(s);

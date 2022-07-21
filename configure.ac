@@ -219,6 +219,10 @@ else
   AC_MSG_WARN([debuginfod support disabled; some features may be unavailable.])
 fi
 
+AC_CHECK_LIB(debuginfod, debuginfod_find_metadata, [
+  AC_DEFINE([METADATA_QUERY_ENABLED], [1], [Define if a new enough version of elfutils exists to support metadata querying])
+])
+
 dnl Handle optional sqlite support.  If enabled/disabled by the user,
 dnl do the right thing.  If not specified by the user, use it if
 dnl present.
@@ -790,7 +794,7 @@ AM_CONDITIONAL([HAVE_PYTHON_PROBES],
 AC_ARG_ENABLE([monitor], AS_HELP_STRING([--disable-monitor],[Disable monitor]))
 if test "$enable_monitor" != "no"; then
 dnl Check for presence of json-c and ncurses for use in monitor mode
-PKG_CHECK_MODULES([jsonc], [json-c >= 0.11], [have_jsonc=yes], [have_jsonc=no])
+PKG_CHECK_MODULES([jsonc], [json-c >= 0.13], [have_jsonc=yes], [have_jsonc=no])
 PKG_CHECK_MODULES([ncurses], [ncurses], [have_ncurses=yes], [have_ncurses=no])
 if test "${have_jsonc}" = "yes" -a "${have_ncurses}" = yes; then
   AC_DEFINE([HAVE_MONITOR_LIBS],[1],[Define to 1 if json-c and ncurses libraries are installed])

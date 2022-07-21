@@ -8,6 +8,16 @@
   the codebase. RHEL7 and kernel version 3.10 are now the oldest supported versions 
   for Systemtap. 
 
+- The target(s) of process probes may be specified by path names,
+  which can be found on one or more debuginfod servers. This allows
+  for all versions of a program to be probed without needing to
+  determine the specific buildids. The following probes all of the 
+  curl versions matching /usr/*/curl (known to the debuginfod servers) 
+  running on the machine.
+  
+  # export DEBUGINFOD_URLS="URL1 URL2 ..."
+  # stap -e 'probe debuginfod.process("/usr/*/curl").begin { log("hi") }'
+
 * What's new in version 4.9, 2023-04-28
 
 - ISystemtap: the new interactive systemtap jupyter kernel. This provides
