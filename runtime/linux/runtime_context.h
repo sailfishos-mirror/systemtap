@@ -49,13 +49,18 @@ static bool _stp_runtime_context_trylock(void)
 {
 	bool locked;
 
+	/* Need to disable preemption because of the smp_processor_id() call
+	   in _stp_runtime_get_context(). */
+	preempt_disable();
+
 	/* fast path to ignore new online CPUs without percpu context memory
 	 * allocations. this also serves as an extra safe guard for NULL context
 	 * pointers. */
-	if (unlikely(_stp_runtime_get_context() == NULL))
+	if (unlikely(_stp_runtime_get_context() == NULL)) {
+		preempt_enable_no_resched();
 		return false;
+	}
 
-	preempt_disable();
 	locked = atomic_add_unless(&_stp_contexts_busy_ctr, 1, INT_MAX);
 	if (!locked)
 		preempt_enable_no_resched();
