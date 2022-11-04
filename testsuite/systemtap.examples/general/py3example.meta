@@ -12,4 +12,4 @@ scope: system-wide
 description: A python support tapset that displays backtraces and variable values
 test_support: stap -p2 pyexample.stp python3
 test_check: stap -p4 pyexample.stp python3
-test_installcheck: PYTHONPATH=$PYEXECDIR stap -g --suppress-time-limits -c '/usr/bin/python3 -m HelperSDT pyexample.py 35' pyexample.stp python3
+test_installcheck: PYTHONPATH=$PY3EXECDIR stap -g --suppress-time-limits -c '/usr/bin/python3 -m HelperSDT pyexample.py 35' pyexample.stp python3
