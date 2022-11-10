@@ -121,7 +121,7 @@ m     stapdev  stapdev
 
 
 Name: systemtap
-Version: 4.8
+Version: 4.9
 Release: 1%{?release_override}%{?dist}
 # for version, see also configure.ac
 
