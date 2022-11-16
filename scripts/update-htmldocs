@@ -27,10 +27,15 @@ DIR=`mktemp -d stapdocsXXX -p /tmp/`; cd $DIR
 
 # We'll need to build the latest stap with docs, ensure a check that everything built properly or bail
 
-git clone --depth 1 git://sourceware.org/git/systemtap.git
+# TODO Could set BRANCH from cmdline arg
+#BRANCH=master
+# PRERELEASE
+BRANCH=release-4.8
+git clone --branch $BRANCH --depth 1 git://sourceware.org/git/systemtap.git
 
 # Checkout the htdocs CVS
 
+export CVS_RSH=ssh
 cvs -d :ext:sourceware.org:/cvs/systemtap checkout htdocs
 
 BASEDIR=`pwd`
