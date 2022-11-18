@@ -2216,7 +2216,7 @@ void add_global_var_display (systemtap_session& s)
 	{
 	  derived_probe* dp = dps[i];
 	  s.probes.push_back (dp);
-	  dp->join_group (s);
+    dp->join_group (s);
 
           // Repopulate symbol and type info
           symresolution_info sym (s);
@@ -2497,7 +2497,7 @@ static void monitor_mode_write(systemtap_session& s)
 
   derived_probe* dp = dps[0];
   s.probes.push_back (dp);
-  dp->join_group (s);
+  // PR29801: NB: The probe is added to the group alongside the other synthetic derived_probe objects in semantic_pass_optimize1
 
   // Repopulate symbol info
   symresolution_info sym (s, /* omniscient-unmangled */ true);
@@ -2521,7 +2521,7 @@ static void setup_timeout(systemtap_session& s)
 
   derived_probe* dp = dps[0];
   s.probes.push_back (dp);
-  dp->join_group (s);
+  // PR29801: NB: The probe is added to the group alongside the other synthetic derived_probe objects in semantic_pass_optimize1
 
   // Repopulate symbol info
   symresolution_info sym (s);
@@ -5775,18 +5775,16 @@ semantic_pass_optimize1 (systemtap_session& s)
     {
       derived_probe* p = s.probes[i];
 
-      if (p->synthetic)
+      if (p->synthetic || s.empty_probes.find(p) == s.empty_probes.end())
         {
           non_empty_probes.push_back(p);
+          if(p->group)
+            s.print_warning(_F("Probe '%s' is already in a group, but is joining another",
+                           ((string) p->locations[0]->components[0]->functor).c_str()), p->tok);
           p->join_group(s);
         }
       else if (s.unoptimized || s.dump_mode)
         p->join_group(s);
-      else if (s.empty_probes.find(p) == s.empty_probes.end())
-        {
-          non_empty_probes.push_back(p);
-          p->join_group(s);
-        }
       else if (!s.timing && // PR10070
                !(p->base->tok->location.file->synthetic)) // don't warn for synthetic probes   
         s.print_warning(_F("Probe '%s' has been elided", 
