@@ -1,18 +1,17 @@
 #!/usr/bin/bash
 
-#check for man2html
-#TODO perhaps wget, untar, and automatically use, then remove if we want?
-# http://dcssrv1.oit.uci.edu/indiv/ehood/tar/man2html3.0.1.tar.gz
-
 echo This script regenerates the 'sourceware.org/systemtap/{tapset,man,...}' docs
 echo from a NEW checkout of git main systemtap and a partial build.
 echo
 echo Consider running this script under ssh-agent, with an ssh-add-ed identity,
-echo in order to prevent interactive blockage at the many ssh/cvs operations.
+echo in order to prevent interactive blockage at the many ssh/git operations.
 echo
 echo Count to ten ... slowly ...
 sleep 10
 
+#check for man2html
+#TODO perhaps wget, untar, and automatically use, then remove if we want?
+# http://dcssrv1.oit.uci.edu/indiv/ehood/tar/man2html3.0.1.tar.gz
 
 if which man2html &>/dev/null; then
  :
@@ -33,10 +32,9 @@ DIR=`mktemp -d stapdocsXXX -p /tmp/`; cd $DIR
 BRANCH=release-4.8
 git clone --branch $BRANCH --depth 1 git://sourceware.org/git/systemtap.git
 
-# Checkout the htdocs CVS
+# Checkout the htdocs CVS^H^H^Hgit
 
-export CVS_RSH=ssh
-cvs -d :ext:sourceware.org:/cvs/systemtap checkout htdocs
+git clone ssh://sourceware.org/git/systemtap-htdocs.git htdocs
 
 BASEDIR=`pwd`
 cd systemtap
@@ -57,35 +55,34 @@ fi
 ### LANGREF
 cp doc/langref.pdf $BASEDIR/htdocs/
 
-rm $BASEDIR/htdocs/langref/*
 cd $BASEDIR/htdocs
-cvs rm && cvs commit -m 'removed langref/* bits'
+git rm $BASEDIR/htdocs/langref/*
+git commit -m 'removed langref/* bits'
 
 cd $BASEDIR/htdocs/langref
 htlatex $BASEDIR/systemtap/doc/langref.tex "html,2"
 cp langref.html index.html
 cd $BASEDIR/htdocs/
-cvs add langref/*.html
-cvs add langref/*.css
-cvs commit -m 'add new langref/*'
+git add langref/*.html
+git add langref/*.css
+git commit -m 'add new langref/*'
 cd -
-
 
 ### TUTORIAL
 cp $BASEDIR/systemtap/build/doc/tutorial.pdf $BASEDIR/htdocs/
 
-rm -f $BASEDIR/htdocs/tutorial/*
 cd $BASEDIR/htdocs
-cvs rm && cvs commit -m 'removed tutorial/* bits'
+git rm $BASEDIR/htdocs/tutorial/*
+git commit -m 'removed tutorial/* bits'
 
 cd $BASEDIR/htdocs/tutorial
 htlatex $BASEDIR/systemtap/doc/tutorial.tex "html,2"
 cp tutorial.html index.html
 
 cd $BASEDIR/htdocs
-cvs add tutorial/*.html
-cvs add tutorial/*.css
-cvs commit -m 'add new tutorial/*'
+git add tutorial/*.html
+git add tutorial/*.css
+git commit -m 'add new tutorial/*'
 
 # beginners guide
 # we require xmlto version newer than 0.0.23-3
@@ -100,6 +97,7 @@ cp SystemTap_Beginners_Guide.pdf $BASEDIR/htdocs/
 rm $BASEDIR/htdocs/SystemTap_Beginners_Guide/*.html
 cp -R SystemTap_Beginners_Guide $BASEDIR/htdocs/
 #echo 'systemtap_beginners_guide recursive cp'
+
 # tapsets 
 cd ../..
 
@@ -112,7 +110,7 @@ rm $BASEDIR/htdocs/tapsets/*.html
 cp -R $BASEDIR/systemtap/build/doc/SystemTap_Tapset_Reference/tapsets/*.html $BASEDIR/htdocs/tapsets/
 
 cd $BASEDIR/htdocs
-cvs add tapsets/*.html && cvs commit -m 'add new tapsets/*.html'
+git add tapsets/*.html && git commit -m 'add new tapsets/*.html'
 
 #echo 'tapsets html cp'
 
@@ -120,14 +118,17 @@ cvs add tapsets/*.html && cvs commit -m 'add new tapsets/*.html'
 # run gitweb.php script?
 # run examples-index-gen.pl script if needed?
 
-rm man/*.html && cvs rm * && cvs commit -m 'removed man pages'
+cd $BASEDIR/htdocs
+git rm man/*.html && git commit -m 'removed man pages'
 
 cd $BASEDIR/htdocs/man
 
 ./REGEN.sh $BASEDIR/systemtap/local
 
 cd $BASEDIR/htdocs
-cvs add man/*.html && cvs commit -m 'added new man pages'
+git add man/*.html && git commit -m 'added new man pages'
 echo -- $BASEDIR
 
+echo Documentation generated, now make sure to cd $BASEDIR/htdocs
+echo then review the results and git push to update the website.
 
