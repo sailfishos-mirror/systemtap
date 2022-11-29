@@ -10,7 +10,7 @@ if { $res != "" } {
     pass "$test: compiled $test.c"
 }
 
-if { ![catch { exec eu-readelf -w $test | grep GNU_entry_value }] } {
+if { ![catch { exec eu-readelf -w $test | grep entry_value: }] } {
     stap_run $test no_load $all_pass_string $srcdir/$subdir/$test.stp -c ./${test} -w
 } else {
     untested "$test: no DW_OP_GNU_entry_value found"

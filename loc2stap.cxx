@@ -23,6 +23,11 @@
 #define DW_OP_GNU_entry_value 0xf3
 #endif
 
+#if ! _ELFUTILS_PREREQ(0, 171)
+#define DW_OP_entry_value 0xa3
+#define DW_OP_implicit_pointer 0xa0
+#endif
+
 #define N_(x) x
 
 
@@ -372,7 +377,7 @@ location_context::translate (const Dwarf_Op *expr, const size_t len,
 	      DIE ("operations follow DW_OP_implicit_value");
 
 	    if (implicit_pointer != NULL)
-	      DIE ("operations follow DW_OP_GNU_implicit_pointer");
+	      DIE ("operations follow DW_OP implicit_pointer");
 	  }
 
 	switch (expr[i].atom)
@@ -662,6 +667,7 @@ location_context::translate (const Dwarf_Op *expr, const size_t len,
 
 #if _ELFUTILS_PREREQ (0, 149)
 	  case DW_OP_GNU_implicit_pointer:
+	  case DW_OP_implicit_pointer:
 	    implicit_pointer = &expr[i];
 	    /* Fake top of stack: implicit_pointer being set marks it.  */
 	    PUSH(NULL);
@@ -684,10 +690,11 @@ location_context::translate (const Dwarf_Op *expr, const size_t len,
 	    break;
 
 	  case DW_OP_GNU_entry_value:
+	  case DW_OP_entry_value:
 	    {
 	      expression *result = handle_GNU_entry_value (expr[i]);
 	      if (result == NULL)
-	        DIE("DW_OP_GNU_entry_value unable to resolve value");
+	        DIE("DW_OP entry_value unable to resolve value");
 	      PUSH(result);
 	    }
 	    break;
@@ -1248,7 +1255,8 @@ location_context::location_relative (const Dwarf_Op *expr, size_t len,
 	  break;
 
 	case DW_OP_GNU_entry_value:
-	  DIE ("unhandled DW_OP_GNU_entry_value");
+	case DW_OP_entry_value:
+	  DIE ("unhandled DW_OP entry_value");
 	  break;
 
 	default:
