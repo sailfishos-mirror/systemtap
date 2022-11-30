@@ -139,6 +139,13 @@ make_any_make_cmd(systemtap_session& s, const string& dir, const string& target)
     make_cmd.push_back("CONFIG_MODVERSIONS=");
   // Note: can re-enable from command line with "-B CONFIG_MODVERSIONS=y".
 
+  // PR29837: suppress the kernel version warning if -w is given
+  if (s.suppress_warnings)
+  {
+    make_cmd.push_back("CC_VERSION_TEXT=foo");
+    make_cmd.push_back("CONFIG_CC_VERSION_TEXT=foo");
+  }
+
   // Add architecture, except for old powerpc (RHBZ669082)
   if (s.architecture != "powerpc" ||
       (strverscmp (s.kernel_base_release.c_str(), "2.6.15") >= 0))

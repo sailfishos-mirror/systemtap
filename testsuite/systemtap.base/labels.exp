@@ -138,9 +138,6 @@ foreach runtime [get_runtime_list] {
 	-re {^label=init_an_int_again\r\n} { incr ok; exp_continue }
 	-re {^label=ptr_inited\r\n} { incr ok; exp_continue }
         -re {^WARNING: Child process exited with status [0-9]+\r\n} { exp_continue }
-        -re {^warning: the compiler differs from the one used to build the kernel\r\n} { exp_continue }
-        -re {^[^\r\n]*The kernel was built by[^\r\n]*\r\n} { exp_continue }
-        -re {^[^\r\n]*You are using[^\r\n]*gcc[^\r\n]*\r\n} { exp_continue }
 	timeout { fail "$test (timeout)" }
 	eof { }
     }
