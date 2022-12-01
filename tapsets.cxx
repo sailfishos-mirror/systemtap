@@ -1256,7 +1256,11 @@ dwarf_query::handle_query_module()
   // in the symbol table but not in dwarf and minidebuginfo is
   // located in the gnu_debugdata section, alias_dupes checking
   // is done before adding any probe points
-  if(!pending_interrupts)
+  // PR29676.   Some probes require additional debuginfo
+  // to expand wildcards (ex. .label, .callee). Since the debuginfo is
+  // not available, don't bother looking in the symbol table for these results.
+  // This can result in 0 results, if there is no dwarf info present
+  if(!pending_interrupts && !(has_label || has_callee || has_callees_num))
     query_module_symtab();
 }
 
