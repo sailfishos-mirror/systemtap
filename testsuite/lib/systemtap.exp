@@ -310,8 +310,6 @@ proc setup_systemtap_environment {} {
     # two independent timeout mechanisms do not coincide.
     puts $chan "--rlimit-cpu=850"
     puts $chan "-E 'probe timer.s(900){error(\"probe timeout after 15 minutes\")}'"
-    # PR29837: Suppress the kernel version warning across whole the testsuite.
-    puts $chan "-BCC_VERSION_TEXT=foo -BCONFIG_CC_VERSION_TEXT=foo"
     close $chan
 
     # Zap any previous uprobes, if any
