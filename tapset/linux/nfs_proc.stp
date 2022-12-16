@@ -1442,10 +1442,11 @@ probe nfs.proc3.commit_done = kernel.function("nfs3_commit_done") !,
 		valid = @_nfs_data_valid($data)
 	}
 	else {
-		server_ip = @_nfs_data_server_ip($task->tk_calldata)
-		prot = @_nfs_data_prot($task->tk_calldata)
-		count = @_nfs_data_res_count($task->tk_calldata)
-		valid = @_nfs_data_valid($task->tk_calldata)
+                _tk_calldata=@choose_defined($task->tk_calldata, @cast($task, "rpc_task", "kernel:nfs")->tk_calldata)
+                server_ip = @_nfs_data_server_ip(_tk_calldata)
+                prot = @_nfs_data_prot(_tk_calldata)
+                count = @_nfs_data_res_count(_tk_calldata)
+                valid = @_nfs_data_valid(_tk_calldata)
 	}
 	timestamp = 0
 	version = 3

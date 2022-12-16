@@ -13,7 +13,7 @@
 
 @define _nfs_data_server_ip(nfs_data)
 %(
-	( get_ip(&@nfs_data->task) )
+	( get_ip(@choose_defined(&@nfs_data->task, &@cast(@nfs_data, "nfs_commit_data", "kernel:nfs")->task)) )
 %)
 
 @define _nfs_data_prot(nfs_data)
