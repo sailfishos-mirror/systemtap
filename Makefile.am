@@ -63,6 +63,11 @@ stap_SOURCES += interactive.cxx
 stap_LDADD += @READLINE_LIBS@
 endif
 
+if HAVE_JSON_C
+stap_SOURCES += language-server/stap-language-server.cxx language-server/stap-code-completion.cxx language-server/jsonrpc.cxx
+stap_LDADD += $(jsonc_LIBS)
+endif
+
 if HAVE_BPF_DECLS
 stap_SOURCES += bpf-base.cxx bpf-bitset.cxx bpf-translate.cxx bpf-opt.cxx
 endif

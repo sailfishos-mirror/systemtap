@@ -68,6 +68,7 @@ enum {
   LONG_OPT_INTERACTIVE,
   LONG_OPT_RUN_EXAMPLE,
   LONG_OPT_NO_GLOBAL_VAR_DISPLAY,
+  LONG_OPT_LANGUAGE_SERVER,
 };
 
 // NB: when adding new options, consider very carefully whether they

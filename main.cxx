@@ -30,6 +30,9 @@
 #ifdef HAVE_LIBREADLINE
 #include "interactive.h"
 #endif
+
+#include "language-server/stap-language-server.h"
+
 #include "bpf.h"
 
 #if ENABLE_NLS
@@ -1479,6 +1482,17 @@ main (int argc, char * const argv [])
     if (rc != 0)
       return rc;
 
+    #ifdef HAVE_JSON_C
+    if(s.language_server_mode){
+      // The language server commuinicates with the client via stdio, so the systemtap verbosity should be 0
+      // Instead the LS verbosity should be set
+      s.language_server = new language_server(&s, s.verbose);
+      s.verbose = 0;
+      for(int i = 0; i < 5; i++)
+        s.perpass_verbose[i] = 0;
+    }
+    #endif
+
     // Create the temp dir.
     s.create_tmp_dir();
 
@@ -1528,6 +1542,14 @@ main (int argc, char * const argv [])
     set<systemtap_session*> sessions;
     for (unsigned i = 0; i < targets.size(); ++i)
       sessions.insert(targets[i]->get_session());
+
+    if(s.language_server_mode){
+      #ifdef HAVE_JSON_C
+        int r = s.language_server->run();
+        delete s.language_server;
+        return r;
+      #endif
+    }
 
     // FIXME: For now, only attempt local interactive use.
     if (s.interactive_mode && fake_remote)

@@ -191,6 +191,8 @@ systemtap_session::systemtap_session ():
   timeout = 0;
   use_bpf_raw_tracepoint = false;
   symbol_resolver = 0;
+  language_server = 0;
+  language_server_mode = false;
 
   // PR12443: put compiled-in / -I paths in front, to be preferred during 
   // tapset duplicate-file elimination
@@ -381,6 +383,8 @@ systemtap_session::systemtap_session (const systemtap_session& other,
   no_global_var_display = other.no_global_var_display;
   pass_1a_complete = other.pass_1a_complete;
   timeout = other.timeout;
+  language_server_mode = other.language_server_mode;
+  language_server = other.language_server;
   // don't bother copy typequery_memo
 
   include_path = other.include_path;
@@ -549,6 +553,9 @@ systemtap_session::version ()
 #endif
 #ifdef HAVE_MONITOR_LIBS
        << " MONITOR_LIBS"
+#endif
+#ifdef HAVE_JSON_C
+       << " JSON_C"
 #endif
        << endl;
 }
@@ -729,6 +736,10 @@ systemtap_session::usage (int exitcode)
 #if HAVE_MONITOR_LIBS
     "   --monitor=INTERVAL\n"
     "              enables runtime interactive monitoring\n"
+#endif
+#ifdef HAVE_JSON_C
+     "   --language-server\n"
+     "              starts a systemtap language server\n"
 #endif
     , compatible.c_str()) << endl
   ;
@@ -1679,6 +1690,10 @@ systemtap_session::parse_cmdline (int argc, char * const argv [])
 	  no_global_var_display = true;
 	  break;
 
+  case LONG_OPT_LANGUAGE_SERVER:
+    language_server_mode = true;
+    break;
+
 	case '?':
 	  // Invalid/unrecognized option given or argument required, but
 	  // not given. In both cases getopt_long() will have printed the
@@ -1789,10 +1804,10 @@ systemtap_session::check_options (int argc, char * const argv [])
         args.push_back (string (argv[i]));
     }
 
-  // We don't need a script with --list-servers, --trust-servers, or any dump mode
+  // We don't need a script with --list-servers, --trust-servers, or any dump mode, or a lang-server
   bool need_script = server_status_strings.empty () &&
                      server_trust_spec.empty () &&
-                     !dump_mode && !interactive_mode;
+                     !dump_mode && !interactive_mode && !language_server_mode;
 
   if (benchmark_sdt_loops > 0 || benchmark_sdt_threads > 0)
     {
@@ -1835,13 +1850,18 @@ systemtap_session::check_options (int argc, char * const argv [])
       cerr << _("Cannot specify -i with -l/-L/--dump-* switches.") << endl;
       usage(1);
     }
+  if (dump_mode && language_server_mode)
+    {
+      cerr << _("Cannot specify --language-server with -l/-L/--dump-* switches.") << endl;
+      usage(1);
+    }
   if (dump_mode && monitor)
     {
       cerr << _("Cannot specify --monitor with -l/-L/--dump-* switches.") << endl;
       usage(1);
     }
   // FIXME: we need to think through other options that shouldn't be
-  // used with '-i'.
+  // used with '-i' and '--language-server'.
 
   // ignore any -E bits in list modes; their presence could flip the
   // process result code even if list results are empty
@@ -1869,6 +1889,14 @@ systemtap_session::check_options (int argc, char * const argv [])
   if (monitor)
     {
       print_warning("Monitor mode is not supported by this version of systemtap");
+      exit(1);
+    }
+#endif
+
+#if ! HAVE_JSON_C
+  if (language_server_mode)
+    {
+      print_warning("Language server mode is not supported by this version of systemtap");
       exit(1);
     }
 #endif

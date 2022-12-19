@@ -76,6 +76,7 @@ struct semantic_error;
 struct module_cache;
 struct update_visitor;
 struct compile_server_cache;
+class language_server;
 
 // XXX: a generalized form of this descriptor could be associated with
 // a vardecl instead of out here at the systemtap_session level.
@@ -483,6 +484,9 @@ public:
   // PR25841, for early probe-derivation-time symbol resolution
   symresolution_info* symbol_resolver; // may be NULL
   
+  bool language_server_mode;
+  class language_server* language_server;
+
   // NB: It is very important for all of the above (and below) fields
   // to be cleared in the systemtap_session ctor (session.cxx).
 

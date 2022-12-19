@@ -64,5 +64,6 @@ struct option stap_long_options[] = {
   { "interactive",                 no_argument,       NULL, LONG_OPT_INTERACTIVE},
   { "example",                     no_argument,       NULL, LONG_OPT_RUN_EXAMPLE},
   { "no-global-var-display",       no_argument,       NULL, LONG_OPT_NO_GLOBAL_VAR_DISPLAY},
+  { "language-server",             no_argument,       NULL, LONG_OPT_LANGUAGE_SERVER},
   { NULL, 0, NULL, 0 }
 };

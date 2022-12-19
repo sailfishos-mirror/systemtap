@@ -793,8 +793,12 @@ PKG_CHECK_MODULES([ncurses], [ncurses], [have_ncurses=yes], [have_ncurses=no])
 if test "${have_jsonc}" = "yes" -a "${have_ncurses}" = yes; then
   AC_DEFINE([HAVE_MONITOR_LIBS],[1],[Define to 1 if json-c and ncurses libraries are installed])
 fi
+if test "${have_jsonc}" = "yes"; then
+  AC_DEFINE([HAVE_JSON_C],[1],[Define to 1 if the json-c library is installed])
+fi
 fi
 AM_CONDITIONAL([HAVE_MONITOR_LIBS], [test "${have_jsonc}" = "yes" -a "${have_ncurses}" = "yes" -a "$enable_monitor" != "no"])
+AM_CONDITIONAL([HAVE_JSON_C], [test "${have_jsonc}" = "yes"])
 
 AC_CACHE_CHECK([for assembler .section "?" flags support], stap_cv_sectionq, [
 old_CFLAGS="$CFLAGS"
