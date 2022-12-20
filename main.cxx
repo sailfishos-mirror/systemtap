@@ -31,7 +31,9 @@
 #include "interactive.h"
 #endif
 
+#ifdef HAVE_JSON_C
 #include "language-server/stap-language-server.h"
+#endif
 
 #include "bpf.h"
 

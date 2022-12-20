@@ -270,6 +270,7 @@ void lsp_method_text_document_completion::complete_path(string path)
         const char *PATH = getenv("PATH");
         if (PATH)
             tokenize(string(PATH), dirs, string(":"));
+        dirs.push_back(""); // Look at the current dir as well
 
         if (last_slash != string::npos)
             partial_path = path.substr(0, last_slash + 1);
@@ -283,7 +284,7 @@ void lsp_method_text_document_completion::complete_path(string path)
             if (!partial_path.empty() && startswith(partial_path, dir.c_str()))
                 dir = partial_path;
             else
-                dir += partial_path;
+                dir += (dir.back() != '/' ? "/" : "") + partial_path;
 
             for (const auto &file : std::filesystem::directory_iterator(dir))
             {
