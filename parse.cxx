@@ -16,6 +16,10 @@
 #include "util.h"
 #include "stringtable.h"
 
+#ifdef HAVE_JSON_C
+#include "language-server/stap-language-server.h"
+#endif
+
 #include <iostream>
 
 #include <fstream>
@@ -1207,6 +1211,11 @@ parser::next ()
     throw PARSE_ERROR (_("unexpected end-of-file"));
 
   last_t = next_t;
+  #ifdef HAVE_JSON_C
+  if(this->session.language_server_mode)
+    this->session.language_server->code_completion_target = last_t;
+  #endif
+
   // advance by zeroing next_t
   next_t = 0;
   return last_t;
@@ -1221,6 +1230,10 @@ parser::peek ()
 
   // don't advance by zeroing next_t
   last_t = next_t;
+  #ifdef HAVE_JSON_C
+  if(this->session.language_server_mode)
+    this->session.language_server->code_completion_target = last_t;
+  #endif
   return next_t;
 }
 
@@ -1233,6 +1246,10 @@ parser::swallow ()
   delete last_t;
   // advance by zeroing next_t
   last_t = next_t = 0;
+  #ifdef HAVE_JSON_C
+  if(this->session.language_server_mode)
+    this->session.language_server->code_completion_target = last_t;
+  #endif
 }
 
 
@@ -1973,6 +1990,13 @@ parser::parse ()
 	{
 	  print_error (pe, errs_as_warnings);
 
+    #ifdef HAVE_JSON_C
+    // This is the spot where the parsing failed i.e the place to complete, so send the data up
+    if(this->session.language_server_mode){
+      this->session.language_server->code_completion_context = context;
+      throw pe;
+    }
+    #endif
           // XXX: do we want tok_junk to be able to force skip_some behaviour?
           if (pe.skip_some) // for recovery
             // Quietly swallow all tokens until the next keyword we can start parsing from.

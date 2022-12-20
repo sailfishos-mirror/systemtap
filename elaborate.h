@@ -391,6 +391,7 @@ match_key
 };
 
 
+class lsp_method_text_document_completion; // Used for the language-server
 class
 match_node
 {
@@ -422,6 +423,8 @@ match_node
 
 private:
   privilege_t privilege;
+
+  friend class lsp_method_text_document_completion;
 };
 
 // ------------------------------------------------------------------------

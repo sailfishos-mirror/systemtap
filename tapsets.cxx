@@ -5696,7 +5696,8 @@ dwarf_derived_probe::dwarf_derived_probe(interned_string funcname,
       // Save the local variables for listing mode. If the scope_die is null,
       // local vars aren't accessible, so no need to invoke saveargs (PR10820).
       if (!null_die(scope_die) &&
-          q.sess.dump_mode == systemtap_session::dump_matched_probes_vars)
+          (q.sess.dump_mode == systemtap_session::dump_matched_probes_vars || 
+          q.sess.language_server_mode))
         saveargs(q, scope_die, dwfl_addr);
   }
 
