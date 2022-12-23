@@ -39,3 +39,7 @@ stappaths.7
 .zanata-cache
 build-log.txt
 macros.systemtap
+language-server/clients/vscode/out
+node_modules
+package-lock.json
+language-server/clients/eclipse/bin
