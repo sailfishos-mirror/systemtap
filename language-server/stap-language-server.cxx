@@ -332,14 +332,26 @@ int language_server::run()
         unique_ptr<jsonrpc_response> response;
 
         try
-        {
+          {
             request = unique_ptr<jsonrpc_request>(conn.get_request());
-
+          }
+        catch (jsonrpc_error &e)
+          {
+            // If the request parse process fails, e.g.
+            // % stap --language-server << /dev/null
             if (verbose)
-                cerr << "---> " << request->method << "(" << (request->is_notification() ? "NOTIF" : "REQ") << ")" << json_object_to_json_string(request->params) << endl;
+                cerr << "Error: " << e.what() << endl;
+            running = false; // shut things down
+            continue;
+          }
+        
+        if (verbose)
+          cerr << "---> " << request->method << "(" << (request->is_notification() ? "NOTIF" : "REQ") << ")" << json_object_to_json_string(request->params) << endl;
 
+        try
+          {
             response = unique_ptr<jsonrpc_response>(this->handle_lsp_method(request.get()));
-        }
+          }
         catch (jsonrpc_error &e)
         {
             if (verbose)
