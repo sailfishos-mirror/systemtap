@@ -73,6 +73,9 @@
    PKGLIBDIR) */
 #undef HAVE_JAVA
 
+/* Define to 1 if the json-c library is installed */
+#undef HAVE_JSON_C
+
 /* Define to 1 if debuginfod is enabled. */
 #undef HAVE_LIBDEBUGINFOD
 

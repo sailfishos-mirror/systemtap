@@ -2,7 +2,7 @@
 ## process this file with automake to produce Makefile.in
 
 # we don't maintain a ChangeLog, which makes us non-GNU -> foreign
-AUTOMAKE_OPTIONS = no-dist foreign
+AUTOMAKE_OPTIONS = no-dist foreign subdir-objects
 
 pkglibexecdir = ${libexecdir}/${PACKAGE}
 oldincludedir = ${includedir}/sys

@@ -682,6 +682,8 @@ selinux_CFLAGS
 HAVE_BPF_DECLS_FALSE
 HAVE_BPF_DECLS_TRUE
 support_section_question
+HAVE_JSON_C_FALSE
+HAVE_JSON_C_TRUE
 HAVE_MONITOR_LIBS_FALSE
 HAVE_MONITOR_LIBS_TRUE
 ncurses_LIBS
@@ -6719,11 +6721,11 @@ if test x$ac_prog_cxx_stdcxx = xno
 then :
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for $CXX option to enable C++11 features" >&5
 printf %s "checking for $CXX option to enable C++11 features... " >&6; }
-if test ${ac_cv_prog_cxx_11+y}
+if test ${ac_cv_prog_cxx_cxx11+y}
 then :
   printf %s "(cached) " >&6
 else $as_nop
-  ac_cv_prog_cxx_11=no
+  ac_cv_prog_cxx_cxx11=no
 ac_save_CXX=$CXX
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -6765,11 +6767,11 @@ if test x$ac_prog_cxx_stdcxx = xno
 then :
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for $CXX option to enable C++98 features" >&5
 printf %s "checking for $CXX option to enable C++98 features... " >&6; }
-if test ${ac_cv_prog_cxx_98+y}
+if test ${ac_cv_prog_cxx_cxx98+y}
 then :
   printf %s "(cached) " >&6
 else $as_nop
-  ac_cv_prog_cxx_98=no
+  ac_cv_prog_cxx_cxx98=no
 ac_save_CXX=$CXX
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -13858,6 +13860,11 @@ if test "${have_jsonc}" = "yes" -a "${have_ncurses}" = yes; then
 printf "%s\n" "#define HAVE_MONITOR_LIBS 1" >>confdefs.h
 
 fi
+if test "${have_jsonc}" = "yes"; then
+
+printf "%s\n" "#define HAVE_JSON_C 1" >>confdefs.h
+
+fi
 fi
  if test "${have_jsonc}" = "yes" -a "${have_ncurses}" = "yes" -a "$enable_monitor" != "no"; then
   HAVE_MONITOR_LIBS_TRUE=
@@ -13865,6 +13872,14 @@ fi
 else
   HAVE_MONITOR_LIBS_TRUE='#'
   HAVE_MONITOR_LIBS_FALSE=
+fi
+
+ if test "${have_jsonc}" = "yes"; then
+  HAVE_JSON_C_TRUE=
+  HAVE_JSON_C_FALSE='#'
+else
+  HAVE_JSON_C_TRUE='#'
+  HAVE_JSON_C_FALSE=
 fi
 
 
@@ -14884,6 +14899,10 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${HAVE_MONITOR_LIBS_TRUE}" && test -z "${HAVE_MONITOR_LIBS_FALSE}"; then
   as_fn_error $? "conditional \"HAVE_MONITOR_LIBS\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${HAVE_JSON_C_TRUE}" && test -z "${HAVE_JSON_C_FALSE}"; then
+  as_fn_error $? "conditional \"HAVE_JSON_C\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${HAVE_BPF_DECLS_TRUE}" && test -z "${HAVE_BPF_DECLS_FALSE}"; then
