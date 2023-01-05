@@ -39,15 +39,15 @@ proc stap_compile { TEST_NAME compile script args } {
     # compile, fail.
     if {$compile_errors > 0} {
 	if {$compile == 1} {
-	    fail "$TEST_NAME compilation failed"
+	    fail "$TEST_NAME compilation"
 	} else {
-	    pass "$TEST_NAME compilation failed correctly"
+	    xfail "$TEST_NAME compilation"
 	}
     } else {
 	if {$compile == 1} {
-	    pass "$TEST_NAME compilation succeeded"
+	    pass "$TEST_NAME compilation"
 	} else {
-	    fail "$TEST_NAME compilation succeeded unexpectedly"
+	    xpass "$TEST_NAME compilation"
 	}
     }
 }
