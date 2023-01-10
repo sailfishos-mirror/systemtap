@@ -36,18 +36,6 @@ pc2str(parse_context pc)
     return "undefined context";
 }
 
-static string join_vector(vector<string> vec, string delim)
-{
-    stringstream result;
-    for (auto it = vec.begin(); it != vec.end(); ++it)
-    {
-        result << *it;
-        if (it != vec.end() - 1)
-            result << delim;
-    }
-    return result.str();
-}
-
 static inline bool
 in_body(string &code_snippet)
 {
@@ -140,29 +128,35 @@ void lsp_method_text_document_completion::complete_body(string &partial_statemen
         cerr << "Completing [body]: '" << to_complete << "'" << endl;
 
     // FIXME: I miss things like print*
-
-    if (!startswith(to_complete, "@"))
+    if(startswith(to_complete, "$")){
+        //TODO: Context vars: make sujre to add $ as a completion trigger
+    }
+    else if (!startswith(to_complete, "@"))
     {
-        for (auto func = lang_server->s->functions.begin(); func != lang_server->s->functions.end(); ++func)
-        {
-            functiondecl *f = func->second;
-            if (startswith(f->unmangled_name, to_complete))
+        vector<map<string, functiondecl*>> functions = { doc->functions, lang_server->s->functions };
+        for (auto f_list = functions.begin(); f_list != functions.end(); ++f_list)
+            for (auto func = f_list->begin(); func != f_list->end(); ++func)
             {
-                stringstream docs;
-                f->printsig(docs);
-                add_completion_item(f->unmangled_name.to_string(), "function", docs.str());
+                functiondecl *f = func->second;
+                if (startswith(f->unmangled_name, to_complete))
+                {
+                    stringstream docs;
+                    f->printsig(docs);
+                    add_completion_item(f->unmangled_name.to_string(), "function", docs.str());
+                }
             }
-        }
-        for (auto global = lang_server->s->globals.begin(); global != lang_server->s->globals.end(); ++global)
-        {
-            vardecl *g = *global;
-            if (startswith(g->unmangled_name, to_complete))
+        vector<vector<vardecl*>> globals = { doc->globals, lang_server->s->globals };
+        for (auto g_list = globals.begin(); g_list != globals.end(); ++g_list)
+            for (auto global = g_list->begin(); global != g_list->end(); ++global)
             {
-                stringstream docs;
-                g->printsig(docs);
-                add_completion_item(g->unmangled_name.to_string(), "global", docs.str());
+                vardecl *g = *global;
+                if (startswith(g->unmangled_name, to_complete))
+                {
+                    stringstream docs;
+                    g->printsig(docs);
+                    add_completion_item(g->unmangled_name.to_string(), "global", docs.str());
+                }
             }
-        }
         // FIXME: Perhaps I should pull the keywords and atwords from lexer in parse.cxx
         vector<string> keywords = {"probe", "global", "private", "function", "if", "else", "for", "foreach", "in",
                                    "limit", "return", "delete", "while", "break", "continue", "next", "string", "long", "try", "catch"};
@@ -207,7 +201,7 @@ void lsp_method_text_document_completion::complete_probe_signature(string &parti
 
     match_node *node = lang_server->s->pattern_root;
     // Find the current position within the match_node tree (which will be a parent of the result(s))
-    for (auto ip = probe_components.begin(); ip != probe_components.end(); ++ip)
+    for (auto ip = probe_components.begin(); ip != probe_components.end()-1; ++ip)
     {
         string comp = ip->first;
         string param = ip->second;
@@ -217,7 +211,7 @@ void lsp_method_text_document_completion::complete_probe_signature(string &parti
         key.parameter_type = param.find('"') != param.npos ? pe_string : pe_long;
 
         for (match_node::sub_map_iterator_t it = node->sub.begin(); it != node->sub.end(); ++it)
-            if (it->first.str() == key.str() && it->first.parameter_type == key.parameter_type)
+            if (it->first.str() == key.str() && (!key.have_parameter || it->first.parameter_type == key.parameter_type))
             {
                 node = it->second;
                 break;
@@ -326,6 +320,11 @@ void lsp_method_text_document_completion::complete_string(string &partial_signat
     {
         try
         {
+            // eat the last * token ex. "ma* should complete in the same way "ma would
+            // we'll result in ma* completing as ma*n where as ma would complete as main
+            bool has_wildcard_tail = '*' == to_complete.back();
+            if (has_wildcard_tail) to_complete.pop_back();
+
             stringstream ss(string("probe ") + partial_signature + "*\") {}");
             probe *p = parse_synthetic_probe(*lang_server->s, ss, NULL);
             if (p)
@@ -349,7 +348,9 @@ void lsp_method_text_document_completion::complete_string(string &partial_signat
                             docs << *ia << " ";
                     }
                     // The insertion text is just the tail of the completion
-                    add_completion_item(o.str(), "string", docs.str(), o.str().substr(to_complete.size()));
+                    string insert_text = o.str().substr(to_complete.size());
+                    if(has_wildcard_tail) insert_text.erase(insert_text.begin()); // We want to remove the first char, since this is the wildcard's spot
+                    add_completion_item(o.str(), "string", docs.str(), insert_text);
                 }
             }
         }
@@ -430,47 +431,24 @@ lsp_method_text_document_completion::handle(json_object *p)
 {
     lsp_object completion_params(p);
 
-    document *doc = lang_server->wspace->get_document(completion_params.extract_substruct("textDocument").extract_string("uri"));
+    doc = lang_server->wspace->get_document(completion_params.extract_substruct("textDocument").extract_string("uri"));
 
     insert_position = completion_params.extract_substruct("position");
 
-    // Determine the completion snippet (the code block needed for the completion)
-    vector<string> completion_block;
-    vector<string> start_tokens = {"probe", "function", "global", "private"};
-
-    // NB: For the right-strip, DON'T remove spaces since token seperation requires it ex. "probe" vs "probe "
-    auto strip = [](string s)
-        { return s.erase(0, s.find_first_not_of("\t\n\r ")).erase(s.find_last_not_of("\t\n\r") + 1); };
-
-    vector<string> lines = doc->get_lines();
+    vector<string> lines = doc->get_lines(); //FIXME: move logic to document
     int cursor_line_num = insert_position.extract_int("line");
 
     // The line has the cursor on it so truncate at cursor pos
     lines.at(cursor_line_num) = lines.at(cursor_line_num).substr(0, insert_position.extract_int("character") + 1);
 
-    // Keep appending lines until a valid start token (or at least the start of one) is found.
-    for (int i = cursor_line_num; i >= 0; i--)
-    {
-        string line = strip(lines[i]);
-        completion_block.push_back(line); // The last step will be to reverse the whole vector and merge it
-        vector<string> words;
-        tokenize(line, words, " ");
-        if (words.size() > 0 && any_of(start_tokens.cbegin(), start_tokens.cend(), [words](string s_token)
-                                       { return startswith(s_token, words[0]); }))
-            break; // Found the context start (the absolute start is handled by the loop condition itself)
-    }
-    reverse(completion_block.begin(), completion_block.end());
-    string code = join_vector(completion_block, "\n");
-
-    //TODO: The lines from wherever i ends to 0 might contain functions/globals/macros which should be included as completions. 
-    // Pass them through a pass1 to get them
-    // BUT, Ex. how to handle syntax errors i.e 2 def but the first of them has an issue I'd still want #2
+    string completion_code_block;
+    doc->get_last_code_block(lines, completion_code_block, cursor_line_num);
 
     lsp_object completion_list;
     // Allows the client to be more efficient, as it doesn't need to requery when another char is added, just filter with
     // the same completion list (Ex. completing 'pro' offers 'probe' so don't bother recomputing for 'prob' its the same)
     completion_list.insert("isIncomplete", false);
-    complete(code);
+    complete(completion_code_block);
     completion_list.insert("items", completion_items);
 
     jsonrpc_response *res = new jsonrpc_response;

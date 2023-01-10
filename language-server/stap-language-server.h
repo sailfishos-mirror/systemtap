@@ -13,6 +13,8 @@
 #include "jsonrpc.h"
 #include "session.h"
 #include "parse.h"
+#include "staptree.h"
+
 
 #include <json-c/json.h>
 #include <string>
@@ -114,24 +116,37 @@ public:
     }
 };
 
+static string join_vector(vector<string> vec, string delim)
+{
+    stringstream result;
+    for (auto it = vec.begin(); it != vec.end(); ++it)
+    {
+        result << *it;
+        if (it != vec.end() - 1)
+            result << delim;
+    }
+    return result.str();
+}
+
+const token *
+pass_1(systemtap_session &s, string &code);
+
+int passes_0_4(systemtap_session &s);
+
 class document
 {
 private:
     string uri;
     string source;
+    systemtap_session* s;   
 
 public:
-    document(string uri, string source = "") : uri{uri}, source{source}
-    {}
+    // globals/functions define within the document, which may be refrenced (ex. completion)
+    vector<vardecl*> globals;
+    map<string,functiondecl*> functions;
 
-    void apply_change(lsp_object change)
-    {
-        // Apply a text change to a document
-        // NOTE: The TextDocumentSyncKind is Full, meaning that for any change the entire
-        // document's content (this->source) is replaced
-        // TODO: If needed an optimization would be to change this to Incremental
-        source = change.extract_string("text");
-    }
+    document(string uri, systemtap_session* s, string source = "") : uri{uri}, source{source}, s{s}
+    {}
 
     vector<string> get_lines()
     {
@@ -141,19 +156,85 @@ public:
             lines.push_back(line);
         return lines;
     }
+
+    /* Get the last code_block before last_line
+     * Return the start lin number of the code_block
+     */
+    int get_last_code_block(vector<string>& lines, string& code, int last_line){
+        static vector<string> start_tokens = {"probe", "function", "global", "private"};
+
+         // NB: For the right-strip, DON'T remove spaces since token seperation requires it ex. "probe" vs "probe "
+        static auto strip = [](string s)
+            { return s.erase(0, s.find_first_not_of("\t\n\r ")).erase(s.find_last_not_of("\t\n\r") + 1); };
+
+        vector<string> block;
+        int i = last_line;
+        // Keep appending lines until a valid start token (or at least the start of one) is found.
+        for (; i >= 0; i--)
+        {
+            string line = strip(lines[i]);
+            block.push_back(line); // The last step will be to reverse the whole vector and merge it
+            vector<string> words;
+            tokenize(line, words, " ");
+            if (words.size() > 0 && any_of(start_tokens.cbegin(), start_tokens.cend(), [words](string s_token)
+                                        { return startswith(s_token, words[0]); }))
+                break; // Found the context start (the absolute start is handled by the loop condition itself)
+        }
+        reverse(block.begin(), block.end());
+        code = join_vector(block, "\n");
+        return i;
+    }
+
+    void register_code_block(string& code){
+        (void)pass_1(*s, code);
+
+        stapfile *user_file = s->user_files.back();
+        if(user_file){ // Just skip if there is an error is a code blocks
+            globals.insert(globals.end(), user_file->globals.begin(), user_file->globals.end());
+            for(auto f = user_file->functions.begin(); f != user_file->functions.end(); ++f)
+                functions.insert({ (*f)->name, *f });
+            // TODO: Macros, user_file->aliases
+        }
+    }
+
+    void register_code_blocks(){
+        functions.clear();
+        globals.clear();
+        // TODO: Macros, user_file->aliases
+
+        vector<string> lines = get_lines();
+        string code;
+        int line_num = lines.size();
+        while(0 <= (line_num = get_last_code_block(lines, code, line_num-1)))
+            register_code_block(code);
+    }
+
+    void apply_change(lsp_object change)
+    {
+        // Apply a text change to a document
+        // NOTE: The TextDocumentSyncKind is Full, meaning that for any change the entire
+        // document's content (this->source) is replaced
+        // TODO: If needed an optimization would be to change this to Incremental
+        source = change.extract_string("text");
+        register_code_blocks();
+        // update the decls
+    }
 };
 
 class workspace
 {
 private:
     map<string, document*> docs;
+    systemtap_session* s;
 
     document *create_document(string doc_uri, string source = "")
     {
-        return new document(doc_uri, source);
+        return new document(doc_uri, s, source);
     }
 
 public:
+    workspace(systemtap_session* s) : s{s} {}
+
     document *get_document(string doc_uri)
     {
         // Get the document, or create one if none are found
@@ -245,6 +326,7 @@ class lsp_method_text_document_completion : public lsp_method
 private:
     vector<lsp_object> completion_items;
     lsp_object insert_position;
+    document *doc;
 
     // Helper methods
     void add_completion_item(string text, string type = "", string docs = "", string insert_text = "");
@@ -259,10 +341,5 @@ public:
     inline static const string TEXT_DOCUMENT_COMPLETION = "textDocument/completion";
     jsonrpc_response *handle(json_object *p);
 };
-
-const token *
-pass_1(systemtap_session &s, string &code);
-
-int passes_0_4(systemtap_session &s);
 
 #endif

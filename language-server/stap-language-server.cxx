@@ -8,7 +8,6 @@
 #include "stap-language-server.h"
 #include "jsonrpc.h"
 #include "config.h"
-#include "staptree.h"
 #include "parse.h"
 #include "session.h"
 #include "tapsets.h"
@@ -88,7 +87,7 @@ public:
         lsp_object initialize_params(p);
 
         lang_server->init_request_received = true;
-        lang_server->wspace = new workspace;
+        lang_server->wspace = new workspace(lang_server->s);
 
         lsp_object server_capabilities;
         // The server currently only supports Full synchronization
@@ -104,7 +103,7 @@ public:
              * This means that if for example completing @foobar results in unexpected insertions
              * it may be worth considering if '@' should be a trigger char
              */
-            completion_options.insert<string>("triggerCharacters", {".", "/", "@"});
+            completion_options.insert<string>("triggerCharacters", {".", "/", "@", "*"});
             server_capabilities.insert("completionProvider", completion_options);
         }
 
