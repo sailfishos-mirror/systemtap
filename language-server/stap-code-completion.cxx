@@ -129,7 +129,7 @@ void lsp_method_text_document_completion::complete_body(string &partial_statemen
 
     // FIXME: I miss things like print*
     if(startswith(to_complete, "$")){
-        //TODO: Context vars: make sujre to add $ as a completion trigger
+        //TODO: Context vars
     }
     else if (!startswith(to_complete, "@"))
     {
@@ -374,7 +374,8 @@ void lsp_method_text_document_completion::complete(string code)
      * - The context in which p1 failed
      * - Some information in particular about the failing token
     */ 
-    const token *tok = pass_1(*lang_server->s, code);
+    const token *tok;
+    pass_1(*lang_server->s, code, &tok);
 
     if (lang_server->verbose >= 2)
     {
@@ -439,7 +440,7 @@ lsp_method_text_document_completion::handle(json_object *p)
     int cursor_line_num = insert_position.extract_int("line");
 
     // The line has the cursor on it so truncate at cursor pos
-    lines.at(cursor_line_num) = lines.at(cursor_line_num).substr(0, insert_position.extract_int("character") + 1);
+    lines.at(cursor_line_num) = lines.at(cursor_line_num).substr(0, insert_position.extract_int("character"));
 
     string completion_code_block;
     doc->get_last_code_block(lines, completion_code_block, cursor_line_num);

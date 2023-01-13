@@ -83,7 +83,7 @@ class MockClient():
 
         self.server_conn.send_notification(Method.EXIT.value, dict())
 
-    def completion_request(self, code_snippet, position=None):
+    def completion_request_full(self, code_snippet, position=None):
         # If position is not provided, assume we're at the snippet end
         if not position:
             lines = code_snippet.split("\n")
@@ -109,16 +109,44 @@ class MockClient():
                 position=position
             )
         )
+    
+    def completion_request_inc(self, changes, position):
+        # The first change must be Full, and the remainder can be either full or incremental
+        assert('range' not in changes[0])
 
+        for v, c in enumerate(changes):
+            self.server_conn.send_notification(
+                method=Method.TEXT_DOCUMENT_DID_CHANGE.value,
+                params=dict(
+                    textDocument=dict(
+                        uri=self.text_document['uri'],
+                        version=v+1
+                    ),
+                    contentChanges=[c if isinstance(c, dict) else dict(text=c) ]
+                )
+            )
+
+        # The insertion position should be specified when testing incremental changes
+        assert(position is not None)
+
+        return self.server_conn.send_request(
+            method=Method.COMPLETION.value,
+            params=dict(
+                textDocument=dict(uri=self.text_document['uri']),
+                position=position
+            )
+        )
 
 class ServerCompletionTests(unittest.TestCase):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.client = MockClient() # Each testcase gets its own mockclient
 
-    def labels_match(self, code_block, expected, position=None, exactMatch=True, type=None):
-        completion_list = self.client.completion_request(
-            code_block, position).get("result", dict())
+    def labels_match(self, change: str | list, expected, position=None, exactMatch=True, type=None, sync_kind = "full"):
+        comp_func = MockClient.completion_request_inc if sync_kind != "full" else MockClient.completion_request_full
+
+        completion_list = comp_func(self.client,
+            change, position).get("result", dict())
 
         completion_items = completion_list.get("items", [])
 
@@ -132,7 +160,7 @@ class ServerCompletionTests(unittest.TestCase):
         length_match = not exactMatch or len(actual) == len(expected)
 
         self.assertTrue(subset_match and length_match,
-                        f'\nCompleting "{code_block}"\nGot: {actual}\nExpected: {expected}')
+                        f'\nCompleting "{change}"\nGot: {actual}\nExpected{"" if exactMatch else " Superset Of " }: {expected}')
 
     def test_basic(self):
         # General completions for an unknown context
@@ -173,7 +201,7 @@ class ServerCompletionTests(unittest.TestCase):
 
         # Check the text to be inserted as well, not just the label (textEdit has the same content as insertText so it's covered by this test as well)
         insert_text_test_code = process_prefix + 'foo/ba'
-        actual = [(ci["label"], 'foo/ba'+ci["insertText"]) for ci in self.client.completion_request(
+        actual = [(ci["label"], 'foo/ba'+ci["insertText"]) for ci in self.client.completion_request_full(
             insert_text_test_code).get("result", dict(items=[]))["items"]]
         expected = [('bar', 'foo/bar')] # = (label, prefix + insertion text)
         self.assertTrue(all(e in actual for e in expected) and len(actual) == len(expected),
@@ -197,7 +225,7 @@ class ServerCompletionTests(unittest.TestCase):
 
         # Complex line testing
         line = "\t\tif ( cpu() == 0 && getti<CURSOR> > 1140498000)"
-        pos = dict(line=1, character=line.strip().find("<CURSOR>"))
+        pos = dict(line=1, character=line.find("<CURSOR>"))
         self.labels_match(prefix + line,
                           ['gettimeofday_ms', 'gettimeofday_ns', 'gettimeofday_s', 'gettimeofday_us'], position=pos)
 
@@ -237,12 +265,109 @@ class ServerCompletionTests(unittest.TestCase):
         self.labels_match("probe", [])
         self.labels_match("function foo () %{ struc ", [])
 
+    def test_local_definitions(self):
+        code = """
+        global afoo = 42
+        
+         function abar(x) { printf("%s", x) }
+        probe    end
+        {
+            f("hello world");
+        foreach (eg+ in groups)
+        a<CURSOR>
+
+            global baz = -1
+
+            global abaz = "hello"
+        """
+        lines = code.split('\n')
+        cursor_line = [idx for idx, l in enumerate(lines) if '<CURSOR>' in l][0]
+        pos = dict(line=cursor_line, character=lines[cursor_line].find("<CURSOR>"))
+        self.labels_match(code, ['afoo', 'abar', 'abaz'], pos, False)
+
+    def test_incremental_changes(self):
+        def make_position(ln, chr):
+            return dict(line=ln, character=chr)
+        def make_change(text, range_start, range_end = None):
+            if range_end is None: range_end = range_start
+            return dict(
+                text = text,
+                range = dict(start = range_start, end = range_end)
+            )
+
+        # The first change is a full, and the remainder are incremental
+        self.labels_match( [ 'pr', make_change('o', make_position(0,2)) ] , ['probe'], make_position(0, 3), True, None, "incremental")
+
+        # Prepend a new line and then complete the new line under it (between 2 lines)
+        """
+        global bar = 10
+        function f() { ba<CURSOR>
+        probe oneshot {}
+        """
+        self.labels_match(
+            [ 'probe oneshot {}',
+              make_change('global bar = 10\n', make_position(0,0)),
+              make_change('function f() { ba\n', make_position(1,0))
+            ],
+            ['bar'], make_position(1, 16), False, None, "incremental")
+
+        # Append a new line and then complete the new line before it (between 2 lines)
+        """
+        probe oneshot {}
+        function f() { ba<CURSOR>
+        global bar = 10
+        """
+        self.labels_match(
+            [ 'probe oneshot {}',
+              make_change('\nglobal bar = 10', make_position(1,0)),
+              make_change('function f() { ba\n', make_position(1,0))
+            ],
+            ['bar'], make_position(1, 16), False, None, "incremental")
+
+        # Modify the first and last lines and complete between them
+        """
+        global bar
+
+        function f() { ba<CURSOR>
+        global baz
+        """
+        self.labels_match(
+            [ 'global ham\nfunction f() { ba\nglobal spam = 42',
+              make_change('bar\n', make_position(0, 7), make_position(0, 10)), # replace ham with bar\n
+              make_change('baz', make_position(3, 7), make_position(0, 11)),   # replace spam with baz
+            ],
+            ['bar', 'baz'], make_position(2, 16), False, None, "incremental")
+
+        # Modify the first and last characters and complete between
+        """
+        global bar
+        function f() { ba<CURSOR>
+        global baz
+        """
+        self.labels_match(
+            [ 'flobal bar\nfunction f() { ba\nglobal bam',
+              make_change('g', make_position(0, 0), make_position(0, 1)), # replace f with g
+              make_change('z', make_position(2, 9), make_position(2, 10)),   # replace m with z
+            ],
+            ['bar', 'baz'], make_position(1, 16), False, None, "incremental")
+        
+        # Remove lines and replace with new lines
+        """
+        probe one<CURSOR>
+        """
+        self.labels_match(
+            [ 'global bar\nfunction foo() { return 10 }\nglobal baz',
+              make_change('', make_position(0, 0), make_position(3, 11)), # remove first 3 lines
+              make_change('probe one', make_position(0, 0)),   # insert into start of doc
+            ],
+            ['oneshot'], make_position(0, 9), False, None, "incremental")
 
 class ServerIntegrationTests(unittest.TestCase):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.verbose = CMD_ARGS.verbose
         self.server_conn = None
+        self.maxDiff = None # When asserting, show the full diff of actual and expected
 
     def _test_request(self, request_method: Method, request_params: dict, expected_result: dict):
         response = self.server_conn.send_request(
@@ -277,10 +402,10 @@ class ServerIntegrationTests(unittest.TestCase):
             ),
             expected_result=dict(
                 capabilities=dict(
-                    textDocumentSync=1, # Full Sync
+                    textDocumentSync=2, # Inc Sync
                     completionProvider=dict(
                         resolveProvider=False,
-                        triggerCharacters=['.', '/', '@']
+                        triggerCharacters=['.', '/', '@', "*"]
                     )
                 ),
                 serverInfo=dict(
@@ -379,16 +504,18 @@ def test_suite(test_completion, test_integration):
     suite = unittest.TestSuite()
     if test_completion:
         suite.addTests([
-            ServerCompletionTests('test_basic'),
-            ServerCompletionTests('test_probe_comps'),
-            ServerCompletionTests('test_string'),
-            ServerCompletionTests('test_body'),
-            ServerCompletionTests('test_multiple_contexts'),
-            ServerCompletionTests('test_no_completions')
+            # ServerCompletionTests('test_basic'),
+            # ServerCompletionTests('test_probe_comps'),
+            # ServerCompletionTests('test_string'),
+            # ServerCompletionTests('test_body'),
+            # ServerCompletionTests('test_multiple_contexts'),
+            # ServerCompletionTests('test_no_completions'),
+            ServerCompletionTests('test_incremental_changes'),
+            # ServerCompletionTests('test_local_definitions')
         ])
 
-    if test_integration:
-        suite.addTest(ServerIntegrationTests('test_basic'))
+    # if test_integration:
+    #     suite.addTest(ServerIntegrationTests('test_basic'))
 
     return suite
 

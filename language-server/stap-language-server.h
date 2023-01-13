@@ -26,12 +26,12 @@
 
 using namespace std;
 
-static struct
+enum TextDocumentSyncKind
 {
-    int None = 0;        // Documents should not be synced at all
-    int Full = 1;        // Documents are synced by always sending the full content of the document
-    int Incremental = 2; // Documents are synced by sending incremental updates
-} TextDocumentSyncKind;
+    None = 0,        // Documents should not be synced at all
+    Full = 1,        // Documents are synced by always sending the full content of the document
+    Incremental = 2  // Documents are synced by sending incremental updates
+};
 
 class lsp_object
 {
@@ -114,22 +114,15 @@ public:
         json_object_object_add(j_obj, key.c_str(), _to_json_object(obj));
         return obj;
     }
+
+    bool contains(string key) { return json_object_object_get_ex(j_obj, key.c_str(), NULL); }
 };
 
-static string join_vector(vector<string> vec, string delim)
-{
-    stringstream result;
-    for (auto it = vec.begin(); it != vec.end(); ++it)
-    {
-        result << *it;
-        if (it != vec.end() - 1)
-            result << delim;
-    }
-    return result.str();
-}
+string
+join_vector(vector<string> vec, string delim);
 
-const token *
-pass_1(systemtap_session &s, string &code);
+int
+pass_1(systemtap_session &s, string &code, const token **tok);
 
 int passes_0_4(systemtap_session &s);
 
@@ -141,84 +134,29 @@ private:
     systemtap_session* s;   
 
 public:
-    // globals/functions define within the document, which may be refrenced (ex. completion)
+    // globals/functions defined within the document, which may be refrenced (ex. completion)
     vector<vardecl*> globals;
     map<string,functiondecl*> functions;
 
     document(string uri, systemtap_session* s, string source = "") : uri{uri}, source{source}, s{s}
-    {}
-
-    vector<string> get_lines()
     {
-        vector<string> lines;
-        stringstream ss = stringstream(source);
-        for (string line; getline(ss, line, '\n');)
-            lines.push_back(line);
-        return lines;
+        register_code_blocks(); // Parse the given source and register all local definitions
     }
 
-    /* Get the last code_block before last_line
-     * Return the start lin number of the code_block
-     */
-    int get_last_code_block(vector<string>& lines, string& code, int last_line){
-        static vector<string> start_tokens = {"probe", "function", "global", "private"};
+    vector<string> get_lines();
 
-         // NB: For the right-strip, DON'T remove spaces since token seperation requires it ex. "probe" vs "probe "
-        static auto strip = [](string s)
-            { return s.erase(0, s.find_first_not_of("\t\n\r ")).erase(s.find_last_not_of("\t\n\r") + 1); };
+    // Get the last code_block before last_line
+    // Return the start line number of the code_block
+    //
+    int get_last_code_block(vector<string>& lines, string& code, int last_line);
 
-        vector<string> block;
-        int i = last_line;
-        // Keep appending lines until a valid start token (or at least the start of one) is found.
-        for (; i >= 0; i--)
-        {
-            string line = strip(lines[i]);
-            block.push_back(line); // The last step will be to reverse the whole vector and merge it
-            vector<string> words;
-            tokenize(line, words, " ");
-            if (words.size() > 0 && any_of(start_tokens.cbegin(), start_tokens.cend(), [words](string s_token)
-                                        { return startswith(s_token, words[0]); }))
-                break; // Found the context start (the absolute start is handled by the loop condition itself)
-        }
-        reverse(block.begin(), block.end());
-        code = join_vector(block, "\n");
-        return i;
-    }
+    void register_code_block(string& code, int first_line);
 
-    void register_code_block(string& code){
-        (void)pass_1(*s, code);
+    // Register the codeblocks from the end of the source to start_line
+    // Optionally clear the older function/global declarations
+    void register_code_blocks(int start_line = 0, bool clear_decls = true);
 
-        stapfile *user_file = s->user_files.back();
-        if(user_file){ // Just skip if there is an error is a code blocks
-            globals.insert(globals.end(), user_file->globals.begin(), user_file->globals.end());
-            for(auto f = user_file->functions.begin(); f != user_file->functions.end(); ++f)
-                functions.insert({ (*f)->name, *f });
-            // TODO: Macros, user_file->aliases
-        }
-    }
-
-    void register_code_blocks(){
-        functions.clear();
-        globals.clear();
-        // TODO: Macros, user_file->aliases
-
-        vector<string> lines = get_lines();
-        string code;
-        int line_num = lines.size();
-        while(0 <= (line_num = get_last_code_block(lines, code, line_num-1)))
-            register_code_block(code);
-    }
-
-    void apply_change(lsp_object change)
-    {
-        // Apply a text change to a document
-        // NOTE: The TextDocumentSyncKind is Full, meaning that for any change the entire
-        // document's content (this->source) is replaced
-        // TODO: If needed an optimization would be to change this to Incremental
-        source = change.extract_string("text");
-        register_code_blocks();
-        // update the decls
-    }
+    void apply_change(lsp_object change, TextDocumentSyncKind kind);
 };
 
 class workspace
@@ -261,10 +199,10 @@ public:
         docs.erase(doc_uri);
     }
 
-    void update_document(lsp_object text_doc, lsp_object change)
+    void update_document(lsp_object text_doc, lsp_object change, TextDocumentSyncKind kind)
     {
         string doc_uri = text_doc.extract_string("uri");
-        get_document(doc_uri)->apply_change(change);
+        get_document(doc_uri)->apply_change(change, kind);
     }
 };
 

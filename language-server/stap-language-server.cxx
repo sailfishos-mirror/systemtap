@@ -41,12 +41,14 @@ transcribe_functions_and_globals(systemtap_session &s)
     }
 }
 
-const token *
-pass_1(systemtap_session &s, string &code)
+int
+pass_1(systemtap_session &s, string &code, const token **tok)
 {
     // Set up session to only run pass 1.
     s.last_pass = 1;
     s.monitor = false;
+    s.seen_errors.clear(); // The pass is standalone
+    s.warningerr_count = 0;
 
     // Add the code snippet
     s.cmdline_script = code;
@@ -56,19 +58,177 @@ pass_1(systemtap_session &s, string &code)
     ofstream file("/dev/null");
     streambuf *former_cout = cout.rdbuf(file.rdbuf());
     streambuf *former_cerr = cerr.rdbuf(file.rdbuf());
-    const token *tok = NULL;
+    int rc = 0;
     try
     {
-        passes_0_4(s);
+        if(tok) *tok = NULL;
+        rc = passes_0_4(s);
     }
     catch (const parse_error &pe)
     {
-        tok = pe.tok ? pe.tok : s.language_server->code_completion_target;
+        if(tok)
+            *tok = pe.tok ? pe.tok : s.language_server->code_completion_target;
+        rc = 1;
     }
     cout.rdbuf(former_cout);
     cerr.rdbuf(former_cerr);
     file.close();
-    return tok;
+    return rc;
+}
+
+string
+join_vector(vector<string> vec, string delim)
+{
+    stringstream result;
+    for (auto it = vec.begin(); it != vec.end(); ++it)
+    {
+        result << *it;
+        if (it != vec.end() - 1)
+            result << delim;
+    }
+    return result.str();
+}
+
+vector<string>
+document::get_lines(){
+    vector<string> lines;
+    stringstream ss = stringstream(source);
+    for (string line; getline(ss, line, '\n');) //FIXME: Does this respect newlines in strings
+        lines.push_back(line);
+    return lines;
+}
+
+int
+document::get_last_code_block(vector<string>& lines, string& code, int last_line){
+    static vector<string> start_tokens = {"probe", "function", "global", "private"};
+
+    // NB: For the right-strip, DON'T remove spaces since token seperation requires it ex. "probe" vs "probe "
+    static auto strip = [](string s)
+        { return s.erase(0, s.find_first_not_of("\t\n\r ")).erase(s.find_last_not_of("\t\n\r") + 1); };
+
+    vector<string> block;
+    int i = last_line;
+    // Keep appending lines until a valid start token (or at least the start of one) is found.
+    for (; i >= 0; i--)
+    {
+        string line = strip(lines[i]);
+        block.push_back(line); // The last step will be to reverse the whole vector and merge it
+        vector<string> words;
+        tokenize(line, words, " ");
+        if (words.size() > 0 && any_of(start_tokens.cbegin(), start_tokens.cend(), [words](string s_token)
+                                    { return startswith(s_token, words[0]); }))
+            break; // Found the context start (the absolute start is handled by the loop condition itself)
+    }
+    reverse(block.begin(), block.end());
+    code = join_vector(block, "\n");
+    return i;
+}
+
+void
+document::register_code_block(string& code, int first_line){
+    // Clear old user_files, since each registeration should be independant
+    for(auto uf = s->user_files.cbegin(); uf != s->user_files.cend(); uf = s->user_files.erase(uf) )
+        delete *uf;
+
+    // Parse the code_block, which is made relative to the document start.
+    // This is needed since in order to determine the current valid definitions,
+    // we need to see the absolute line numbers on which they were created
+    string relativised = string(first_line, '\n') + code;
+    int rc = pass_1(*s, relativised , NULL);
+
+    if(0 == rc){ // Just skip if there is an error in a code blocks
+        stapfile *user_file = s->user_files.front();
+        globals.insert(globals.end(), user_file->globals.begin(), user_file->globals.end());
+        for(auto f = user_file->functions.begin(); f != user_file->functions.end(); ++f)
+            functions.insert({ (*f)->name, *f });
+        // TODO: Probe aliases (user_file->aliases)
+    }
+}
+
+void 
+document::register_code_blocks(int start_line, bool clear_decls){
+    if(clear_decls)
+    {
+        for(auto g = globals.cbegin(); g != globals.cend(); g = globals.erase(g) )
+            delete *g;
+        for(auto f = functions.cbegin(); f != functions.cend(); f = functions.erase(f) )
+            delete f->second;
+        // TODO: Probe aliases (user_file->aliases)
+    }
+
+    vector<string> lines = get_lines();
+    string code;
+    int line_num = lines.size();
+    // NB: When registering the code blocks we want to parse as normal
+    // not exit early when we find an error (as we would for completion).
+    // So we temporarily disable language_server_mode
+    s->language_server_mode = false;
+    while(start_line <= (line_num = get_last_code_block(lines, code, line_num-1)))
+        register_code_block(code, line_num);
+    s->language_server_mode = true;
+}
+
+void
+document::apply_change(lsp_object change, TextDocumentSyncKind kind){
+    string text = change.extract_string("text");
+    switch (kind)
+    {
+    case None:
+        break; // Do Nothing
+    case Full:
+        source = text;
+        register_code_blocks();
+        break;
+    case Incremental:
+        vector<size_t> line_starts;
+        
+        lsp_object range(change.extract_substruct("range"));
+        size_t start_ln  = range.extract_substruct("start").extract_int("line");
+        size_t start_col = range.extract_substruct("start").extract_int("character");
+        size_t end_ln    = range.extract_substruct("end").extract_int("line");
+        size_t end_col   = range.extract_substruct("end").extract_int("character");
+
+        // Determine the index at which each line begins, so we can do an inplace updating of the source
+        for(size_t idx = 0; source.npos != idx; idx = source.find('\n', idx+1))
+            line_starts.push_back(idx == 0 ? 0 : idx + 1); // We want the character to the right of \n (except for the first char)
+
+        // Check for an edit occurring at the very end of the file
+        if (start_ln == line_starts.size()){
+            source += text;
+        }else{
+            size_t insert_range_start  = line_starts[start_ln] + start_col;
+            size_t insert_range_end    = line_starts[end_ln] + end_col;
+            
+            // Cleared the range (which can be empty i.e start=end ==> insertion with no replacement) and insert into that gap
+            source.erase(insert_range_start, insert_range_end-insert_range_start);
+            source.insert(insert_range_start, text);
+
+            // Remove and reregister the remaining code blocks from start_ln to the end.
+            // These are the ones which may have been changed by an insertion
+            // since they may either be directly modified, or at the very least
+            // their source locations will be off (as they may be shifted by an insertion)
+            for (auto it = globals.cbegin(); it != globals.cend();)
+            {
+                if (start_ln <= (*it)->tok->location.line - 1){
+                    delete *it;
+                    it = globals.erase(it);
+                }
+                else
+                    ++it;
+            }
+            for (auto it = functions.cbegin(); it != functions.cend();)
+            {
+                if (start_ln <= it->second->tok->location.line - 1){
+                    delete it->second;
+                    it = functions.erase(it);
+                }
+                else
+                    ++it;
+            }
+        }
+        register_code_blocks(start_ln /* Only reregister up to start_ln */ , false /* Don't clear the vectors */ );
+        break;
+    }
 }
 
 /* The initialize request is sent from the client to the server.
@@ -90,9 +250,9 @@ public:
         lang_server->wspace = new workspace(lang_server->s);
 
         lsp_object server_capabilities;
-        // The server currently only supports Full synchronization
-        // i.e changes will replace the current content of the document with a full new version
-        server_capabilities.insert("textDocumentSync", TextDocumentSyncKind.Full);
+        // Documents are synced by sending the full content on open.
+        // After that only incremental updates to the document are sent.
+        server_capabilities.insert("textDocumentSync", Incremental);
 
         if (lang_server->is_registered(lsp_method_text_document_completion::TEXT_DOCUMENT_COMPLETION))
         {
@@ -159,11 +319,16 @@ public:
     {
         lsp_object did_change_text_document_params(p);
         // Updates document's content.
-        // NOTE: The language server currently only supports TextDocumentSyncKind.Full changes
-        // Since only full changes occur, the last one is the only one of relevance
-        lang_server->wspace->update_document(
-            did_change_text_document_params.extract_substruct("textDocument"),
-            did_change_text_document_params.extract_array<lsp_object>("contentChanges").back());
+        lsp_object text_document  (did_change_text_document_params.extract_substruct("textDocument"));
+        vector<lsp_object> content_changes(did_change_text_document_params.extract_array<lsp_object>("contentChanges"));
+
+        for(auto change = content_changes.begin(); change != content_changes.end(); ++change){
+            // If given a range then we can do an incremental change, otherwise just do a full (replace the entire
+            // copy of the doc source with the new given one)
+            TextDocumentSyncKind sync_kind = change->contains("range") ? Incremental : Full;
+            lang_server->wspace->update_document(
+            text_document, *change, sync_kind);
+        }
         return nullptr;
     }
 };
@@ -313,11 +478,9 @@ int language_server::run()
 {
     // The first time pass_1a is completed, we parse all the library scripts, so do it upon init to remove an initial delay
     string empty = "";
-    (void)pass_1(*this->s, empty);
-
+    pass_1(*this->s, empty, NULL);
     this->s->register_library_aliases();
     register_standard_tapsets(*this->s);
-    // TODO: The current document will also hold function/globals which should be considered for completion. Currently ignored
     transcribe_functions_and_globals(*this->s);
 
     // TODO: Add TCP option as well, for now just default to stdio
@@ -331,26 +494,26 @@ int language_server::run()
         unique_ptr<jsonrpc_response> response;
 
         try
-          {
+        {
             request = unique_ptr<jsonrpc_request>(conn.get_request());
-          }
+        }
         catch (jsonrpc_error &e)
-          {
+        {
             // If the request parse process fails, e.g.
             // % stap --language-server << /dev/null
             if (verbose)
                 cerr << "Error: " << e.what() << endl;
             running = false; // shut things down
             continue;
-          }
+        }
         
         if (verbose)
           cerr << "---> " << request->method << "(" << (request->is_notification() ? "NOTIF" : "REQ") << ")" << json_object_to_json_string(request->params) << endl;
 
         try
-          {
+        {
             response = unique_ptr<jsonrpc_response>(this->handle_lsp_method(request.get()));
-          }
+        }
         catch (jsonrpc_error &e)
         {
             if (verbose)
