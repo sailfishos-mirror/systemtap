@@ -127,6 +127,10 @@ __generate_tapset $TAPSET_MIPS mips
 # ======= riscv =======
 __init
 __dump_syscalls $STRACE_SRC/linux/riscv64/syscallent.h 64
+# Currently strace doesn't have actual encoding of RISCV32 syscalls.
+# However, the call names should match up closely and should be better
+# than nothing.
+__dump_syscalls $STRACE_SRC/linux/riscv64/syscallent.h 32
 __generate_tapset $TAPSET_RISCV riscv
 
 rm -f $SYSCALLS_32 $SYSCALLS_64
