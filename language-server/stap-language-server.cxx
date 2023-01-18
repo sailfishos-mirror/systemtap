@@ -90,12 +90,17 @@ join_vector(vector<string> vec, string delim)
 }
 
 vector<string>
-document::get_lines(){
+extract_lines(string s){
     vector<string> lines;
-    stringstream ss = stringstream(source);
-    for (string line; getline(ss, line, '\n');) //FIXME: Does this respect newlines in strings
+    stringstream ss = stringstream(s);
+    for (string line; getline(ss, line, '\n');)
         lines.push_back(line);
     return lines;
+}
+
+vector<string>
+document::get_lines(){
+    return extract_lines(source);
 }
 
 int
@@ -130,23 +135,31 @@ document::register_code_block(string& code, int first_line){
     for(auto uf = s->user_files.cbegin(); uf != s->user_files.cend(); uf = s->user_files.erase(uf) )
         delete *uf;
 
-    // Parse the code_block, which is made relative to the document start.
+    // Parse the code_block
+    int rc = pass_1(*s, code , NULL);
+
+    // Location is made relative to the document start.
     // This is needed since in order to determine the current valid definitions,
     // we need to see the absolute line numbers on which they were created
-    string relativised = string(first_line, '\n') + code;
-    int rc = pass_1(*s, relativised , NULL);
+    auto update_location = [first_line](auto sym){
+        source_loc new_loc(sym->tok->location);
+        new_loc.line += first_line - 1;
+        sym->tok = sym->tok->adjust_location(new_loc);
+        return sym;
+    };
 
     if(0 == rc){ // Just skip if there is an error in a code blocks
         stapfile *user_file = s->user_files.front();
-        globals.insert(globals.end(), user_file->globals.begin(), user_file->globals.end());
+        for(auto g = user_file->globals.begin(); g != user_file->globals.end(); ++g)
+            globals.push_back(update_location(*g));
         for(auto f = user_file->functions.begin(); f != user_file->functions.end(); ++f)
-            functions.insert({ (*f)->name, *f });
+            functions.insert({ (*f)->name, update_location(*f) });
         // TODO: Probe aliases (user_file->aliases)
     }
 }
 
 void 
-document::register_code_blocks(int start_line, bool clear_decls){
+document::register_code_blocks(int start_line, int last_line, bool clear_decls){
     if(clear_decls)
     {
         for(auto g = globals.cbegin(); g != globals.cend(); g = globals.erase(g) )
@@ -158,7 +171,7 @@ document::register_code_blocks(int start_line, bool clear_decls){
 
     vector<string> lines = get_lines();
     string code;
-    int line_num = lines.size();
+    int line_num = (last_line != -1) ? last_line : lines.size();
     // NB: When registering the code blocks we want to parse as normal
     // not exit early when we find an error (as we would for completion).
     // So we temporarily disable language_server_mode
@@ -171,15 +184,140 @@ document::register_code_blocks(int start_line, bool clear_decls){
 void
 document::apply_change(lsp_object change, TextDocumentSyncKind kind){
     string text = change.extract_string("text");
+
+    // Count the number of occurences of c in str
+    auto count = [](string str, char c){
+        int n = 0;
+        for(size_t i = 0; i < str.size(); i++)
+            if (str[i] == c) n++;
+        return n;
+    };
+
+    // Finds the line and character of the first difference between two
+    // vectors of strings
+    auto first_diff = [](vector<string>& old_lines, vector<string>& new_lines){
+        int first_ln, first_col;
+        int line_count = min(old_lines.size(), new_lines.size());
+        if(0 == line_count){
+            first_ln = first_col = 0;
+        }else{
+            // Find the first differing line
+            for(first_ln = 0; first_ln < line_count; first_ln++)
+                if(old_lines[first_ln] != new_lines[first_ln]) break;
+            
+            if(first_ln == line_count){
+                // Appending to the document
+                first_ln = line_count - 1;
+                first_col = old_lines[first_ln].size();
+            }else{
+                int line_len = min(old_lines[first_ln].size(), new_lines[first_ln].size());
+                // Find the first different character on first_ln
+                for(first_col = 0; first_col < line_len; first_col++)
+                    if(old_lines[first_ln][first_col] != new_lines[first_ln][first_col]) break;
+            }
+        }
+        lsp_object pos;
+        pos.insert("line", first_ln);
+        pos.insert("character", first_col);
+        return pos;
+    };
+
+    // Finds the line and character of the last difference between two
+    // vectors of strings as a NEGATIVE OFFSET from the end
+    auto last_diff = [](vector<string> old_lines, vector<string> new_lines, lsp_object first_difference){
+        int last_ln, last_col;
+        size_t old_lines_n = old_lines.size(), new_lines_n = new_lines.size();
+
+        int line_count = min(old_lines_n, new_lines_n);
+        if(0 == line_count){
+            last_ln = last_col = 0;
+        }else{
+            // Find the last differing line
+            for(last_ln = -1; last_ln > -line_count; last_ln--)
+                if(old_lines[old_lines_n + last_ln] != new_lines[new_lines_n + last_ln]) break;
+
+            string old_line, new_line;
+            if(last_ln <= -line_count){
+                last_ln = -line_count;
+                old_line = old_lines[ old_lines_n + last_ln ].substr(first_difference.extract_int("character"));
+                new_line = new_lines[ new_lines_n + last_ln ].substr(first_difference.extract_int("character"));
+            }else{
+                old_line = old_lines[ old_lines_n + last_ln ];
+                new_line = new_lines[ new_lines_n + last_ln ];
+            }
+
+            size_t old_line_n = old_line.size(), new_line_n = new_line.size();
+            int line_len = min(old_line_n, new_line_n);
+            for(last_col = -1; last_col >= -line_len ; last_col--)
+                if(old_lines[ old_lines_n + last_ln][ old_line_n + last_col] != new_lines[ new_lines_n + last_ln][new_line_n + last_col]) break;
+        }
+        lsp_object pos;
+        pos.insert("line", last_ln);
+        pos.insert("character", last_col);
+        return pos;
+    };
+
+    // Get the substring from within the old_lines which is the actuall delta between old and new
+    auto extract_text = [](vector<string>& new_lines, lsp_object& start, lsp_object& end){
+        size_t start_ln  = start.extract_int("line");
+        size_t start_col = start.extract_int("character");
+        size_t end_ln    = end.extract_int("line");
+        size_t end_col   = end.extract_int("character");
+        if(start_ln == new_lines.size() + end_ln){
+            if(0 == end_ln) return string();
+            int length =  new_lines[start_ln].size() + end_col - start_col + 1;
+            return new_lines[start_ln].substr(start_col, length);
+        }
+
+        string result = new_lines[start_ln].substr(start_col) + "\n";
+        for(auto line_it = new_lines.begin()+start_ln+1; line_it != new_lines.begin()+new_lines.size()+end_ln+1; ++line_it)
+            result += *line_it + "\n";
+        if(0 != end_ln){
+            int length = new_lines[new_lines.size() + end_ln].size() + end_col + 1;
+            result += new_lines[new_lines.size() + end_ln].substr(0, length);
+        }
+        return result;
+    };
+    
     switch (kind)
     {
     case None:
         break; // Do Nothing
     case Full:
-        source = text;
-        register_code_blocks();
-        break;
+    {
+        // If the source is empty then we just apply the new full change as expected
+        if(source == ""){
+            source = text;
+            register_code_blocks();
+            break;
+        }
+        // NB: In order to minimize the reparsing of the local document (source), we don't want to just 
+        // replace the whole document (with text), just the bit that has been changed. Therefore we 
+        // turn the full change into an incremental one
+        // Some of the logic used is based on https://github.com/prabirshrestha/vim-lsp/blob/master/autoload/lsp/utils/diff.vim
+        vector<string> old_lines = extract_lines(source);
+        vector<string> new_lines = extract_lines(text);
+
+        // The range needed for an incrmental change
+        lsp_object first = first_diff(old_lines, new_lines);
+        lsp_object end  = last_diff( vector<string>(old_lines.begin() + first.extract_int("line") , old_lines.end() ),
+                                     vector<string>(new_lines.begin() + first.extract_int("line") , new_lines.end() ),
+                                     first);
+
+        // Updates text to the needed substring for the inc change
+        text = extract_text(new_lines, first, end);
+
+        // Adjusts the end position, from negative offset to a regular index (Ex. -1 becomes the index of the last line)
+        end.insert("character",  int((end.extract_int("line") == 0) ? 0 : old_lines[ old_lines.size() + end.extract_int("line")].size() + end.extract_int("character") + 1 ));
+        end.insert("line", int(end.extract_int("line") + old_lines.size()));
+        
+        change.insert("range").insert("start", first);
+        change.insert("range").insert("end"  , end);
+        // NB: We fall through into Incremental
+        [[fallthrough]];
+    }
     case Incremental:
+    {
         vector<size_t> line_starts;
         
         lsp_object range(change.extract_substruct("range"));
@@ -192,6 +330,7 @@ document::apply_change(lsp_object change, TextDocumentSyncKind kind){
         for(size_t idx = 0; source.npos != idx; idx = source.find('\n', idx+1))
             line_starts.push_back(idx == 0 ? 0 : idx + 1); // We want the character to the right of \n (except for the first char)
 
+        int first_untouched = -1;
         // Check for an edit occurring at the very end of the file
         if (start_ln == line_starts.size()){
             source += text;
@@ -199,35 +338,46 @@ document::apply_change(lsp_object change, TextDocumentSyncKind kind){
             size_t insert_range_start  = line_starts[start_ln] + start_col;
             size_t insert_range_end    = line_starts[end_ln] + end_col;
             
+            // The first line greater than end_ln which starts a new code_block
+            // All lines after this can just be shifted down, and don't need reparsing
+            // // NB: This is the line count BEFORE the insertion
+            int delta_line_count = count(text, '\n') - 
+                                   count(source.substr(insert_range_start, insert_range_end-insert_range_start), '\n');
+            first_untouched = end_ln + delta_line_count + 1;
+
             // Cleared the range (which can be empty i.e start=end ==> insertion with no replacement) and insert into that gap
             source.erase(insert_range_start, insert_range_end-insert_range_start);
             source.insert(insert_range_start, text);
 
-            // Remove and reregister the remaining code blocks from start_ln to the end.
-            // These are the ones which may have been changed by an insertion
-            // since they may either be directly modified, or at the very least
-            // their source locations will be off (as they may be shifted by an insertion)
+            // Remove and reregister the remaining code blocks from start_ln to the first unmodified line.
+            // These are the ones which may have been changed by an insertion.
+            // Anything after the first_untouched will have
+            // their source locations shifted (as they were moved by insertion/deletion)
+            auto update_remove_or_pass = [start_ln, end_ln, delta_line_count](auto& container, auto& it, symboldecl* sym){
+                source_loc new_loc(sym->tok->location);
+                size_t ln = new_loc.line;
+                if (start_ln <= ln && ln <= end_ln){
+                    delete sym;
+                    it = container.erase(it);
+                }else if(end_ln < ln){
+                    // Update the line num
+                    new_loc.line += delta_line_count;
+                    sym->tok = sym->tok->adjust_location(new_loc);
+                    ++it;
+                }
+                else // ln < start_ln which means that this definition came before the change i.e no update
+                    ++it;
+            };
+
             for (auto it = globals.cbegin(); it != globals.cend();)
-            {
-                if (start_ln <= (*it)->tok->location.line - 1){
-                    delete *it;
-                    it = globals.erase(it);
-                }
-                else
-                    ++it;
-            }
+                update_remove_or_pass(globals, it, *it);
             for (auto it = functions.cbegin(); it != functions.cend();)
-            {
-                if (start_ln <= it->second->tok->location.line - 1){
-                    delete it->second;
-                    it = functions.erase(it);
-                }
-                else
-                    ++it;
-            }
+                update_remove_or_pass(functions, it, it->second);
         }
-        register_code_blocks(start_ln /* Only reregister up to start_ln */ , false /* Don't clear the vectors */ );
+
+        register_code_blocks(start_ln /* Only reregister up to start_ln */, first_untouched /* starting before first_untouched */ , false /* Don't clear the vectors */ );
         break;
+    }
     }
 }
 

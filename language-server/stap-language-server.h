@@ -23,6 +23,8 @@
 #include <map>
 #include <vector>
 #include <functional>
+#include <list>
+#include <unordered_map>
 
 using namespace std;
 
@@ -152,9 +154,9 @@ public:
 
     void register_code_block(string& code, int first_line);
 
-    // Register the codeblocks from the end of the source to start_line
+    // Register the codeblocks from the end of the source (or if specified last_line) to start_line
     // Optionally clear the older function/global declarations
-    void register_code_blocks(int start_line = 0, bool clear_decls = true);
+    void register_code_blocks(int start_line = 0, int last_line = -1, bool clear_decls = true);
 
     void apply_change(lsp_object change, TextDocumentSyncKind kind);
 };
