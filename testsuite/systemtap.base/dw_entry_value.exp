@@ -10,8 +10,12 @@ if { $res != "" } {
     pass "$test: compiled $test.c"
 }
 
+set ::result_string {systemtap starting probe
+systemtap ending probe
+systemtap test success}
+
 if { ![catch { exec eu-readelf -w $test | grep entry_value: }] } {
-    stap_run $test no_load $all_pass_string $srcdir/$subdir/$test.stp -c ./${test} -w
+    stap_run2 $srcdir/$subdir/$test.stp -c ./${test} -w
 } else {
     untested "$test: no DW_OP_GNU_entry_value found"
 }
