@@ -1,20 +1,9 @@
-
-(under emacs eglot mode:)
-
-completion (M-C-i) functionality desired:
-
-- kernel.  <M-C-i>                           should expand to probe point components that may follow
-                                             kernel., such as function. etc.
-
-- syscall.r <M-C-i>                          should expand to second-level probe points under syscall.*
-                                             that start with r, i.e., as if   stap -l 'syscall.r*'
+completion (M-C-i for emacs) functionality desired:
 
 - process("/bin/ls").function("ma   <M-C-i>  should expand to main etc.
-  process("/bin/ls").function("ma*  <M-C-i>  should expand to main, not "ma*n", i.e., eat the last * token
+  - Works on jupyter, emacs, vscode, not vim-lsp (small bug on client side) 
 
 - probe foo { println($  <M-C-i>           should expand to $context variables available in foo
                                            as if  stap -L 'foo'
 
-- global bar
-  probe foo { println(b  <M-C-i>           should expand to bar and/or other variables in context,
-                                           as well as functions
+- Add a timeout on completion which take longer than k ms (Ex. completing kernel.function("mem))

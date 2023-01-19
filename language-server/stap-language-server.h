@@ -133,7 +133,7 @@ class document
 private:
     string uri;
     string source;
-    systemtap_session* s;   
+    systemtap_session* s;
 
 public:
     // globals/functions defined within the document, which may be refrenced (ex. completion)

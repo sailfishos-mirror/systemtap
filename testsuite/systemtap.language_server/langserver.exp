@@ -25,12 +25,17 @@ set env(TEST_C_FILE) $file_path
 # Prevent the creation of __pycache__
 set env(PYTHONDONTWRITEBYTECODE) 1 
 
+set v "-v"
+if { $verbose == 0 } {
+    set v "-vvv"
+}
+
 # The testing suite can be run independently for development
 # See: stap_language_server_tester.py --help
 
 # By default TCL considers any output to stderr to be an error and causes rc to be 1
 # A simple work around is to redirect stderr to stdout and this removes that behaviour
-set rc [catch {exec $PYTHON3 $test_script "--stap-path=$env(SYSTEMTAP_PATH)/stap" 2>@stdout } out]
+set rc [catch {exec $PYTHON3 $test_script "--stap-path=$env(SYSTEMTAP_PATH)/stap" $v 2>@stdout } out]
 if { $rc } {
     verbose -log "$test test failure: $out";
     fail $test;

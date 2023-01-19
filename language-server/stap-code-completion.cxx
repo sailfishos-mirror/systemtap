@@ -436,7 +436,7 @@ lsp_method_text_document_completion::handle(json_object *p)
 
     insert_position = completion_params.extract_substruct("position");
 
-    vector<string> lines = doc->get_lines(); //FIXME: move logic to document
+    vector<string> lines = doc->get_lines();
     int cursor_line_num = insert_position.extract_int("line");
 
     // The line has the cursor on it so truncate at cursor pos

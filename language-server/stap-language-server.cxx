@@ -166,11 +166,13 @@ document::register_code_blocks(int start_line, int last_line, bool clear_decls){
             delete *g;
         for(auto f = functions.cbegin(); f != functions.cend(); f = functions.erase(f) )
             delete f->second;
-        // TODO: Probe aliases (user_file->aliases)
     }
 
     vector<string> lines = get_lines();
+    if(0 == lines.size()) return; // Nothing to register
     string code;
+    // If the page is ever shortened, the last affected line could fall outside of the doc length
+    last_line = min(last_line, int(lines.size()));
     int line_num = (last_line != -1) ? last_line : lines.size();
     // NB: When registering the code blocks we want to parse as normal
     // not exit early when we find an error (as we would for completion).

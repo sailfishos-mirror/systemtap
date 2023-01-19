@@ -35,7 +35,7 @@ class MockClient():
 
         args = [CMD_ARGS.stap_path, '--language-server']
         if verbose > 0:
-            args.extend(['-'+'v'*verbose])
+            args.extend(['-vvv'])
         server = subprocess.Popen(
             args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=False)
         self.server_conn = JSONRPC2Connection(
@@ -334,7 +334,7 @@ class ServerCompletionTests(unittest.TestCase):
         self.labels_match(
             [ 'global ham\nfunction f() { ba\nglobal spam = 42',
               make_change('bar\n', make_position(0, 7), make_position(0, 10)), # replace ham with bar\n
-              make_change('baz', make_position(3, 7), make_position(0, 11)),   # replace spam with baz
+              make_change('baz', make_position(3, 7), make_position(3, 11)),   # replace spam with baz
             ],
             ['bar', 'baz'], make_position(2, 16), False, None, "incremental")
 
@@ -504,18 +504,18 @@ def test_suite(test_completion, test_integration):
     suite = unittest.TestSuite()
     if test_completion:
         suite.addTests([
-            # ServerCompletionTests('test_basic'),
-            # ServerCompletionTests('test_probe_comps'),
-            # ServerCompletionTests('test_string'),
-            # ServerCompletionTests('test_body'),
-            # ServerCompletionTests('test_multiple_contexts'),
-            # ServerCompletionTests('test_no_completions'),
+            ServerCompletionTests('test_basic'),
+            ServerCompletionTests('test_probe_comps'),
+            ServerCompletionTests('test_string'),
+            ServerCompletionTests('test_body'),
+            ServerCompletionTests('test_multiple_contexts'),
+            ServerCompletionTests('test_no_completions'),
             ServerCompletionTests('test_incremental_changes'),
-            # ServerCompletionTests('test_local_definitions')
+            ServerCompletionTests('test_local_definitions')
         ])
 
-    # if test_integration:
-    #     suite.addTest(ServerIntegrationTests('test_basic'))
+    if test_integration:
+        suite.addTest(ServerIntegrationTests('test_basic'))
 
     return suite
 

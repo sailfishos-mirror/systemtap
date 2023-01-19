@@ -14,6 +14,7 @@
 #include <json-c/json.h>
 #include <iostream>
 #include <variant>
+#include <unistd.h>
 using namespace std;
 
 static struct
@@ -154,7 +155,14 @@ private:
 
 public:
     jsonrpc_connection(int in_fd, int out_fd, int verbose) : IN_FILNO{in_fd}, OUT_FILENO{out_fd}, verbose{verbose}
-    {}
+    {
+        // The in file-descriptor is a terminal
+        if(1 == isatty(IN_FILNO)){
+            cerr << "Warning: The language server should not be started in a terminal.\n" \
+                 << "It should be run as the child of a LSP client" << endl;
+            exit(1);
+        }
+    }
 
     // Client functions
     void wait_for_request();
