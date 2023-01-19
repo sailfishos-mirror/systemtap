@@ -2073,7 +2073,7 @@ parser::parse_synthetic_probe (const token* chain)
 
   input.set_current_file(0);
   input.set_current_token_chain(0);
-  p->synthetic = true;
+  if(p) p->synthetic = true;
   return p;
 }
 
@@ -2521,6 +2521,8 @@ parser::do_parse_functiondecl (vector<functiondecl*>& functions, const token* t,
     }
 
   t = peek();
+  if(!t)
+    throw PARSE_ERROR (_("expected '{'"));
   if (t->type == tok_operator && t->content == ":")
     {
       swallow();
@@ -2919,6 +2921,8 @@ parser::parse_return_statement ()
   s->tok = t;
 
   t = peek ();
+  if(!t)
+    throw PARSE_ERROR (_("expected ';', '}' or an expression statement"));
   if (t->type == tok_operator && (t->content == ";" || t->content == "}"))
     s->value = NULL;  // no return value
   else
