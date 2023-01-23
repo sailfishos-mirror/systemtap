@@ -114,7 +114,7 @@ void lsp_method_text_document_completion::add_completion_item(string text, strin
 void lsp_method_text_document_completion::complete_body(string &partial_statement)
 {
     vector<string> body_components;
-    tokenize(partial_statement, body_components, " \t\n{}");
+    tokenize(partial_statement, body_components, " \t\n{}(),");
 
     // The completion assumes body_components[:-1] are complete and we just want to
     // complete the final component
@@ -127,9 +127,34 @@ void lsp_method_text_document_completion::complete_body(string &partial_statemen
     if (lang_server->verbose >= 2)
         cerr << "Completing [body]: '" << to_complete << "'" << endl;
 
-    // FIXME: I miss things like print*
     if(startswith(to_complete, "$")){
-        //TODO: Context vars
+        for (auto var = target_variables.begin(); var != target_variables.end(); ++var)
+        {
+            string name = var->first;
+            if (startswith(name, to_complete))
+            {
+                stringstream docs;
+                //FIXME: vim-lsp drops * from the docs, so it'll make char** look like char
+                docs << name << ":" << var->second; // name:type
+                add_completion_item(name, "target var", docs.str(), name.substr(to_complete.size()));
+            }
+        }
+        vector<pair<string, string>> pretty_prints = {
+            {"$$vars", "Expands to a character string that is equivalent to sprintf(\"parm1=%x ... parmN=%x var1=%x ... varN=%x\", parm1, ..., parmN, var1, ..., varN) for each variable in scope at the probe point. Some values may be printed as “=?” if their run-time location cannot be found." },
+            {"$$locals", "Expands to a subset of $$vars containing only the local variables."},
+            {"$$parms", "Expands to a subset of $$vars containing only the function parameters."}
+        };
+        if(in_return_probe) pretty_prints.push_back({"$$return", "Expands to a string that is equivalent to sprintf(\"return=%x\",  $return) if the probed function has a return value, or else an empty string."});
+        for (auto pp = pretty_prints.begin(); pp != pretty_prints.end(); ++pp)
+        {
+            string name = pp->first;
+            if (startswith(name, to_complete))
+            {
+                stringstream docs;
+                docs << pp->second;
+                add_completion_item(name, "pretty print", docs.str(), name.substr(to_complete.size()));
+            }
+        }
     }
     else if (!startswith(to_complete, "@"))
     {
@@ -145,6 +170,19 @@ void lsp_method_text_document_completion::complete_body(string &partial_statemen
                     add_completion_item(f->unmangled_name.to_string(), "function", docs.str());
                 }
             }
+        static vector<pair<string, string>> format_print_family = {
+            {"print"   , "unknown:(value:any)"},
+            {"println" , "unknown:(value:any)"},
+            {"printf"  , "unknown:(fmt:string, value:any, ...)"},
+            {"printd"  , "unknown:(delimiter:string, value:any, ...)"},
+            {"printdln", "unknown:(delimiter:string, value:any, ...)"},
+            {"sprint"  , "string:(value:any)"},
+            {"sprintf" , "string:(fmt:string, value:any, ...)"}
+        };
+        for (auto func = format_print_family.begin(); func != format_print_family.end(); ++func)
+            if (startswith(func->first, to_complete))
+                add_completion_item(func->first, "function", func->first + " " + func->second);
+
         vector<vector<vardecl*>> globals = { doc->globals, lang_server->s->globals };
         for (auto g_list = globals.begin(); g_list != globals.end(); ++g_list)
             for (auto global = g_list->begin(); global != g_list->end(); ++global)
@@ -330,17 +368,15 @@ void lsp_method_text_document_completion::complete_string(string &partial_signat
             if (p)
             {
                 vector<derived_probe *> dps;
-
                 derive_probes(*lang_server->s, p, dps, false /* Not optional */, true /* Rethrow semantic errors */);
                 for (auto it = dps.begin(); it != dps.end(); ++it)
                 {
-                    derived_probe *p = *it;
+                    derived_probe *dp = *it;
                     ostringstream o, docs;
                     o << *(*it)->sole_location()->components.back()->arg;
 
-                    // TODO: Might want to grab p->locals[j] as well
                     list<string> args;
-                    p->getargs(args);
+                    dp->getargs(args);
                     if (args.size() > 0)
                     {
                         docs << "Target Vars: ";
@@ -396,8 +432,34 @@ void lsp_method_text_document_completion::complete(string code)
     case con_function:
         if (in_body(code))
         {
-            /* Completion of a function or probe body, which are the same */
             size_t body_start = code.find('{');
+            if(lang_server->code_completion_context == con_probe)
+            try
+            {
+                stringstream ss(code.substr(0, body_start)+"{}");
+                probe *p = parse_synthetic_probe(*lang_server->s, ss, NULL);
+                if (p)
+                {
+                    vector<derived_probe *> dps;
+                    derive_probes(*lang_server->s, p, dps, false /* Not optional */, true /* Rethrow semantic errors */);
+                    if (0 != dps.size()) // Should only have 1 derived probe
+                    {
+                        // derived_probe *dp = dps[0];
+                        in_return_probe = dps.front()->base_pp->components.back()->functor == "return"; // Needed since $$return should only appear in return probes
+                        list<string> args;
+                        dps.front()->getargs(args);
+                        for (auto ia = args.begin(); ia != args.end(); ++ia){
+                            size_t delim = (*ia).find(':');
+                            string name = (*ia).substr(0, delim);
+                            string type = (*ia).substr(delim+1);
+                            target_variables.push_back({name, type});
+                        }
+                    }
+                }
+            }
+            catch (semantic_error&){}
+
+            /* Completion of a function or probe body, which are the same */
             string body = (body_start != code.size() - 1) ? code.substr(body_start + 1) : "";
             complete_body(body);
         }

@@ -275,7 +275,7 @@ class ServerCompletionTests(unittest.TestCase):
             f("hello world");
         foreach (eg+ in groups)
         a<CURSOR>
-
+        }
             global baz = -1
 
             global abaz = "hello"
@@ -284,6 +284,10 @@ class ServerCompletionTests(unittest.TestCase):
         cursor_line = [idx for idx, l in enumerate(lines) if '<CURSOR>' in l][0]
         pos = dict(line=cursor_line, character=lines[cursor_line].find("<CURSOR>"))
         self.labels_match(code, ['afoo', 'abar', 'abaz'], pos, False)
+
+    def test_target_vars(self):
+        code = 'function vars() {}\nprobe kernel.function("vfs_read") { $'
+        self.labels_match(code, ['$file','$buf','$count','$pos', '$$vars', '$$locals', "$$parms"])
 
     def test_incremental_changes(self):
         def make_position(ln, chr):
@@ -322,17 +326,19 @@ class ServerCompletionTests(unittest.TestCase):
               make_change('\nglobal bar = 10', make_position(1,0)),
               make_change('function f() { ba\n', make_position(1,0))
             ],
-            ['bar'], make_position(1, 16), False, None, "incremental")
+            ['backtrace', 'bdevname', 'big_endian2', 'big_endian4', 'big_endian8',
+            'bio_op', 'bio_rw_num', 'bio_rw_str', 'bytes_to_string', 'break'],
+             make_position(1, 16), True, None, "incremental") # Don't match bar since its now inside the function body so its not a global
 
         # Modify the first and last lines and complete between them
         """
         global bar
 
-        function f() { ba<CURSOR>
+        function f() { ba<CURSOR>}
         global baz
         """
         self.labels_match(
-            [ 'global ham\nfunction f() { ba\nglobal spam = 42',
+            [ 'global ham\nfunction f() { ba}\nglobal spam = 42',
               make_change('bar\n', make_position(0, 7), make_position(0, 10)), # replace ham with bar\n
               make_change('baz', make_position(3, 7), make_position(3, 11)),   # replace spam with baz
             ],
@@ -341,11 +347,11 @@ class ServerCompletionTests(unittest.TestCase):
         # Modify the first and last characters and complete between
         """
         global bar
-        function f() { ba<CURSOR>
+        function f() { ba<CURSOR> }
         global baz
         """
         self.labels_match(
-            [ 'flobal bar\nfunction f() { ba\nglobal bam',
+            [ 'flobal bar\nfunction f() { ba }\nglobal bam',
               make_change('g', make_position(0, 0), make_position(0, 1)), # replace f with g
               make_change('z', make_position(2, 9), make_position(2, 10)),   # replace m with z
             ],
@@ -405,7 +411,7 @@ class ServerIntegrationTests(unittest.TestCase):
                     textDocumentSync=2, # Inc Sync
                     completionProvider=dict(
                         resolveProvider=False,
-                        triggerCharacters=['.', '/', '@', "*"]
+                        triggerCharacters=['.', '/', '@', "$", "*"]
                     )
                 ),
                 serverInfo=dict(
@@ -511,7 +517,8 @@ def test_suite(test_completion, test_integration):
             ServerCompletionTests('test_multiple_contexts'),
             ServerCompletionTests('test_no_completions'),
             ServerCompletionTests('test_incremental_changes'),
-            ServerCompletionTests('test_local_definitions')
+            ServerCompletionTests('test_local_definitions'),
+            ServerCompletionTests("test_target_vars")
         ])
 
     if test_integration:

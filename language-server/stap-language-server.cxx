@@ -111,6 +111,30 @@ document::get_last_code_block(vector<string>& lines, string& code, int last_line
     static auto strip = [](string s)
         { return s.erase(0, s.find_first_not_of("\t\n\r ")).erase(s.find_last_not_of("\t\n\r") + 1); };
 
+    // Considering the first num_lines, return true
+    // iff the num_lines+1st line is in its own scope
+    auto should_stop_here = [this](size_t num_lines){
+        size_t n = source.size();
+        size_t ln_num = 0;
+        int scope = 0;
+        for(size_t c = 0; c < n && ln_num < num_lines; c++){
+            if('\n' == source[c]){
+                ln_num++;
+                continue;
+            }
+            if('{' == source[c]){
+                scope++;    
+            }else if('}' == source[c]){
+                scope--;
+                // We have more closing than opening, so this is not in an above scope
+                // Important to exit here, since '}}}{{{' would result in scope == 0,
+                // so exit the second we have a negative scope
+                if(scope < 0) return true;
+            }
+        }
+        return scope <= 0; // For every opening, there was as least 1 close
+    };
+
     vector<string> block;
     int i = last_line;
     // Keep appending lines until a valid start token (or at least the start of one) is found.
@@ -122,7 +146,14 @@ document::get_last_code_block(vector<string>& lines, string& code, int last_line
         tokenize(line, words, " ");
         if (words.size() > 0 && any_of(start_tokens.cbegin(), start_tokens.cend(), [words](string s_token)
                                     { return startswith(s_token, words[0]); }))
-            break; // Found the context start (the absolute start is handled by the loop condition itself)
+        {
+            // Before saying we've just found the line, look up a little and make
+            // sure we're not just within a larger structure. Ex.
+            // probe oneshot {
+            //     pri
+            // shouldn't complete to private, but intead should complete as within a body (ex. print)
+            if(should_stop_here(i)) break;
+        }
     }
     reverse(block.begin(), block.end());
     code = join_vector(block, "\n");
@@ -342,7 +373,7 @@ document::apply_change(lsp_object change, TextDocumentSyncKind kind){
             
             // The first line greater than end_ln which starts a new code_block
             // All lines after this can just be shifted down, and don't need reparsing
-            // // NB: This is the line count BEFORE the insertion
+            // NB: This is the line count BEFORE the insertion
             int delta_line_count = count(text, '\n') - 
                                    count(source.substr(insert_range_start, insert_range_end-insert_range_start), '\n');
             first_untouched = end_ln + delta_line_count + 1;
@@ -415,7 +446,7 @@ public:
              * This means that if for example completing @foobar results in unexpected insertions
              * it may be worth considering if '@' should be a trigger char
              */
-            completion_options.insert<string>("triggerCharacters", {".", "/", "@", "*"});
+            completion_options.insert<string>("triggerCharacters", {".", "/", "@", "$", "*"});
             server_capabilities.insert("completionProvider", completion_options);
         }
 

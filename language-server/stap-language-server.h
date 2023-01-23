@@ -149,7 +149,6 @@ public:
 
     // Get the last code_block before last_line
     // Return the start line number of the code_block
-    //
     int get_last_code_block(vector<string>& lines, string& code, int last_line);
 
     void register_code_block(string& code, int first_line);
@@ -268,6 +267,10 @@ private:
     lsp_object insert_position;
     document *doc;
 
+    // If applicable (in a probe body), contains the <var_name, var_type> pairs
+    vector<pair<string, string>> target_variables;
+    bool in_return_probe;
+
     // Helper methods
     void add_completion_item(string text, string type = "", string docs = "", string insert_text = "");
     void complete_body(string &partial_statement);
@@ -277,7 +280,9 @@ private:
     void complete(string code);
 
 public:
-    lsp_method_text_document_completion(language_server *lang_server) : lsp_method(lang_server) {}
+    lsp_method_text_document_completion(language_server *lang_server) : lsp_method(lang_server) {
+        in_return_probe = false;
+    }
     inline static const string TEXT_DOCUMENT_COMPLETION = "textDocument/completion";
     jsonrpc_response *handle(json_object *p);
 };
