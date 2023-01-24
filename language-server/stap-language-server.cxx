@@ -55,9 +55,8 @@ pass_1(systemtap_session &s, string &code, const token **tok)
     s.have_script = true;
 
     // Ignore the output since it will probably raise a parse error
-    ofstream file("/dev/null");
-    streambuf *former_cout = cout.rdbuf(file.rdbuf());
-    streambuf *former_cerr = cerr.rdbuf(file.rdbuf());
+    cout.setstate(ios_base::failbit);
+    cerr.setstate(ios_base::failbit);
     int rc = 0;
     try
     {
@@ -70,9 +69,9 @@ pass_1(systemtap_session &s, string &code, const token **tok)
             *tok = pe.tok ? pe.tok : s.language_server->code_completion_target;
         rc = 1;
     }
-    cout.rdbuf(former_cout);
-    cerr.rdbuf(former_cerr);
-    file.close();
+    // Restore
+    cout.clear();
+    cerr.clear();
     return rc;
 }
 

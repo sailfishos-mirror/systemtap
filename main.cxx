@@ -1487,6 +1487,8 @@ main (int argc, char * const argv [])
     #ifdef HAVE_JSON_C
     if(s.language_server_mode){
       // The language server commuinicates with the client via stdio, so the systemtap verbosity should be 0
+      // It's best to keep the verbosity within the lang-server since it prevents accidental cout usage which
+      // will cause faliures (Ex. s.version() uses cout)
       // Instead the LS verbosity should be set
       s.language_server = new language_server(&s, s.verbose);
       s.verbose = 0;

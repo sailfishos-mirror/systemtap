@@ -76,8 +76,10 @@ jsonrpc_request *jsonrpc_connection::get_request()
     _read_header(h);
 
     char *jsonrpc_payload = (char *)malloc(h.content_length + 1);
-    if ((ssize_t)h.content_length != read(IN_FILNO, jsonrpc_payload, h.content_length))
-        throw jsonrpc_error(LSPErrCode.InternalError, "The was an issue reading the request payload");
+    for(int bytes_read = 0, n; bytes_read < (ssize_t)h.content_length; bytes_read += n){
+        n = read(IN_FILNO, jsonrpc_payload + bytes_read, h.content_length - bytes_read);
+        if(n <= 0) throw jsonrpc_error(LSPErrCode.InternalError, "The was an issue reading the request payload");
+    }
     jsonrpc_payload[h.content_length] = '\0';
 
     if (verbose > 2)
@@ -96,8 +98,10 @@ jsonrpc_request *jsonrpc_connection::get_request()
 void jsonrpc_connection::_write_header_line(string field, string value, bool final_line)
 {
     string hline = field + ": " + value + "\r\n" + (final_line ? "\r\n" : "");
-    if ((ssize_t)hline.size() != write(OUT_FILENO, hline.c_str(), hline.size()))
-        throw jsonrpc_error(LSPErrCode.InternalError, "The was an issue writing the response header");
+    for(int bytes_written = 0, n; bytes_written < (ssize_t)hline.size(); bytes_written += n){
+        n = write(OUT_FILENO, hline.c_str() + bytes_written, hline.size() - bytes_written);
+        if(n <= 0) throw jsonrpc_error(LSPErrCode.InternalError, "The was an issue writing the response header");
+    }
 }
 
 void jsonrpc_connection::send_response(jsonrpc_request *request, jsonrpc_response *response)
@@ -109,6 +113,8 @@ void jsonrpc_connection::send_response(jsonrpc_request *request, jsonrpc_respons
     const char *body_str = json_object_to_json_string_length(body, JSON_C_TO_STRING_SPACED, &(h.content_length));
     _write_header_line("Content-Length", to_string(h.content_length));
     _write_header_line("Content-Type", h.content_type, /*final_line = */ true);
-    if ((ssize_t)h.content_length != write(OUT_FILENO, body_str, h.content_length))
-        throw jsonrpc_error(LSPErrCode.InternalError, "The was an issue writing the response payload");
+    for(int bytes_written = 0, n; bytes_written < (ssize_t)h.content_length; bytes_written += n){
+        n = write(OUT_FILENO, body_str + bytes_written, h.content_length - bytes_written);
+        if(n <= 0) throw jsonrpc_error(LSPErrCode.InternalError, "The was an issue writing the response payload");
+    }
 }
