@@ -22,7 +22,7 @@ set incpath "$srcdir/$subdir"
 
 
 # clean up junk output from previous runs
-exec rm -f dtrace-*
+exec bash -c "rm -f dtrace-* .dtrace-*"
 
 # -----------------------------------------------------------------
 # test command line option and file handling 
