@@ -444,6 +444,7 @@ static void _stp_stack_kernel_print(struct context *c, int sym_flags)
 {
 	unsigned n, remaining;
 	unsigned long l;
+	bool print_addr_seen = 0;
 
 	/* print the current address */
 	if (c->probe_type == stp_probe_type_kretprobe && c->ips.krp.pi
@@ -460,12 +461,20 @@ static void _stp_stack_kernel_print(struct context *c, int sym_flags)
 		l = _stp_stack_kernel_get(c, n);
 		if (l == 0) {
 			remaining = MAXBACKTRACE - n;
-			_stp_stack_print_fallback(c, UNW_SP(&c->uwcontext_kernel.info),
-						  &c->uwcontext_kernel.info.regs,
-						  sym_flags, remaining, 0);
+                        /* In case _stp_print_addr() successfully managed to do
+                         * some dwarf unwinding, there's no need to fall back to
+                         * _stp_stack_print_fallback().  Doing it might cause
+                         * duplicate output in the resulting stack trace.  The
+                         * print_addr_seen helps to prevent that.  Test covered
+                         * by backtrace.exp. */
+			if (!print_addr_seen)
+				_stp_stack_print_fallback(c, UNW_SP(&c->uwcontext_kernel.info),
+							  &c->uwcontext_kernel.info.regs,
+							  sym_flags, remaining, 0);
 			break;
 		} else {
 			_stp_print_addr(l, sym_flags, NULL);
+			print_addr_seen = 1;
 		}
 	}
 #else
