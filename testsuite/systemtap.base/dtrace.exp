@@ -83,11 +83,27 @@ if {[file exists /tmp/XXX.o]} then {
 }
 exec rm -f /tmp/XXX.o
 
-verbose -log "$dtrace -G -s $dpath -o /dev/null"
-if [as_non_root "$python $dtrace -G -s $dpath -o /dev/null"] {
+# In case $dpath is in a directory structure not readable for the
+# as_non_root()'s user (nobody), we copy the dpath content to a
+# temporary directory with sufficiently relaxed access, and use
+# tmpdir instead of dpath:
+if {[catch {exec mktemp -d staptestXXXXXX} tmpdir]} {
+    verbose -log "Failed to create temporary directory: $tmpdir"
+    return
+}
+if {[catch {exec bash -c "cp -r $dpath/* $tmpdir/ && chmod -R a+rx $tmpdir"}]} {
+    verbose -log "Failed to initialize temporary directory $tmpdir"
+    return
+}
+verbose -log "$dtrace -G -s $tmpdir -o /dev/null"
+if [as_non_root "$python $dtrace -G -s $tmpdir -o /dev/null"] {
     fail "$test -G -o /dev/null"
 } else {
     pass "$test -G -o /dev/null"
+}
+if {[catch {exec rm -rf $tmpdir}]} {
+    verbose -log "Failed to remove temporary directory $tmpdir"
+    return
 }
 
 verbose -log "$dtrace -G -s $dpath -o /tmp/XXX"
