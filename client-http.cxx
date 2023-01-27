@@ -38,6 +38,10 @@ extern "C" {
 #include <elfutils/libdw.h>
 #include <fcntl.h>
 #include <nss3/nss.h>
+
+#ifdef HAVE_RPMCRYPTO_H
+#include <rpm/rpmcrypto.h>
+#endif
 }
 
 using namespace std;
@@ -473,7 +477,9 @@ http_client::get_rpmname (std::string &search_file)
 	  break;
       }
 
+#if HAVE_LIBRPMIO
     rpmFreeCrypto ();
+#endif
     rpmdbFreeIterator (mi);
     rpmtsFree (ts);
     rpmtdFree (td);
