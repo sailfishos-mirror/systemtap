@@ -1490,7 +1490,7 @@ main (int argc, char * const argv [])
       // It's best to keep the verbosity within the lang-server since it prevents accidental cout usage which
       // will cause faliures (Ex. s.version() uses cout)
       // Instead the LS verbosity should be set
-      s.language_server = new language_server(&s, s.verbose);
+      s.lang_server = new language_server(&s, s.verbose);
       s.verbose = 0;
       for(int i = 0; i < 5; i++)
         s.perpass_verbose[i] = 0;
@@ -1549,8 +1549,8 @@ main (int argc, char * const argv [])
 
     if(s.language_server_mode){
       #ifdef HAVE_JSON_C
-        int r = s.language_server->run();
-        delete s.language_server;
+        int r = s.lang_server->run();
+        delete s.lang_server;
         return r;
       #endif
     }

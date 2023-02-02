@@ -15,8 +15,8 @@
 #include <vector>
 #include <iostream>
 #include <stdexcept>
+#include <staptree.h>
 #include "stringtable.h"
-
 
 struct systemtap_session;
 struct stapfile;
@@ -111,6 +111,28 @@ struct macrodecl {
   virtual ~macrodecl ();
 };
 
+/* Tracks some of the data from within the paser, which
+ * will survive past the parser's lifetime. This is currently
+ * used to pass on some completion data to the language server
+ */
+struct parser_completion_state{
+  // The top level context in which the parser failed
+  parse_context context;
+  // The token on which the parser had it's failure (may be the same as the parse_error tok)
+  const token *tok;
+  // The last parsed probe point (might may or may not be completed)
+  probe_point* pp;
+  // The last (possibly incomplete) probe point component. Might have a valid functor
+  // but invalid arg for example
+  probe_point::component* comp;
+  // true iff the parser failed within parse_stmt_block which is refered to as the 'body'
+  bool in_body;
+
+  parser_completion_state() : context{con_unknown}, tok{0}, pp{0}, comp{0}, in_body{false} {}
+  parser_completion_state(parser_completion_state* other):
+    context{other->context}, tok{other->tok}, pp{other->pp},
+    comp{other->comp}, in_body{other->in_body} {}
+};
 
 enum parse_flag
   {

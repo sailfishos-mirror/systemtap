@@ -191,7 +191,7 @@ systemtap_session::systemtap_session ():
   timeout = 0;
   use_bpf_raw_tracepoint = false;
   symbol_resolver = 0;
-  language_server = 0;
+  lang_server = 0;
   language_server_mode = false;
 
   // PR12443: put compiled-in / -I paths in front, to be preferred during 
@@ -384,7 +384,7 @@ systemtap_session::systemtap_session (const systemtap_session& other,
   pass_1a_complete = other.pass_1a_complete;
   timeout = other.timeout;
   language_server_mode = other.language_server_mode;
-  language_server = other.language_server;
+  lang_server = other.lang_server;
   // don't bother copy typequery_memo
 
   include_path = other.include_path;

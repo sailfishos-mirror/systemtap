@@ -36,54 +36,6 @@ pc2str(parse_context pc)
     return "undefined context";
 }
 
-static inline bool
-in_body(string &code_snippet)
-{
-    return code_snippet.find('{') != string::npos;
-}
-
-/* Split a probe signature into a vector of component-param pairs
- * Ex. foo("a").bar(2).baz -> [ {"foo", "a"}, {bar, "2"}, {"baz", ""} ] 
- */
-void tokenize_probe(const string &str, vector<pair<string, string>> &tokens_and_params)
-{
-    auto lex_probe_component = [&tokens_and_params](string full_token)
-    {
-        size_t p_start = full_token.find('(');
-        if (p_start != string::npos)
-        {
-            tokens_and_params.push_back({
-                full_token.substr(0, p_start),
-                full_token.substr(p_start + 1, full_token.find(')', p_start) - p_start - 1)
-            });
-        }
-        else
-        {
-            tokens_and_params.push_back({full_token, ""});
-        }
-    };
-
-    // Walk the probe signature, until a new component is found
-    // Lex the previous stringified component into a token & (possible) param
-    // It is important to consider if we're in a string since '.' can appear within a string (Ex. libc.so)
-    bool in_quote = false;
-    size_t start = 0;
-    for (size_t pos = 0; pos < str.size(); pos++)
-    {
-        char c = str[pos];
-        if (c == '.' && !in_quote)
-        {
-            lex_probe_component(str.substr(start, pos - start));
-            start = pos + 1;
-        }
-        else if (c == '\"')
-        {
-            in_quote = !in_quote;
-        }
-    }
-    // Get that last component
-    lex_probe_component(str.substr(start));
-}
 
 void lsp_method_text_document_completion::add_completion_item(string text, string type, string docs, string insert_text)
 {
@@ -111,18 +63,14 @@ void lsp_method_text_document_completion::add_completion_item(string text, strin
     completion_items.push_back(item);
 }
 
-void lsp_method_text_document_completion::complete_body(string &partial_statement)
+void lsp_method_text_document_completion::complete_body()
 {
-    vector<string> body_components;
-    tokenize(partial_statement, body_components, " \t\n{}(),");
-
-    // The completion assumes body_components[:-1] are complete and we just want to
-    // complete the final component
-    string to_complete;
-    if (body_components.size() != 0)
-        to_complete = body_components.back();
-    else
-        to_complete = "";
+    // Complete the last token that the parser saw
+    // TODO: There could be possible improvements here
+    // Ex. if we have return f_____ then make sure f_____ is of the specified return type
+    string to_complete = "";
+    if(lang_server->c_state->tok)
+        to_complete =  lang_server->c_state->tok->content;
 
     if (lang_server->verbose >= 2)
         cerr << "Completing [body]: '" << to_complete << "'" << endl;
@@ -144,7 +92,9 @@ void lsp_method_text_document_completion::complete_body(string &partial_statemen
             {"$$locals", "Expands to a subset of $$vars containing only the local variables."},
             {"$$parms", "Expands to a subset of $$vars containing only the function parameters."}
         };
-        if(in_return_probe) pretty_prints.push_back({"$$return", "Expands to a string that is equivalent to sprintf(\"return=%x\",  $return) if the probed function has a return value, or else an empty string."});
+        probe_point* pp = lang_server->c_state->pp;
+        if(pp && !pp->components.empty() && pp->components.back()->functor == "return") // $$return should only appear in return probes
+            pretty_prints.push_back({"$$return", "Expands to a string that is equivalent to sprintf(\"return=%x\",  $return) if the probed function has a return value, or else an empty string."});
         for (auto pp = pretty_prints.begin(); pp != pretty_prints.end(); ++pp)
         {
             string name = pp->first;
@@ -226,30 +176,32 @@ void lsp_method_text_document_completion::complete_body(string &partial_statemen
     }
 }
 
-void lsp_method_text_document_completion::complete_probe_signature(string &partial_signature)
+void lsp_method_text_document_completion::complete_probe_signature()
 {
-    vector<pair<string, string>> probe_components;
-    tokenize_probe(partial_signature, probe_components);
+    // Default to an empty string, since the functor may be NULL (Ex. probe process._____)
+    string to_complete = "";
+    // If we have part of a component then that's what needs completing
+    if(lang_server->c_state->comp)
+        to_complete = lang_server->c_state->comp->functor.to_string();
 
-    // The completion assumes probe_components[:-1] are complete and we just want to
-    // complete the final component
-    string to_complete = probe_components.back().first;
     if (lang_server->verbose >= 2)
         cerr << "Completing [probe signature]: '" << to_complete << "'" << endl;
 
     match_node *node = lang_server->s->pattern_root;
     // Find the current position within the match_node tree (which will be a parent of the result(s))
-    for (auto ip = probe_components.begin(); ip != probe_components.end()-1; ++ip)
+    // Make sure not to step down prematurely since process could either be complete with 'process.' or incomplete aiming for 'process("'
+    const probe_point* pp = lang_server->c_state->pp;
+    if(pp && !pp->components.empty() && pp->components.back()->functor != to_complete)
+    for (auto pc = lang_server->c_state->pp->components.begin(); pc != lang_server->c_state->pp->components.end(); ++pc)
     {
-        string comp = ip->first;
-        string param = ip->second;
-
+        string comp = (*pc)->functor.to_string();
         match_key key = match_key(interned_string(comp));
-        key.have_parameter = !param.empty();
-        key.parameter_type = param.find('"') != param.npos ? pe_string : pe_long;
+        key.have_parameter =  (*pc)->arg != nullptr;
+        if(key.have_parameter)
+            key.parameter_type = (*pc)->arg->type;
 
         for (match_node::sub_map_iterator_t it = node->sub.begin(); it != node->sub.end(); ++it)
-            if (it->first.str() == key.str() && (!key.have_parameter || it->first.parameter_type == key.parameter_type))
+            if(key.globmatch(it->first))
             {
                 node = it->second;
                 break;
@@ -277,8 +229,6 @@ void lsp_method_text_document_completion::complete_path(string path)
     // TODO: PATH can have wildcards which means globbing needs to be supported
     if (path.empty())
         return;
-
-    path = path.substr(1); // Remove the opening quote (since we're completing strings, there is no closing)
 
     vector<string> dirs;
     string partial_path = ""; // The path from the start (not including a slash at idx 0) to the last slash (inclusive)
@@ -335,16 +285,11 @@ void lsp_method_text_document_completion::complete_path(string path)
         {} // If there is an issue just skip
 }
 
-void lsp_method_text_document_completion::complete_string(string &partial_signature)
+void lsp_method_text_document_completion::complete_string()
 {
-    vector<pair<string, string>> probe_components;
-    tokenize_probe(partial_signature, probe_components);
-
-    // The completion assumes probe_components[:-1] are complete and we just want to
-    // complete the final component
-    string to_complete = probe_components.back().second; // The string param to complete
-    string completion_component = probe_components.back().first;
-    probe_components.pop_back();
+    string to_complete = lang_server->c_state->tok->content.to_string();
+    to_complete.erase(0, 1); // Remove the opening quote
+    string completion_component = lang_server->c_state->comp->functor.to_string();
 
     if (lang_server->verbose >= 2)
         cerr << "Completing [string]: '" << to_complete << "'" << endl;
@@ -360,34 +305,37 @@ void lsp_method_text_document_completion::complete_string(string &partial_signat
         {
             // eat the last * token ex. "ma* should complete in the same way "ma would
             // we'll result in ma* completing as ma*n where as ma would complete as main
-            bool has_wildcard_tail = '*' == to_complete.back();
+            bool has_wildcard_tail = to_complete != "" && '*' == to_complete.back();
             if (has_wildcard_tail) to_complete.pop_back();
 
-            stringstream ss(string("probe ") + partial_signature + "*\") {}");
-            probe *p = parse_synthetic_probe(*lang_server->s, ss, NULL);
-            if (p)
-            {
-                vector<derived_probe *> dps;
-                derive_probes(*lang_server->s, p, dps, false /* Not optional */, true /* Rethrow semantic errors */);
-                for (auto it = dps.begin(); it != dps.end(); ++it)
-                {
-                    derived_probe *dp = *it;
-                    ostringstream o, docs;
-                    o << *(*it)->sole_location()->components.back()->arg;
+            // Just 'fix' the probe point by adding a wildcard to the incomplete compnent's arg
+            // No need to fully reparse
+            probe p;
+            probe_point* pp(lang_server->c_state->pp);
+            probe_point::component c(completion_component, new literal_string(to_complete + "*"));
+            pp->components.push_back(&c);
+            p.locations.push_back(pp);
 
-                    list<string> args;
-                    dp->getargs(args);
-                    if (args.size() > 0)
-                    {
-                        docs << "Target Vars: ";
-                        for (auto ia = args.begin(); ia != args.end(); ++ia)
-                            docs << *ia << " ";
-                    }
-                    // The insertion text is just the tail of the completion
-                    string insert_text = o.str().substr(to_complete.size());
-                    if(has_wildcard_tail) insert_text.erase(insert_text.begin()); // We want to remove the first char, since this is the wildcard's spot
-                    add_completion_item(o.str(), "string", docs.str(), insert_text);
+            vector<derived_probe *> dps;
+            derive_probes(*lang_server->s, &p, dps, false /* Not optional */, true /* Rethrow semantic errors */);
+            for (auto it = dps.begin(); it != dps.end(); ++it)
+            {
+                derived_probe *dp = *it;
+                ostringstream o, docs;
+                o << *(*it)->sole_location()->components.back()->arg;
+
+                list<string> args;
+                dp->getargs(args);
+                if (args.size() > 0)
+                {
+                    docs << "Target Vars: ";
+                    for (auto ia = args.begin(); ia != args.end(); ++ia)
+                        docs << *ia << " ";
                 }
+                // The insertion text is just the tail of the completion
+                string insert_text = o.str().substr(to_complete.size());
+                if(has_wildcard_tail) insert_text.erase(insert_text.begin()); // We want to remove the first char, since this is the wildcard's spot
+                add_completion_item(o.str(), "string", docs.str(), insert_text);
             }
         }
         catch (semantic_error&){}
@@ -410,16 +358,15 @@ void lsp_method_text_document_completion::complete(string code)
      * - The context in which p1 failed
      * - Some information in particular about the failing token
     */ 
-    const token *tok;
-    pass_1(*lang_server->s, code, &tok);
+    pass_1(*lang_server->s, code);
 
     if (lang_server->verbose >= 2)
     {
-        cerr << "Completion context: " << pc2str(lang_server->code_completion_context) << endl;
+        cerr << "Completion context: " << pc2str(lang_server->c_state->context) << endl;
         cerr << "Code Block:" << code << endl;
     }
 
-    switch (lang_server->code_completion_context)
+    switch (lang_server->c_state->context)
     {
     case con_unknown:
         if (startswith(code, "private "))
@@ -430,48 +377,42 @@ void lsp_method_text_document_completion::complete(string code)
         break;
     case con_probe:
     case con_function:
-        if (in_body(code))
+        if (lang_server->c_state->in_body)
         {
-            size_t body_start = code.find('{');
-            if(lang_server->code_completion_context == con_probe)
+            if(lang_server->c_state->context == con_probe)
             try
             {
-                stringstream ss(code.substr(0, body_start)+"{}");
-                probe *p = parse_synthetic_probe(*lang_server->s, ss, NULL);
-                if (p)
+                // No need to reparse, just add the probe point to a new body-less probe
+                probe p;
+                p.locations.push_back(lang_server->c_state->pp);
+                vector<derived_probe *> dps;
+                derive_probes(*lang_server->s, &p, dps, false /* Not optional */, true /* Rethrow semantic errors */);
+                if (0 != dps.size()) // Should only have 1 derived probe
                 {
-                    vector<derived_probe *> dps;
-                    derive_probes(*lang_server->s, p, dps, false /* Not optional */, true /* Rethrow semantic errors */);
-                    if (0 != dps.size()) // Should only have 1 derived probe
-                    {
-                        // derived_probe *dp = dps[0];
-                        in_return_probe = dps.front()->base_pp->components.back()->functor == "return"; // Needed since $$return should only appear in return probes
-                        list<string> args;
-                        dps.front()->getargs(args);
-                        for (auto ia = args.begin(); ia != args.end(); ++ia){
-                            size_t delim = (*ia).find(':');
-                            string name = (*ia).substr(0, delim);
-                            string type = (*ia).substr(delim+1);
-                            target_variables.push_back({name, type});
-                        }
+                    list<string> args;
+                    dps.front()->getargs(args);
+                    for (auto ia = args.begin(); ia != args.end(); ++ia){
+                        size_t delim = (*ia).find(':');
+                        string name = (*ia).substr(0, delim);
+                        string type = (*ia).substr(delim+1);
+                        target_variables.push_back({name, type});
                     }
                 }
             }
             catch (semantic_error&){}
 
             /* Completion of a function or probe body, which are the same */
-            string body = (body_start != code.size() - 1) ? code.substr(body_start + 1) : "";
-            complete_body(body);
+            complete_body();
         }
-        else if (lang_server->code_completion_context == con_probe && code.size() > strlen("probe"))
+        else if (lang_server->c_state->context == con_probe && code.size() > strlen("probe"))
         {
             //  code is of the form 'probe...' up to and not incluing a possible body start ({, %{)
-            string partial_sig = code.substr(strlen("probe") + 1);
+            const token *tok = lang_server->c_state->tok;
             if (tok && tok->type == tok_junk && tok->junk_type == tok_junk_unclosed_quote)
                 // The special case of string completion
-                complete_string(partial_sig);
+                complete_string();
             else
-                complete_probe_signature(partial_sig);
+                complete_probe_signature();
         }
         else
         {

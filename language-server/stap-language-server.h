@@ -124,7 +124,7 @@ string
 join_vector(vector<string> vec, string delim);
 
 int
-pass_1(systemtap_session &s, string &code, const token **tok);
+pass_1(systemtap_session &s, string &code);
 
 int passes_0_4(systemtap_session &s);
 
@@ -226,10 +226,8 @@ public:
     bool running;
     bool init_request_received;
     bool shutdown_request_received;
-
-    // Some data needed for completion requests
-    parse_context code_completion_context;
-    const token *code_completion_target;
+    // The state once the parser is complete, which is then used for completion
+    shared_ptr<parser_completion_state> c_state;
 
     bool is_registered(string method) { return registered_lsp_methods.find(method) != registered_lsp_methods.end(); }
 
@@ -269,20 +267,17 @@ private:
 
     // If applicable (in a probe body), contains the <var_name, var_type> pairs
     vector<pair<string, string>> target_variables;
-    bool in_return_probe;
 
     // Helper methods
     void add_completion_item(string text, string type = "", string docs = "", string insert_text = "");
-    void complete_body(string &partial_statement);
-    void complete_probe_signature(string &partial_signature);
+    void complete_body();
+    void complete_probe_signature();
     void complete_path(string path);
-    void complete_string(string &partial_signature);
+    void complete_string();
     void complete(string code);
 
 public:
-    lsp_method_text_document_completion(language_server *lang_server) : lsp_method(lang_server) {
-        in_return_probe = false;
-    }
+    lsp_method_text_document_completion(language_server *lang_server) : lsp_method(lang_server) {}
     inline static const string TEXT_DOCUMENT_COMPLETION = "textDocument/completion";
     jsonrpc_response *handle(json_object *p);
 };

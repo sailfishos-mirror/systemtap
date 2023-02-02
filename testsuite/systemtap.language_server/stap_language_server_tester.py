@@ -182,11 +182,11 @@ class ServerCompletionTests(unittest.TestCase):
         # Completing a second token
         self.labels_match('probe process', [
                           'process', 'process(', 'process("'])
+        self.labels_match('probe process(12345678).en', ['end', 'end('])
         # Just look for a subset of expected in actual
         self.labels_match('probe process.', ['begin'], exactMatch=False)
         # Doesn't match anything
         self.labels_match('probe twosh', [])
-        self.labels_match('probe process(12345678).en', ['end'])
 
     def test_string(self):
         file_path = os.getenv("TEST_C_FILE")

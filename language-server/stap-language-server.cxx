@@ -42,7 +42,7 @@ transcribe_functions_and_globals(systemtap_session &s)
 }
 
 int
-pass_1(systemtap_session &s, string &code, const token **tok)
+pass_1(systemtap_session &s, string &code)
 {
     // Set up session to only run pass 1.
     s.last_pass = 1;
@@ -60,13 +60,10 @@ pass_1(systemtap_session &s, string &code, const token **tok)
     int rc = 0;
     try
     {
-        if(tok) *tok = NULL;
         rc = passes_0_4(s);
     }
     catch (const parse_error &pe)
     {
-        if(tok)
-            *tok = pe.tok ? pe.tok : s.language_server->code_completion_target;
         rc = 1;
     }
     // Restore
@@ -166,7 +163,7 @@ document::register_code_block(string& code, int first_line){
         delete *uf;
 
     // Parse the code_block
-    int rc = pass_1(*s, code , NULL);
+    int rc = pass_1(*s, code);
 
     // Location is made relative to the document start.
     // This is needed since in order to determine the current valid definitions,
@@ -630,7 +627,7 @@ language_server::handle_lsp_method(jsonrpc_request *req)
     return it->second(this, req->params);
 }
 
-language_server::language_server(systemtap_session *sess, unsigned int v) : s{sess}, verbose{v}
+language_server::language_server(systemtap_session *sess, unsigned int v) : s{sess}, verbose{v}, c_state{0}
 {
     running = init_request_received = shutdown_request_received = false;
 
@@ -652,15 +649,13 @@ language_server::language_server(systemtap_session *sess, unsigned int v) : s{se
 
     // Language Features
     register_lsp_method(lsp_method_text_document_completion::TEXT_DOCUMENT_COMPLETION, lsp_method::handler<lsp_method_text_document_completion>);
-    code_completion_context = con_unknown;
-    code_completion_target = NULL;
 }
 
 int language_server::run()
 {
     // The first time pass_1a is completed, we parse all the library scripts, so do it upon init to remove an initial delay
     string empty = "";
-    pass_1(*this->s, empty, NULL);
+    pass_1(*this->s, empty);
     this->s->register_library_aliases();
     register_standard_tapsets(*this->s);
     transcribe_functions_and_globals(*this->s);

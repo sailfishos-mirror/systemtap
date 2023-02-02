@@ -485,7 +485,7 @@ public:
   symresolution_info* symbol_resolver; // may be NULL
   
   bool language_server_mode;
-  class language_server* language_server;
+  language_server* lang_server;
 
   // NB: It is very important for all of the above (and below) fields
   // to be cleared in the systemtap_session ctor (session.cxx).
