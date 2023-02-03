@@ -7,8 +7,32 @@
 // later version.
 #include "jsonrpc.h"
 
+#if ! HAVE_JSON_C
+    json_object* json_tokener_parse(const char*) { return NULL; }
+    json_object* json_object_new_object() { return NULL; }
+    json_object* json_object_new_string(const char*) { return NULL; }
+    json_object* json_object_new_int(int32_t) { return NULL; }
+    json_object* json_object_new_boolean(bool) { return NULL; }
+    json_object* json_object_new_uint64(uint64_t) { return NULL; }
+    json_object* json_object_new_double(double) { return NULL; }
+    const char*  json_object_get_string(json_object*) { return ""; }
+    int32_t      json_object_get_int(json_object*) { return 0; }
+    bool         json_object_get_boolean(json_object*) { return 0; }
+    uint64_t     json_object_get_uint64(json_object*) { return 0; }
+    double       json_object_get_double(json_object*) { return 0; }
+    json_object* json_object_object_get(json_object*,const char*) { return NULL; }
+    bool         json_object_object_get_ex (json_object*,const char*, json_object**) { return 0; }
+    json_type    json_object_get_type (json_object*) { return json_type_null; }
+    int          json_object_object_add(json_object*, const char*, json_object*) { return 0; }
+    size_t       json_object_array_length(json_object*) { return 0; }
+    json_object* json_object_array_get_idx(json_object*, size_t) { return NULL; }
+    const char*  json_object_to_json_string_length(json_object*, int, size_t*) { return ""; }
+    const char*  json_object_to_json_string(json_object*) { return ""; }
+    json_object* json_object_new_array_ext(int) { return NULL; }
+    void         json_object_array_add(json_object*, json_object*) { return; }
+#endif
+
 #include <assert.h>
-#include <json-c/json.h>
 #include <sys/select.h>
 #include <iostream>
 #include <string>

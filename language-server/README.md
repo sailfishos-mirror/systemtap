@@ -10,7 +10,7 @@ Welcome to the Systemtap language server guide. The language server implements t
   * exit 
 * **Document Synchronization**
   * textDocument/DidOpen
-  * textDocument/DidChange (Full synchronization)
+  * textDocument/DidChange (Full and incremental synchronization)
   * textDocument/DidSave
   * textDocument/DidClose
 * **Language Featuress**

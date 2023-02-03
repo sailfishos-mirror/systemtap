@@ -12,8 +12,6 @@
 #include "session.h"
 #include "tapsets.h"
 #include "util.h"
-
-#include <json-c/json.h>
 #include <ext/stdio_filebuf.h>
 
 using namespace std;

@@ -13,7 +13,7 @@
 #include "stap-probe.h"
 #include "stap-language-server.h"
 
-#include <json-c/json.h>
+#include "jsonrpc.h"
 #include <iostream>
 #include <signal.h>
 #include <sys/select.h>
@@ -311,6 +311,7 @@ void lsp_method_text_document_completion::complete_string()
             // Just 'fix' the probe point by adding a wildcard to the incomplete compnent's arg
             // No need to fully reparse
             probe p;
+            p.body = new block();
             probe_point* pp(lang_server->c_state->pp);
             probe_point::component c(completion_component, new literal_string(to_complete + "*"));
             pp->components.push_back(&c);
@@ -385,6 +386,7 @@ void lsp_method_text_document_completion::complete(string code)
                 // No need to reparse, just add the probe point to a new body-less probe
                 probe p;
                 p.locations.push_back(lang_server->c_state->pp);
+                p.body = new block();
                 vector<derived_probe *> dps;
                 derive_probes(*lang_server->s, &p, dps, false /* Not optional */, true /* Rethrow semantic errors */);
                 if (0 != dps.size()) // Should only have 1 derived probe

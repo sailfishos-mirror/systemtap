@@ -15,8 +15,6 @@
 #include "parse.h"
 #include "staptree.h"
 
-
-#include <json-c/json.h>
 #include <string>
 #include <ostream>
 #include <sstream>

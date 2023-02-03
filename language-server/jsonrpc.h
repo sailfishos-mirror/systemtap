@@ -11,10 +11,39 @@
 #define JSONRPC_H
 
 #include <string>
-#include <json-c/json.h>
 #include <iostream>
 #include <variant>
 #include <unistd.h>
+#include "config.h"
+#if HAVE_JSON_C
+    #include <json-c/json.h>
+#else
+    struct json_object;
+    enum json_type {json_type_null, json_type_string};
+    #define JSON_C_TO_STRING_SPACED 1
+    json_object* json_tokener_parse(const char*);
+    json_object* json_object_new_object();
+    json_object* json_object_new_string(const char*);
+    json_object* json_object_new_int(int32_t);
+    json_object* json_object_new_boolean(bool);
+    json_object* json_object_new_uint64(uint64_t);
+    json_object* json_object_new_double(double);
+    const char*  json_object_get_string(json_object*);
+    int32_t      json_object_get_int(json_object*);
+    bool         json_object_get_boolean(json_object*);
+    uint64_t     json_object_get_uint64(json_object*);
+    double       json_object_get_double(json_object*);
+    json_object* json_object_object_get(json_object*,const char*);
+    bool         json_object_object_get_ex (json_object*,const char*, json_object**);
+    json_type    json_object_get_type (json_object*);
+    int          json_object_object_add(json_object*, const char*, json_object*);
+    size_t       json_object_array_length(json_object*);
+    json_object* json_object_array_get_idx(json_object*, size_t);
+    const char*  json_object_to_json_string_length(json_object*, int, size_t*);
+    const char*  json_object_to_json_string(json_object*);
+    json_object* json_object_new_array_ext(int);
+    void         json_object_array_add(json_object*, json_object*);
+#endif
 using namespace std;
 
 static struct
