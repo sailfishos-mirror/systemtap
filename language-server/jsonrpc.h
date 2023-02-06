@@ -12,7 +12,6 @@
 
 #include <string>
 #include <iostream>
-#include <variant>
 #include <unistd.h>
 #include "config.h"
 #if HAVE_JSON_C
@@ -26,7 +25,6 @@
     json_object* json_object_new_string(const char*);
     json_object* json_object_new_int(int32_t);
     json_object* json_object_new_boolean(bool);
-    json_object* json_object_new_uint64(uint64_t);
     json_object* json_object_new_double(double);
     const char*  json_object_get_string(json_object*);
     int32_t      json_object_get_int(json_object*);
@@ -41,7 +39,7 @@
     json_object* json_object_array_get_idx(json_object*, size_t);
     const char*  json_object_to_json_string_length(json_object*, int, size_t*);
     const char*  json_object_to_json_string(json_object*);
-    json_object* json_object_new_array_ext(int);
+    json_object* json_object_new_array();
     void         json_object_array_add(json_object*, json_object*);
 #endif
 using namespace std;
@@ -89,14 +87,12 @@ struct jsonrpc_request
     string jsonrpc;
     string method;
     json_object *params;
-    variant<string, int> id;
+    int id;
+    bool id_is_string; // true iff the original id was sent as "id"
 
     bool is_notification()
     {
-        if (id.index() == 0) // id is a string
-            return get<string>(id) == "";
-        else // id is an int
-            return get<int>(id) == -1;
+        return id == -1;
     }
 
     jsonrpc_request(char *request_string)
@@ -108,12 +104,16 @@ struct jsonrpc_request
             method  = json_object_get_string(json_object_object_get(request, "method"));
             params  = json_object_object_get(request, "params");
             json_object *jid = json_object_object_get(request, "id");
-            if (json_object_get_type(jid) == json_type_null)
+            if (!jid || json_object_get_type(jid) == json_type_null)
                 id = -1;
-            else if (json_object_get_type(jid) == json_type_string)
-                id = json_object_get_string(jid);
-            else
+            else if (json_object_get_type(jid) == json_type_string){
+                id = atoi(json_object_get_string(jid));
+                id_is_string = true;
+            }
+            else{
                 id = json_object_get_int(jid);
+                id_is_string = false;
+            }
         }
 
         if (!request || jsonrpc != "2.0")
@@ -159,13 +159,13 @@ public:
         if (!result_or_error_set)
             throw jsonrpc_error(LSPErrCode.InternalError, "Either result or error must be set on a json response");
         // If there was an error in detecting the id in the Request object (e.g. Parse error/Invalid Request), it MUST be Null.
-        if (req->id.index() == 0)
-        { // id is a string
-            string id = get<string>(req->id);
-            json_object_object_add(payload, "id", id != "" ? json_object_new_string(id.c_str()) : NULL);
-        }else{ // id is an int
-            int id = get<int>(req->id);
-            json_object_object_add(payload, "id", id >= 0 ? json_object_new_int(id) : NULL);
+        if (req->id_is_string)
+        {
+            string id = to_string(req->id);
+            json_object_object_add(payload, "id", req->id >= 0 ? json_object_new_string(id.c_str()) : NULL);
+        }else{
+            int id = req->id;
+            json_object_object_add(payload, "id", req->id >= 0 ? json_object_new_int(id) : NULL);
         }
         return payload;
     }

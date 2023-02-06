@@ -42,7 +42,6 @@ private:
     json_object *_to_json_object(const char *value)  { return json_object_new_string(value); }
     json_object *_to_json_object(int value)          { return json_object_new_int(value); }
     json_object *_to_json_object(bool value)         { return json_object_new_boolean(value); }
-    json_object *_to_json_object(unsigned int value) { return json_object_new_uint64(value); }
     json_object *_to_json_object(double value)       { return json_object_new_double(value); }
     json_object *_to_json_object(lsp_object value)   { return value.to_json(); }
 
@@ -66,7 +65,6 @@ public:
     const char  *extract_string(string key) { return json_object_get_string(_get_and_check(key)); }
     int          extract_int(string key)    { return json_object_get_int(_get_and_check(key)); }
     bool         extract_bool(string key)   { return json_object_get_boolean(_get_and_check(key)); }
-    unsigned int extract_uint(string key)   { return json_object_get_uint64(_get_and_check(key)); }
     double       extract_double(string key) { return json_object_get_double(_get_and_check(key)); }
 
     template <typename T>
@@ -88,7 +86,6 @@ public:
     void insert(string key, const char *value)  { json_object_object_add(j_obj, key.c_str(), _to_json_object(value)); }
     void insert(string key, int value)          { json_object_object_add(j_obj, key.c_str(), _to_json_object(value)); }
     void insert(string key, bool value)         { json_object_object_add(j_obj, key.c_str(), _to_json_object(value)); }
-    void insert(string key, unsigned int value) { json_object_object_add(j_obj, key.c_str(), _to_json_object(value)); }
     void insert(string key, double value)       { json_object_object_add(j_obj, key.c_str(), _to_json_object(value)); }
     void insert(string key, string &value)      { json_object_object_add(j_obj, key.c_str(), _to_json_object(value.c_str())); }
     void insert(string key, lsp_object &value)  { json_object_object_add(j_obj, key.c_str(), _to_json_object(value)); }
@@ -96,7 +93,7 @@ public:
     template <typename T>
     void insert(string key, vector<T> values)
     {
-        json_object *arr = json_object_new_array_ext(values.size());
+        json_object *arr = json_object_new_array();
         for (auto v = values.begin(); v != values.end(); ++v)
             json_object_array_add(arr, _to_json_object(*v));
         json_object_object_add(j_obj, key.c_str(), arr);
@@ -276,7 +273,7 @@ private:
 
 public:
     lsp_method_text_document_completion(language_server *lang_server) : lsp_method(lang_server) {}
-    inline static const string TEXT_DOCUMENT_COMPLETION = "textDocument/completion";
+    static constexpr const char* TEXT_DOCUMENT_COMPLETION = "textDocument/completion";
     jsonrpc_response *handle(json_object *p);
 };
 

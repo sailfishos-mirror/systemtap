@@ -417,7 +417,7 @@ class lsp_method_initialize : public lsp_method
 {
 public:
     lsp_method_initialize(language_server *lang_server) : lsp_method(lang_server) {}
-    inline static const string INITIALIZE = "initialize";
+    static constexpr const char* INITIALIZE = "initialize";
 
     jsonrpc_response *handle(json_object *p)
     {
@@ -462,7 +462,7 @@ class lsp_method_initialized : public lsp_method
 {
 public:
     lsp_method_initialized(language_server *lang_server) : lsp_method(lang_server) {}
-    inline static const string INITIALIZED = "initialized";
+    static constexpr const char* INITIALIZED = "initialized";
     // Pass, no action required
 };
 
@@ -473,7 +473,7 @@ class lsp_method_text_document_did_open : public lsp_method
 {
 public:
     lsp_method_text_document_did_open(language_server *lang_server) : lsp_method(lang_server) {}
-    inline static const string TEXT_DOCUMENT_DID_OPEN = "textDocument/didOpen";
+    static constexpr const char* TEXT_DOCUMENT_DID_OPEN = "textDocument/didOpen";
 
     jsonrpc_response *handle(json_object *p)
     {
@@ -490,7 +490,7 @@ class lsp_method_text_document_did_change : public lsp_method
 {
 public:
     lsp_method_text_document_did_change(language_server *lang_server) : lsp_method(lang_server) {}
-    inline static const string TEXT_DOCUMENT_DID_CHANGE = "textDocument/didChange";
+    static constexpr const char* TEXT_DOCUMENT_DID_CHANGE = "textDocument/didChange";
 
     jsonrpc_response *handle(json_object *p)
     {
@@ -517,7 +517,7 @@ class lsp_method_text_document_did_close : public lsp_method
 {
 public:
     lsp_method_text_document_did_close(language_server *lang_server) : lsp_method(lang_server) {}
-    inline static const string TEXT_DOCUMENT_DID_CLOSE = "textDocument/didClose";
+    static constexpr const char* TEXT_DOCUMENT_DID_CLOSE = "textDocument/didClose";
 
     jsonrpc_response *handle(json_object *p)
     {
@@ -534,7 +534,7 @@ class lsp_method_text_document_did_save : public lsp_method
 {
 public:
     lsp_method_text_document_did_save(language_server *lang_server) : lsp_method(lang_server) {}
-    inline static const string TEXT_DOCUMENT_DID_SAVE = "textDocument/didSave";
+    static constexpr const char* TEXT_DOCUMENT_DID_SAVE = "textDocument/didSave";
     // Pass, no action required
 };
 
@@ -547,7 +547,7 @@ class lsp_method_shutdown : public lsp_method
 {
 public:
     lsp_method_shutdown(language_server *lang_server) : lsp_method(lang_server) {}
-    inline static const string SHUTDOWN = "shutdown";
+    static constexpr const char* SHUTDOWN = "shutdown";
 
     jsonrpc_response *handle(json_object *)
     {
@@ -563,7 +563,7 @@ class lsp_method_exit : public lsp_method
 {
 public:
     lsp_method_exit(language_server *lang_server) : lsp_method(lang_server) {}
-    inline static const string EXIT = "exit";
+    static constexpr const char* EXIT = "exit";
 
     jsonrpc_response *handle(json_object *)
     {

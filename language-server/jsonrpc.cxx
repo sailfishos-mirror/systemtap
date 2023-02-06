@@ -13,7 +13,6 @@
     json_object* json_object_new_string(const char*) { return NULL; }
     json_object* json_object_new_int(int32_t) { return NULL; }
     json_object* json_object_new_boolean(bool) { return NULL; }
-    json_object* json_object_new_uint64(uint64_t) { return NULL; }
     json_object* json_object_new_double(double) { return NULL; }
     const char*  json_object_get_string(json_object*) { return ""; }
     int32_t      json_object_get_int(json_object*) { return 0; }
@@ -28,7 +27,7 @@
     json_object* json_object_array_get_idx(json_object*, size_t) { return NULL; }
     const char*  json_object_to_json_string_length(json_object*, int, size_t*) { return ""; }
     const char*  json_object_to_json_string(json_object*) { return ""; }
-    json_object* json_object_new_array_ext(int) { return NULL; }
+    json_object* json_object_new_array() { return NULL; }
     void         json_object_array_add(json_object*, json_object*) { return; }
 #endif
 

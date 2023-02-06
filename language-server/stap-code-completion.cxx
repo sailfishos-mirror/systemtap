@@ -17,7 +17,8 @@
 #include <iostream>
 #include <signal.h>
 #include <sys/select.h>
-#include <filesystem>
+ #include <sys/stat.h>
+#include <dirent.h>
 #include <numeric>
 
 /* Utilities */
@@ -267,19 +268,36 @@ void lsp_method_text_document_completion::complete_path(string path)
                 dir = partial_path;
             else
                 dir += (dir.back() != '/' ? "/" : "") + partial_path;
-
-            for (const auto &file : std::filesystem::directory_iterator(dir))
-            {
-                string prefix = dir + (dir.back() != '/' ? "/" : "") + to_complete;
-                if (startswith(file.path(), prefix) && (file.is_directory() || file.is_regular_file()))
-                {
-                    string type = file.is_directory() ? "directory" : "file";
-                    if (absolute)
-                        add_completion_item(file.path(), type, "", string(file.path()).substr(prefix.size()));
-                    else
-                        add_completion_item(file.path().filename(), type, "", string(file.path()).substr(prefix.size()));
+            DIR *dr = opendir(dir.c_str());
+            struct dirent *file;
+            if (dr)
+                while ((file = readdir(dr)) != NULL) {
+                    if(0 == strcmp(file->d_name, ".") || 0 == strcmp(file->d_name, "..")) continue;
+                    string prefix      = dir + (dir.back() != '/' ? "/" : "") + to_complete;
+                    string file_path   = dir + (dir.back() != '/' ? "/" : "") + file->d_name;
+                    unsigned char d_type = file->d_type;
+                    if (startswith(file_path, prefix) && (d_type == DT_DIR || d_type == DT_REG || d_type == DT_LNK))
+                    {
+                        struct stat st;
+                        if (0 == stat(file_path.c_str(), &st))
+                        {
+                            if (S_ISDIR(st.st_mode))
+                                d_type = DT_DIR;
+                            else if(S_ISREG(st.st_mode))
+                                d_type = DT_REG;
+                            else
+                                continue;
+                        }
+                        else
+                            continue;
+                        string type = d_type == DT_DIR ? "directory" : "file";
+                        if (absolute)
+                            add_completion_item(file_path, type, "", string(file_path).substr(prefix.size()));
+                        else
+                            add_completion_item(file->d_name, type, "", string(file_path).substr(prefix.size()));
+                    }
                 }
-            }
+            closedir(dr);
         }
         catch (...)
         {} // If there is an issue just skip
