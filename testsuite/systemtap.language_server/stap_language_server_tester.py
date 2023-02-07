@@ -11,10 +11,12 @@ import os
 import argparse
 import unittest
 import subprocess
-from mock import mock
-from enum import StrEnum
+try:
+    from unittest import mock
+except ImportError:
+    import mock
 
-class Method(StrEnum):
+class Method():
     # General
     EXIT = 'exit'
     INITIALIZE = 'initialize'
@@ -44,7 +46,7 @@ class MockClient():
         # Setup and open a doccument
 
         _ = self.server_conn.send_request(
-            method=Method.INITIALIZE.value,
+            method=Method.INITIALIZE,
             params=dict(
                 rootUri=f'file://{os.getcwd()}',
                 capabilities=dict(),
@@ -57,7 +59,7 @@ class MockClient():
             )
         )
 
-        self.server_conn.send_notification(Method.INITIALIZED.value, dict())
+        self.server_conn.send_notification(Method.INITIALIZED, dict())
 
         self.text_document = dict(
             uri='file://fake_doc.txt',
@@ -67,7 +69,7 @@ class MockClient():
         )
 
         self.server_conn.send_notification(
-            method=Method.TEXT_DOCUMENT_DID_OPEN.value,
+            method=Method.TEXT_DOCUMENT_DID_OPEN,
             params=dict(textDocument=self.text_document)
         )
 
@@ -79,9 +81,9 @@ class MockClient():
             params=dict(textDocument=dict(uri=self.text_document['uri']))
         )
 
-        self.server_conn.send_notification(Method.SHUTDOWN.value, dict())
+        self.server_conn.send_notification(Method.SHUTDOWN, dict())
 
-        self.server_conn.send_notification(Method.EXIT.value, dict())
+        self.server_conn.send_notification(Method.EXIT, dict())
 
     def completion_request_full(self, code_snippet, position=None):
         # If position is not provided, assume we're at the snippet end
@@ -90,7 +92,7 @@ class MockClient():
             position = dict(line=len(lines)-1, character=len(lines[-1]))
 
         self.server_conn.send_notification(
-            method=Method.TEXT_DOCUMENT_DID_CHANGE.value,
+            method=Method.TEXT_DOCUMENT_DID_CHANGE,
             params=dict(
                 textDocument=dict(
                     uri=self.text_document['uri'],
@@ -103,7 +105,7 @@ class MockClient():
         )
 
         return self.server_conn.send_request(
-            method=Method.COMPLETION.value,
+            method=Method.COMPLETION,
             params=dict(
                 textDocument=dict(uri=self.text_document['uri']),
                 position=position
@@ -116,7 +118,7 @@ class MockClient():
 
         for v, c in enumerate(changes):
             self.server_conn.send_notification(
-                method=Method.TEXT_DOCUMENT_DID_CHANGE.value,
+                method=Method.TEXT_DOCUMENT_DID_CHANGE,
                 params=dict(
                     textDocument=dict(
                         uri=self.text_document['uri'],
@@ -130,7 +132,7 @@ class MockClient():
         assert(position is not None)
 
         return self.server_conn.send_request(
-            method=Method.COMPLETION.value,
+            method=Method.COMPLETION,
             params=dict(
                 textDocument=dict(uri=self.text_document['uri']),
                 position=position
@@ -377,12 +379,12 @@ class ServerIntegrationTests(unittest.TestCase):
 
     def _test_request(self, request_method: Method, request_params: dict, expected_result: dict):
         response = self.server_conn.send_request(
-            request_method.value, request_params)
+            request_method, request_params)
         self.assertDictEqual(response.get("result", {}), expected_result)
 
     def _send_notification(self, notification_method: Method, notification_params: dict = dict()):
         self.server_conn.send_notification(
-            notification_method.value, notification_params)
+            notification_method, notification_params)
 
     def test_basic(self):
         args = [CMD_ARGS.stap_path, '--language-server']
@@ -495,7 +497,7 @@ class ServerIntegrationTests(unittest.TestCase):
         # Make sure the shutdown worked, since now only exit notifications should
         # be accepted and all others should error
         response = self.server_conn.send_request(
-            Method.COMPLETION.value, dict())
+            Method.COMPLETION, dict())
         InvalidRequestError = -32600
         self.assertEqual(response.get("error", {}).get(
             "code", -1), InvalidRequestError)
