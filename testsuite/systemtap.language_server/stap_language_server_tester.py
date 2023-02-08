@@ -15,6 +15,7 @@ try:
     from unittest import mock
 except ImportError:
     import mock
+from typing import Union
 
 class Method():
     # General
@@ -144,7 +145,7 @@ class ServerCompletionTests(unittest.TestCase):
         super().__init__(*args, **kwargs)
         self.client = MockClient() # Each testcase gets its own mockclient
 
-    def labels_match(self, change: str | list, expected, position=None, exactMatch=True, type=None, sync_kind = "full"):
+    def labels_match(self, change: Union[str, list], expected, position=None, exactMatch=True, type=None, sync_kind = "full"):
         comp_func = MockClient.completion_request_inc if sync_kind != "full" else MockClient.completion_request_full
 
         completion_list = comp_func(self.client,
