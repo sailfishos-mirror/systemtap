@@ -392,7 +392,7 @@ class ServerIntegrationTests(unittest.TestCase):
         if self.verbose > 0:
             args.extend(['-'+'v'*self.verbose])
         server = subprocess.Popen(
-            args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=False)
+            args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=False)
         self.server_conn = JSONRPC2Connection(
             ReadWriter(reader=server.stdout, writer=server.stdin))
 
