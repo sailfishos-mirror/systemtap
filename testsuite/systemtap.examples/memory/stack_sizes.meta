@@ -1,0 +1,13 @@
+title: Periodically sample user-space stack sizes
+name: stack_sizes.stp
+version: 1.0
+author: William Cohen
+keywords: memory
+subsystem: memory
+status: production
+exit: user-controlled
+output: sorted-list
+scope: system-wide
+description: The stack_sizes.stp script periodically samples the stack size of each process created while it is running. When the script exits a logarithmic histogram will be printed for each executable tallying the number number of times each stack size was observed for the executable.
+test_check: stap -gp4 stack_sizes.stp
+test_installcheck: stap -g stack_sizes.stp -T 1

@@ -1,0 +1,53 @@
+#! /usr/bin/stap -g
+#
+# Copyright (C) 2023 Red Hat, Inc.
+# By William cohen, Red Hat Inc.
+# wcohen@redhat.com
+#
+
+global stack_start%, stack_size
+
+%{
+#include <asm/processor.h>
+%}
+
+function get_sp:long(task:long) %{
+  /* Would have preferred to just use KSTK_ESP macro, but on x86_64
+   * KSTK_ESP is an unexported function.
+   */
+#if defined (__i386__) || defined (__x86_64__)
+  STAP_RETVALUE = task_pt_regs((struct task_struct *)STAP_ARG_task)->sp;
+#else
+  STAP_RETVALUE = KSTK_ESP((struct task_struct *)STAP_ARG_task);
+#endif
+%}
+
+probe kernel.function("start_thread"){
+  stack_start[task_current()]=@choose_defined($new_sp, $sp)
+}
+
+/* Remove the stack_start when the task is being shutdown. */
+probe kprocess.exit {
+	delete stack_start[task_current()]
+}
+
+probe timer.ms(10) {
+  task = task_current()
+  current_stack_start = stack_start[task]
+  if (current_stack_start) {
+    current_sp = get_sp(task)
+    stack_size[execname()] <<< current_stack_start - current_sp
+  }
+}
+
+probe begin {
+  printf("Starting data collection\n")
+}
+
+probe end {
+  printf("\nhistograms of stack sizes of started processes\n")
+  foreach (n+ in stack_size) {
+    printf("%s\n", n);
+    print(@hist_log(stack_size[n]))
+  }
+}
