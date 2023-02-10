@@ -822,7 +822,7 @@ public:
 	       string &input __attribute ((unused)))
   {
     const char *editor;
-    char temp_path[] = "/tmp/stapXXXXXX";
+    char temp_path[] = "/tmp/stapXXXXXX.stp";
     int fd;
 
     // Get EDITOR value.
@@ -830,7 +830,7 @@ public:
       editor = "/bin/ex";
 
     // Get a temporary file.
-    fd = mkstemp(temp_path);
+    fd = mkstemps(temp_path, 4);
     if (fd < 0)
       {
 	cout << endl
