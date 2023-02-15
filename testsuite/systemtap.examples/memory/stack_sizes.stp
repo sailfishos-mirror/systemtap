@@ -5,7 +5,7 @@
 # wcohen@redhat.com
 #
 
-global stack_start%, stack_size
+global stack_start%, stack_size, longjmp_stack_start
 
 %{
 #include <asm/processor.h>
@@ -28,7 +28,33 @@ probe kernel.function("start_thread"){
 
 /* Remove the stack_start when the task is being shutdown. */
 probe kprocess.exit {
-	delete stack_start[task_current()]
+  delete stack_start[task_current()]
+}
+
+/* Additional probes for stack tracking of qemu coroutines */
+probe process("/usr/bin/qemu-img").function("qemu_coroutine_new").return ? {
+  /* The pointer returned is for the Coroutine, but his is also the
+     the start of of CoroutineUContext struct, so can get the field by casting
+   */
+  env = @cast($return, "CoroutineUContext")->env
+  longjmp_stack_start[task_current(), env] = @cast($return, "CoroutineUContext")->stack
+}
+
+probe process("/usr/bin/qemu-img").function("qemu_coroutine_delete") ? {
+  env = @cast($co_, "CoroutineUContext")->env
+  delete longjmp_stack_start[task_current(), env]
+}
+
+/* Switch to new context with new context */
+probe process("/usr/lib*/libc.so.*").function("longjmp") ?,
+      process("/usr/lib*/libc.so.*").function("siglongjmp") ? {
+  stack_start[task_current()] = longjmp_stack_start[task_current(), pointer_arg(1)]
+}
+
+/* Record the associated start of the stack with the newly created context */
+probe process("/usr/lib*/libc.so.*").function("setjmp") ?,
+      process("/usr/lib*/libc.so.*").function("sigsetjmp") ? {
+  longjmp_stack_start[task_current(), pointer_arg(1)] = stack_start[task_current()]
 }
 
 probe timer.ms(10) {
