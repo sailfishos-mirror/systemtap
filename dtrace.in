@@ -27,7 +27,6 @@ import time
 import atexit
 from shlex import split
 from subprocess import call
-from tempfile import mkstemp
 try:
     from pyparsing import alphas, cStyleComment, delimitedList, Group, \
         Keyword, lineno, Literal, nestedExpr, nums, oneOf, OneOrMore, \
@@ -278,6 +277,28 @@ class _ReProvider(_HeaderCreator):
         hdr.close()
 
 
+def mktemp_determ(sources, suffix):
+    # for reproducible-builds purposes, use a predictable tmpfile path
+    sha = hashlib.sha256()
+    for source in sources:
+        sha.update(source.encode('utf-8'))
+    fname = ".dtrace-temp." + sha.hexdigest()[:8] + suffix
+    tries = 0
+    while True:
+        tries += 1
+        if tries > 100: # if file exists due to previous crash or whatever
+            raise Exception("cannot create temporary file \""+fname+"\"")
+        try:
+            wxmode = 'x' if sys.version_info > (3,0) else 'wx'
+            fdesc = open(fname, mode=wxmode)
+            break
+        except FileExistsError:
+            time.sleep(0.1) # vague estimate of elapsed time for concurrent identical gcc job
+            pass # Try again
+
+    return fdesc, fname
+
+
 def usage():
     print("Usage " + sys.argv[0] + " [--help] [-h | -G] [-C [-I<Path>]] -s File.d [-o <File>]")
 
@@ -360,7 +381,7 @@ def main():
         return 1
 
     if s_filename != "" and use_cpp:
-        (ignore, fname) = mkstemp(suffix=".d")
+        (ignore, fname) = mktemp_determ(["use_cpp", s_filename], suffix=".d")
         cpp = os.environ.get("CPP", "cpp")
         retcode = call(split(cpp) + includes + defines + [s_filename, '-o', fname])
         if retcode != 0:
@@ -399,7 +420,7 @@ def main():
             providers = _PypProvider()
         else:
             providers = _ReProvider()
-        (ignore, fname) = mkstemp(suffix=".h")
+        (fdesc, fname) = mktemp_determ(["build_source", s_filename], suffix=".h")
         while True:
             try:
                 providers.probe_write(s_filename, fname)
@@ -413,26 +434,9 @@ def main():
         else:
             print("header: " + fname)
 
-        # for reproducible-builds purposes, use a predictable tmpfile path
-        sha = hashlib.sha256()
-        sha.update(s_filename.encode('utf-8'))
-        sha.update(filename.encode('utf-8'))
-        fname = ".dtrace-temp." + sha.hexdigest()[:8] + ".c"
-        tries = 0
-        while True:
-            tries += 1
-            if tries > 100: # if file exists due to previous crash or whatever
-                print("cannot create temporary file \""+fname+"\"")
-                return 1
-            try:
-                wxmode = 'x' if sys.version_info > (3,0) else 'wx'
-                fdesc = open(fname, mode=wxmode)
-                if not keep_temps:
-                   atexit.register(os.remove, fname) # delete generated source at exit, even if error
-                break
-            except:
-                time.sleep(0.1) # vague estimate of elapsed time for concurrent identical gcc job
-                pass # Try again
+        (fdesc, fname) = mktemp_determ(["build_source", s_filename, filename], suffix=".c")
+        if not keep_temps:
+            atexit.register(os.remove, fname) # delete generated source at exit, even if error
         providers.semaphore_write(fdesc)
         fdesc.close()
         cc1 = os.environ.get("CC", "gcc")
