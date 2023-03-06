@@ -249,9 +249,11 @@ document::apply_change(lsp_object change, TextDocumentSyncKind kind){
         return pos;
     };
 
+    auto safe_substr = [](string s, size_t __pos, size_t __n = string::npos){ return s.substr(min(__pos, s.size()), __n); };
+
     // Finds the line and character of the last difference between two
     // vectors of strings as a NEGATIVE OFFSET from the end
-    auto last_diff = [](vector<string> old_lines, vector<string> new_lines, lsp_object first_difference){
+    auto last_diff = [safe_substr](vector<string> old_lines, vector<string> new_lines, lsp_object first_difference){
         int last_ln, last_col;
         size_t old_lines_n = old_lines.size(), new_lines_n = new_lines.size();
 
@@ -266,8 +268,8 @@ document::apply_change(lsp_object change, TextDocumentSyncKind kind){
             string old_line, new_line;
             if(last_ln <= -line_count){
                 last_ln = -line_count;
-                old_line = old_lines[ old_lines_n + last_ln ].substr(first_difference.extract_int("character"));
-                new_line = new_lines[ new_lines_n + last_ln ].substr(first_difference.extract_int("character"));
+                old_line = safe_substr(old_lines[ old_lines_n + last_ln ], first_difference.extract_int("character"));
+                new_line = safe_substr(new_lines[ new_lines_n + last_ln ], first_difference.extract_int("character"));
             }else{
                 old_line = old_lines[ old_lines_n + last_ln ];
                 new_line = new_lines[ new_lines_n + last_ln ];
@@ -285,7 +287,7 @@ document::apply_change(lsp_object change, TextDocumentSyncKind kind){
     };
 
     // Get the substring from within the old_lines which is the actuall delta between old and new
-    auto extract_text = [](vector<string>& new_lines, lsp_object& start, lsp_object& end){
+    auto extract_text = [safe_substr](vector<string>& new_lines, lsp_object& start, lsp_object& end){
         size_t start_ln  = start.extract_int("line");
         size_t start_col = start.extract_int("character");
         size_t end_ln    = end.extract_int("line");
@@ -293,15 +295,15 @@ document::apply_change(lsp_object change, TextDocumentSyncKind kind){
         if(start_ln == new_lines.size() + end_ln){
             if(0 == end_ln) return string();
             int length =  new_lines[start_ln].size() + end_col - start_col + 1;
-            return new_lines[start_ln].substr(start_col, length);
+            return safe_substr(new_lines[start_ln], start_col, length);
         }
 
-        string result = new_lines[start_ln].substr(start_col) + "\n";
+        string result = safe_substr(new_lines[start_ln], start_col) + "\n";
         for(auto line_it = new_lines.begin()+start_ln+1; line_it != new_lines.begin()+new_lines.size()+end_ln+1; ++line_it)
             result += *line_it + "\n";
         if(0 != end_ln){
             int length = new_lines[new_lines.size() + end_ln].size() + end_col + 1;
-            result += new_lines[new_lines.size() + end_ln].substr(0, length);
+            result += safe_substr(new_lines[new_lines.size() + end_ln], 0, length);
         }
         return result;
     };

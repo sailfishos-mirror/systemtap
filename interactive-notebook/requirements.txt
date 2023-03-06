@@ -1,0 +1,5 @@
+ipykernel>=6.12
+bqplot
+ipyevents
+jupyterlab-lsp
+jupyter_kernel_test

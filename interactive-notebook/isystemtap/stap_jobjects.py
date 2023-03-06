@@ -12,18 +12,21 @@ from bqplot import *
 import bqplot.pyplot as plt
 import sqlite3
 from typing import List
-from stap_kernel import *
+from .stap_kernel import *
 from ipyevents import Event
 from ipywidgets import Text, Button, Tab, GridBox, Layout, Label, HBox, VBox, Output, TagsInput, Combobox, IntProgress, HTML, Valid
 from IPython.display import JSON, Code, Markdown
 from enum import StrEnum
 # FIXME: poll's small changes should be added to the jupyter-ui-poll, and the file should be removed
-from poll import ui_events
+from .poll import ui_events
 
-# FIXME: Depends largely on build choices
 JUPYTER_MAGIC = "JUPYTER_MAGIC_"
-PKGDATADIR = "/opt/stap/systemtap"
-STAP_PATH = "/opt/stap/build/stap"
+# File is created at build time
+try:
+    from .constants import STAP_PKGDATADIR, STAP_PATH
+except:
+    STAP_PKGDATADIR = ''
+    STAP_PATH  = 'stap'
 
 
 class JSubprocess(subprocess.Popen):
@@ -91,7 +94,7 @@ class JSubprocess(subprocess.Popen):
 
 
 class JHistogram():
-    def __init__(self, kernel: SystemtapKernel, func, name, start=0, end=0, width=0):
+    def __init__(self, kernel, func, name, start=0, end=0, width=0):
         self.kernel = kernel
         self.name = name
         self.func = func
@@ -125,7 +128,7 @@ class JHistogram():
 class JNamespace:
     def __init__(self, kernel, name=""):
         self.name    : str             = name
-        self.kernel  : SystemtapKernel = kernel
+        self.kernel                    = kernel
         self._cells  : List[JCell]     = list()
         self._proc   : JSubprocess     = None
         self._globals: dict            = dict()
@@ -185,7 +188,7 @@ class CellExeMode(StrEnum):
 
 
 class JCell:
-    def __init__(self, cell_id: str, kernel: SystemtapKernel):
+    def __init__(self, cell_id: str, kernel):
         self.cell_id               = cell_id
         self.kernel                = kernel
         self.namespace: JNamespace = None
@@ -702,7 +705,12 @@ class JCell:
         title = Text()
 
         # Query the DB for the possibilities
-        con = sqlite3.connect(PKGDATADIR + "/EXAMPLES/metadatabase.db")
+        con = None
+        DB_PATH = STAP_PKGDATADIR + "/examples/metadatabase.db"
+        try:
+            con = sqlite3.connect(DB_PATH)
+        except:
+            self.kernel.error(f"Unable to connect to examples database: {DB_PATH}")
         res = con.execute('SELECT DISTINCT keywords, name from metavirt')
         keywords      = set()  # Possible keywords
         example_names = list() # Possible examples
@@ -753,7 +761,7 @@ class JCell:
         def make_row(title, name, keywords, description, path):
             out = Output(layout=Layout(border='solid 2px', width='50%'))
 
-            full_path = f'{PKGDATADIR}/EXAMPLES/{path}/{name}'
+            full_path = f'{STAP_PKGDATADIR}/examples/{path}/{name}'
 
             # The controls for running an example
             run     = Button(button_style='info', tooltip='Run', icon='play')
@@ -818,7 +826,7 @@ class JCell:
 
         def handle_search(_):
             # SQLite objects created in a thread can only be used in that same thread
-            con = sqlite3.connect(PKGDATADIR + "/EXAMPLES/metadatabase.db")
+            con = sqlite3.connect(DB_PATH)
             res = None
             if name.value != '':
                 # If given an exact script, just pull it up by name

@@ -2352,7 +2352,7 @@ c_unparser::emit_module_exit ()
   o->newline() << "preempt_disable();";
 
   // print per probe point timing/alibi statistics
-  o->newline() << "#if defined(STP_TIMING) || defined(STP_ALIBI)";
+  o->newline() << "#if !defined(STP_STDOUT_NOT_ATTY) && defined(STP_TIMING) || defined(STP_ALIBI)";
   o->newline() << "_stp_printf(\"----- probe hit report: \\n\");";
   o->newline() << "for (i = 0; i < ARRAY_SIZE(stap_probes); ++i) {";
   o->newline(1) << "const struct stap_probe *const p = &stap_probes[i];";
@@ -2381,7 +2381,7 @@ c_unparser::emit_module_exit ()
 
   if (!session->runtime_usermode_p())
     {
-      o->newline() << "#if defined(STP_TIMING)";
+      o->newline() << "#if !defined(STP_STDOUT_NOT_ATTY) && defined(STP_TIMING)";
       o->newline() << "_stp_printf(\"----- refresh report:\\n\");";
       o->newline() << "if (likely (g_refresh_timing)) {";
       o->newline(1) << "struct stat_data *stats = _stp_stat_get (g_refresh_timing, 0);";
@@ -8366,6 +8366,8 @@ translate_pass (systemtap_session& s)
 
       if (s.timing || s.monitor)
 	s.op->hdr->newline() << "#define STP_TIMING";
+      if (!isatty(STDOUT_FILENO))
+  s.op->hdr->newline() << "#define STP_STDOUT_NOT_ATTY";
 
       if (s.need_unwind)
 	s.op->hdr->newline() << "#define STP_NEED_UNWIND_DATA 1";

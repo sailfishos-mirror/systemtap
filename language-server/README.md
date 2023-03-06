@@ -106,7 +106,7 @@ $ pip install jupyterlab-lsp
   "LanguageServerManager": {
     "language_servers": {
       "stap-language": {
-        "version": 1,
+        "version": 2,
         "argv": ["stap", "--language-server"],
         "debug_argv": ["stap", "--language-server", "-v"],
         "languages": ["systemtap"],

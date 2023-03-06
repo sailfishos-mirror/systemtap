@@ -2310,9 +2310,12 @@ static void monitor_mode_read(systemtap_session& s)
 
   stringstream code;
 
-  unsigned long rough_max_json_size = 100 +
-    s.globals.size() * 100 +
-    s.probes.size() * 200;
+  unsigned long total_arity = 0;
+  for(auto it_g = s.globals.cbegin(); it_g != s.globals.cend(); ++it_g)
+    total_arity += (*it_g)->arity + 1; // Each element needs some space, since an array needs more than a scalar would 
+  unsigned long rough_max_json_size = 2048 +
+    total_arity * 1024 + // Give plenty of room, since stats can get big
+    s.probes.size() * 512;
   
   code << "probe procfs(\"monitor_status\").read.maxsize(" << rough_max_json_size << ") {" << endl;
   code << "try {"; // absorb .= overflows!
@@ -2324,26 +2327,86 @@ static void monitor_mode_read(systemtap_session& s)
   code << "$value .= sprintf(\"\\\"memory\\\": \\\"%s\\\",\\n\", module_size())" << endl;
   code << "$value .= sprintf(\"\\\"module_name\\\": \\\"%s\\\",\\n\", module_name())" << endl;
 
+  auto format_global = [](string name, exp_type t, int num_escape){
+    string s = "";
+    string escape(num_escape, '\\');
+
+    if (t == pe_stats){
+      /* For a stats variable v, we construct a json object of the form
+      {"@foo": @foo(v), ...}
+      */
+      string stats_vals;
+      string stats_fmt = "{";
+      static const vector<string> stats = { "@count", "@min", "@max", "@sum", "@avg" };
+      for(auto it = stats.begin(); it != stats.end(); ++it){
+        stats_vals += "(@count(" + name + ") != 0 ? " + *it + "(" + name + ")" + ": 0)";
+        stats_fmt  +=  escape + "\"" + *it + escape + "\": " + "%d";
+        if(it != stats.end()-1){
+            stats_vals += ", ";
+            stats_fmt  += ", ";
+        }
+      }
+      stats_fmt += "}";
+      
+      s += "sprintf(\""+ stats_fmt +"\", " + stats_vals + ")";
+    }
+    else if (t == pe_string)
+      s += "sprintf(\""+escape+"\"%s"+escape+"\"\"," + name + ")";
+    else
+      s += "sprint(" + name + ")";
+    return s;
+  };
+
+
   code << "$value .= sprintf(\"\\\"globals\\\": {\\n\")" << endl;
   for (auto it = s.globals.cbegin(); it != s.globals.cend(); ++it)
     {
-      if ((*it)->synthetic) continue;
+      if ((*it)->synthetic || !startswith((*it)->name, "__global_")) continue;
 
       if (it != s.globals.cbegin())
         code << "$value .= sprintf(\",\\n\")" << endl;
 
       code << "$value .= sprintf(\"\\\"%s\\\":\", \"" << (*it)->unmangled_name << "\")" << endl;
-      if ((*it)->arity == 0)
-        {
-          if ((*it)->type == pe_stats)
-            code << "$value .= sprintf(\"\\\"%d(count)\\\"\", @count(" << (*it)->name << "))" << endl;
-          else if ((*it)->type == pe_string)
-            code << "$value .= string_quoted(sprintf(\"\\\"%s\\\"\"," << (*it)->name << "))" << endl;
-          else
-            code << "$value .= string_quoted(sprint(" << (*it)->name << "))" << endl;
+      if ((*it)->arity == 0) // A scalar so just map name to formatted value
+      {
+        code << "$value .= " << format_global((*it)->name.to_string(), (*it)->type, 1) << endl;
+      }
+      else if ((*it)->arity > 0) // An array, which requires a bit more work
+      {
+                              // Example for array 'arr'
+        string key_str  = ""; // "arr_k1, arr_k2, ...arr_karity"
+        string fmt_str  = ""; // "%s, %s, ...%s"
+        string glbl_str = ""; // value_of(arr_k1), ..., value_of(arr_karity)
+        for(int i = 0; i < (*it)->arity; i++){
+          string k = (*it)->unmangled_name.to_string() + "_k" + to_string(i);
+          key_str  += k;
+          fmt_str  += "%s";
+          glbl_str += format_global(k, (*it)->index_types[i], 3);
+          if( i != (*it)->arity-1 ){
+            key_str  += ", "; fmt_str  += ", "; glbl_str += ", "; 
+          }
         }
-      else if ((*it)->arity > 0)
-        code << "$value .= sprintf(\"\\\"[%d]\\\"\", " << (*it)->maxsize << ")" << endl;
+        /*
+        We construct (for the non-stats case)
+        foreach ( arr_value = [arr_k1, arr_k2, ...arr_karity]) in arr ){
+          str_map .= sprintf("'(%s, %s, ...%s)' : %s", value_of(arr_k1), ..., value_of(arr_karity), value_of(arr with these keys))
+        }
+
+        Stats are similar, but don't have a 'value =' part, they just maps [keys, ...] -> stats object (described above) 
+        we just 
+        */
+        code << "str_map = \"\"" << endl;
+        string value = (*it)->unmangled_name.to_string() + "_value";
+        if((*it)->type != pe_stats)
+          code << "foreach (" << value << " = [" << key_str << "] in " << (*it)->unmangled_name << " ) { str_map .= sprintf(\"\\\"("
+            << fmt_str << ")\\\" : %s, \", " << glbl_str << ", " << format_global(value, (*it)->type, 1) << ") }" << endl;
+        else
+          code << "foreach ( [" << key_str << "] in " << (*it)->unmangled_name << " ) { str_map .= sprintf(\"\\\"("
+            << fmt_str << ")\\\" : %s, \", " << glbl_str << ", " << format_global((*it)->unmangled_name + '[' + key_str + "]" , (*it)->type, 1) << ") }" << endl;
+        // Ensure that the json doesn't contain partial values. It either all fits, not its skipped
+        code << "if (strlen(str_map) == 4096 - 1) { $value .= \"\\\"(MAXSTRINGLEN exceeded)\\\"\" }" << endl; //FIXME: How do I get MAXSTRINGLEN from within stap?
+        code << "else {$value .= sprintf(\"{%s}\", str_map)}" << endl;
+      }
     }
   code << "$value .= sprintf(\"\\n},\\n\")" << endl;
 

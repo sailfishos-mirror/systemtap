@@ -12,7 +12,7 @@
 import base64
 import logging
 import sys
-from stap_jobjects import *
+from .stap_jobjects import *
 from ipywidgets.widgets.widget import Widget
 import ipykernel
 assert ipykernel.__version__ > '6.12', \
@@ -20,12 +20,17 @@ assert ipykernel.__version__ > '6.12', \
 from ipykernel.kernelbase import Kernel
 from ipykernel.kernelapp import IPKernelApp
 from ipykernel.comm import CommManager, Comm
+# File is created at build time
+try:
+    from .constants import STAP_VERSION
+except:
+    STAP_VERSION = '0.0'
 
 class SystemtapKernel(Kernel):
     implementation = 'isystemtap'
     implementation_version = '1.0'
     language = 'Systemtap'
-    language_version = '4.8'  # FIXME: Get from env var?
+    language_version = STAP_VERSION
     language_info = {
         'name': 'systemtap',
         'mimetype': 'text/x-systemtap',
@@ -254,5 +259,5 @@ def format_message(*objects, **kwargs):
     return sep.join(objects) + end
 
 
-if __name__ == '__main__':
-    SystemtapKernel.run_as_main()
+# if __name__ == '__main__':
+#     SystemtapKernel.run_as_main()

@@ -72,7 +72,7 @@ static int input = 0; /* fresh input received in monitor_input() */
 static int rendered = 0;
 static int status_hidden = 0;
 static int active_window = 1; /* 0 for status window, 1 for output window */
-
+static int disable_curses = 0; /* 0 if curses should be enabled, 1 otherwise */
 /* Forward declarations */
 static int comp_index(const void *p1, const void *p2);
 static int comp_state(const void *p1, const void *p2);
@@ -278,6 +278,9 @@ void monitor_setup(void)
   pthread_mutex_init(&mutex, NULL);
   probe[0] = '\0';
   start_time = time(NULL);
+  // If we have a non tty output, no need to render with curses
+  disable_curses = !isatty(STDOUT_FILENO);
+  if(disable_curses) return;
   initscr();
   curs_set(0);
   cbreak();
@@ -293,11 +296,13 @@ void monitor_cleanup(void)
 {
   pthread_mutex_destroy(&mutex);
   monitor_end = 1;
+  if(disable_curses) return;
   endwin();
 }
 
 void monitor_render(void)
 {
+  if(disable_curses) return;
   FILE *monitor_fp;
   char path[PATH_MAX];
   time_t current_time = time(NULL);
@@ -505,6 +510,11 @@ void monitor_render(void)
 /* Called in staprun/relay.c */
 void monitor_remember_output_line(const char* buf, const size_t bytes)
 {
+  if(disable_curses && monitor_state != exited){
+    // Just output normally
+    printf("%.*s", (int)bytes, buf);
+    return;
+  }
   pthread_mutex_lock(&mutex);
   free (h_queue.lines[h_queue.newest]);
   h_queue.lines[h_queue.newest] = strndup(buf, bytes);
@@ -519,12 +529,19 @@ void monitor_remember_output_line(const char* buf, const size_t bytes)
 
 void monitor_exited(void)
 {
+  // We don't have interactive curses running, so just cleanup fully.
+  // No need for the 2 stage shutdown
+  if(disable_curses){
+    cleanup_and_exit(0, 0 /* error_detected unavailable here */ );
+  }
+
   monitor_state = exited;
   input = 1;
 }
 
 void monitor_input(void)
 {
+  if(disable_curses) return;
   static int i = 0;
   int ch;
   int max_rows;
