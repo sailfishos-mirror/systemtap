@@ -1,8 +1,7 @@
 #!/bin/bash
-# Confiorm pytjhon is installed
-# Confirm that pip is installed
-
-# python setup.py install
+type python >/dev/null || { echo "python required"; exit 1; }
+type pip    >/dev/null || { echo "pip required";    exit 1; }
+type npm    >/dev/null || { echo "npm required";    exit 1; }
 
 echo "Installing requirements"
 pip install --user -r requirements.txt
