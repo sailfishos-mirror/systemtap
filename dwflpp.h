@@ -119,9 +119,6 @@ typedef std::unordered_map<void*, srcfile_lines_cache_t*> cu_lines_cache_t;
 typedef std::unordered_set<Dwarf_Addr> entry_pc_cache_t;
 typedef std::unordered_map<void*, entry_pc_cache_t*> cu_entry_pc_cache_t;
 
-// cache DW_AT_data_bit_offset converted to DW_AT_data_member_location
-typedef std::unordered_map<Dwarf_Word, unsigned char *> dw_at_member_location_cache_t;
-
 typedef std::vector<base_func_info> base_func_info_map_t;
 typedef std::vector<func_info> func_info_map_t;
 typedef std::vector<inline_instance_info> inline_instance_map_t;
@@ -575,9 +572,6 @@ private:
   cu_entry_pc_cache_t cu_entry_pc_cache;
   bool check_cu_entry_pc(Dwarf_Die *cu, Dwarf_Addr pc);
 
-  // Cache for all the sythesized DW_AT_data_member_location attributes
-  dw_at_member_location_cache_t dw_at_member_location_cache;
-
   Dwarf_Die* get_parent_scope(Dwarf_Die* die);
 
   /* The global alias cache is used to resolve any DIE found in a
@@ -692,8 +686,8 @@ private:
   void translate_base_ref (location_context &ctx, Dwarf_Word byte_size,
 			   bool signed_p, bool lvalue_p);
   void translate_bitfield(location_context &ctx, Dwarf_Word byte_size,
-			  Dwarf_Word bit_offset, Dwarf_Word bit_size,
-			  bool signed_p);
+                          Dwarf_Word bit_offset, Dwarf_Word bit_size,
+                          bool signed_p);
   void translate_final_fetch_or_store (location_context &ctx,
 				       Dwarf_Die *vardie,
 				       Dwarf_Die *typedie,
