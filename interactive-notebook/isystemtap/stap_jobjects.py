@@ -16,7 +16,7 @@ from .stap_kernel import *
 from ipyevents import Event
 from ipywidgets import Text, Button, Tab, GridBox, Layout, Label, HBox, VBox, Output, TagsInput, Combobox, IntProgress, HTML, Valid
 from IPython.display import JSON, Code, Markdown
-from enum import StrEnum
+from shlex import quote
 # FIXME: poll's small changes should be added to the jupyter-ui-poll, and the file should be removed
 from .poll import ui_events
 
@@ -25,8 +25,31 @@ JUPYTER_MAGIC = "JUPYTER_MAGIC_"
 try:
     from .constants import STAP_PKGDATADIR, STAP_PATH
 except:
-    STAP_PKGDATADIR = ''
+    # An educated guess
+    STAP_PKGDATADIR = '/usr/local/share/systemtap'
     STAP_PATH  = 'stap'
+
+# If in a rootless container we define a remote location (the localhost)
+# we use this to get back from the container to the host with stap --remote
+try:
+    from .constants import SSH_DEST
+except:
+    SSH_DEST = None
+
+def format_subprocess_args(*args):
+    flattened_args = []
+    for a in args:
+        if type(a) is list:
+            flattened_args.extend(a)
+        else:
+            flattened_args.append(a)
+    
+    # 
+    if SSH_DEST:
+        command = " ".join([quote(a) for a in flattened_args])
+        flattened_args = ["ssh", SSH_DEST, command]
+
+    return flattened_args
 
 
 class JSubprocess(subprocess.Popen):
@@ -176,7 +199,7 @@ class JNamespace:
         return self._globals
 
 
-class CellExeMode(StrEnum):
+class CellExeMode():
     EDIT = "edit"
     RUN = "run"
     SCRIPT = "script"
@@ -250,10 +273,10 @@ class JCell:
                         return False
                     # Cells with options
                     VALID_OPTIONS = ('-v', '--vp', '-V', '--version', '-P', '-u', '-w', '-W', '-t', '-s', '-I', '-D',
-                                     '-B', '-a', '--modinfo', '-r', '-d', '--ldd', '--all-modules', '-c', '-x', '-T',
+                                     '-B', '-a', '--modinfo', '-r', '-d', '--ldd', '--all-modules', '-c', '-x', '-T', '-g',
                                      '--prologue-searching', '--suppress-handler-errors', '--compatible', '--check-version',
                                      '--disable-cache', '--poison-cache', '--privilege', '--unprivileged', '--download-debuginfo',
-                                     '--rlimit-', '--sysroot', '--runtime', '--dyninst', '--bpf')
+                                     '--rlimit-', '--sysroot', '--runtime', '--dyninst', '--bpf', '--suppress-time-limits')
                     if command not in (CellExeMode.EDIT, CellExeMode.RUN, CellExeMode.SCRIPT) and split_magic != []:
                         self.kernel.error(
                             "Invalid options usage: Should only be used with run, edit and script cells. Skipping line")
@@ -273,7 +296,7 @@ class JCell:
                         return False
                     self.mode = command
                 elif len(line) >= 1 and line[0] == "!":
-                    p = subprocess.run(line[1:].split(" "), capture_output=True, text=True)
+                    p = subprocess.run(format_subprocess_args(line[1:].split(" ")), capture_output=True, text=True)
                     if p.stdout:
                         self.kernel.write(p.stdout)
                     if p.returncode != 0:
@@ -367,8 +390,8 @@ class JCell:
         """
         Run pass 1; To quickly detect any syntax errors
         """
-        p = subprocess.run([STAP_PATH, "-e", self.script,
-                           "-p1"], capture_output=True, text=True)
+        p = subprocess.run(format_subprocess_args(STAP_PATH, "-e", self.script,
+                           "-p1"), capture_output=True, text=True)
         if p.returncode == 0:
             return True
         else:
@@ -390,8 +413,8 @@ class JCell:
         # This will never make it to stap passes 3+, just temporarily avoid the error
         virtual_script += '\n probe never { printf("Spam, Ham and Eggs") } '
 
-        p = subprocess.run([STAP_PATH] + self.options + ["-e", virtual_script,
-                           "-p2"], capture_output=True, text=True)
+        p = subprocess.run(format_subprocess_args(STAP_PATH, self.options, "-e", virtual_script,
+                           "-p2"), capture_output=True, text=True)
         self.kernel.log.info(f'Running {p.args}')
         if p.returncode == 0:
             self.namespace.add_cell(self)
@@ -412,7 +435,7 @@ class JCell:
             "--skip-badvars",
             "-e", virtual_script
         ]
-        cmd = [STAP_PATH] + self.options + extra_options + self.args
+        cmd = format_subprocess_args(STAP_PATH, self.options, extra_options, self.args)
         self.kernel.log.info(f'Running {cmd}')
         p = JSubprocess(cmd)
 
@@ -428,7 +451,7 @@ class JCell:
 
         # Tab 0: Controls
         class tab_controls:
-            def __init__(self):
+            def __init__(self, namespace, options, args):
                 self.uptime = Label(value="Uptime: 00:00:00")
                 self.memory = Label(
                     value="Memory: 0data/0text/0ctx/0net/0alloc KB")
@@ -452,10 +475,35 @@ class JCell:
                     button_style='info', tooltip='Reset all global variables to their initial states', icon='rotate-left')
                 self.reset.on_click(lambda _: monitor_write('clear'))
 
+                self.export = Button(
+                    button_style='info', tooltip='Export the script', icon='download')
+                self.export_hbox = HBox([self.export])
+                def get_file_name(index = None):
+                    return f'{os.getenv("HOME")}/Downloads/' + (f'{namespace} ({index}).stp' if index else f'{namespace}.stp')
+                def handle_export(btn):
+                    btn.icon='download'
+                    file_path = get_file_name()
+                    c = 0
+                    while os.path.exists(file_path):
+                        file_path = get_file_name(c)
+                        c += 1
+                    try:
+                        with open(file_path, 'w') as f:
+                            f.write(f'#!{STAP_PATH} {" ".join(options)} {" ".join(args)}\n')
+                            f.write(virtual_script)
+                            f.flush()
+                        btn.icon='check-circle'
+                        btn.disabled = True
+                        self.export_hbox.children = [btn, Label(value=file_path.replace("/home/jovyan", "~"))]
+                    except:
+                        pass
+                self.export.on_click(handle_export)
+
                 self.stdin = Text(description='>>>')
 
                 self.controls = VBox(\
-                    [HBox([self.uptime, self.memory]), 
+                    [self.export_hbox,
+                     HBox([self.uptime, self.memory]), 
                      HBox([self.play_pause, self.reset, self.stop]),
                      self.stdin])
 
@@ -527,7 +575,7 @@ class JCell:
                 for button in state_buttons:
                     button.disabled = True
 
-        controls_view = tab_controls()
+        controls_view = tab_controls(self.namespace.name, self.options, self.args)
         globals_view  = tab_globals()
         probes_view   = tab_probes()
         # The Tab Structure
@@ -548,7 +596,7 @@ class JCell:
             if event['ctrlKey']:
                 match event['key']:
                     case 'c':
-                        p.send_signal(signal.SIGINT)
+                        p.send_signal(signal.SIGTERM)
             else:
                 # This means we clicked a special key like 'backspace' or 'arrow'
                 if len(event['key']) > 1:
@@ -647,7 +695,7 @@ class JCell:
                 except KeyboardInterrupt:
                     # The kernel sent a sigint (I, I), so catch it and pass on to the child
                     # to allow stap to gracefully terminate
-                    p.send_signal(signal.SIGINT)
+                    p.send_signal(signal.SIGTERM)
             # On that last line, don't hold back even if there is a partial result (not \n terminated)
             output_disabled = write_to_output(p.get_lines(retain_partial_lines=False), output_disabled)
             # Do our best to cleanup after ourselves
@@ -711,6 +759,7 @@ class JCell:
             con = sqlite3.connect(DB_PATH)
         except:
             self.kernel.error(f"Unable to connect to examples database: {DB_PATH}")
+            return False
         res = con.execute('SELECT DISTINCT keywords, name from metavirt')
         keywords      = set()  # Possible keywords
         example_names = list() # Possible examples
@@ -870,7 +919,7 @@ class JCell:
             results.children = [progress]
 
             rows = []
-            p = subprocess.run([STAP_PATH, '-L', query.value],
+            p = subprocess.run(format_subprocess_args(STAP_PATH, '-L', query.value),
                                capture_output=True, text=True)
             progress.value = 4  # Again just a visual thing
             if p.returncode == 0:

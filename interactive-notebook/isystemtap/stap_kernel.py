@@ -13,6 +13,7 @@ import base64
 import logging
 import sys
 from .stap_jobjects import *
+from ipywidgets import register_comm_target
 from ipywidgets.widgets.widget import Widget
 import ipykernel
 assert ipykernel.__version__ > '6.12', \
@@ -58,13 +59,11 @@ class SystemtapKernel(Kernel):
 
         if self.log is None:
             self.log = logging.Logger("stap_kernel")
-
-        # FIXME: log file and log location should be defined by uer
-        f_handler = logging.FileHandler("stap_kernel.log", mode='w')
-        f_handler.setFormatter(logging.Formatter(
-            '%(asctime)s - %(levelname)s - %(filename)s::%(funcName)s - %(message)s'))
-        self.log.addHandler(f_handler)
-        self.log.setLevel(logging.INFO)
+        # Useful for local debugging
+        # f_handler = logging.FileHandler("stap_kernel.log", mode='w')
+        # f_handler.setFormatter(logging.Formatter(
+        #     '%(asctime)s - %(levelname)s - %(filename)s::%(funcName)s - %(message)s'))
+        # self.log.addHandler(f_handler)
 
         self.jnamespaces = dict() # namespace name -> JNamespace
 
@@ -72,9 +71,7 @@ class SystemtapKernel(Kernel):
         # with widgets
         self.shell = None
         self.comm_manager = CommManager(parent=self, kernel=self, shell=self.shell)
-        self.comm_manager.register_target('ipython.widget',
-                                          Widget.handle_comm_opened)
-        self.comm = Comm(target_name='jupyter.widget')
+        register_comm_target(self)
         comm_msg_types = ['comm_open', 'comm_msg', 'comm_close']
         for msg_type in comm_msg_types:
             self.shell_handlers[msg_type] = getattr(
@@ -183,7 +180,8 @@ class SystemtapKernel(Kernel):
             # Try and complete the magic
             if len(magic_command) == 1:
                 cursor_start = cursor_pos - len(magic_command[0])
-                matches = [cmd.value for cmd in CellExeMode if cmd.value.startswith(magic_command[0]) and cmd != CellExeMode.UNDEF]
+                matches = (CellExeMode.EDIT, CellExeMode.EXAMPLES, CellExeMode.HELP,
+                                       CellExeMode.PROBES, CellExeMode.PYTHON, CellExeMode.RUN, CellExeMode.SCRIPT)
             else:
                 # We can try and offer namespace matching
                 cursor_start = cursor_pos - len(magic_command[1])
@@ -199,6 +197,7 @@ class SystemtapKernel(Kernel):
 
     def do_shutdown(self, restart):
         """Shut down the app gracefully"""
+        #TODO: make sure none of the namespaces are running, do an iteration over and sigint each
         if restart:
             self.log.info("Restarting kernel...")
         return {'status': 'ok', 'restart': restart}

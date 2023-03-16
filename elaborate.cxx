@@ -2402,7 +2402,7 @@ static void monitor_mode_read(systemtap_session& s)
             << fmt_str << ")\\\" : %s, \", " << glbl_str << ", " << format_global(value, (*it)->type, 1) << ") }" << endl;
         else
           code << "foreach ( [" << key_str << "] in " << (*it)->unmangled_name << " ) { str_map .= sprintf(\"\\\"("
-            << fmt_str << ")\\\" : %s, \", " << glbl_str << ", " << format_global((*it)->unmangled_name + '[' + key_str + "]" , (*it)->type, 1) << ") }" << endl;
+               << fmt_str << ")\\\" : %s, \", " << glbl_str << ", " << format_global((*it)->unmangled_name.to_string() + '[' + key_str + "]" , (*it)->type, 1) << ") }" << endl;
         // Ensure that the json doesn't contain partial values. It either all fits, not its skipped
         code << "if (strlen(str_map) == 4096 - 1) { $value .= \"\\\"(MAXSTRINGLEN exceeded)\\\"\" }" << endl; //FIXME: How do I get MAXSTRINGLEN from within stap?
         code << "else {$value .= sprintf(\"{%s}\", str_map)}" << endl;
