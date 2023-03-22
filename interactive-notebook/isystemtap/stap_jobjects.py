@@ -23,11 +23,10 @@ from .poll import ui_events
 JUPYTER_MAGIC = "JUPYTER_MAGIC_"
 # File is created at build time
 try:
-    from .constants import STAP_PKGDATADIR, STAP_PATH
+    from .constants import STAP_PKGDATADIR
 except:
     # An educated guess
     STAP_PKGDATADIR = '/usr/local/share/systemtap'
-    STAP_PATH  = 'stap'
 
 # If in a rootless container we define a remote location (the localhost)
 # we use this to get back from the container to the host with stap --remote
@@ -390,7 +389,7 @@ class JCell:
         """
         Run pass 1; To quickly detect any syntax errors
         """
-        p = subprocess.run(format_subprocess_args(STAP_PATH, "-e", self.script,
+        p = subprocess.run(format_subprocess_args("stap", "-e", self.script,
                            "-p1"), capture_output=True, text=True)
         if p.returncode == 0:
             return True
@@ -413,7 +412,7 @@ class JCell:
         # This will never make it to stap passes 3+, just temporarily avoid the error
         virtual_script += '\n probe never { printf("Spam, Ham and Eggs") } '
 
-        p = subprocess.run(format_subprocess_args(STAP_PATH, self.options, "-e", virtual_script,
+        p = subprocess.run(format_subprocess_args("stap", self.options, "-e", virtual_script,
                            "-p2"), capture_output=True, text=True)
         self.kernel.log.info(f'Running {p.args}')
         if p.returncode == 0:
@@ -435,7 +434,7 @@ class JCell:
             "--skip-badvars",
             "-e", virtual_script
         ]
-        cmd = format_subprocess_args(STAP_PATH, self.options, extra_options, self.args)
+        cmd = format_subprocess_args("stap", self.options, extra_options, self.args)
         self.kernel.log.info(f'Running {cmd}')
         p = JSubprocess(cmd)
 
@@ -489,7 +488,7 @@ class JCell:
                         c += 1
                     try:
                         with open(file_path, 'w') as f:
-                            f.write(f'#!{STAP_PATH} {" ".join(options)} {" ".join(args)}\n')
+                            f.write(f'#!stap {" ".join(options)} {" ".join(args)}\n')
                             f.write(virtual_script)
                             f.flush()
                         btn.icon='check-circle'
@@ -524,7 +523,7 @@ class JCell:
         class tab_globals:
             def __init__(self):
                 self.global_viewer = Output()
-                # FIXME: The flickering issue is known, but how do I know a hight to set it to?
+                # FIXME: The flickering issue is known, but how do I know a height to set it to?
                 # https://ipywidgets.readthedocs.io/en/stable/examples/Using%20Interact.html#Flickering-and-jumping-output
 
             def get_widget(self):
@@ -596,7 +595,7 @@ class JCell:
             if event['ctrlKey']:
                 match event['key']:
                     case 'c':
-                        p.send_signal(signal.SIGTERM)
+                        monitor_write('quit')
             else:
                 # This means we clicked a special key like 'backspace' or 'arrow'
                 if len(event['key']) > 1:
@@ -695,7 +694,7 @@ class JCell:
                 except KeyboardInterrupt:
                     # The kernel sent a sigint (I, I), so catch it and pass on to the child
                     # to allow stap to gracefully terminate
-                    p.send_signal(signal.SIGTERM)
+                    monitor_write('quit')
             # On that last line, don't hold back even if there is a partial result (not \n terminated)
             output_disabled = write_to_output(p.get_lines(retain_partial_lines=False), output_disabled)
             # Do our best to cleanup after ourselves
@@ -919,7 +918,7 @@ class JCell:
             results.children = [progress]
 
             rows = []
-            p = subprocess.run(format_subprocess_args(STAP_PATH, '-L', query.value),
+            p = subprocess.run(format_subprocess_args("stap", '-L', query.value),
                                capture_output=True, text=True)
             progress.value = 4  # Again just a visual thing
             if p.returncode == 0:

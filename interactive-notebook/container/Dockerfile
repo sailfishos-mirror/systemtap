@@ -42,4 +42,4 @@ RUN rmdir /home/$NB_USER/work
 
 # Move to the workdir and get any notebook examples
 WORKDIR /home/$NB_USER
-RUN cp $NOTEBOOK_SRC_DIR/*.ipynb /home/$NB_USER/
+RUN cp -p $NOTEBOOK_SRC_DIR/*.ipynb /home/$NB_USER/

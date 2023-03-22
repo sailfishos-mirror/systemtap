@@ -141,6 +141,7 @@ Release: 1%{?release_override}%{?dist}
 # systemtap-runtime-virtguest udev rules, init scripts/systemd service, req:-runtime
 # systemtap-runtime-python2 HelperSDT python2 module, req:-runtime
 # systemtap-runtime-python3 HelperSDT python3 module, req:-runtime
+# systemtap-jupyter      interactive-notebook req:systemtap
 #
 # Typical scenarios:
 #
@@ -570,6 +571,20 @@ This package installs the services necessary on a virtual machine for a
 systemtap-runtime-virthost machine to execute systemtap scripts.
 %endif
 
+%if %{with_python3} && %{with_monitor}
+%package jupyter
+Summary: ISystemtap jupyter kernel and examples
+License: GPLv2+
+URL: http://sourceware.org/systemtap/
+Requires: systemtap = %{version}-%{release}
+Requires: pip
+Recommends: npm
+
+%description jupyter
+This package includes files needed to build and run
+the interactive systemtap Jupyter kernel, either locally
+or within a container.
+%endif
 # ------------------------------------------------------------------------
 
 %prep
@@ -1273,6 +1288,22 @@ exit 0
 %{_unitdir}/stap-exporter.service
 %{_mandir}/man8/stap-exporter.8*
 %{_sbindir}/stap-exporter
+%endif
+
+%if %{with_python3} && %{with_monitor}
+%files jupyter
+%dir %{_datadir}/systemtap
+%{_datadir}/systemtap/interactive-notebook/codemirror
+%{_datadir}/systemtap/interactive-notebook/container/Dockerfile
+%attr(755,root,stapusr) %{_datadir}/systemtap/interactive-notebook/container/*.sh
+%{_datadir}/systemtap/interactive-notebook/isystemtap
+%{_datadir}/systemtap/interactive-notebook/tests
+%attr(755,root,stapusr) %{_datadir}/systemtap/interactive-notebook/*.sh
+%{_datadir}/systemtap/interactive-notebook/*.ipynb
+%{_datadir}/systemtap/interactive-notebook/jupyter_stap_lsp.json
+%{_datadir}/systemtap/interactive-notebook/README.md
+%{_datadir}/systemtap/interactive-notebook/requirements.txt
+%{_datadir}/systemtap/interactive-notebook/setup.py
 %endif
 
 # ------------------------------------------------------------------------

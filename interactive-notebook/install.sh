@@ -10,7 +10,6 @@
 
 type python >/dev/null || { echo "python required"; exit 1; }
 type pip    >/dev/null || { echo "pip required";    exit 1; }
-type npm    >/dev/null || { echo "npm required";    exit 1; }
 
 echo "Installing requirements"
 if command -v mamba &> /dev/null
@@ -27,18 +26,23 @@ echo
 echo "Installing Jupyter kernelspec"
 jupyter kernelspec install --user isystemtap
 
+jupyter_dir="$HOME/.systemtap/jupyter"
+mkdir -p $jupyter_dir
+
 echo
 echo "Installing ISystemtap"
-# Installs the setup.py
-pip install .
+# Installs the setup.py from ~/.systemtap/jupyter
+cp -R isystemtap $jupyter_dir && cp setup.py $jupyter_dir && (cd $jupyter_dir && pip install .)
 
 echo
 extenstion="jupyterlab-stap-highlight"
 echo "Checking $extenstion extenstion installation"
 if jupyter labextension check $extenstion --installed 2> /dev/null; then
     echo "$extenstion already installed"
+elif ! type npm    >/dev/null; then
+    echo "npm is not installed, skipping $extenstion build"
 else
-    (cd codemirror; npm install && jupyter labextension link --dev-build=False .)
+    cp -R codemirror $jupyter_dir && (cd $jupyter_dir/codemirror && npm install && jupyter labextension link --dev-build=False .)
     echo "$extenstion installed"
 fi
 

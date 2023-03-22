@@ -18,7 +18,7 @@ Run `interactive-notebook/container/isystemtap_launcher.sh` (which under the def
 * --interactive-notebook-dir [OPTIONAL]: The directory where interactive-notebook can be found (defaults to `/usr/local/share/systemtap/interactive-notebook`)
 
 ## Local Installation
-From `interactive-notebook/` run `./install.sh`. This will install the ISystemtap kernel, syntax highlighting and language-server dependencies.
+From `interactive-notebook/` run `./install.sh`. This will install the ISystemtap kernel, syntax highlighting and language-server dependencies in `~/.systemtap/jupyter`.
 
 ## FAQ
 1. What if something goes wrong, and a systemtap kernel module is left running after ISystemtap shuts down

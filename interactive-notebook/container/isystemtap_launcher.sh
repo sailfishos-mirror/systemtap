@@ -1,5 +1,5 @@
 #!/bin/bash
-# TODO: describe me
+# A launcher/builder/publisher for isystemtap containers
 # Copyright (C) 2023 Red Hat Inc.
 #
 # This file is part of systemtap, and is free software.  You can
@@ -46,7 +46,6 @@ if [ "$1" = '--run' ]; then
     # is what the container needs (tr removes whitespace)
     STAP_VERSION_DEF=`grep VERSION $NOTEBOOK_DIR/isystemtap/constants.py | tr -d " \t\n\r"`
     STAP_PKGDATADIR_DEF=`grep PKGDATADIR $NOTEBOOK_DIR/isystemtap/constants.py | tr -d " \t\n\r"`
-    STAP_PATH_DEF=`grep PATH $NOTEBOOK_DIR/isystemtap/constants.py | tr -d " \t\n\r"`
     # We also unpack the static dir containing the examples since
     # we need to mount that 
     STAP_PKGDATADIR=`echo "$STAP_PKGDATADIR_DEF" | tr -d "' " | awk -F "=" '{print $2}'`
@@ -76,7 +75,6 @@ if [ "$1" = '--run' ]; then
         -e hostuser=$HOST_USER \
         -e $STAP_VERSION_DEF \
         -e $STAP_PKGDATADIR_DEF \
-        -e $STAP_PATH_DEF \
         # We remap the user/group namespaces so that jovyan and the current user are the same
         --user $NB_UID:$NB_GID \
         --uidmap $NB_UID:0:1 --uidmap 0:1:$NB_UID --uidmap $(($NB_UID+1)):$(($NB_UID+1)):$(($SUBUID_SIZE-$NB_UID)) \

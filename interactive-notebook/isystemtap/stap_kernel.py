@@ -197,7 +197,14 @@ class SystemtapKernel(Kernel):
 
     def do_shutdown(self, restart):
         """Shut down the app gracefully"""
-        #TODO: make sure none of the namespaces are running, do an iteration over and sigint each
+        # Shutdown any running namespace (only 1 can run at a time)
+        for ns in self.jnamespaces.values():
+            try:
+                with open(f'/proc/systemtap/{ns.name}/monitor_control', 'w') as f:
+                    f.write('quit')
+                    f.flush()
+            except OSError:
+                pass
         if restart:
             self.log.info("Restarting kernel...")
         return {'status': 'ok', 'restart': restart}
@@ -257,6 +264,3 @@ def format_message(*objects, **kwargs):
     end = kwargs.get('end', '\n')
     return sep.join(objects) + end
 
-
-# if __name__ == '__main__':
-#     SystemtapKernel.run_as_main()

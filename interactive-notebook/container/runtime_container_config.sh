@@ -30,5 +30,4 @@ fi
 INSTALL_PATH=`python -c 'import os; import isystemtap; print(os.path.abspath(isystemtap.__path__[-1]))'`
 echo "STAP_VERSION    = $STAP_VERSION"    >  $INSTALL_PATH/constants.py
 echo "STAP_PKGDATADIR = $STAP_PKGDATADIR" >> $INSTALL_PATH/constants.py
-echo "STAP_PATH       = $STAP_PATH"       >> $INSTALL_PATH/constants.py
 echo "SSH_DEST        = '$localhost'"     >> $INSTALL_PATH/constants.py
