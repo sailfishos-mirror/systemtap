@@ -6,6 +6,11 @@ set PYTHON3 $env(PYTHON3)
 # Both python and jsonc are required
 if {! [file exists "$PYTHON3"]} then { untested $test; return }
 if { [catch {exec pkg-config json-c }] } then { untested $test; return }
+if {[strverscmp $GCC_Version 4.8] < 0} {
+    verbose -log "skipping $test.exp: GCC too old ($GCC_Version vs. 4.8)"
+    untested $test
+    return
+ }
 
 set test_root "$srcdir/$subdir"
 set test_script "$test_root/stap_language_server_tester.py"

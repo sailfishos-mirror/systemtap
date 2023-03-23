@@ -19,7 +19,6 @@
     bool         json_object_get_boolean(json_object*) { return 0; }
     uint64_t     json_object_get_uint64(json_object*) { return 0; }
     double       json_object_get_double(json_object*) { return 0; }
-    json_object* json_object_object_get(json_object*,const char*) { return NULL; }
     bool         json_object_object_get_ex (json_object*,const char*, json_object**) { return 0; }
     json_type    json_object_get_type (json_object*) { return json_type_null; }
     int          json_object_object_add(json_object*, const char*, json_object*) { return 0; }

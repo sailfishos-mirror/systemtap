@@ -31,7 +31,6 @@
     bool         json_object_get_boolean(json_object*);
     uint64_t     json_object_get_uint64(json_object*);
     double       json_object_get_double(json_object*);
-    json_object* json_object_object_get(json_object*,const char*);
     bool         json_object_object_get_ex (json_object*,const char*, json_object**);
     json_type    json_object_get_type (json_object*);
     int          json_object_object_add(json_object*, const char*, json_object*);
@@ -98,13 +97,18 @@ struct jsonrpc_request
     jsonrpc_request(char *request_string)
     {
         json_object *request = json_tokener_parse(request_string);
+        json_object* value;
         if (request)
         {
-            jsonrpc = json_object_get_string(json_object_object_get(request, "jsonrpc"));
-            method  = json_object_get_string(json_object_object_get(request, "method"));
-            params  = json_object_object_get(request, "params");
-            json_object *jid = json_object_object_get(request, "id");
-            if (!jid || json_object_get_type(jid) == json_type_null)
+            if(json_object_object_get_ex(request, "jsonrpc", &value))
+                jsonrpc = json_object_get_string(value);
+            if(json_object_object_get_ex(request, "method", &value))
+                method  = json_object_get_string(value);
+            if(json_object_object_get_ex(request, "params", &value))
+                params = value;
+            json_object *jid;
+            bool has_jid = json_object_object_get_ex(request, "id", &jid);
+            if (!has_jid || json_object_get_type(jid) == json_type_null)
                 id = -1;
             else if (json_object_get_type(jid) == json_type_string){
                 id = atoi(json_object_get_string(jid));

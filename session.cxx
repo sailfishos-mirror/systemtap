@@ -737,7 +737,7 @@ systemtap_session::usage (int exitcode)
     "   --monitor=INTERVAL\n"
     "              enables runtime interactive monitoring\n"
 #endif
-#ifdef HAVE_JSON_C
+#if HAVE_JSON_C && HAVE_LANGUAGE_SERVER_SUPPORT
      "   --language-server\n"
      "              starts a systemtap language server\n"
 #endif
@@ -1893,7 +1893,7 @@ systemtap_session::check_options (int argc, char * const argv [])
     }
 #endif
 
-#if ! HAVE_JSON_C
+#if ! HAVE_JSON_C || ! HAVE_LANGUAGE_SERVER_SUPPORT
   if (language_server_mode)
     {
       print_warning("Language server mode is not supported by this version of systemtap");

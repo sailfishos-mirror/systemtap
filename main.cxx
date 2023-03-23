@@ -30,7 +30,9 @@
 #ifdef HAVE_LIBREADLINE
 #include "interactive.h"
 #endif
+#if HAVE_LANGUAGE_SERVER_SUPPORT
 #include "language-server/stap-language-server.h"
+#endif
 
 #include "bpf.h"
 
@@ -1481,6 +1483,7 @@ main (int argc, char * const argv [])
     if (rc != 0)
       return rc;
 
+    #if HAVE_LANGUAGE_SERVER_SUPPORT
     if(s.language_server_mode){
       // The language server commuinicates with the client via stdio, so the systemtap verbosity should be 0
       // It's best to keep the verbosity within the lang-server since it prevents accidental cout usage which
@@ -1491,6 +1494,7 @@ main (int argc, char * const argv [])
       for(int i = 0; i < 5; i++)
         s.perpass_verbose[i] = 0;
     }
+    #endif
 
     // Create the temp dir.
     s.create_tmp_dir();
@@ -1542,11 +1546,13 @@ main (int argc, char * const argv [])
     for (unsigned i = 0; i < targets.size(); ++i)
       sessions.insert(targets[i]->get_session());
 
+    #if HAVE_LANGUAGE_SERVER_SUPPORT
     if(s.language_server_mode){
         int r = s.lang_server->run();
         delete s.lang_server;
         return r;
     }
+    #endif
 
     // FIXME: For now, only attempt local interactive use.
     if (s.interactive_mode && fake_remote)

@@ -101,11 +101,11 @@ public:
 
     lsp_object insert(string key)
     {
-        // Calling insert without a value will create a substructre named key if one does already not exist
+        // Calling insert without a value will create a substructure named key if one does already not exist
         // Otherwise it will return the existing structure
         // This allows for syntax like `foo.insert("bar").insert("baz", 42))` -> {"bar": {"baz": 42}}
-        json_object *sub_struct = json_object_object_get(j_obj, key.c_str());
-        if (sub_struct)
+        json_object *sub_struct;
+        if (json_object_object_get_ex(j_obj, key.c_str(), &sub_struct))
             return lsp_object(sub_struct);
         lsp_object obj;
         json_object_object_add(j_obj, key.c_str(), _to_json_object(obj));

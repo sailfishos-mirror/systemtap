@@ -16,7 +16,9 @@
 #include "util.h"
 #include "stringtable.h"
 
+#if HAVE_LANGUAGE_SERVER_SUPPORT
 #include "language-server/stap-language-server.h"
+#endif
 
 #include <iostream>
 
@@ -1992,10 +1994,12 @@ parser::parse ()
     // If there is a parse error token it'll take precedence over the current c_state token (which is last_t)
     if(pe.tok) c_state->tok = pe.tok;
     // This is the root where the parsing failed i.e the place to complete, so send the error up
+    #if HAVE_LANGUAGE_SERVER_SUPPORT
     if(session.language_server_mode){
       session.lang_server->c_state = c_state;
       throw pe;
     }
+    #endif
           // XXX: do we want tok_junk to be able to force skip_some behaviour?
           if (pe.skip_some) // for recovery
             // Quietly swallow all tokens until the next keyword we can start parsing from.
