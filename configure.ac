@@ -800,11 +800,10 @@ fi
 AM_CONDITIONAL([HAVE_MONITOR_LIBS], [test "${have_jsonc}" = "yes" -a "${have_ncurses}" = "yes" -a "$enable_monitor" != "no"])
 AM_CONDITIONAL([HAVE_JSON_C], [test "${have_jsonc}" = "yes"])
 
-# We require gcc > 4.7 since this first introduced non-static data member initializers
-# Otherwise some of the jsonrpc definitions will fail with ISO C++ forbids initialization of member Foo
-# Later versions of gcc also fix some std::string issues
+# We require gcc >=8 since we use some more modern language features such as lambda-capture [this] and
+# initializer list constructors in class template argument deduction
 AC_MSG_CHECKING([to see if the language server is supported])
-if { echo '#if ( __GNUC__ > 4 ) || ( __GNUC__ == 4 && __GNUC_MINOR__ >= 8 )'
+if { echo '#if __GNUC__ >= 8 '
      echo ' yes '
      echo '#endif'; } | ${CC} -E - | grep yes > /dev/null; then
   have_language_server_support=yes

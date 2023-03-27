@@ -682,6 +682,8 @@ selinux_CFLAGS
 HAVE_BPF_DECLS_FALSE
 HAVE_BPF_DECLS_TRUE
 support_section_question
+HAVE_LANGUAGE_SERVER_SUPPORT_FALSE
+HAVE_LANGUAGE_SERVER_SUPPORT_TRUE
 HAVE_JSON_C_FALSE
 HAVE_JSON_C_TRUE
 HAVE_MONITOR_LIBS_FALSE
@@ -13883,6 +13885,32 @@ else
 fi
 
 
+# We require gcc >=8 since we use some more modern language features such as lambda-capture [this] and
+# initializer list constructors in class template argument deduction
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking to see if the language server is supported" >&5
+printf %s "checking to see if the language server is supported... " >&6; }
+if { echo '#if __GNUC__ >= 8 '
+     echo ' yes '
+     echo '#endif'; } | ${CC} -E - | grep yes > /dev/null; then
+  have_language_server_support=yes
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+printf "%s\n" "yes" >&6; }
+
+printf "%s\n" "#define HAVE_LANGUAGE_SERVER_SUPPORT 1" >>confdefs.h
+
+else
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+fi
+ if test "x$have_language_server_support" = "xyes"; then
+  HAVE_LANGUAGE_SERVER_SUPPORT_TRUE=
+  HAVE_LANGUAGE_SERVER_SUPPORT_FALSE='#'
+else
+  HAVE_LANGUAGE_SERVER_SUPPORT_TRUE='#'
+  HAVE_LANGUAGE_SERVER_SUPPORT_FALSE=
+fi
+
+
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for assembler .section \"?\" flags support" >&5
 printf %s "checking for assembler .section \"?\" flags support... " >&6; }
 if test ${stap_cv_sectionq+y}
@@ -14903,6 +14931,10 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${HAVE_JSON_C_TRUE}" && test -z "${HAVE_JSON_C_FALSE}"; then
   as_fn_error $? "conditional \"HAVE_JSON_C\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${HAVE_LANGUAGE_SERVER_SUPPORT_TRUE}" && test -z "${HAVE_LANGUAGE_SERVER_SUPPORT_FALSE}"; then
+  as_fn_error $? "conditional \"HAVE_LANGUAGE_SERVER_SUPPORT\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${HAVE_BPF_DECLS_TRUE}" && test -z "${HAVE_BPF_DECLS_FALSE}"; then

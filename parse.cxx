@@ -2596,7 +2596,7 @@ parser::parse_components()
       catch(const parse_error& pe){
         // Keep the LHS of the probe point in the state, even if the last component was faulty
         // and wasn't added (It'll be stored seperately as c_state->comp)
-        this->c_state->pp = !pps.empty() ? pps.back() : nullptr;
+        this->c_state->pp = !pps.empty() ? pps.back() : NULL;
         throw pe;
       }
       // Cartesian product of components
@@ -2632,7 +2632,7 @@ parser::parse_components()
           for (unsigned i = 0; i < suffix.size(); i++) delete suffix[i];
           pps = product;
         }
-      this->c_state->pp = !pps.empty() ? pps.back() : nullptr;
+      this->c_state->pp = !pps.empty() ? pps.back() : NULL;
 
       const token* t = peek();
       if (t && t->type == tok_operator && t->content == ".")
@@ -2691,7 +2691,7 @@ vector<probe_point*>
 parser::parse_component()
 {
   // Parsing a new component, so clear the current pointer
-  c_state->comp = nullptr;
+  c_state->comp = NULL;
   const token* t = next ();
   if (! (t->type == tok_identifier
          // we must allow ".return" and ".function", which are keywords
@@ -2765,7 +2765,7 @@ parser::parse_component()
       if (t && t->type == tok_operator && t->content == "(")
         {
           swallow (); // consume "("
-          c->arg = nullptr; // We zero it in case the arg parse fails
+          c->arg = NULL; // We zero it in case the arg parse fails
           c->arg = parse_literal ();
 
           t = next ();

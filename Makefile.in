@@ -101,9 +101,11 @@ bin_PROGRAMS = $(am__EXEEXT_1) $(am__EXEEXT_2)
 @BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@am__append_4 = stap-serverd stap-gen-cert
 @BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@am__append_5 = stap-server
 @BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@am__append_6 = stap-start-server stap-stop-server
-@BUILD_TRANSLATOR_TRUE@@HAVE_LIBREADLINE_TRUE@am__append_7 = interactive.cxx
-@BUILD_TRANSLATOR_TRUE@@HAVE_LIBREADLINE_TRUE@am__append_8 = @READLINE_LIBS@
-@BUILD_TRANSLATOR_TRUE@@HAVE_JSON_C_TRUE@am__append_9 = language-server/stap-language-server.cxx language-server/stap-code-completion.cxx language-server/jsonrpc.cxx
+@BUILD_TRANSLATOR_TRUE@@HAVE_LANGUAGE_SERVER_SUPPORT_TRUE@am__append_7 = language-server/stap-language-server.cxx \
+@BUILD_TRANSLATOR_TRUE@@HAVE_LANGUAGE_SERVER_SUPPORT_TRUE@	language-server/stap-code-completion.cxx language-server/jsonrpc.cxx
+
+@BUILD_TRANSLATOR_TRUE@@HAVE_LIBREADLINE_TRUE@am__append_8 = interactive.cxx
+@BUILD_TRANSLATOR_TRUE@@HAVE_LIBREADLINE_TRUE@am__append_9 = @READLINE_LIBS@
 @BUILD_TRANSLATOR_TRUE@@HAVE_JSON_C_TRUE@am__append_10 = $(jsonc_LIBS)
 @BUILD_TRANSLATOR_TRUE@@HAVE_BPF_DECLS_TRUE@am__append_11 = bpf-base.cxx bpf-bitset.cxx bpf-translate.cxx bpf-opt.cxx
 @BUILD_TRANSLATOR_TRUE@@BUILD_VIRT_TRUE@am__append_12 = stapvirt
@@ -166,11 +168,11 @@ am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(pkglibexecdir)" \
 @BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@am__EXEEXT_4 = stap-serverd$(EXEEXT) \
 @BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@	stap-gen-cert$(EXEEXT)
 PROGRAMS = $(bin_PROGRAMS) $(pkglibexec_PROGRAMS)
-@BUILD_TRANSLATOR_TRUE@@HAVE_LIBREADLINE_TRUE@am__objects_1 = stap-interactive.$(OBJEXT)
 am__dirstamp = $(am__leading_dot)dirstamp
-@BUILD_TRANSLATOR_TRUE@@HAVE_JSON_C_TRUE@am__objects_2 = language-server/stap-stap-language-server.$(OBJEXT) \
-@BUILD_TRANSLATOR_TRUE@@HAVE_JSON_C_TRUE@	language-server/stap-stap-code-completion.$(OBJEXT) \
-@BUILD_TRANSLATOR_TRUE@@HAVE_JSON_C_TRUE@	language-server/stap-jsonrpc.$(OBJEXT)
+@BUILD_TRANSLATOR_TRUE@@HAVE_LANGUAGE_SERVER_SUPPORT_TRUE@am__objects_1 = language-server/stap-stap-language-server.$(OBJEXT) \
+@BUILD_TRANSLATOR_TRUE@@HAVE_LANGUAGE_SERVER_SUPPORT_TRUE@	language-server/stap-stap-code-completion.$(OBJEXT) \
+@BUILD_TRANSLATOR_TRUE@@HAVE_LANGUAGE_SERVER_SUPPORT_TRUE@	language-server/stap-jsonrpc.$(OBJEXT)
+@BUILD_TRANSLATOR_TRUE@@HAVE_LIBREADLINE_TRUE@am__objects_2 = stap-interactive.$(OBJEXT)
 @BUILD_TRANSLATOR_TRUE@@HAVE_BPF_DECLS_TRUE@am__objects_3 = stap-bpf-base.$(OBJEXT) \
 @BUILD_TRANSLATOR_TRUE@@HAVE_BPF_DECLS_TRUE@	stap-bpf-bitset.$(OBJEXT) \
 @BUILD_TRANSLATOR_TRUE@@HAVE_BPF_DECLS_TRUE@	stap-bpf-translate.$(OBJEXT) \
@@ -706,14 +708,14 @@ oldinclude_HEADERS = includes/sys/sdt.h includes/sys/sdt-config.h
 @BUILD_TRANSLATOR_TRUE@	stapregex-tree.cxx stapregex-parse.cxx \
 @BUILD_TRANSLATOR_TRUE@	stapregex-dfa.cxx stringtable.cxx \
 @BUILD_TRANSLATOR_TRUE@	tapset-python.cxx analysis.cxx \
-@BUILD_TRANSLATOR_TRUE@	$(am__append_7) $(am__append_9) \
+@BUILD_TRANSLATOR_TRUE@	$(am__append_7) $(am__append_8) \
 @BUILD_TRANSLATOR_TRUE@	$(am__append_11) $(am__append_16) \
 @BUILD_TRANSLATOR_TRUE@	$(am__append_17) $(am__append_24)
 @BUILD_TRANSLATOR_TRUE@noinst_HEADERS = sdt_types.h
 @BUILD_TRANSLATOR_TRUE@stap_LDADD = @stap_LIBS@ @sqlite3_LIBS@ \
 @BUILD_TRANSLATOR_TRUE@	@LIBINTL@ -lpthread @debuginfod_LIBS@ \
 @BUILD_TRANSLATOR_TRUE@	@DYNINST_LDFLAGS@ @DYNINST_LIBS@ \
-@BUILD_TRANSLATOR_TRUE@	$(am__append_8) $(am__append_10) \
+@BUILD_TRANSLATOR_TRUE@	$(am__append_9) $(am__append_10) \
 @BUILD_TRANSLATOR_TRUE@	$(am__append_15) $(am__append_21) \
 @BUILD_TRANSLATOR_TRUE@	$(am__append_25)
 @BUILD_TRANSLATOR_TRUE@stap_DEPENDENCIES = 
@@ -1773,20 +1775,6 @@ stap-analysis.obj: analysis.cxx
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(stap_CPPFLAGS) $(CPPFLAGS) $(stap_CXXFLAGS) $(CXXFLAGS) -c -o stap-analysis.obj `if test -f 'analysis.cxx'; then $(CYGPATH_W) 'analysis.cxx'; else $(CYGPATH_W) '$(srcdir)/analysis.cxx'; fi`
 
-stap-interactive.o: interactive.cxx
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(stap_CPPFLAGS) $(CPPFLAGS) $(stap_CXXFLAGS) $(CXXFLAGS) -MT stap-interactive.o -MD -MP -MF $(DEPDIR)/stap-interactive.Tpo -c -o stap-interactive.o `test -f 'interactive.cxx' || echo '$(srcdir)/'`interactive.cxx
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/stap-interactive.Tpo $(DEPDIR)/stap-interactive.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='interactive.cxx' object='stap-interactive.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(stap_CPPFLAGS) $(CPPFLAGS) $(stap_CXXFLAGS) $(CXXFLAGS) -c -o stap-interactive.o `test -f 'interactive.cxx' || echo '$(srcdir)/'`interactive.cxx
-
-stap-interactive.obj: interactive.cxx
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(stap_CPPFLAGS) $(CPPFLAGS) $(stap_CXXFLAGS) $(CXXFLAGS) -MT stap-interactive.obj -MD -MP -MF $(DEPDIR)/stap-interactive.Tpo -c -o stap-interactive.obj `if test -f 'interactive.cxx'; then $(CYGPATH_W) 'interactive.cxx'; else $(CYGPATH_W) '$(srcdir)/interactive.cxx'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/stap-interactive.Tpo $(DEPDIR)/stap-interactive.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='interactive.cxx' object='stap-interactive.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(stap_CPPFLAGS) $(CPPFLAGS) $(stap_CXXFLAGS) $(CXXFLAGS) -c -o stap-interactive.obj `if test -f 'interactive.cxx'; then $(CYGPATH_W) 'interactive.cxx'; else $(CYGPATH_W) '$(srcdir)/interactive.cxx'; fi`
-
 language-server/stap-stap-language-server.o: language-server/stap-language-server.cxx
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(stap_CPPFLAGS) $(CPPFLAGS) $(stap_CXXFLAGS) $(CXXFLAGS) -MT language-server/stap-stap-language-server.o -MD -MP -MF language-server/$(DEPDIR)/stap-stap-language-server.Tpo -c -o language-server/stap-stap-language-server.o `test -f 'language-server/stap-language-server.cxx' || echo '$(srcdir)/'`language-server/stap-language-server.cxx
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) language-server/$(DEPDIR)/stap-stap-language-server.Tpo language-server/$(DEPDIR)/stap-stap-language-server.Po
@@ -1828,6 +1816,20 @@ language-server/stap-jsonrpc.obj: language-server/jsonrpc.cxx
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='language-server/jsonrpc.cxx' object='language-server/stap-jsonrpc.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(stap_CPPFLAGS) $(CPPFLAGS) $(stap_CXXFLAGS) $(CXXFLAGS) -c -o language-server/stap-jsonrpc.obj `if test -f 'language-server/jsonrpc.cxx'; then $(CYGPATH_W) 'language-server/jsonrpc.cxx'; else $(CYGPATH_W) '$(srcdir)/language-server/jsonrpc.cxx'; fi`
+
+stap-interactive.o: interactive.cxx
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(stap_CPPFLAGS) $(CPPFLAGS) $(stap_CXXFLAGS) $(CXXFLAGS) -MT stap-interactive.o -MD -MP -MF $(DEPDIR)/stap-interactive.Tpo -c -o stap-interactive.o `test -f 'interactive.cxx' || echo '$(srcdir)/'`interactive.cxx
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/stap-interactive.Tpo $(DEPDIR)/stap-interactive.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='interactive.cxx' object='stap-interactive.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(stap_CPPFLAGS) $(CPPFLAGS) $(stap_CXXFLAGS) $(CXXFLAGS) -c -o stap-interactive.o `test -f 'interactive.cxx' || echo '$(srcdir)/'`interactive.cxx
+
+stap-interactive.obj: interactive.cxx
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(stap_CPPFLAGS) $(CPPFLAGS) $(stap_CXXFLAGS) $(CXXFLAGS) -MT stap-interactive.obj -MD -MP -MF $(DEPDIR)/stap-interactive.Tpo -c -o stap-interactive.obj `if test -f 'interactive.cxx'; then $(CYGPATH_W) 'interactive.cxx'; else $(CYGPATH_W) '$(srcdir)/interactive.cxx'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/stap-interactive.Tpo $(DEPDIR)/stap-interactive.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='interactive.cxx' object='stap-interactive.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(stap_CPPFLAGS) $(CPPFLAGS) $(stap_CXXFLAGS) $(CXXFLAGS) -c -o stap-interactive.obj `if test -f 'interactive.cxx'; then $(CYGPATH_W) 'interactive.cxx'; else $(CYGPATH_W) '$(srcdir)/interactive.cxx'; fi`
 
 stap-bpf-base.o: bpf-base.cxx
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(stap_CPPFLAGS) $(CPPFLAGS) $(stap_CXXFLAGS) $(CXXFLAGS) -MT stap-bpf-base.o -MD -MP -MF $(DEPDIR)/stap-bpf-base.Tpo -c -o stap-bpf-base.o `test -f 'bpf-base.cxx' || echo '$(srcdir)/'`bpf-base.cxx
