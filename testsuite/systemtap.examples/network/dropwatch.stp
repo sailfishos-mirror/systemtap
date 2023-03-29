@@ -23,7 +23,7 @@ probe timer.sec(5)
   printf("\n%s\n", ctime(gettimeofday_s()))
   foreach (l in locations-) {
     printf("%d packets dropped at %s\n",
-           @count(locations[l]), symname(l))
+           @count(locations[l]), symdata(l))
   }
   delete locations
 }
