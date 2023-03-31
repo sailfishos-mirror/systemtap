@@ -2,7 +2,8 @@
 
 - ISystemtap: the new interactive systemtap jupyter kernel. This provides
   a simple GUI for writing/running Systemtap scripts in an easy, incremental
-  way within Jupyterlab. See interactive-notebook/README.md.
+  way within Jupyterlab. Added 2 news scripts, stap-jupyter-install
+  and stap-jupyter-container. See interactive-notebook/README.md.
 
 - The new "language-server" mode, specified by "stap --language-server",
   starts a LSP server which will communicate with the client via stdio. 

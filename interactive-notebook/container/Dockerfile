@@ -15,25 +15,29 @@ LABEL maintainer="Systemtap Development Team <systemtap@sourceware.org>"
 USER root
 
 # Variables used by the jupyter base images
-ENV NOTEBOOK_SRC_DIR=/opt/interactive-notebook \
+ENV NOTEBOOK_PREFIX=/usr/ \
+    NOTEBOOK_DIR=/usr/share/systemtap/interactive-notebook \
     JUPYTER_ENABLE_LAB=yes \
     CHOWN_HOME=yes \
     RESTARTABLE=yes \
     NOTEBOOK_ARGS="--ExtensionApp.default_url=lab/tree/ISystemtap.ipynb"
     # By choice we remove --allow-root from the args, this could technically be added back
 
-COPY interactive-notebook $NOTEBOOK_SRC_DIR
-RUN chown -R $NB_UID:$NB_GID  $NOTEBOOK_SRC_DIR
+RUN mkdir -p $NOTEBOOK_DIR
+COPY interactive-notebook $NOTEBOOK_DIR
+RUN chown -R $NB_UID:$NB_GID  $NOTEBOOK_DIR
 # A runtime config script, which is needed if running a rootless container
 # Add it to the startup hooks, a dir of files to run at runtime
 # See https://jupyter-docker-stacks.readthedocs.io/en/latest/using/common.html#startup-hooks
-RUN mkdir -p /usr/local/bin/before-notebook.d/ && cp -v $NOTEBOOK_SRC_DIR/container/runtime_container_config.sh /usr/local/bin/before-notebook.d/
+RUN mkdir -p /usr/local/bin/before-notebook.d/ && \ 
+    chmod o+x $NOTEBOOK_DIR/container/runtime_container_config.sh && \
+    cp -v $NOTEBOOK_DIR/container/runtime_container_config.sh /usr/local/bin/before-notebook.d/
 
 # Install the isystemtap kernel, LSP and syntax highlighting extension
-WORKDIR $NOTEBOOK_SRC_DIR
+WORKDIR $NOTEBOOK_DIR
 RUN apt-get update --yes && \
     apt-get install --yes jq
-RUN ./install.sh --container-install
+RUN ./container/stap-jupyter-install --container-install $NOTEBOOK_PREFIX
 RUN fix-permissions $CONDA_DIR && \
     fix-permissions /home/$NB_USER 
 
@@ -42,4 +46,4 @@ RUN rmdir /home/$NB_USER/work
 
 # Move to the workdir and get any notebook examples
 WORKDIR /home/$NB_USER
-RUN cp -p $NOTEBOOK_SRC_DIR/*.ipynb /home/$NB_USER/
+RUN cp -p $NOTEBOOK_DIR/*.ipynb /home/$NB_USER/

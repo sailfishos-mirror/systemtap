@@ -1,4 +1,3 @@
-import signal
 import subprocess
 from queue import Queue
 from threading import Thread
@@ -15,7 +14,7 @@ from typing import List
 from .stap_kernel import *
 from ipyevents import Event
 from ipywidgets import Text, Button, Tab, GridBox, Layout, Label, HBox, VBox, Output, TagsInput, Combobox, IntProgress, HTML, Valid
-from IPython.display import JSON, Code, Markdown
+from IPython.display import JSON, Code, Markdown, Javascript
 from shlex import quote
 # FIXME: poll's small changes should be added to the jupyter-ui-poll, and the file should be removed
 from .poll import ui_events
@@ -476,26 +475,29 @@ class JCell:
 
                 self.export = Button(
                     button_style='info', tooltip='Export the script', icon='download')
-                self.export_hbox = HBox([self.export])
-                def get_file_name(index = None):
-                    return f'{os.getenv("HOME")}/Downloads/' + (f'{namespace} ({index}).stp' if index else f'{namespace}.stp')
+                self.export_out = Output()
+                self.export_hbox = HBox([self.export,self.export_out])
                 def handle_export(btn):
-                    btn.icon='download'
-                    file_path = get_file_name()
-                    c = 0
-                    while os.path.exists(file_path):
-                        file_path = get_file_name(c)
-                        c += 1
-                    try:
-                        with open(file_path, 'w') as f:
-                            f.write(f'#!stap {" ".join(options)} {" ".join(args)}\n')
-                            f.write(virtual_script)
-                            f.flush()
-                        btn.icon='check-circle'
-                        btn.disabled = True
-                        self.export_hbox.children = [btn, Label(value=file_path.replace("/home/jovyan", "~"))]
-                    except:
-                        pass
+                    btn.icon='check-circle'
+                    btn.disabled = True
+
+                    file_content =  f'#!stap {" ".join(options)} {" ".join(args)}\n'
+                    file_content += virtual_script
+
+                    # The following is based on
+                    # https://stackoverflow.com/questions/3749231/download-file-using-javascript-jquery
+                    jscode = '                                            \
+                    const blob = new Blob([%s], { type : "plain/text" }); \
+                    const url = window.URL.createObjectURL(blob);         \
+                    const a = document.createElement("a");                \
+                    a.style.display = "none";                             \
+                    a.href = url;                                         \
+                    a.download = "%s";                                    \
+                    document.body.appendChild(a);                         \
+                    a.click();                                            \
+                    window.URL.revokeObjectURL(url);' % (json.dumps(file_content), f'{namespace}.stp')
+                    self.export_out.append_display_data(Javascript(jscode))
+
                 self.export.on_click(handle_export)
 
                 self.stdin = Text(description='>>>')
@@ -699,7 +701,7 @@ class JCell:
             output_disabled = write_to_output(p.get_lines(retain_partial_lines=False), output_disabled)
             # Do our best to cleanup after ourselves
             try:
-                os.remove(self.namespace.name + ".ko")
+                p = subprocess.run(format_subprocess_args('rm', '-f', f'{self.namespace.name}.ko'))
             except OSError:
                 pass
 

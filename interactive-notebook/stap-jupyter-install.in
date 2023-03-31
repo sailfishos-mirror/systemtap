@@ -1,6 +1,5 @@
 #!/bin/bash
 # An install script for isystemtap and its jupyterlab extensions
-# NB: Should be run from interactive-notebook
 # Copyright (C) 2023 Red Hat Inc.
 #
 # This file is part of systemtap, and is free software.  You can
@@ -8,8 +7,38 @@
 # Public License (GPL); either version 2, or (at your option) any
 # later version.
 
+set -e
+
 type python >/dev/null || { echo "python required"; exit 1; }
 type pip    >/dev/null || { echo "pip required";    exit 1; }
+
+PREFIX=@prefix@
+# The dir for our local install files
+jupyter_dir="$HOME/.systemtap/jupyter"
+# The syntax highlighting jupyterlab extension
+extenstion="jupyterlab-stap-highlight"
+# The dir where jupyter stores it's language-server configury
+jconfig=`jupyter --config`
+lsp_config=jupyter_stap_lsp.json
+
+if [ "$1" = '--container-install' ]; then
+    PREFIX=$2
+     if [ ! -e $PREFIX/share/systemtap/interactive-notebook/isystemtap/constants.py ]; then
+         echo "Usage: --container-install $PREFIX is not a valid prefix directory. It must be a parent of interactive-notebook/" 1>&2; exit 1;
+     fi
+elif [ "$1" = '--remove' ]; then
+    jupyter kernelspec remove isystemtap
+    rm -rf $jupyter_dir
+    jupyter labextension uninstall $extenstion
+    rm "$jconfig/jupyter_server_config.d/$lsp_config"
+    exit 0
+elif [ -n "$1" ]; then
+    echo "Usage: stap-jupyter-install [--remove | <For Maintainers> --container-install PREFIX]" 1>&2; exit 1;
+fi
+
+NOTEBOOK_DIR=$PREFIX/share/systemtap/interactive-notebook
+START_DIR=`pwd`
+cd $NOTEBOOK_DIR
 
 echo "Installing requirements"
 if command -v mamba &> /dev/null
@@ -26,16 +55,13 @@ echo
 echo "Installing Jupyter kernelspec"
 jupyter kernelspec install --user isystemtap
 
-jupyter_dir="$HOME/.systemtap/jupyter"
 mkdir -p $jupyter_dir
-
 echo
 echo "Installing ISystemtap"
 # Installs the setup.py from ~/.systemtap/jupyter
 cp -R isystemtap $jupyter_dir && cp setup.py $jupyter_dir && (cd $jupyter_dir && pip install .)
 
 echo
-extenstion="jupyterlab-stap-highlight"
 echo "Checking $extenstion extenstion installation"
 if jupyter labextension check $extenstion --installed 2> /dev/null; then
     echo "$extenstion already installed"
@@ -48,8 +74,6 @@ fi
 
 echo
 echo "Setting up language server"
-lsp_config=jupyter_stap_lsp.json
-jconfig=`jupyter --config`
 mkdir -p "$jconfig/jupyter_server_config.d/"
 if [ "$1" = '--container-install' ]; then
     # NB: We preemptively add the config file, since we later only allow running the container with a lang-server enabled version of stap
@@ -59,3 +83,4 @@ elif stap --help | grep language-server > /dev/null; then
 else
     echo "This version of systemtap does not support language-server mode. Skipping"
 fi
+cd $START_DIR

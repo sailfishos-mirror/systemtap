@@ -104,7 +104,7 @@ am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 DIST_COMMON = $(srcdir)/Makefile.am
 mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/config.h
-CONFIG_CLEAN_FILES =
+CONFIG_CLEAN_FILES = stap-jupyter-container stap-jupyter-install
 CONFIG_CLEAN_VPATH_FILES =
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
@@ -370,6 +370,10 @@ $(top_srcdir)/configure: @MAINTAINER_MODE_TRUE@ $(am__configure_deps)
 $(ACLOCAL_M4): @MAINTAINER_MODE_TRUE@ $(am__aclocal_m4_deps)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
 $(am__aclocal_m4_deps):
+stap-jupyter-container: $(top_builddir)/config.status $(srcdir)/stap-jupyter-container.in
+	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
+stap-jupyter-install: $(top_builddir)/config.status $(srcdir)/stap-jupyter-install.in
+	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
 tags TAGS:
 
 ctags CTAGS:
@@ -436,7 +440,7 @@ install-dvi: install-dvi-am
 
 install-dvi-am:
 
-install-exec-am:
+install-exec-am: install-exec-local
 
 install-html: install-html-am
 
@@ -482,22 +486,28 @@ uninstall-am: uninstall-local
 	cscopelist-am ctags-am distclean distclean-generic dvi dvi-am \
 	html html-am info info-am install install-am install-data \
 	install-data-am install-data-local install-dvi install-dvi-am \
-	install-exec install-exec-am install-html install-html-am \
-	install-info install-info-am install-man install-pdf \
-	install-pdf-am install-ps install-ps-am install-strip \
-	installcheck installcheck-am installdirs maintainer-clean \
-	maintainer-clean-generic mostlyclean mostlyclean-generic pdf \
-	pdf-am ps ps-am tags-am uninstall uninstall-am uninstall-local
+	install-exec install-exec-am install-exec-local install-html \
+	install-html-am install-info install-info-am install-man \
+	install-pdf install-pdf-am install-ps install-ps-am \
+	install-strip installcheck installcheck-am installdirs \
+	maintainer-clean maintainer-clean-generic mostlyclean \
+	mostlyclean-generic pdf pdf-am ps ps-am tags-am uninstall \
+	uninstall-am uninstall-local
 
 .PRECIOUS: Makefile
 
+install-exec-local:
+	for f in stap-jupyter-container stap-jupyter-install; \
+		do $(INSTALL_PROGRAM) -D $$f $(DESTDIR)$(bindir)/$$f; done
+
 install-data-local:
-	(cd "$(srcdir)"; for f in *.{sh,ipynb,md,txt,json,py}; \
+	(cd "$(srcdir)"; for f in *.{ipynb,md,txt,json,py}; \
 		do $(INSTALL_DATA) -D $$f $(DESTDIR)$(pkgdatadir)/interactive-notebook/$$f; done)
 	(cd "$(srcdir)/isystemtap"; for f in *.{py,json}; \
 		do $(INSTALL_DATA) -D $$f $(DESTDIR)$(pkgdatadir)/interactive-notebook/isystemtap/$$f; done)
 	(cd "$(srcdir)/container"; for f in *; \
 		do $(INSTALL_DATA) -D $$f $(DESTDIR)$(pkgdatadir)/interactive-notebook/container/$$f; done)
+	($(INSTALL_DATA) -D -m 755 stap-jupyter-install $(DESTDIR)$(pkgdatadir)/interactive-notebook/container/stap-jupyter-install)
 	(cd "$(srcdir)/codemirror"; \
 		for f in jupyterlab-stap-highlighting/__init__.py lib/plugin.js lib/stap.js package.json; \
 		do $(INSTALL_DATA) -D $$f $(DESTDIR)$(pkgdatadir)/interactive-notebook/codemirror/$$f; done)
@@ -506,14 +516,13 @@ install-data-local:
 	@echo "STAP_VERSION    = '$(VERSION)'"               >  "constants.py"
 	@echo "STAP_PKGDATADIR = '$(pkgdatadir)'"            >> "constants.py"
 	$(INSTALL_DATA) -D constants.py $(DESTDIR)$(pkgdatadir)/interactive-notebook/isystemtap/constants.py
-	chgrp -R stapusr $(DESTDIR)$(pkgdatadir)/interactive-notebook/{isystemtap,codemirror,tests,container,}
-	chmod -R g+x $(DESTDIR)$(pkgdatadir)/interactive-notebook/{container,}/*.sh
 
 clean-local:
-	rm constants.py
+	rm constants.py stap-jupyter-container stap-jupyter-install
 
 uninstall-local:
 	rm -rf $(DESTDIR)$(pkgdatadir)/interactive-notebook
+	rm -f $(DESTDIR)$(bindir)/stap-jupyter-*
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

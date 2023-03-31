@@ -14671,6 +14671,10 @@ ac_config_files="$ac_config_files python/Makefile"
 
 ac_config_files="$ac_config_files interactive-notebook/Makefile"
 
+ac_config_files="$ac_config_files interactive-notebook/stap-jupyter-container"
+
+ac_config_files="$ac_config_files interactive-notebook/stap-jupyter-install"
+
 ac_config_files="$ac_config_files staprun/Makefile"
 
 ac_config_files="$ac_config_files stapbpf/Makefile"
@@ -15589,6 +15593,8 @@ do
     "java/org/systemtap/byteman/helper/HelperSDT.java") CONFIG_FILES="$CONFIG_FILES java/org/systemtap/byteman/helper/HelperSDT.java" ;;
     "python/Makefile") CONFIG_FILES="$CONFIG_FILES python/Makefile" ;;
     "interactive-notebook/Makefile") CONFIG_FILES="$CONFIG_FILES interactive-notebook/Makefile" ;;
+    "interactive-notebook/stap-jupyter-container") CONFIG_FILES="$CONFIG_FILES interactive-notebook/stap-jupyter-container" ;;
+    "interactive-notebook/stap-jupyter-install") CONFIG_FILES="$CONFIG_FILES interactive-notebook/stap-jupyter-install" ;;
     "staprun/Makefile") CONFIG_FILES="$CONFIG_FILES staprun/Makefile" ;;
     "stapbpf/Makefile") CONFIG_FILES="$CONFIG_FILES stapbpf/Makefile" ;;
     "httpd/Makefile") CONFIG_FILES="$CONFIG_FILES httpd/Makefile" ;;
@@ -16408,6 +16414,8 @@ See \`config.log' for more details" "$LINENO" 5; }
     "run-stap":F) chmod +x run-stap ;;
     "dtrace":F) chmod +x dtrace ;;
     "java/stapbm":F) chmod +x java/stapbm ;;
+    "interactive-notebook/stap-jupyter-container":F) chmod +x interactive-notebook/stap-jupyter-container ;;
+    "interactive-notebook/stap-jupyter-install":F) chmod +x interactive-notebook/stap-jupyter-install ;;
     "staprun/run-staprun":F) chmod +x staprun/run-staprun ;;
     "staprun/guest/stapshd":F) chmod +x staprun/guest/stapshd ;;
     "staprun/guest/stapsh-daemon":F) chmod +x staprun/guest/stapsh-daemon ;;

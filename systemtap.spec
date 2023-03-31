@@ -141,7 +141,7 @@ Release: 1%{?release_override}%{?dist}
 # systemtap-runtime-virtguest udev rules, init scripts/systemd service, req:-runtime
 # systemtap-runtime-python2 HelperSDT python2 module, req:-runtime
 # systemtap-runtime-python3 HelperSDT python3 module, req:-runtime
-# systemtap-jupyter      interactive-notebook req:systemtap
+# systemtap-jupyter      /usr/bin/stap-jupyter-* interactive-notebook req:systemtap
 #
 # Typical scenarios:
 #
@@ -1292,18 +1292,10 @@ exit 0
 
 %if %{with_python3} && %{with_monitor}
 %files jupyter
+%{_bindir}/stap-jupyter-container
+%{_bindir}/stap-jupyter-install
 %dir %{_datadir}/systemtap
-%{_datadir}/systemtap/interactive-notebook/codemirror
-%{_datadir}/systemtap/interactive-notebook/container/Dockerfile
-%attr(755,root,stapusr) %{_datadir}/systemtap/interactive-notebook/container/*.sh
-%{_datadir}/systemtap/interactive-notebook/isystemtap
-%{_datadir}/systemtap/interactive-notebook/tests
-%attr(755,root,stapusr) %{_datadir}/systemtap/interactive-notebook/*.sh
-%{_datadir}/systemtap/interactive-notebook/*.ipynb
-%{_datadir}/systemtap/interactive-notebook/jupyter_stap_lsp.json
-%{_datadir}/systemtap/interactive-notebook/README.md
-%{_datadir}/systemtap/interactive-notebook/requirements.txt
-%{_datadir}/systemtap/interactive-notebook/setup.py
+%{_datadir}/systemtap/interactive-notebook
 %endif
 
 # ------------------------------------------------------------------------
