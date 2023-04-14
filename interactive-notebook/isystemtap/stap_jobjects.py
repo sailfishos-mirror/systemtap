@@ -1,7 +1,7 @@
 import subprocess
 from queue import Queue
 from threading import Thread
-import os.path
+import os
 import time
 import json5
 import re
@@ -22,13 +22,16 @@ from .poll import ui_events
 JUPYTER_MAGIC = "JUPYTER_MAGIC_"
 # File is created at build time
 try:
-    from .constants import STAP_PKGDATADIR
+    from .constants import STAP_PKGDATADIR, STAP_PREFIX
+    STAP_INSTALL_DIR = f'{STAP_PREFIX}/bin'
+    SUBPROCESS_ENV   = {**os.environ, 'PATH':f'{STAP_INSTALL_DIR}:{os.environ["PATH"]}'}
 except:
     # An educated guess
-    STAP_PKGDATADIR = '/usr/local/share/systemtap'
+    STAP_PKGDATADIR   = '/usr/local/share/systemtap'
+    STAP_INSTALL_DIR = '/usr/bin'
+    SUBPROCESS_ENV   = None
 
-# If in a rootless container we define a remote location (the localhost)
-# we use this to get back from the container to the host with stap --remote
+# When running in a container we ssh back to the host to run stap. The dest is the host ip we use (localhost here)
 try:
     from .constants import SSH_DEST
 except:
@@ -42,10 +45,9 @@ def format_subprocess_args(*args):
         else:
             flattened_args.append(a)
     
-    # 
     if SSH_DEST:
-        command = " ".join([quote(a) for a in flattened_args])
-        flattened_args = ["ssh", SSH_DEST, command]
+        command =   f'PATH={STAP_INSTALL_DIR+":$PATH"} ' + " ".join([quote(a) for a in flattened_args])
+        flattened_args = ['ssh', SSH_DEST, command]
 
     return flattened_args
 
@@ -149,6 +151,8 @@ class JHistogram():
 class JNamespace:
     def __init__(self, kernel, name=""):
         self.name    : str             = name
+        # If "name" is used as a module name will be updated to "name"i at runtime
+        self.mod_name: str             = name
         self.kernel                    = kernel
         self._cells  : List[JCell]     = list()
         self._proc   : JSubprocess     = None
@@ -190,7 +194,6 @@ class JNamespace:
                     k) if "\"" in k or "(" in k else k): vi for k, vi in v.items()}
             else:
                 globs[g] = v
-        self.kernel.log.debug(f'Updating globals in {self.name}: {globs}')
         self._globals = globs
 
     def get_globals(self):
@@ -294,7 +297,7 @@ class JCell:
                         return False
                     self.mode = command
                 elif len(line) >= 1 and line[0] == "!":
-                    p = subprocess.run(format_subprocess_args(line[1:].split(" ")), capture_output=True, text=True)
+                    p = subprocess.run(format_subprocess_args(line[1:].split(" ")), capture_output=True, text=True, env=SUBPROCESS_ENV)
                     if p.stdout:
                         self.kernel.write(p.stdout)
                     if p.returncode != 0:
@@ -315,14 +318,14 @@ class JCell:
                             f'Parsed histogram with {prefix, operator, operands, suffix = }')
                         # Don't magic up commented out histograms
                         if any(c in prefix for c in ('//', '#', '/*')):
-                            self.kernel.log.info(
+                            self.kernel.log.debug(
                                 'Skipping commented histogram')
                             script += line+"\n"
                             continue
                         # We can't print a histogram for '@hist_log(foo)[0] or @hist_linear(bar[baz], 1, 2 , 3)[2]'
                         # If a ) comes before a [ then we can say that the hist_foo(...) is done and then an index is started so skip
                         if operands.find(")") < operands.rfind("["):
-                            self.kernel.log.info(
+                            self.kernel.log.debug(
                                 'Skipping hisogram which is being indexed')
                             script += line+"\n"
                             continue
@@ -349,7 +352,7 @@ class JCell:
                         line = prefix + f' ; printf("\\n{JUPYTER_MAGIC}{p1}\\n"{p1_args}); ' + \
                             operator + operands + \
                             f' ; println("\\n{JUPYTER_MAGIC}{p2}\\n"); ' + suffix
-                        self.kernel.log.info(
+                        self.kernel.log.debug(
                             f'Histogram line replaced with { line }')
 
                     script += line+"\n"
@@ -379,7 +382,7 @@ class JCell:
         # FIXME: What if the cell was in a different namespace
         self.namespace.remove_cell_by_id(self.cell_id)
         self.script = script
-        self.kernel.log.info(
+        self.kernel.log.debug(
             f'Loaded cell of type {self.mode} into namespace "{self.namespace.name}" with args {self.args} and options {self.options}')
         self.kernel.log.debug(f'The script is: {self.script}')
         return True
@@ -389,7 +392,7 @@ class JCell:
         Run pass 1; To quickly detect any syntax errors
         """
         p = subprocess.run(format_subprocess_args("stap", "-e", self.script,
-                           "-p1"), capture_output=True, text=True)
+                           "-p1"), capture_output=True, text=True, env=SUBPROCESS_ENV)
         if p.returncode == 0:
             return True
         else:
@@ -412,8 +415,8 @@ class JCell:
         virtual_script += '\n probe never { printf("Spam, Ham and Eggs") } '
 
         p = subprocess.run(format_subprocess_args("stap", self.options, "-e", virtual_script,
-                           "-p2"), capture_output=True, text=True)
-        self.kernel.log.info(f'Running {p.args}')
+                           "-p2"), capture_output=True, text=True, env=SUBPROCESS_ENV)
+        self.kernel.log.debug(f'Executing {p.args}')
         if p.returncode == 0:
             self.namespace.add_cell(self)
             return True
@@ -426,18 +429,32 @@ class JCell:
         # Stitch together the cells into 1 virtual script
         virtual_script = "".join(cell.script for cell in self.namespace.get_cells())
 
+        # We need to ensure the module name is not in use already
+        self.namespace.mod_name = self.namespace.name
+        i = 1
+        with open("/proc/modules", "r") as f:
+            # Technically this introduces a race condition where the modules list is only loaded once
+            # so k users could simultaneously find the same 'free' mod name. But even if restricted to a read each
+            # loop iter the race condition remains, so just leave it since this is faster.
+            modules = f.read()
+            while True:
+                if self.namespace.mod_name not in modules:
+                    break
+                self.namespace.mod_name = f'{self.namespace.name}{i}'
+                i += 1
+
         extra_options = [
-            "-m", self.namespace.name,
+            "-m", self.namespace.mod_name,
             "--monitor", #FIXME: Is there a way to wait for --monitor mode to start up fully
             "-D", "MAXSTRINGLEN=4096",
             "--skip-badvars",
             "-e", virtual_script
         ]
         cmd = format_subprocess_args("stap", self.options, extra_options, self.args)
-        self.kernel.log.info(f'Running {cmd}')
+        self.kernel.log.info(f'Executing {cmd}')
         p = JSubprocess(cmd)
 
-        proc_path = f'/proc/systemtap/{self.namespace.name}'
+        proc_path = f'/proc/systemtap/{self.namespace.mod_name}'
         def monitor_write(content):
             try:
                 f = open(proc_path+"/monitor_control", 'w')
@@ -611,29 +628,40 @@ class JCell:
         keyboard_event.on_dom_event(handle_keydown)
         self.kernel.display(tab)
 
-        def update_widget_states(last_updated_monitor=0):
+        def update_widget_states(last_updated_monitor=0, monitor_files_owned = True):
             """Update the widgets, but only do so once every 0.5s (more frequent isn't needed for graphics)"""    
             jso = dict()
             try:
+                # We need read/write access to the procfs files. If running directly on the host these have no issues BUT
+                # if running a container as root then the notebook (current) user in the container can't accesss these controls
+                # so the first time we can do a read (monitor_files_owned is false but the file exists), we
+                # chown them
+                if SSH_DEST and not monitor_files_owned and os.path.exists(proc_path):
+                    files = ['monitor_control', 'monitor_status']
+                    for f in files:
+                        subprocess.run(format_subprocess_args('chown', '--silent', f'{os.getuid()}:{os.getgid()}', f'{proc_path}/{f}'),
+                                       stderr=subprocess.DEVNULL)
+                    monitor_files_owned = True
+
                 with open(proc_path+"/monitor_status", 'r') as content:
                     # We use json5 to allow for tailing commas in the json format
                     jso = json5.load(content)
-            except Exception as e:
-                self.kernel.log.debug(f'Error updating widget state: {e}')
+            except:
+                pass
     
             # Update the internal copy of the globals, for use with python cells
             self.namespace.update_globals(jso.get("globals", None))
 
             now = time.time()
             if now - last_updated_monitor < 0.5:
-                return last_updated_monitor
+                return last_updated_monitor, monitor_files_owned
 
             # Update tabs content
             controls_view.update(jso.get("uptime", None), jso.get("memory", None))
             globals_view.update(jso.get("globals", None))
             probes_view.update(jso.get('probe_list', None))
 
-            return now
+            return now, monitor_files_owned
 
         def write_to_output(content, output_disabled):
             """Write content (a list of line, stream pairs) to the stream (stdout or stderr).
@@ -680,6 +708,7 @@ class JCell:
 
         output_disabled = False
         last_updated_monitor = time.time() # We only need to update so often
+        monitor_files_owned = False
 
         # Start the main loop
         with ui_events(self.kernel) as ui_poll:
@@ -692,7 +721,7 @@ class JCell:
                     # running, so this polling is very important for the controls widgets
                     ui_poll(10)
                     # Update the widgets states (controls, globals and probes) & update the internal globals (for python usage)
-                    last_updated_monitor = update_widget_states(last_updated_monitor)
+                    last_updated_monitor, monitor_files_owned = update_widget_states(last_updated_monitor, monitor_files_owned)
                 except KeyboardInterrupt:
                     # The kernel sent a sigint (I, I), so catch it and pass on to the child
                     # to allow stap to gracefully terminate
@@ -921,7 +950,7 @@ class JCell:
 
             rows = []
             p = subprocess.run(format_subprocess_args("stap", '-L', query.value),
-                               capture_output=True, text=True)
+                               capture_output=True, text=True, env=SUBPROCESS_ENV)
             progress.value = 4  # Again just a visual thing
             if p.returncode == 0:
                 for line in str(p.stdout).split('\n'):

@@ -76,8 +76,9 @@ echo
 echo "Setting up language server"
 mkdir -p "$jconfig/jupyter_server_config.d/"
 if [ "$1" = '--container-install' ]; then
-    # NB: We preemptively add the config file, since we later only allow running the container with a lang-server enabled version of stap
-    jq '.LanguageServerManager.language_servers."stap-language".argv = ["ssh", "127.0.0.1", "stap --language-server"]' $lsp_config > "$jconfig/jupyter_server_config.d/$lsp_config"
+    # NB: We add the UNCHANGED config file. At runtime this needs to be updated with the host users stap install dir
+    # see runtime_container_config.sh
+    cp $lsp_config "$jconfig/jupyter_server_config.d/$lsp_config"
 elif stap --help | grep language-server > /dev/null; then
     cp -v $lsp_config "$jconfig/jupyter_server_config.d/$lsp_config"
 else

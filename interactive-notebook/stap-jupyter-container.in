@@ -11,7 +11,7 @@ set -e
 usage() { echo "Usage: stap-jupyter-container [--repo REPOSITORY] [--image IMAGE] [--tag TAG] [--keyname KEYNAME] --{run, pull, build, publish, remove}" 1>&2; exit 1; }
 
 NOTEBOOK_DIR="@prefix@/share/systemtap/interactive-notebook"
-declare -A options=( ["--repo"]="quay.io" ["--image"]="rgoldber/isystemtap" ["--tag"]="latest" ["--keyname"]="id_rsa" )
+declare -A options=( ["--repo"]="quay.io" ["--image"]="systemtap/isystemtap" ["--tag"]="latest" ["--keyname"]="id_rsa" )
 
 while (( "$#" )); do
     # Parse the mode
@@ -80,6 +80,7 @@ if [ "$MODE" = '--run' ]; then
     # Extract the constants.py values, since the locally installed version of stap
     # is what the container needs (tr removes whitespace)
     STAP_VERSION_DEF=`grep VERSION $NOTEBOOK_DIR/isystemtap/constants.py | tr -d " \t\n\r"`
+    STAP_PREFIX_DEF=`grep PREFIX $NOTEBOOK_DIR/isystemtap/constants.py | tr -d " \t\n\r"`
     STAP_PKGDATADIR_DEF=`grep PKGDATADIR $NOTEBOOK_DIR/isystemtap/constants.py | tr -d " \t\n\r"`
     # We also unpack the static dir containing the examples since
     # we need to mount that 
@@ -98,6 +99,7 @@ if [ "$MODE" = '--run' ]; then
         -v $CONTAINER_SSH_DIR:/home/$NB_USER/.ssh \
         # ENVIRONMENT VARIABLES ------------------
         -e $STAP_VERSION_DEF \
+        -e $STAP_PREFIX_DEF \
         -e $STAP_PKGDATADIR_DEF
     )
 

@@ -20,6 +20,7 @@ install-data-local:
 		do $(INSTALL_DATA) -D $$f $(DESTDIR)$(pkgdatadir)/interactive-notebook/tests/$$f; done)
 	@echo "STAP_VERSION    = '$(VERSION)'"               >  "constants.py"
 	@echo "STAP_PKGDATADIR = '$(pkgdatadir)'"            >> "constants.py"
+	@echo "STAP_PREFIX     = '$(prefix)'"                >> "constants.py"
 	$(INSTALL_DATA) -D constants.py $(DESTDIR)$(pkgdatadir)/interactive-notebook/isystemtap/constants.py
 
 clean-local:

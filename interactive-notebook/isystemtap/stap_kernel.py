@@ -20,7 +20,10 @@ assert ipykernel.__version__ > '6.12', \
     f'The ipykernel version must be at least 6.12, where cellIds are introduced, the current version is {ipykernel.__version__}'
 from ipykernel.kernelbase import Kernel
 from ipykernel.kernelapp import IPKernelApp
-from ipykernel.comm import CommManager, Comm
+from ipykernel.comm import CommManager
+import io
+import os
+import time
 # File is created at build time
 try:
     from .constants import STAP_VERSION
@@ -57,13 +60,25 @@ class SystemtapKernel(Kernel):
         except:
             pass
 
+        # We log to both a file (DEBUG) and stderr (INFO)
         if self.log is None:
             self.log = logging.Logger("stap_kernel")
-        # Useful for local debugging
-        # f_handler = logging.FileHandler("stap_kernel.log", mode='w')
-        # f_handler.setFormatter(logging.Formatter(
-        #     '%(asctime)s - %(levelname)s - %(filename)s::%(funcName)s - %(message)s'))
-        # self.log.addHandler(f_handler)
+        logdir = f'{os.getenv("HOME")}/.systemtap/jupyter/logs'
+        if not os.path.exists(logdir):
+            os.mkdir(logdir)
+        logfile = f'{logdir}/kernel_{time.strftime("%Y%m%d_%H%M%S")}.log'
+        f_handler = logging.FileHandler(logfile, mode='w')
+        f_handler.setFormatter(logging.Formatter(
+            '%(asctime)s - %(levelname)s - %(filename)s::%(funcName)s - %(message)s'))
+        f_handler.setLevel(logging.DEBUG)
+        self.log.addHandler(f_handler)
+        # Jupyter plays some games with sys.stderr so we need to open fd=2 in order to log to the terminal
+        s_handler = logging.StreamHandler(io.TextIOWrapper(io.BufferedWriter(io.FileIO(2, mode='w'))))
+        s_handler.setFormatter(logging.Formatter(
+            '[%(levelname).1s %(asctime)s ISystemtapKernel] %(message)s'))
+        s_handler.setLevel(logging.INFO)
+        self.log.addHandler(s_handler)
+        self.log.info(f'For the full log see {logfile}')
 
         self.jnamespaces = dict() # namespace name -> JNamespace
 
@@ -200,7 +215,7 @@ class SystemtapKernel(Kernel):
         # Shutdown any running namespace (only 1 can run at a time)
         for ns in self.jnamespaces.values():
             try:
-                with open(f'/proc/systemtap/{ns.name}/monitor_control', 'w') as f:
+                with open(f'/proc/systemtap/{ns.mod_name}/monitor_control', 'w') as f:
                     f.write('quit')
                     f.flush()
             except OSError:
