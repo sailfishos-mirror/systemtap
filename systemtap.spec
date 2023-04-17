@@ -1294,6 +1294,7 @@ exit 0
 %files jupyter
 %{_bindir}/stap-jupyter-container
 %{_bindir}/stap-jupyter-install
+%{_mandir}/man1/stap-jupyter.1*
 %dir %{_datadir}/systemtap
 %{_datadir}/systemtap/interactive-notebook
 %endif

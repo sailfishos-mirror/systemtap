@@ -34,3 +34,6 @@ if BUILD_VIRT
 man_MANS += stapvirt.1
 endif
 
+if HAVE_MONITOR_LIBS
+man_MANS += stap-jupyter.1
+endif

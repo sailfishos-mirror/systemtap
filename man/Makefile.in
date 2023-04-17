@@ -92,6 +92,7 @@ target_triplet = @target@
 @BUILD_TRANSLATOR_TRUE@am__append_1 = stap.1 stap-prep.1 stap-report.1
 @BUILD_SERVER_TRUE@@HAVE_NSS_TRUE@am__append_2 = stap-server.8
 @BUILD_VIRT_TRUE@am__append_3 = stapvirt.1
+@HAVE_MONITOR_LIBS_TRUE@am__append_4 = stap-jupyter.1
 subdir = man
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_check_compile_flag.m4 \
@@ -412,7 +413,7 @@ AUTOMAKE_OPTIONS = no-dist foreign subdir-objects
 man_MANS = stapprobes.3stap stapfuncs.3stap stapvars.3stap \
 	stapex.3stap dtrace.1 stap-merge.1 stappaths.7 stapsh.8 \
 	systemtap-service.8 stapref.1 $(am__append_1) $(am__append_2) \
-	$(am__append_3)
+	$(am__append_3) $(am__append_4)
 all: all-recursive
 
 .SUFFIXES:
