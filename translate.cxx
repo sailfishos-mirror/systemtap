@@ -40,6 +40,7 @@ extern "C" {
 #include <ftw.h>
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
+#include <unistd.h>
 }
 
 // Max unwind table size (debug or eh) per module. Somewhat arbitrary
