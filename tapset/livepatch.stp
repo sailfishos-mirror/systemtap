@@ -53,10 +53,29 @@ probe procfs("cve_tmpdisabled_s").write
 # The metric accumulation and prometheus
 global cve_metrics
 
+/**
+ * sfunction cve_count_metric - Increment the count of key
+ *
+ * @key: The metric
+ *
+ * Description: This function increments the count of the metric
+ * key by 1. The metrics can be accessed in
+ * /proc/systemtap/MODULE_NAME/__prometheus
+ */
 function cve_count_metric (key:string) {
   cve_metrics[key] ++
 }
 
+/**
+ * sfunction cve_record_metric - Set the value of key
+ *
+ * @key: The metric
+ * @value: The new value
+ *
+ * Description: This function sets the value of the metric
+ * key. The metrics can be accessed in
+ * /proc/systemtap/MODULE_NAME/__prometheus
+ */
 function cve_record_metric (key:string, value:long) {
   cve_metrics[key] = value
 }
@@ -80,6 +99,15 @@ probe timer.s(1) {
   }
 }
 
+/**
+ * sfunction cve_tmpdisable - Disable the cve livepatch
+ *
+ * @duration: The number of seconds to disable
+ *
+ * Description: This function temporarily disables the
+ * conditionals which use cve_enabled_p for duration seconds.
+ * If duration is -1, disable the livepatch until reenabled.
+ */
 function cve_tmpdisable(duration:long){
   if (cve_notify_p)
     printf("%s disabling temporarily\n", cve_id)

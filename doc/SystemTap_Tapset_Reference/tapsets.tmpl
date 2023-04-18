@@ -484,6 +484,20 @@
 !Itapset/linux/syscall_any.stp
   </chapter>
 
+  <chapter id="livepatch.stp">
+    <title>CVE Livepatching Tapset</title>
+    <para>
+      Utility functions and control variables which can be used to create
+      standardized CVE patches. The globals are cve_notify_p (non-zero if the
+      patch should be verbose), cve_fix_p (non-zero if the fix should be applied),
+      cve_trace_p (non-zero if only a trace should be run), cve_enabled_p (non-zero
+      if the patch should be enabled). The controls can be changed in
+      /proc/systemtap/MODULE_NAME/* and the recorded prometheus metrics can be
+      viewed in the same directory.
+    </para>
+!Itapset/livepatch.stp
+  </chapter>
+
 !Syscalls
 
 </book>
