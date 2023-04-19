@@ -4746,10 +4746,15 @@ dwarf_var_expanding_visitor::visit_target_symbol (target_symbol *e)
 
       // Now that have location information check if change to variable has any effect
       if (lvalue) {
-	      if (liveness(q.sess, e, q.dw.mod_info->elf_path, addr, ctx) < 0) {
-		      q.sess.print_warning(_F("write at %p will have no effect",
-					      (void *)addr), e->tok);
-	      }
+        if (q.has_kernel &&
+            q.sess.kernel_config["CONFIG_RETPOLINE"] == string("y"))
+          q.sess.print_warning(_F("liveness analysis skipped on CONFIG_RETPOLINE kernel %s",
+                                  q.dw.mod_info->elf_path.c_str()), e->tok);
+        
+        else if (liveness(q.sess, e, q.dw.mod_info->elf_path, addr, ctx) < 0) {
+          q.sess.print_warning(_F("write at %p will have no effect",
+                                  (void *)addr), e->tok);
+        }
       }
 
       q.dw.sess.globals.insert(q.dw.sess.globals.end(),
