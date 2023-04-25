@@ -421,6 +421,7 @@ compile_pass (systemtap_session& s)
                   "STAPCONF_STACKTRACE_OPS_INT_ADDRESS", NULL);
   output_autoconf(s, o, cs, "autoconf-mm-context-vdso.c", "STAPCONF_MM_CONTEXT_VDSO", NULL);
   output_autoconf(s, o, cs, "autoconf-mm-context-vdso-base.c", "STAPCONF_MM_CONTEXT_VDSO_BASE", NULL);
+  output_autoconf(s, o, cs, "autoconf-genhd.c", "STAPCONF_GENHD_H", NULL);
   output_autoconf(s, o, cs, "autoconf-blk-types.c", "STAPCONF_BLK_TYPES", NULL);
   output_autoconf(s, o, cs, "autoconf-perf-structpid.c", "STAPCONF_PERF_STRUCTPID", NULL);
   output_autoconf(s, o, cs, "perf_event_counter_context.c",
