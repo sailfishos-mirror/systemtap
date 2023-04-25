@@ -10,7 +10,7 @@
 
 %{
 #include <linux/bio.h>
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5,18,0)
+#ifdef STAPCONF_GENHD_H
 #include <linux/genhd.h>
 #else
 #include <linux/blkdev.h>
