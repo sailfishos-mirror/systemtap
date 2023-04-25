@@ -310,13 +310,13 @@ probe nfsd.proc.return = nfsd.proc.lookup.return,
 probe nfsd.proc.lookup = 
       nfsd.proc4.lookup ?,
       nfsd.proc3.lookup,
-      nfsd.proc2.lookup
+      nfsd.proc2.lookup ?
 {}
 
 probe nfsd.proc.lookup.return = 
       nfsd.proc4.lookup.return ?,
       nfsd.proc3.lookup.return,
-      nfsd.proc2.lookup.return
+      nfsd.proc2.lookup.return ?
 {}
 
 probe nfsd.proc2.lookup = kernel.function("nfsd_proc_lookup") !,
@@ -465,13 +465,13 @@ probe nfsd.proc4.lookup.return =
 probe nfsd.proc.read = 
       nfsd.proc4.read ?,
       nfsd.proc3.read,
-      nfsd.proc2.read
+      nfsd.proc2.read ?
 {}
 
 probe nfsd.proc.read.return = 
       nfsd.proc4.read.return ?,
       nfsd.proc3.read.return,
-      nfsd.proc2.read.return
+      nfsd.proc2.read.return ?
 {}
 
 probe nfsd.proc2.read = kernel.function("nfsd_proc_read") !,
@@ -617,13 +617,13 @@ probe nfsd.proc4.read.return = kernel.function("nfsd4_read").return !,
 probe nfsd.proc.write = 
       nfsd.proc4.write ?,
       nfsd.proc3.write,
-      nfsd.proc2.write
+      nfsd.proc2.write ?
 {}
 
 probe nfsd.proc.write.return = 
       nfsd.proc4.write.return ?,
       nfsd.proc3.write.return,
-      nfsd.proc2.write.return
+      nfsd.proc2.write.return ?
 {}
 
 probe nfsd.proc2.write = kernel.function("nfsd_proc_write") !,
@@ -895,12 +895,12 @@ probe nfsd.proc4.commit.return =
 probe nfsd.proc.create = 
       nfsd.proc4.create ?,
       nfsd.proc3.create,
-      nfsd.proc2.create
+      nfsd.proc2.create ?
 {}
 probe nfsd.proc.create.return = 
       nfsd.proc4.create.return ?,
       nfsd.proc3.create.return,
-      nfsd.proc2.create.return
+      nfsd.proc2.create.return ?
 {}
 
 probe nfsd.proc2.create = kernel.function("nfsd_proc_create") !,
@@ -1036,12 +1036,12 @@ probe nfsd.proc4.create.return =
 probe nfsd.proc.remove = 
       nfsd.proc4.remove ?,
       nfsd.proc3.remove,
-      nfsd.proc2.remove
+      nfsd.proc2.remove ?
 {}
 probe nfsd.proc.remove.return = 
       nfsd.proc4.remove.return ?,
       nfsd.proc3.remove.return,
-      nfsd.proc2.remove.return
+      nfsd.proc2.remove.return ?
 {}
 
 probe nfsd.proc2.remove = kernel.function("nfsd_proc_remove") !,
@@ -1167,13 +1167,13 @@ probe nfsd.proc4.remove.return =
 probe nfsd.proc.rename = 
       nfsd.proc4.rename ?,
       nfsd.proc3.rename,
-      nfsd.proc2.rename
+      nfsd.proc2.rename ?
 {}
 
 probe nfsd.proc.rename.return = 
       nfsd.proc4.rename.return ?,
       nfsd.proc3.rename.return,
-      nfsd.proc2.rename.return
+      nfsd.proc2.rename.return ?
 {}
 
 probe nfsd.proc2.rename = kernel.function("nfsd_proc_rename") !,
