@@ -2,12 +2,12 @@
 .\"     Title: probe::signal.do_action.return
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: November 2022
+.\"      Date: April 2023
 .\"    Manual: Signal Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "PROBE::SIGNAL\&.DO_A" "3stap" "November 2022" "SystemTap Tapset Reference" "Signal Tapset"
+.TH "PROBE::SIGNAL\&.DO_A" "3stap" "April 2023" "SystemTap Tapset Reference" "Signal Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------

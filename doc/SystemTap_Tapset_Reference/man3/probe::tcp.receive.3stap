@@ -2,12 +2,12 @@
 .\"     Title: probe::tcp.receive
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: November 2022
+.\"      Date: April 2023
 .\"    Manual: Networking Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "PROBE::TCP\&.RECEIVE" "3stap" "November 2022" "SystemTap Tapset Reference" "Networking Tapset"
+.TH "PROBE::TCP\&.RECEIVE" "3stap" "April 2023" "SystemTap Tapset Reference" "Networking Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -36,14 +36,9 @@ tcp\&.receive
 .fi
 .SH "VALUES"
 .PP
-\fIurg\fR
+\fIfin\fR
 .RS 4
-TCP URG flag
-.RE
-.PP
-\fIsaddr\fR
-.RS 4
-A string representing the source IP address
+TCP FIN flag
 .RE
 .PP
 \fIpsh\fR
@@ -51,29 +46,14 @@ A string representing the source IP address
 TCP PSH flag
 .RE
 .PP
-\fIprotocol\fR
+\fIname\fR
 .RS 4
-Packet protocol from driver
+Name of the probe point
 .RE
 .PP
-\fIdport\fR
+\fIurg\fR
 .RS 4
-TCP destination port
-.RE
-.PP
-\fIrst\fR
-.RS 4
-TCP RST flag
-.RE
-.PP
-\fIiphdr\fR
-.RS 4
-IP header address
-.RE
-.PP
-\fIfamily\fR
-.RS 4
-IP address family
+TCP URG flag
 .RE
 .PP
 \fIsyn\fR
@@ -81,14 +61,14 @@ IP address family
 TCP SYN flag
 .RE
 .PP
-\fIname\fR
+\fIfamily\fR
 .RS 4
-Name of the probe point
+IP address family
 .RE
 .PP
-\fIfin\fR
+\fIdport\fR
 .RS 4
-TCP FIN flag
+TCP destination port
 .RE
 .PP
 \fIsport\fR
@@ -96,14 +76,34 @@ TCP FIN flag
 TCP source port
 .RE
 .PP
+\fIdaddr\fR
+.RS 4
+A string representing the destination IP address
+.RE
+.PP
 \fIack\fR
 .RS 4
 TCP ACK flag
 .RE
 .PP
-\fIdaddr\fR
+\fIsaddr\fR
 .RS 4
-A string representing the destination IP address
+A string representing the source IP address
+.RE
+.PP
+\fIrst\fR
+.RS 4
+TCP RST flag
+.RE
+.PP
+\fIprotocol\fR
+.RS 4
+Packet protocol from driver
+.RE
+.PP
+\fIiphdr\fR
+.RS 4
+IP header address
 .RE
 .SH SEE ALSO\n 
 .IR tapset::tcp (3stap)

@@ -1,4 +1,4 @@
-* What's new in version 4.9, PRERELEASE
+* What's new in version 4.9, 2023-04-27
 
 - ISystemtap: the new interactive systemtap jupyter kernel. This provides
   a simple GUI for writing/running Systemtap scripts in an easy, incremental

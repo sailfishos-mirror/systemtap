@@ -121,6 +121,7 @@ m     stapdev  stapdev
 
 
 Name: systemtap
+# PRERELEASE
 Version: 4.9
 Release: 1%{?release_override}%{?dist}
 # for version, see also configure.ac
@@ -1306,10 +1307,14 @@ exit 0
 
 # PRERELEASE
 %changelog
-* Thu Nov 03 2022 Serhei Makarov <serhei@serhei.io> - 4.8-1
+* Thu Apr 27 2023 Frank Ch. Eigler <fche@redhat.com> - 4.9-1
 - Upstream release, see wiki page below for detailed notes.
   https://sourceware.org/systemtap/wiki/SystemTapReleases
 
+* Thu Nov 03 2022 Serhei Makarov <serhei@serhei.io> - 4.8-1
+- Upstream release, see wiki page below for detailed notes.
+  https://sourceware.org/systemtap/wiki/SystemTapReleases
+  
 * Mon May 02 2022 Frank Ch. Eigler <fche@redhat.com> - 4.7-1
 - Upstream release, see wiki page below for detailed notes.
   https://sourceware.org/systemtap/wiki/SystemTapReleases

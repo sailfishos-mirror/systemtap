@@ -2,12 +2,12 @@
 .\"     Title: function::log
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: November 2022
+.\"      Date: April 2023
 .\"    Manual: Logging Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "FUNCTION::LOG" "3stap" "November 2022" "SystemTap Tapset Reference" "Logging Tapset"
+.TH "FUNCTION::LOG" "3stap" "April 2023" "SystemTap Tapset Reference" "Logging Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------

@@ -2,12 +2,12 @@
 .\"     Title: probe::socket.write_iter.return
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: November 2022
+.\"      Date: April 2023
 .\"    Manual: Socket Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "PROBE::SOCKET\&.WRIT" "3stap" "November 2022" "SystemTap Tapset Reference" "Socket Tapset"
+.TH "PROBE::SOCKET\&.WRIT" "3stap" "April 2023" "SystemTap Tapset Reference" "Socket Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -36,6 +36,11 @@ socket\&.write_iter\&.return
 .fi
 .SH "VALUES"
 .PP
+\fIstate\fR
+.RS 4
+Socket state value
+.RE
+.PP
 \fItype\fR
 .RS 4
 Socket type value
@@ -46,19 +51,19 @@ Socket type value
 Socket flags value
 .RE
 .PP
-\fIstate\fR
+\fIname\fR
 .RS 4
-Socket state value
-.RE
-.PP
-\fIfamily\fR
-.RS 4
-Protocol family value
+Name of this probe
 .RE
 .PP
 \fIsuccess\fR
 .RS 4
 Was receive successful? (1 = yes, 0 = no)
+.RE
+.PP
+\fIfamily\fR
+.RS 4
+Protocol family value
 .RE
 .PP
 \fIprotocol\fR
@@ -69,11 +74,6 @@ Protocol value
 \fIsize\fR
 .RS 4
 Size of message received (in bytes) or error code if success = 0
-.RE
-.PP
-\fIname\fR
-.RS 4
-Name of this probe
 .RE
 .SH "CONTEXT"
 .PP

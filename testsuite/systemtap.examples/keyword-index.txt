@@ -2,7 +2,7 @@ SYSTEMTAP EXAMPLES INDEX BY KEYWORD
 (see also index.txt)
 
 
-For systemtap version 4.8.
+For systemtap version 4.9.
 
 = _BEST =
 
@@ -3348,7 +3348,7 @@ keywords: simple
 
   A python support tapset that displays backtraces and variable values
 
-  # PYTHONPATH=$PYEXECDIR stap -g --suppress-time-limits -c \
+  # PYTHONPATH=$PY3EXECDIR stap -g --suppress-time-limits -c \
   '/usr/bin/python3 -m HelperSDT pyexample.py 35' pyexample.stp python3
 
 

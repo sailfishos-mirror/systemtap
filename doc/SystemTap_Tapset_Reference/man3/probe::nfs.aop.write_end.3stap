@@ -2,12 +2,12 @@
 .\"     Title: probe::nfs.aop.write_end
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: November 2022
+.\"      Date: April 2023
 .\"    Manual: Network File Storage Tapsets
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "PROBE::NFS\&.AOP\&.W" "3stap" "November 2022" "SystemTap Tapset Reference" "Network File Storage Tapsets"
+.TH "PROBE::NFS\&.AOP\&.W" "3stap" "April 2023" "SystemTap Tapset Reference" "Network File Storage Tapsets"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -36,44 +36,9 @@ nfs\&.aop\&.write_end
 .fi
 .SH "VALUES"
 .PP
-\fIi_flag\fR
-.RS 4
-file flags
-.RE
-.PP
-\fIto\fR
-.RS 4
-end address of this write operation
-.RE
-.PP
 \fIpage_index\fR
 .RS 4
 offset within mapping, can used a page identifier and position identifier in the page frame
-.RE
-.PP
-\fIsb_flag\fR
-.RS 4
-super block flags
-.RE
-.PP
-\fIoffset\fR
-.RS 4
-start address of this write operation
-.RE
-.PP
-\fIdev\fR
-.RS 4
-device identifier
-.RE
-.PP
-\fIsize\fR
-.RS 4
-write bytes
-.RE
-.PP
-\fIi_size\fR
-.RS 4
-file length in bytes
 .RE
 .PP
 \fIino\fR
@@ -81,9 +46,44 @@ file length in bytes
 inode number
 .RE
 .PP
+\fIi_flag\fR
+.RS 4
+file flags
+.RE
+.PP
+\fIi_size\fR
+.RS 4
+file length in bytes
+.RE
+.PP
+\fIdev\fR
+.RS 4
+device identifier
+.RE
+.PP
+\fIto\fR
+.RS 4
+end address of this write operation
+.RE
+.PP
 \fI__page\fR
 .RS 4
 the address of page
+.RE
+.PP
+\fIoffset\fR
+.RS 4
+start address of this write operation
+.RE
+.PP
+\fIsize\fR
+.RS 4
+write bytes
+.RE
+.PP
+\fIsb_flag\fR
+.RS 4
+super block flags
 .RE
 .SH "DESCRIPTION"
 .PP

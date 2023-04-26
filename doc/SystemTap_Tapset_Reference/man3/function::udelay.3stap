@@ -2,12 +2,12 @@
 .\"     Title: function::udelay
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: November 2022
+.\"      Date: April 2023
 .\"    Manual: Guru tapsets
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "FUNCTION::UDELAY" "3stap" "November 2022" "SystemTap Tapset Reference" "Guru tapsets"
+.TH "FUNCTION::UDELAY" "3stap" "April 2023" "SystemTap Tapset Reference" "Guru tapsets"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------

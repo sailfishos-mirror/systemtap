@@ -2,12 +2,12 @@
 .\"     Title: probe::scheduler.wakeup_new
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: November 2022
+.\"      Date: April 2023
 .\"    Manual: Scheduler Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "PROBE::SCHEDULER\&.W" "3stap" "November 2022" "SystemTap Tapset Reference" "Scheduler Tapset"
+.TH "PROBE::SCHEDULER\&.W" "3stap" "April 2023" "SystemTap Tapset Reference" "Scheduler Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -36,14 +36,9 @@ scheduler\&.wakeup_new
 .fi
 .SH "VALUES"
 .PP
-\fItask_cpu\fR
+\fItask_tid\fR
 .RS 4
-cpu of the task woken up
-.RE
-.PP
-\fItask_pid\fR
-.RS 4
-PID of the new task woken up
+TID of the new task woken up
 .RE
 .PP
 \fItask_priority\fR
@@ -56,14 +51,19 @@ priority of the new task
 state of the task woken up
 .RE
 .PP
-\fItask_tid\fR
-.RS 4
-TID of the new task woken up
-.RE
-.PP
 \fIname\fR
 .RS 4
 name of the probe point
+.RE
+.PP
+\fItask_pid\fR
+.RS 4
+PID of the new task woken up
+.RE
+.PP
+\fItask_cpu\fR
+.RS 4
+cpu of the task woken up
 .RE
 .SH SEE ALSO\n 
 .IR tapset::scheduler (3stap)

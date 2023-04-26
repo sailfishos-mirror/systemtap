@@ -2,12 +2,12 @@
 .\"     Title: probe::netdev.change_mtu
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: November 2022
+.\"      Date: April 2023
 .\"    Manual: Networking Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "PROBE::NETDEV\&.CHAN" "3stap" "November 2022" "SystemTap Tapset Reference" "Networking Tapset"
+.TH "PROBE::NETDEV\&.CHAN" "3stap" "April 2023" "SystemTap Tapset Reference" "Networking Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -41,14 +41,14 @@ netdev\&.change_mtu
 The new MTU
 .RE
 .PP
-\fIdev_name\fR
-.RS 4
-The device that will have the MTU changed
-.RE
-.PP
 \fIold_mtu\fR
 .RS 4
 The current MTU
+.RE
+.PP
+\fIdev_name\fR
+.RS 4
+The device that will have the MTU changed
 .RE
 .SH SEE ALSO\n 
 .IR tapset::networking (3stap)
