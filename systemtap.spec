@@ -577,8 +577,6 @@ Summary: ISystemtap jupyter kernel and examples
 License: GPLv2+
 URL: http://sourceware.org/systemtap/
 Requires: systemtap = %{version}-%{release}
-Requires: pip
-Recommends: npm
 
 %description jupyter
 This package includes files needed to build and run
