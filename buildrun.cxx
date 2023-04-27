@@ -583,7 +583,11 @@ compile_pass (systemtap_session& s)
   // FIXME Work around the issue with riscv kernel modules not being
   // loadable with asynchronous unwind tables due to R_RISCV_32_PCREL
   // relocations.
-  if (s.architecture != "riscv")
+  //
+  // Also: PR30396, -fcf-protection=branch & objtool --ibt on linux 6.3 causes
+  // eh_frame bad-reloc warnings from kbuild.
+  //
+  if (s.architecture != "riscv" && s.kernel_config["CONFIG_CC_HAS_IBT"] != "y")
     o << "EXTRA_CFLAGS += -fasynchronous-unwind-tables" << endl;
 
   // We used to allow the user to override default optimization when so

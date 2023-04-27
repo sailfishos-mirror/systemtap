@@ -370,7 +370,8 @@ static int systemtap_kernel_module_init (void);
 static void systemtap_kernel_module_exit (void);
 
 static unsigned long stap_hash_seed; /* Init during module startup */
-int init_module (void)
+
+static int stap_init_module (void)
 {
   int rc;
   /* With deliberate hash-collision-inducing data conceivably fed to
@@ -386,7 +387,9 @@ int init_module (void)
   return rc;
 }
 
-void cleanup_module(void)
+module_init(stap_init_module);
+
+void stap_cleanup_module(void)
 {
   _stp_transport_close();
   /* PR19833.  /proc/systemtap/$MODULENAME may be disposed-of here,
@@ -394,6 +397,8 @@ void cleanup_module(void)
      as in --monitor mode).  */
   systemtap_kernel_module_exit();
 }
+
+module_exit(stap_cleanup_module);
 
 #define pseudo_atomic_cmpxchg(v, old, new) ({\
 	int ret;\
