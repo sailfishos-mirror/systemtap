@@ -1307,7 +1307,7 @@ exit 0
 
 # PRERELEASE
 %changelog
-* Thu Apr 27 2023 Frank Ch. Eigler <fche@redhat.com> - 4.9-1
+* Fri Apr 28 2023 Frank Ch. Eigler <fche@redhat.com> - 4.9-1
 - Upstream release, see wiki page below for detailed notes.
   https://sourceware.org/systemtap/wiki/SystemTapReleases
 
