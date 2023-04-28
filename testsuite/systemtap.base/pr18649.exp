@@ -50,6 +50,7 @@ for {set i 0} {$i < [arch_compile_flags]} {incr i} {
         spawn stap --prologue-searching=never $test_stppath -c $test_exepath
         expect {
             -timeout 120
+            -re {^WARNING:[^\r\n]*No DWARF information found[^\r\n]*\r\n} { exp_continue }
             -re {^7fff\r\n} { incr ok; exp_continue }
             timeout { fail "$test (timeout)" }
             eof { }
