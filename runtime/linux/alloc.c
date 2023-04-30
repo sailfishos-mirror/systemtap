@@ -50,10 +50,10 @@ static long _stp_allocated_memory = 0;
 #ifdef DEBUG_MEM
 static STP_DEFINE_SPINLOCK(_stp_mem_lock);
 
-#define MEM_MAGIC 0xc11cf77f
+#define STP_MEM_MAGIC 0xc11cf77f
 #define MEM_FENCE_SIZE 32
 
-enum _stp_memtype { MEM_KMALLOC, MEM_VMALLOC, MEM_PERCPU };
+enum _stp_memtype { STP_MEM_KMALLOC, STP_MEM_VMALLOC, STP_MEM_PERCPU };
 
 typedef struct {
 	char *alloc;
@@ -113,7 +113,7 @@ static void *_stp_mem_debug_setup(void *addr, size_t size, enum _stp_memtype typ
 	memset(addr + size, 0x55, MEM_FENCE_SIZE);
 	p = (struct list_head *)(addr + size + MEM_FENCE_SIZE);
 	m = (struct _stp_mem_entry *)p;
-	m->magic = MEM_MAGIC;
+	m->magic = STP_MEM_MAGIC;
 	m->type = type;
 	m->len = size;
 	m->addr = addr;
@@ -128,8 +128,8 @@ static void _stp_mem_debug_percpu(struct _stp_mem_entry *m, void *addr, size_t s
 {
 	struct list_head *p = (struct list_head *)m;
 	unsigned long flags;
-	m->magic = MEM_MAGIC;
-	m->type = MEM_PERCPU;
+	m->magic = STP_MEM_MAGIC;
+	m->type = STP_MEM_PERCPU;
 	m->len = size;
 	m->addr = addr;
 	stp_spin_lock_irqsave(&_stp_mem_lock, flags);
@@ -147,9 +147,9 @@ static void _stp_mem_debug_free(void *addr, enum _stp_memtype type)
 	if (!addr) {
 		/* Passing NULL to these *free() functions is safe */
 		switch (type) {
-		case MEM_KMALLOC:
-		case MEM_PERCPU:
-		case MEM_VMALLOC:
+		case STP_MEM_KMALLOC:
+		case STP_MEM_PERCPU:
+		case STP_MEM_VMALLOC:
 			return;
 		}
 	}
@@ -169,7 +169,7 @@ static void _stp_mem_debug_free(void *addr, enum _stp_memtype type)
 		       addr, _stp_malloc_types[type].free);
 		return;
 	}
-	if (m->magic != MEM_MAGIC) {
+	if (m->magic != STP_MEM_MAGIC) {
 		printk("SYSTEMTAP ERROR: Memory at %p corrupted!!\n", addr);
 		return;
 	}
@@ -180,15 +180,15 @@ static void _stp_mem_debug_free(void *addr, enum _stp_memtype type)
 	}
 	
 	switch (m->type) {
-	case MEM_KMALLOC:
+	case STP_MEM_KMALLOC:
 		_stp_check_mem_fence(addr, m->len);
 		kfree(addr - MEM_FENCE_SIZE);
 		break;
-	case MEM_PERCPU:
+	case STP_MEM_PERCPU:
 		free_percpu(addr);
 		kfree(p);
 		break;
-	case MEM_VMALLOC:
+	case STP_MEM_VMALLOC:
 		_stp_check_mem_fence(addr, m->len);
 		vfree(addr - MEM_FENCE_SIZE);		
 		break;
@@ -220,19 +220,19 @@ static void _stp_mem_debug_validate(void *addr)
 		       addr);
 		return;
 	}
-	if (m->magic != MEM_MAGIC) {
+	if (m->magic != STP_MEM_MAGIC) {
 		printk("SYSTEMTAP ERROR: Memory at %p corrupted!!\n", addr);
 		return;
 	}
 	
 	switch (m->type) {
-	case MEM_KMALLOC:
+	case STP_MEM_KMALLOC:
 		_stp_check_mem_fence(addr, m->len);
 		break;
-	case MEM_PERCPU:
+	case STP_MEM_PERCPU:
 		/* do nothing */
 		break;
-	case MEM_VMALLOC:
+	case STP_MEM_VMALLOC:
 		_stp_check_mem_fence(addr, m->len);
 		break;
 	default:
@@ -294,7 +294,7 @@ static void *_stp_kmalloc_gfp(size_t size, gfp_t gfp_mask)
 	ret = kmalloc(size + MEM_DEBUG_SIZE, gfp_mask);
 	if (likely(ret)) {
 	        _stp_allocated_memory += size;
-		ret = _stp_mem_debug_setup(ret, size, MEM_KMALLOC);
+		ret = _stp_mem_debug_setup(ret, size, STP_MEM_KMALLOC);
 	}
 #else
 	ret = kmalloc(size, gfp_mask);
@@ -324,7 +324,7 @@ static void *_stp_kzalloc_gfp(size_t size, gfp_t gfp_mask)
 	ret = kmalloc(size + MEM_DEBUG_SIZE, gfp_mask);
 	if (likely(ret)) {
 	        _stp_allocated_memory += size;
-		ret = _stp_mem_debug_setup(ret, size, MEM_KMALLOC);
+		ret = _stp_mem_debug_setup(ret, size, STP_MEM_KMALLOC);
 		memset (ret, 0, size);
 	}
 #else
@@ -349,7 +349,7 @@ static void *_stp_kzalloc_gfp(size_t size, gfp_t gfp_mask)
 	ret = kzalloc(size + MEM_DEBUG_SIZE, gfp_mask);
 	if (likely(ret)) {
 	        _stp_allocated_memory += size;
-		ret = _stp_mem_debug_setup(ret, size, MEM_KMALLOC);
+		ret = _stp_mem_debug_setup(ret, size, STP_MEM_KMALLOC);
 	}
 #else
 	ret = kzalloc(size, gfp_mask);
@@ -389,7 +389,7 @@ static void *_stp_vzalloc(size_t size)
 	ret = vzalloc(size + MEM_DEBUG_SIZE);
 	if (likely(ret)) {
 	        _stp_allocated_memory += size;
-		ret = _stp_mem_debug_setup(ret, size, MEM_VMALLOC);
+		ret = _stp_mem_debug_setup(ret, size, STP_MEM_VMALLOC);
 	}
 #else
 	ret = vzalloc(size);
@@ -432,7 +432,7 @@ static void *_stp_vzalloc_node(size_t size, int node)
 	ret = vzalloc_node(size + MEM_DEBUG_SIZE, node);
 	if (likely(ret)) {
 	        _stp_allocated_memory += size;
-		ret = _stp_mem_debug_setup(ret, size, MEM_VMALLOC);
+		ret = _stp_mem_debug_setup(ret, size, STP_MEM_VMALLOC);
 	}
 #else
 	ret = vzalloc_node(size, node);
@@ -510,7 +510,7 @@ static void *_stp_kmalloc_node_gfp(size_t size, int node, gfp_t gfp_mask)
 	ret = kmalloc_node(size + MEM_DEBUG_SIZE, gfp_mask, node);
 	if (likely(ret)) {
 	        _stp_allocated_memory += size;
-		ret = _stp_mem_debug_setup(ret, size, MEM_KMALLOC);
+		ret = _stp_mem_debug_setup(ret, size, STP_MEM_KMALLOC);
 	}
 #else
 	ret = kmalloc_node(size, gfp_mask, node);
@@ -557,7 +557,7 @@ static void _stp_kfree(void *addr)
 	might_sleep();
 #endif
 #ifdef DEBUG_MEM
-	_stp_mem_debug_free(addr, MEM_KMALLOC);
+	_stp_mem_debug_free(addr, STP_MEM_KMALLOC);
 #else
 	kfree(addr);
 #endif
@@ -569,7 +569,7 @@ static void _stp_vfree(void *addr)
 	might_sleep();
 #endif
 #ifdef DEBUG_MEM
-	_stp_mem_debug_free(addr, MEM_VMALLOC);
+	_stp_mem_debug_free(addr, STP_MEM_VMALLOC);
 #else
 	vfree(addr);
 #endif
@@ -581,7 +581,7 @@ static void _stp_free_percpu(void *addr)
 	might_sleep();
 #endif
 #ifdef DEBUG_MEM
-	_stp_mem_debug_free(addr, MEM_PERCPU);
+	_stp_mem_debug_free(addr, STP_MEM_PERCPU);
 #else
 	free_percpu(addr);
 #endif
@@ -602,22 +602,22 @@ static void _stp_mem_debug_done(void)
 		printk("SYSTEMTAP ERROR: Memory %p len=%d allocation type: %s. Not freed.\n", 
 		       m->addr, (int)m->len, _stp_malloc_types[m->type].alloc);
 
-		if (m->magic != MEM_MAGIC) {
+		if (m->magic != STP_MEM_MAGIC) {
 			printk("SYSTEMTAP ERROR: Memory at %p len=%d corrupted!!\n", m->addr, (int)m->len);
 			/* Don't free. Too dangerous */
 			goto done;
 		}
 
 		switch (m->type) {
-		case MEM_KMALLOC:
+		case STP_MEM_KMALLOC:
 			_stp_check_mem_fence(m->addr, m->len);
 			kfree(m->addr - MEM_FENCE_SIZE);
 			break;
-		case MEM_PERCPU:
+		case STP_MEM_PERCPU:
 			free_percpu(m->addr);
 			kfree(p);
 			break;
-		case MEM_VMALLOC:
+		case STP_MEM_VMALLOC:
 			_stp_check_mem_fence(m->addr, m->len);
 			vfree(m->addr - MEM_FENCE_SIZE);		
 			break;
