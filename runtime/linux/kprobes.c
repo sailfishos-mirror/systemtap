@@ -763,9 +763,7 @@ stapkp_init(struct stap_kprobe_probe *probes,
 #ifdef STAPCONF_MODULE_MUTEX
        mutex_lock(&module_mutex);
 #endif
-       preempt_disable();
        kallsyms_on_each_symbol(stapkp_symbol_callback, &sd);
-       preempt_enable();
 #ifdef STAPCONF_MODULE_MUTEX
        mutex_unlock(&module_mutex);
 #endif
@@ -835,9 +833,7 @@ stapkp_refresh(const char *modname,
 #ifdef STAPCONF_MODULE_MUTEX
          mutex_lock(&module_mutex);
 #endif
-	 preempt_disable();
 	 kallsyms_on_each_symbol(stapkp_symbol_callback, &sd);
-	 preempt_enable();
 #ifdef STAPCONF_MODULE_MUTEX
          mutex_unlock(&module_mutex);
 #endif
