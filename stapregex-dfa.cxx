@@ -1125,6 +1125,7 @@ state::emit (translator_output *o, const dfa *d) const
         }
 
       // Emit labels to handle all the other elements of the span:
+      bool has_element = false;
       for (unsigned c = max((rchar) '\1', it->lb);
            c <= (unsigned) it->ub; c++) {
         if (c > 127)
@@ -1133,8 +1134,10 @@ state::emit (translator_output *o, const dfa *d) const
             continue; // XXX: not an ASCII char, needs special handling
           }
         o->newline() << "case " << c_char((rchar) c) << ":";
+        has_element = true;
       }
-      it->emit_jump(o, d);
+      if (has_element) /* avoid duplicate action on a span of only '\0' */
+          it->emit_jump(o, d);
 
       // TODOXXX 'default' option should handle the largest span
       // TODOXXX optimize by accepting before end of string whenever possible
