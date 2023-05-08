@@ -103,7 +103,7 @@ struct span {
   state_kernel *reach_pairs; // -- starting point for te_closure computation
 
   void emit_jump (translator_output *o, const dfa *d) const;
-  void emit_final (translator_output *o, const dfa *d) const;
+  void emit_final (translator_output *o, const dfa *d, bool saw_nul) const;
 };
 
 struct state {

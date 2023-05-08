@@ -1020,7 +1020,7 @@ span::emit_jump (translator_output *o, const dfa *d) const
 
   if (to->accepts)
     {
-      emit_final(o, d);
+      emit_final(o, d, false /*saw_nul*/);
       return;
     }
 
@@ -1033,7 +1033,7 @@ span::emit_jump (translator_output *o, const dfa *d) const
 /* Assuming the target DFA state of the span is a final state, emit code to
    cleanup tags and (if appropriate) exit with a final answer. */
 void
-span::emit_final (translator_output *o, const dfa *d) const
+span::emit_final (translator_output *o, const dfa *d, bool saw_nul) const
 {
   assert (to->accepts); // XXX: must guarantee correct usage of emit_final()
 
@@ -1087,6 +1087,8 @@ span::emit_final (translator_output *o, const dfa *d) const
       o->indent(-1);
       o->newline() << "}";
 
+      if (saw_nul)
+        o->newline () << "YYCURSOR--;"; /* PR30395: the next state should encounter a repeated NUL */
       o->newline () << "goto yystate" << to->label << ";";
     }
 }
@@ -1119,7 +1121,7 @@ state::emit (translator_output *o, const dfa *d) const
       if (it->lb == '\0')
         {
           o->newline() << "case " << c_char('\0') << ":";
-          it->emit_final(o, d);
+          it->emit_final(o, d, true /* saw_nul */);
         }
 
       // Emit labels to handle all the other elements of the span:
