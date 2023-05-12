@@ -174,13 +174,7 @@ nssError (void)
        return;
      }
 
-   // Fall back to our own scraped ssl error text.                  
-  switch (errorNumber) {
-  default: errorText = "Unknown error"; break;
-#define NSSYERROR(code,msg) case code: errorText = msg; break
-#include "stapsslerr.h"
-#undef NSSYERROR
-    }
+  errorText = "Unknown error";
   nsscommon_error (_F("(%d) %s", errorNumber, errorText));
 }
 
