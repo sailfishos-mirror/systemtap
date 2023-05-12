@@ -2453,8 +2453,9 @@ query_cu (Dwarf_Die * cudie, dwarf_query * q)
     }
   catch (const semantic_error& e)
     {
-      q->sess.print_error (e);
-      return DWARF_CB_ABORT;
+      // q->sess.print_error (e);
+      throw;
+      // return DWARF_CB_ABORT;
     }
 }
 
@@ -2696,8 +2697,9 @@ query_module (Dwfl_Module *mod,
     }
   catch (const semantic_error& e)
     {
-      q->sess.print_error (e);
-      return DWARF_CB_ABORT;
+      // q->sess.print_error (e);
+      // return DWARF_CB_ABORT;
+      throw;
     }
 }
 
