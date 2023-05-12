@@ -44,7 +44,7 @@ for {set i 0} {$i < [llength $extra_flags]} {incr i} {
             }   
         }   
     } else {        
-        untested "$t        est"
+        untested "$test"
     }   
     catch {exec rm -f $testprog}
     
