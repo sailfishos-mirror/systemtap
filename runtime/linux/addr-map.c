@@ -53,7 +53,9 @@ lookup_bad_addr_user(const int type, const unsigned long addr, const size_t size
    * a kernel warning). If we aren't in task context, we'll just do a
    * range check.
    */
-#if !defined(in_task)
+#if !defined(in_task) || LINUX_VERSION_CODE >= KERNEL_VERSION(5,18,0)
+  /* NB access_ok() checks TASK_SIZE_MAX (used to be user_addr_max()) on
+   * all architectures since kernel 5.18 */
   if (size == 0 || ULONG_MAX - addr < size - 1
       || !stp_access_ok(type, (void *)addr, size))
     return 1;
@@ -63,6 +65,8 @@ lookup_bad_addr_user(const int type, const unsigned long addr, const size_t size
       || (!in_task()
 #if defined(user_addr_max)
 	  && ((user_addr_max() - size) < addr)
+#elif defined(TASK_SIZE_MAX)
+	  && ((TASK_SIZE_MAX - size) < addr)
 #endif
 	      ))
     return 1;
