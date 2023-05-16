@@ -309,7 +309,7 @@ compile_pass (systemtap_session& s)
   o << "stap_check_gcc = $(shell " << superverbose
     << " if $(CC) $(1) -S -o /dev/null -xc /dev/null > /dev/null 2>&1; then "
     << "echo \"$(1)\"; else echo \"$(2)\"; fi)" << endl;
-  o << "CHECK_BUILD := $(CC) $(NOSTDINC_FLAGS) $(KBUILD_CPPFLAGS) $(CPPFLAGS) "
+  o << "CHECK_BUILD := $(CC) -DMODULE $(NOSTDINC_FLAGS) $(KBUILD_CPPFLAGS) $(CPPFLAGS) "
     << "$(LINUXINCLUDE) $(_KBUILD_CFLAGS) $(CFLAGS_KERNEL) $(EXTRA_CFLAGS) "
     << "$(CFLAGS) -DKBUILD_BASENAME=\\\"" << s.module_name << "\\\" "
     << WERROR << " -S -o /dev/null -xc " << endl;
