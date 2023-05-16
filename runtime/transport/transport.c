@@ -319,6 +319,19 @@ unsigned _stp_need_kallsyms_stext;
 // time:
 static int _stp_handle_kallsyms_lookups(void)
 {
+#ifndef STAPCONF_NMI_UACCESS_OKAY
+  kallsyms_nmi_uaccess_okay = (void*) kallsyms_lookup_name ("nmi_uaccess_okay");
+  if (kallsyms_nmi_uaccess_okay == NULL) {
+    /* Not finding this symbol is non-fatal for non-X86 architectures
+     * since nmi_uaccess_okay() does not do anything for non-X86 archs.
+     * Also, we don't treat it as fatal even on X86 since nmi_uaccess_okay()
+     * is a relatively new addition in upstream kernel commit 4012e77a90
+     * since Aug 2018.
+     */
+    ;
+  }
+#endif  /* STAPCONF_NMI_UACCESS_OKAY */
+
 #if !defined(STAPCONF_SET_FS)
   /* PR26811, missing copy_to_kernel_nofault symbol-export */
   kallsyms_copy_to_kernel_nofault = (void*) kallsyms_lookup_name ("copy_to_kernel_nofault");

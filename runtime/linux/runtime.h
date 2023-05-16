@@ -65,6 +65,10 @@
 static void *kallsyms_copy_to_kernel_nofault;
 #endif
 
+#ifndef STAPCONF_NMI_UACCESS_OKAY
+/* alas. nmi_access_okay() is not exported by modern kernels */
+static void *kallsyms_nmi_uaccess_okay = NULL;
+#endif
 
 /* A fallthrough; macro to let the runtime survive -Wimplicit-fallthrough=5 */
 /* from <linux/compiler_attribute.h> */

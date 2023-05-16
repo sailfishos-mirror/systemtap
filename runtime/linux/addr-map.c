@@ -25,6 +25,7 @@
 // See <https://sourceware.org/bugzilla/show_bug.cgi?id=12970> for
 // more details.
 
+#include <linux/runtime.h>
 #include <linux/uaccess.h>
 
 #ifndef PR12970
@@ -41,12 +42,41 @@
 #define stp_access_ok(x,y,z) access_ok(x,y,z)
 #endif
 
+#ifdef STAPCONF_NMI_UACCESS_OKAY
+#include <linux/mm.h>
+#include <asm/tlbflush.h>
+#endif
+
+static inline bool
+stp_nmi_uaccess_okay(void)
+{
+#ifdef STAPCONF_NMI_UACCESS_OKAY
+    /* older kernels (like 5.0) still have this as an inline function in
+     * their arch-specific headers */
+    return nmi_uaccess_okay();
+#else
+    /* newer kernels (since 5.18) no longer export nmi_uaccess_okay()
+     * but we can still get it from the kernel symbol tables. */
+    if (kallsyms_nmi_uaccess_okay != NULL)
+        return ((bool (*)(void)) kallsyms_nmi_uaccess_okay)();
+
+    return true;  /* don't bother */
+#endif
+}
+
 static int
 lookup_bad_addr_user(const int type, const unsigned long addr, const size_t size)
 {
-  /* Is this a valid memory access?
-   * 
-   * Note we're using stp_access_ok() here. This is only supposed to be
+  /* Is this a valid memory access? */
+
+  /* We must call stp_nmi_uaccess_okay() to protect races against CR3
+   * context switching on X86. See upstream kernel commits 4012e77a90
+   * and d319f344561de for more details.
+   */
+  if (!stp_nmi_uaccess_okay())
+      return 1;
+
+  /* Note we're using stp_access_ok() here. This is only supposed to be
    * called when we're in task context. Occasionally lookup_bad_addr()
    * gets called when not in task context. If in_task() exists, only
    * call stp_access_ok() when we're in task context (otherwise we'll get

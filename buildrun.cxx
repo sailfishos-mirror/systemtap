@@ -464,6 +464,9 @@ compile_pass (systemtap_session& s)
   // used by tapset/linux/proc_mem.stp
   output_autoconf(s, o, cs, "autoconf-mm-shmempages.c", "STAPCONF_MM_SHMEMPAGES", NULL);
 
+  // used by userland memory reads
+  output_autoconf(s, o, cs, "autoconf-nmi-uaccess-okay.c", "STAPCONF_NMI_UACCESS_OKAY", NULL);
+
   // used by runtime/uprobe-inode.c
   output_either_exportconf(s, o2, "uprobe_register", "register_uprobe",
 			   "STAPCONF_UPROBE_REGISTER_EXPORTED");
