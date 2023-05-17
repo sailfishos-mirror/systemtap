@@ -36,7 +36,13 @@
 #endif
 
 
-#ifdef STAPCONF_ACCESS_OK_2ARGS
+#ifdef STAPCONF_ASM_ACCESS_OK
+/* access_ok() is designed for user context only and calling it from
+ * perf event etc probe contexts would result in kernel warnings
+ * on debug kernels. see upstream kernel commit d319f34456 for more details.
+ */
+#define stp_access_ok(x,y,z) __access_ok(y,z)
+#elif defined(STAPCONF_ACCESS_OK_2ARGS)
 #define stp_access_ok(x,y,z) access_ok(y,z)
 #else
 #define stp_access_ok(x,y,z) access_ok(x,y,z)
@@ -64,7 +70,7 @@ stp_nmi_uaccess_okay(void)
 #endif
 }
 
-static int
+static __always_inline int
 lookup_bad_addr_user(const int type, const unsigned long addr, const size_t size)
 {
   /* Is this a valid memory access? */
@@ -116,18 +122,17 @@ lookup_bad_addr_user(const int type, const unsigned long addr, const size_t size
   return 0;
 }
 
-static int
+static __always_inline int
 lookup_bad_addr(const int type, const unsigned long addr, const size_t size,
                 const stp_mm_segment_t seg)
 {
-#ifndef STAPCONF_SET_FS
   /* Is this a valid memory access?
    *
    * PR26811: Since kernel 5.10 due to set_fs() removal we need to
    * distinguish kernel- and user-space addresses when asking this
    * question.
    */
-  if (!MM_SEG_IS_KERNEL(seg))
+  if (stp_is_user_ds(seg))
     return lookup_bad_addr_user(type, addr, size);
 
   /* For kernel addr, skip the in_task() portion of the address checks: */
@@ -151,10 +156,6 @@ lookup_bad_addr(const int type, const unsigned long addr, const size_t size,
 #endif
 
   return 0;
-#else
-  /* XXX: On earlier kernels the same logic works for kernel-space: */
-  return lookup_bad_addr_user(type, addr, size);
-#endif
 }
 
 #else /* PR12970 */

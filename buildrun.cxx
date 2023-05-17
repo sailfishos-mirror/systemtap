@@ -466,6 +466,11 @@ compile_pass (systemtap_session& s)
 
   // used by userland memory reads
   output_autoconf(s, o, cs, "autoconf-nmi-uaccess-okay.c", "STAPCONF_NMI_UACCESS_OKAY", NULL);
+  output_autoconf(s, o, cs, "autoconf-asm-access-ok.c", "STAPCONF_ASM_ACCESS_OK", NULL);
+  output_autoconf(s, o, cs, "autoconf-user-access-begin-2-args.c", "STAPCONF_USER_ACCESS_BEGIN_2_ARGS", NULL);
+  output_autoconf(s, o, cs, "autoconf-user-access-begin-3-args.c", "STAPCONF_USER_ACCESS_BEGIN_3_ARGS", NULL);
+  output_autoconf(s, o, cs, "autoconf-user-access-end.c", "STAPCONF_USER_ACCESS_END", NULL);
+  output_autoconf(s, o, cs, "autoconf-asm-tlbflush-h.c", "STAPCONF_ASM_TLBFLUSH_H", NULL);
 
   // used by runtime/uprobe-inode.c
   output_either_exportconf(s, o2, "uprobe_register", "register_uprobe",

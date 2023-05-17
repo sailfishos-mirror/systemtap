@@ -62,10 +62,9 @@ static long _stp_strncpy_from_user(char *dst, const char __user *src,
 static unsigned long _stp_copy_from_user(char *dst, const char __user *src, unsigned long count)
 {
 	if (count) {
-#ifdef STAPCONF_SET_FS
-                mm_segment_t _oldfs = get_fs();
-                set_fs(USER_DS);
-#endif
+		stp_mm_segment_t oldfs;
+		if (!stp_user_access_begin(VERIFY_READ, src, count, &oldfs, STP_USER_DS))
+			goto done;
                 pagefault_disable();
 		if (!lookup_bad_addr(VERIFY_READ, (const unsigned long)src, count, STP_USER_DS))
 			count = __copy_from_user_inatomic(dst, src, count);
@@ -75,10 +74,9 @@ static unsigned long _stp_copy_from_user(char *dst, const char __user *src, unsi
 			 * can't trust 'count' to be reasonable. */
 			count = -EFAULT;
                 pagefault_enable();
-#ifdef STAPCONF_SET_FS
-                set_fs(_oldfs);
-#endif
+		stp_user_access_end(oldfs);
 	}
+done:
 	return count;
 }
 

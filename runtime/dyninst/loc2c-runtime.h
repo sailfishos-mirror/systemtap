@@ -77,5 +77,9 @@
 #define kderef uderef
 #define store_kderef store_uderef
 
+#define stp_mem_access_begin(type, ptr, size, oldfs, seg, is_user_ptr)
+#define stp_mem_access_end(oldfs, is_user)
+#define stp_user_access_begin(type, ptr, size, oldfs, seg)
+#define stp_user_access_end(oldfs)
 
 #endif /* _STAPDYN_LOC2C_RUNTIME_H_ */

@@ -59,6 +59,7 @@
 #define stp_mm_segment_t unsigned long
 #define STP_KERNEL_DS 0
 #define STP_USER_DS 1
+#define STP_NUMERICAL_DS 1
 #define MM_SEG_IS_KERNEL(seg) ((seg)==STP_KERNEL_DS)
 
 // Required for kernel write operations:

@@ -18,6 +18,9 @@
 #include <asm/uaccess.h>
 #endif
 #include <linux/types.h>
+#ifdef STAPCONF_ASM_TLBFLUSH_H
+#include <asm/tlbflush.h>
+#endif
 #define intptr_t long
 #define uintptr_t unsigned long
 
@@ -446,7 +449,7 @@ typedef typeof(&copy_to_kernel_nofault) copy_to_kernel_nofault_fn;
  * that the kernel doesn't pagefault while reading.
  */
 
-static inline int __stp_deref_nocheck_(u64 *pv, size_t size,
+static __always_inline int __stp_deref_nocheck_(u64 *pv, size_t size,
                                        void *addr, stp_mm_segment_t seg)
 {
   u64 v = 0;
@@ -492,6 +495,77 @@ static inline int __stp_deref_nocheck_(u64 *pv, size_t size,
   })
 
 
+static __always_inline bool
+stp_is_user_ds(stp_mm_segment_t seg)
+{
+#ifdef STP_NUMERICAL_DS
+  return seg == STP_USER_DS;
+#else
+  stp_mm_segment_t user_seg = STP_USER_DS;
+  return memcmp(&seg, &user_seg, sizeof(stp_mm_segment_t)) == 0;
+#endif
+}
+
+static __always_inline bool
+stp_user_access_begin(int type, const void *ptr, size_t size,
+    stp_mm_segment_t *oldfs, stp_mm_segment_t seg)
+{
+#ifdef STAPCONF_SET_FS
+    *oldfs = get_fs();
+    set_fs(seg);
+    return 1;
+#elif defined(STAPCONF_USER_ACCESS_BEGIN_3_ARGS)
+    return user_access_begin(type, ptr, size);
+#elif defined(STAPCONF_USER_ACCESS_BEGIN_2_ARGS)
+    return user_access_begin(ptr, size);
+#else
+    /* for very old kernels */
+    return 1;
+#endif
+}
+
+static __always_inline void
+stp_user_access_end(stp_mm_segment_t oldfs)
+{
+#ifdef STAPCONF_SET_FS
+    set_fs(oldfs);
+#elif defined(STAPCONF_USER_ACCESS_END)
+    user_access_end();
+#else
+    /* do nothing for very old kernels */
+#endif
+}
+
+static __always_inline bool
+stp_mem_access_begin(int type, const void *ptr, size_t size,
+    stp_mm_segment_t *oldfs, stp_mm_segment_t seg, bool *is_user_ptr)
+{
+  bool is_user = stp_is_user_ds(seg);
+  *is_user_ptr = is_user;
+  if (is_user)
+    return stp_user_access_begin(type, ptr, size, oldfs, seg);
+
+  /* for kernel memory accesses */
+
+#ifdef STAPCONF_SET_FS
+  *oldfs = get_fs();
+#endif
+  return 1;
+}
+
+static __always_inline void
+stp_mem_access_end(stp_mm_segment_t oldfs, bool is_user)
+{
+  if (is_user)
+    return stp_user_access_end(oldfs);
+
+  /* not for userland */
+
+#ifdef STAPCONF_SET_FS
+  set_fs(oldfs);
+#endif
+}
+
 /* 
  * _stp_lookup_bad_addr(): safely verify an address
  *
@@ -507,7 +581,7 @@ static inline int __stp_deref_nocheck_(u64 *pv, size_t size,
  * memory.
  */
 
-static inline int _stp_lookup_bad_addr_(int type, size_t size,
+static __always_inline int _stp_lookup_bad_addr_(int type, size_t size,
                                         uintptr_t addr, stp_mm_segment_t seg)
 {
   int bad;
@@ -545,25 +619,34 @@ static inline int _stp_lookup_bad_addr_(int type, size_t size,
  * pagefault when trying to read the memory.
  */
 
-static inline int _stp_deref_nofault_(u64 *pv, size_t size, void *addr,
+static __always_inline int _stp_deref_nofault_(u64 *pv, size_t size, void *addr,
 				      stp_mm_segment_t seg)
 {
   int r = -EFAULT;
-#ifdef STAPCONF_SET_FS
-  mm_segment_t oldfs = get_fs();
-
-  set_fs(seg);
-#endif
   pagefault_disable();
   if (lookup_bad_addr(VERIFY_READ, (uintptr_t)addr, size, seg))
     r = -EFAULT;
-  else
-    r = __stp_deref_nocheck_(pv, size, addr, seg);
-  pagefault_enable();
-#ifdef STAPCONF_SET_FS
-  set_fs(oldfs);
+  else {
+    stp_mm_segment_t oldfs;
+    bool is_user;
+
+    /* NB just to suppress -Werror=maybe-uninitialized warnings from older
+     * GCC like version 8.3 with -O3 */
+#ifdef STP_NUMERICAL_DS
+    oldfs = 0;
+#else
+    memset(&oldfs, 0, sizeof(stp_mm_segment_t));
 #endif
 
+    if (!stp_mem_access_begin(VERIFY_READ, addr, size, &oldfs, seg, &is_user))
+      goto done;
+
+    r = __stp_deref_nocheck_(pv, size, addr, seg);
+
+    stp_mem_access_end(oldfs, is_user);
+  }
+done:
+  pagefault_enable();
   return r;
 }
 
@@ -690,21 +773,22 @@ static inline int _stp_store_deref_(size_t size, void *addr, u64 v,
 				    stp_mm_segment_t seg)
 {
   int r;
-#ifdef STAPCONF_SET_FS
-  mm_segment_t oldfs = get_fs();
-
-  set_fs(seg);
-#endif
+  stp_mm_segment_t oldfs;
+  bool is_user;
   pagefault_disable();
-  if (lookup_bad_addr(VERIFY_READ, (uintptr_t)addr, size, seg))
+  if (lookup_bad_addr(VERIFY_WRITE, (uintptr_t)addr, size, seg)) {
     r = -EFAULT;
-  else
-    r = __stp_store_deref_nocheck_(size, addr, v, seg);
-  pagefault_enable();
-#ifdef STAPCONF_SET_FS
-  set_fs(oldfs);
-#endif
+  } else {
+    if (!stp_mem_access_begin(VERIFY_WRITE, addr, size, &oldfs, seg, &is_user)) {
+        r = -EFAULT;
+        goto done;
+    }
 
+    r = __stp_store_deref_nocheck_(size, addr, v, seg);
+    stp_mem_access_end(oldfs, is_user);
+  }
+done:
+  pagefault_enable();
   return r;
 }
 
@@ -856,16 +940,16 @@ static inline long _stp_deref_string_nofault(char *dst, const char *addr,
 {
   int err = 0;
   size_t i = 0;
-#ifdef STAPCONF_SET_FS
-  mm_segment_t oldfs = get_fs();
-
-  set_fs(seg);
-#endif
+  stp_mm_segment_t oldfs;
+  bool is_user;
   pagefault_disable();
   if (lookup_bad_addr(VERIFY_READ, (uintptr_t)addr, len, seg))
     err = 1;
   else
     {
+      if (!stp_mem_access_begin(VERIFY_READ, addr, len, &oldfs, seg, &is_user))
+        goto done;
+
       /* Reduce len by 1 to leave room for '\0' terminator. */
       for (i = 0; i + 1 < len; ++i)
 	{
@@ -878,12 +962,11 @@ static inline long _stp_deref_string_nofault(char *dst, const char *addr,
 	}
       if (!err && dst)
 	*dst = '\0';
-    }
-  pagefault_enable();
-#ifdef STAPCONF_SET_FS
-  set_fs(oldfs);
-#endif
 
+      stp_mem_access_end(oldfs, is_user);
+    }
+done:
+  pagefault_enable();
   return err ? -EFAULT : i;
 }
 
@@ -914,15 +997,19 @@ static inline int _stp_store_deref_string_(char *src, void *addr, size_t len,
 {
   int err = 0;
   size_t i;
-#ifdef STAPCONF_SET_FS
-  mm_segment_t oldfs = get_fs();
+  stp_mm_segment_t oldfs;
+  bool is_user;
 
-  set_fs(seg);
-#endif
   pagefault_disable();
-  if (lookup_bad_addr(VERIFY_WRITE, (uintptr_t)addr, len, seg))
+  if (lookup_bad_addr(VERIFY_WRITE, (uintptr_t)addr, len, seg)) {
     err = 1;
-  else if (len > 0)
+    goto done;
+  }
+
+  if (!stp_mem_access_begin(VERIFY_WRITE, addr, len, &oldfs, seg, &is_user))
+    goto done;
+
+  if (len > 0)
     {
       for (i = 0; i < len - 1; ++i)
 	{
@@ -932,12 +1019,12 @@ static inline int _stp_store_deref_string_(char *src, void *addr, size_t len,
 	}
       err = __stp_put_either('\0', (u8 *)addr + i, seg);
     }
- out:
-  pagefault_enable();
-#ifdef STAPCONF_SET_FS
-  set_fs(oldfs);
-#endif
 
+out:
+  stp_mem_access_end(oldfs, is_user);
+
+ done:
+  pagefault_enable();
   return err;
 }
 
