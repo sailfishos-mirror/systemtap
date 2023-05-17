@@ -361,6 +361,11 @@ static void _stp_print_kernel_info(char *sname, char *vstr, int ctx, int num_pro
 	       (unsigned long) (THIS_MODULE->core_layout.size - THIS_MODULE->core_layout.text_size)/1024,
 	       (unsigned long) (THIS_MODULE->core_layout.text_size)/1024,
 #else
+#if STAPCONF_MODULE_MEMORY
+	       (unsigned long) THIS_MODULE->mem[MOD_TEXT].base,
+	       (unsigned long) (THIS_MODULE->mem[MOD_DATA].size)/1024,
+	       (unsigned long) (THIS_MODULE->mem[MOD_TEXT].size)/1024,
+#else
 #ifndef STAPCONF_GRSECURITY
 	       (unsigned long) THIS_MODULE->module_core,
 	       (unsigned long) (THIS_MODULE->core_size - THIS_MODULE->core_text_size)/1024,
@@ -369,6 +374,7 @@ static void _stp_print_kernel_info(char *sname, char *vstr, int ctx, int num_pro
                (unsigned long) THIS_MODULE->module_core_rx,
 	       (unsigned long) (THIS_MODULE->core_size_rw - THIS_MODULE->core_size_rx)/1024,
                (unsigned long) (THIS_MODULE->core_size_rx)/1024,
+#endif
 #endif
 #endif
 	       ctx/1024,

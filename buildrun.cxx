@@ -512,6 +512,8 @@ compile_pass (systemtap_session& s)
 
   output_autoconf(s, o, cs, "autoconf-module_layout.c",
 		  "STAPCONF_MODULE_LAYOUT", NULL);
+  output_autoconf(s, o, cs, "autoconf-module_memory.c",
+		  "STAPCONF_MODULE_MEMORY", NULL);
   output_autoconf(s, o, cs, "autoconf-mod_kallsyms.c",
 		  "STAPCONF_MOD_KALLSYMS", NULL);
   output_exportconf(s, o2, "get_user_pages_remote", "STAPCONF_GET_USER_PAGES_REMOTE");
