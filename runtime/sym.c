@@ -851,7 +851,6 @@ static int _stp_usermodule_check(struct task_struct *tsk, const char *path_name,
   struct _stp_module *m = NULL;
   unsigned long notes_addr;
   unsigned i, j;
-  unsigned char practice_id_bits[MAXSTRINGLEN];
   unsigned long vm_end = 0;
 
 #ifdef STP_NO_BUILDID_CHECK
