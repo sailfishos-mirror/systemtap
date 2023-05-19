@@ -961,6 +961,27 @@ probe nfs.aop.readpage.return = kernel.function ("nfs_readpage").return !,
 }
 
 /**
+ * probe nfs.aop.readfolio
+ */
+probe nfs.aop.readfolio = kernel.function ("nfs_read_folio") !,
+                         module("nfs").function ("nfs_read_folio")
+{
+        folio = $folio
+        file = $file
+
+        name = "nfs.aop.readfolio"
+        argstr = sprintf("%x, %x", folio, file)
+}
+
+probe nfs.aop.readfolio.return = kernel.function ("nfs_read_folio").return !,
+                                 module("nfs").function ("nfs_read_folio").return
+{
+        name = "nfs.aop.readfolio.return"
+        retstr = sprintf("%d", $return)
+}
+
+
+/**
  * probe nfs.aop.readpages - NFS client reading multiple pages
  * @dev: device identifier
  * @ino: inode number   
