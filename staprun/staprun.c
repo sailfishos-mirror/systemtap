@@ -640,6 +640,7 @@ int send_relocation_kernel ()
       int found_stext = 0;
       int found_kallsyms_lookup_name = 0;
       int found_kallsyms_on_each_symbol = 0;
+      int found_module_kallsyms_on_each_symbol = 0;
       int done_with_kallsyms = 0;
       char *line = NULL;
       size_t linesz = 0;
@@ -681,10 +682,20 @@ int send_relocation_kernel ()
 
                   found_kallsyms_on_each_symbol = 1;
                 }
+              else if (linesize - pos == sizeof "module_kallsyms_on_each_symbol"
+                       && !strcmp(line + pos, "module_kallsyms_on_each_symbol" "\n"))
+                {
+                  rc = send_a_relocation ("kernel", "module_kallsyms_on_each_symbol", address);
+		  if (rc != 0) // non fatal, follows perror()
+                    dbug(1, "Relocation was reloc module_kallsyms_on_each_symbol=%llx\n", address);
+
+                  found_module_kallsyms_on_each_symbol = 1;
+                }
             }
           done_with_kallsyms = found_stext
             && found_kallsyms_lookup_name
-            && found_kallsyms_on_each_symbol;
+            && found_kallsyms_on_each_symbol
+            && found_module_kallsyms_on_each_symbol;
         }
       free (line);
       fclose (kallsyms);

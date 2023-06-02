@@ -28,6 +28,9 @@ extern void *_stp_kallsyms_on_each_symbol;
 #endif
 #endif
 
+// No export check and gates.  This one seems simply like a non-export.
+extern void *_stp_module_kallsyms_on_each_symbol;
+
 #if defined(STAPCONF_KALLSYMS_ON_EACH_SYMBOL) && defined(STAPCONF_KALLSYMS_ON_EACH_SYMBOL_EXPORTED)
 #define USE_KALLSYMS_ON_EACH_SYMBOL (1)
 #elif defined(STAPCONF_KALLSYMS_ON_EACH_SYMBOL)
@@ -684,7 +687,7 @@ struct stapkp_symbol_data {
 
 
 static int
-stapkp_symbol_callback(void *data, const char *name,
+__stapkp_symbol_callback(void *data, const char *name,
 		       struct module *mod, unsigned long addr)
 {
    struct stapkp_symbol_data *sd = data;
@@ -733,6 +736,19 @@ stapkp_symbol_callback(void *data, const char *name,
    return 0;
 }
 
+static int
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,4,0)
+stapkp_symbol_callback(void *data, const char *name,
+			unsigned long addr)
+{
+    struct module *mod = NULL;
+#else
+stapkp_symbol_callback(void *data, const char *name,
+			struct module *mod, unsigned long addr)
+{
+#endif
+    return __stapkp_symbol_callback(data, name, mod, addr);
+}
 
 static int
 stapkp_init(struct stap_kprobe_probe *probes,
@@ -764,6 +780,11 @@ stapkp_init(struct stap_kprobe_probe *probes,
        mutex_lock(&module_mutex);
 #endif
        kallsyms_on_each_symbol(stapkp_symbol_callback, &sd);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,3,0)
+       module_kallsyms_on_each_symbol(sd.modname, stapkp_symbol_callback, &sd);
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(5,12,0)
+       module_kallsyms_on_each_symbol(stapkp_symbol_callback, &sd);
+#endif
 #ifdef STAPCONF_MODULE_MUTEX
        mutex_unlock(&module_mutex);
 #endif
@@ -834,6 +855,11 @@ stapkp_refresh(const char *modname,
          mutex_lock(&module_mutex);
 #endif
 	 kallsyms_on_each_symbol(stapkp_symbol_callback, &sd);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,3,0)
+	 module_kallsyms_on_each_symbol(sd.modname, stapkp_symbol_callback, &sd);
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(5,12,0)
+	 module_kallsyms_on_each_symbol(stapkp_symbol_callback, &sd);
+#endif
 #ifdef STAPCONF_MODULE_MUTEX
          mutex_unlock(&module_mutex);
 #endif

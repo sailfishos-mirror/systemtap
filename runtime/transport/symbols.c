@@ -119,6 +119,10 @@ static void _stp_do_relocation(const char __user *buf, size_t count)
           _stp_kallsyms_on_each_symbol = (void *) msg.address;
   }
 #endif
+  if (!strcmp ("kernel", msg.module)
+      && !strcmp ("module_kallsyms_on_each_symbol", msg.reloc)) {
+          _stp_module_kallsyms_on_each_symbol = (void *) msg.address;
+  }
 
   _stp_kmodule_update_address(msg.module, msg.reloc, msg.address);
 }

@@ -614,6 +614,7 @@ static int _stp_transport_init(void)
 #if defined(STAPCONF_KALLSYMS_ON_EACH_SYMBOL) && !defined(STAPCONF_KALLSYMS_ON_EACH_SYMBOL_EXPORTED)
         _stp_kallsyms_on_each_symbol = NULL;
 #endif
+        _stp_module_kallsyms_on_each_symbol = NULL;
 #if defined(CONFIG_KALLSYMS) && !defined(STAPCONF_KALLSYMS_LOOKUP_NAME_EXPORTED)
         _stp_need_kallsyms_stext = 0;
 #endif

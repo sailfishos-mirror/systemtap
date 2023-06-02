@@ -1155,9 +1155,15 @@ unsigned long kallsyms_lookup_name (const char *name)
 typedef typeof(&kallsyms_on_each_symbol) kallsyms_on_each_symbol_fn;
 
 // XXX Will be linked in place of the kernel's kallsyms_on_each_symbol:
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,4,0)
+int kallsyms_on_each_symbol(int (*fn)(void *, const char *,
+				      unsigned long),
+                            void *data)
+#else
 int kallsyms_on_each_symbol(int (*fn)(void *, const char *, struct module *,
 				      unsigned long),
                             void *data)
+#endif
 {
         /* First, try to use a kallsyms_lookup_name address passed to us
            through the relocation mechanism. */
@@ -1170,6 +1176,39 @@ int kallsyms_on_each_symbol(int (*fn)(void *, const char *, struct module *,
         _stp_error("BUG: attempting to use unavailable kallsyms_on_each_symbol!!\n");
         return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,12,0)
+typedef typeof(&module_kallsyms_on_each_symbol) module_kallsyms_on_each_symbol_fn;
+
+// XXX Will be linked in place of the kernel's module_kallsyms_on_each_symbol:
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,4,0)
+int module_kallsyms_on_each_symbol(const char *modname,
+                                   int (*fn)(void *, const char *,
+				      unsigned long),
+                            void *data)
+#else
+int module_kallsyms_on_each_symbol(int (*fn)(void *, const char *, struct module *,
+				      unsigned long),
+                            void *data)
+#endif
+{
+        /* First, try to use a kallsyms_lookup_name address passed to us
+           through the relocation mechanism. */
+        if (_stp_module_kallsyms_on_each_symbol != NULL)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,4,0)
+                return (* (module_kallsyms_on_each_symbol_fn)_stp_module_kallsyms_on_each_symbol)(modname, fn, data);
+#else
+                return (* (module_kallsyms_on_each_symbol_fn)_stp_module_kallsyms_on_each_symbol)(fn, data);
+#endif
+
+        /* Next, give up and signal a BUG. We should have detected
+           that this function is not available and used a different
+           mechanism! */
+        _stp_error("BUG: attempting to use unavailable module_kallsyms_on_each_symbol!!\n");
+        return 0;
+}
+#endif
+
 #endif
 
 

@@ -221,10 +221,14 @@ static void *_stp_kallsyms_lookup_name;
 #ifndef CONFIG_PPC64
 #define STAPCONF_KALLSYMS_ON_EACH_SYMBOL
 #if !defined(STAPCONF_KALLSYMS_ON_EACH_SYMBOL_EXPORTED)
-// XXX Should not be static, since it is linked into kprobes.c.
-static void *_stp_kallsyms_on_each_symbol;
+// Not static, since it is linked into kprobes.c:
+void *_stp_kallsyms_on_each_symbol;
 #endif
 #endif
+
+// No export check and gates.  This one seems simply like a non-export.
+// Not static, since it is linked into kprobes.c:
+void *_stp_module_kallsyms_on_each_symbol;
 
 // PR13489, inode-uprobes sometimes lacks the necessary SYMBOL_EXPORT's.
 #if !defined(STAPCONF_TASK_USER_REGSET_VIEW_EXPORTED)
