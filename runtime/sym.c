@@ -1187,15 +1187,22 @@ int module_kallsyms_on_each_symbol(const char *modname,
 				      unsigned long),
                             void *data)
 #else
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,3,0)
+int module_kallsyms_on_each_symbol(const char *modname,
+				   int (*fn)(void *, const char *, struct module *,
+				      unsigned long),
+                            void *data)
+#else
 int module_kallsyms_on_each_symbol(int (*fn)(void *, const char *, struct module *,
 				      unsigned long),
                             void *data)
+#endif
 #endif
 {
         /* First, try to use a kallsyms_lookup_name address passed to us
            through the relocation mechanism. */
         if (_stp_module_kallsyms_on_each_symbol != NULL)
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,4,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,3,0)
                 return (* (module_kallsyms_on_each_symbol_fn)_stp_module_kallsyms_on_each_symbol)(modname, fn, data);
 #else
                 return (* (module_kallsyms_on_each_symbol_fn)_stp_module_kallsyms_on_each_symbol)(fn, data);
