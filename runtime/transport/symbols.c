@@ -390,6 +390,8 @@ static int _stp_module_update_self (void)
 			_stp_module_self.sections[1].static_addr = address;
 #ifdef STAPCONF_MODULE_LAYOUT
 			_stp_module_self.sections[1].size = mod->core_layout.text_size;
+#elif STAPCONF_MODULE_MEMORY
+			_stp_module_self.sections[1].size = mod->mem[MOD_TEXT].size;
 #elif defined(STAPCONF_GRSECURITY)
                         _stp_module_self.sections[1].size = mod->core_size_rx;
 #else
