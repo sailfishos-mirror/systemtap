@@ -768,7 +768,7 @@ dwflpp::getscopes(Dwarf_Die* die)
   Dwarf_Die origin;
   Dwarf_Die *scope = die;
   auto it = parents->end();
-  do
+  while (scope != NULL)
     {
       scopes.push_back(*scope);
       if (dwarf_tag(scope) == DW_TAG_inlined_subroutine &&
@@ -776,9 +776,8 @@ dwflpp::getscopes(Dwarf_Die* die)
         scope = &origin;
 
       it = parents->find(scope->addr);
-      scope = &it->second;
+      scope = (it != parents->end()) ? &it->second : NULL;
     }
-  while (it != parents->end());
 
 #ifdef DEBUG_DWFLPP_GETSCOPES
   // there isn't an exact libdw equivalent, but if dwarf_getscopes on the
