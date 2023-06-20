@@ -9,7 +9,7 @@
         "jupyterlab",
         "jupyterlab-extension"
     ],
-    "license": "GPLv3",
+    "license": "GPLv2+",
     "repository": {
         "url": "https://sourceware.org/git/systemtap.git",
         "type": "git"

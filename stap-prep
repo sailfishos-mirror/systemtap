@@ -1,4 +1,11 @@
 #! /bin/bash
+
+# This file is part of systemtap, and is free software.  You can
+# redistribute it and/or modify it under the terms of the GNU General
+# Public License (GPL); either version 2, or (at your option) any
+# later version.
+
+
 LANG=C; export LANG
 PATH=/usr/sbin:/sbin:/usr/bin:/bin:$PATH; export PATH
 
