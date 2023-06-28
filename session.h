@@ -77,6 +77,7 @@ struct module_cache;
 struct update_visitor;
 struct compile_server_cache;
 class language_server;
+struct typeresolution_info;
 
 // XXX: a generalized form of this descriptor could be associated with
 // a vardecl instead of out here at the systemtap_session level.
@@ -464,6 +465,9 @@ public:
   unsigned suppress_costly_diagnostics; /* set during processing of optional probes */
 
   const token* last_token;
+
+  // Used during the -semantic pass- for tabulating still-unresolved counts
+  typeresolution_info* type_res_info;
 
   void print_token (std::ostream& o, const token* tok);
   void print_error (const semantic_error& e);

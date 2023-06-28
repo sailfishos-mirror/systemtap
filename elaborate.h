@@ -115,6 +115,8 @@ struct typeresolution_info: public visitor
   void resolved (const token* tok, exp_type type,
                  const symboldecl* decl = NULL, int index = -1);
   void resolve_details (const token* tok, const exp_type_ptr& src, exp_type_ptr& dest);
+  void resolve(exp_type t, expression* e);
+  void resolve(exp_type t, symboldecl* d);
 
   exp_type t; // implicit parameter for nested visit call; may clobber
               // Upon entry to one of the visit_* calls, the incoming

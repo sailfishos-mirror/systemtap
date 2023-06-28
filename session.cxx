@@ -103,7 +103,8 @@ systemtap_session::systemtap_session ():
   warningerr_count(0),
   target_namespaces_pid(0),
   suppress_costly_diagnostics(0),
-  last_token (0)
+  last_token (0),
+  type_res_info (0)
 {
   struct utsname buf;
   (void) uname (& buf);
@@ -307,6 +308,7 @@ systemtap_session::systemtap_session (const systemtap_session& other,
   target_namespaces_pid(0),
   suppress_costly_diagnostics(0),
   last_token (0),
+  type_res_info (0),
   symbol_resolver (0)
 {
   release = kernel_release = kern;

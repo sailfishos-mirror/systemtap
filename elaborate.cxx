@@ -2595,6 +2595,12 @@ semantic_pass (systemtap_session& s)
 {
   int rc = 0;
 
+  /* PR30570: We track typeresolution_info within the session
+   * so that not only semantic_pass_types but also other passes have access to
+   * type resolution capabilities
+   */
+  s.type_res_info = new typeresolution_info(s);
+
   try
     {
       // FIXME: interactive mode, register_library_aliases handles
@@ -2645,6 +2651,10 @@ semantic_pass (systemtap_session& s)
   // If we're dumping functions, only error out if no functions were found
   if (s.dump_mode == systemtap_session::dump_functions)
     rc = s.functions.empty();
+
+  // Type inference is complete
+  delete s.type_res_info;
+  s.type_res_info = NULL;
 
   return rc;
 }
@@ -3740,6 +3750,15 @@ dead_assignment_remover::visit_try_block (try_block *s)
             clog << _F("Eliding unused error string catcher %s at %s",
 		       errvar->unmangled_name.to_string().c_str(),
 		       lex_cast(*s->tok).c_str()) << endl;
+           /* PR30570: Since the unused error string is elided we assign the type of errvar (symbol)
+            * and it's referent (symboldecl) here.
+            * If this is not done then later type inference cannot determine the type as string since
+            * s->catch_error_var is removed but the referent remains (in locals)
+            */
+          if (!session.type_res_info)
+            throw SEMANTIC_ERROR(_("internal error: type_res_info is NULL"));
+          session.type_res_info->resolve(pe_string, s->catch_error_var);
+          session.type_res_info->resolve(pe_string, s->catch_error_var->referent);
           s->catch_error_var = 0;
         }
     }
@@ -3860,6 +3879,17 @@ dead_stmtexpr_remover::visit_try_block (try_block *s)
     {
       if (session.verbose>2)
         clog << _("Eliding empty try {} block ") << *s->tok << endl;
+      /* PR30570: Since the try block is elided we assign the type of s->catch_error_var and
+       * the declaration (referent) here a bit early. Since this is before type inference,
+       * if a type is inferred then that's what will be used, but if not then we'll have
+       * already set this default value
+       */
+      if (!session.type_res_info)
+            throw SEMANTIC_ERROR(_("internal error: type_res_info is NULL"));
+      if(s->catch_error_var){
+        session.type_res_info->resolve(pe_string, s->catch_error_var);
+        session.type_res_info->resolve(pe_string, s->catch_error_var->referent);
+      }
       s = 0;
     }
   provide (s);
@@ -6085,7 +6115,9 @@ semantic_pass_types (systemtap_session& s)
 
   // next pass: type inference
   unsigned iterations = 0;
-  typeresolution_info ti (s);
+  if (!s.type_res_info)
+    throw SEMANTIC_ERROR(_("internal error: type_res_info is NULL"));
+  typeresolution_info& ti = *s.type_res_info;
 
   ti.assert_resolvability = false;
   while (1)
@@ -7035,6 +7067,12 @@ typeresolution_info::visit_try_block (try_block* e)
   if (e->catch_error_var)
     {
       t = pe_string;
+      /* Try and resolve the types of the symbol and referent to be a pe_string
+       * If either was already defined elsewhere with a different type, cause
+       * a mismatching type semantic error
+       */
+      resolve(t, e->catch_error_var);
+      resolve(t, e->catch_error_var->referent);
       e->catch_error_var->visit (this);
     }
   if (e->catch_block)
@@ -7729,6 +7767,43 @@ typeresolution_info::resolve_details (const token* tok,
   dest = src;
   if (session.verbose > 4)
     clog << "resolved type details " << *dest << " to " << *tok << endl;
+}
+
+/* t  type to attempt to resolve to
+ * e  the expression to resolve
+ */
+void
+typeresolution_info::resolve(exp_type t, expression* e){
+  const token* tok = e->tok;
+
+  // The type has not been resolved yet so we can do so
+  if (pe_unknown == e->type){
+    e->type = t;
+    resolved (tok, t);
+  }
+  // The type was already resolved to a different type than
+  // what is being attempted now
+  else if (t != e->type)
+      mismatch (tok, t, e->type);
+}
+
+/* t  type to attempt to resolve to
+ * d  the symboldecl to resolve
+ */
+void
+typeresolution_info::resolve(exp_type t, symboldecl* d){
+  const token* tok = d->tok;
+
+  // The type has not been resolved yet so we can do so
+  if (pe_unknown == d->type){
+    d->type = t;
+    resolved (tok, t, d);
+  }
+
+  // The type was already resolved to a different type than
+  // what is being attempted now
+  else if (t != d->type)
+    mismatch (tok, t, d);
 }
 
 /* vim: set sw=2 ts=8 cino=>4,n-2,{2,^-2,t0,(0,u0,w1,M1 : */
