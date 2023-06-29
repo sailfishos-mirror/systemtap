@@ -58,7 +58,7 @@ struct tracepoint_entry {
 	struct tracepoint *tp;
 	int refcount;
 	struct list_head probes;
-	char name[0];
+	char name[];
 };
 
 struct stp_tp_probe {
