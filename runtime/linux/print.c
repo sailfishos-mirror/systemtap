@@ -361,7 +361,7 @@ static void _stp_print_kernel_info(char *sname, char *vstr, int ctx, int num_pro
 	       (unsigned long) (THIS_MODULE->core_layout.size - THIS_MODULE->core_layout.text_size)/1024,
 	       (unsigned long) (THIS_MODULE->core_layout.text_size)/1024,
 #else
-#if STAPCONF_MODULE_MEMORY
+#ifdef STAPCONF_MODULE_MEMORY
 	       (unsigned long) THIS_MODULE->mem[MOD_TEXT].base,
 	       (unsigned long) (THIS_MODULE->mem[MOD_DATA].size)/1024,
 	       (unsigned long) (THIS_MODULE->mem[MOD_TEXT].size)/1024,
