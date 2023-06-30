@@ -218,7 +218,7 @@ if [ "x$git_repo_dir" != "x" ]; then #
             git_errors="${git_errors+${git_errors}; }error running '$GIT log --oneline'"
         fi
         # Grab the "pretty" revision number
-        git_pretty_rev=`$GIT describe --dirty --broken --always --abbrev=8`
+        git_pretty_rev=`$GIT describe --dirty --always --abbrev=8`
         if [ "x$git_shaid" = "x" ]; then
             git_errors="${git_errors+${git_errors}; }error running '$GIT describe'"
         fi
