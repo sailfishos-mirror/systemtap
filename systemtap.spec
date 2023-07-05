@@ -7,7 +7,8 @@
 %ifarch ppc ppc64 %{sparc} %{mips} %{riscv}
 %{!?with_crash: %global with_crash 0}
 %else
-%{!?with_crash: %global with_crash 1}
+# rawhide crash-devel breakage rhbz2219728
+%{!?with_crash: %global with_crash 0}
 %endif
 %{!?with_rpm: %global with_rpm 1}
 %{!?elfutils_version: %global elfutils_version 0.179}
