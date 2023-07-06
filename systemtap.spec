@@ -338,7 +338,7 @@ using a local or remote systemtap-devel installation.
 
 %package client
 Summary: Programmable system-wide instrumentation system - client
-License: GPL-2.0-or-later AND GPL-2.0-only AND BSD-3-Clause AND LGPL-2.1-only AND CC-BY AND GFDL-1.2-or-later AND GPL
+License: GPL-2.0-or-later AND GPL-2.0-only AND BSD-3-Clause AND LGPL-2.1-only AND GFDL-1.2-or-later
 URL: http://sourceware.org/systemtap/
 Requires: zip unzip
 Requires: systemtap-runtime = %{version}-%{release}
