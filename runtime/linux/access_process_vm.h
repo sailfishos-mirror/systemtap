@@ -38,7 +38,13 @@ __access_process_vm_ (struct task_struct *tsk, unsigned long addr, void *buf,
       void *maddr;
 
 #ifdef STAPCONF_GET_USER_PAGES_REMOTE
-#if defined(STAPCONF_GET_USER_PAGES_REMOTE_NOTASK_STRUCT)
+#if defined(STAPCONF_GET_USER_PAGE_VMA_REMOTE)
+      unsigned int flags = FOLL_FORCE;
+      if (write)
+	  flags |= FOLL_WRITE;
+      page = get_user_page_vma_remote (mm, addr, flags, &vma);
+      ret = !IS_ERR_OR_NULL(page);
+#elif defined(STAPCONF_GET_USER_PAGES_REMOTE_NOTASK_STRUCT)
       unsigned int flags = FOLL_FORCE;
       if (write)
 	  flags |= FOLL_WRITE;

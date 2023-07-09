@@ -532,6 +532,8 @@ compile_pass (systemtap_session& s)
 		  "STAPCONF_GET_USER_PAGES_FLAGS", NULL);
   output_autoconf(s, o, cs, "autoconf-get_user_pages-notask_struct.c",
 		  "STAPCONF_GET_USER_PAGES_NOTASK_STRUCT", NULL);
+  output_autoconf(s, o, cs, "autoconf-get_user_page_vma_remote.c",
+		  "STAPCONF_GET_USER_PAGE_VMA_REMOTE", NULL);
   output_autoconf(s, o, cs, "autoconf-bio-bi_opf.c", "STAPCONF_BIO_BI_OPF", NULL);
   output_autoconf(s, o, cs, "autoconf-linux-sched_headers.c",
 		  "STAPCONF_LINUX_SCHED_HEADERS", NULL);
