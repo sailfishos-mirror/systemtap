@@ -6810,9 +6810,13 @@ static void get_unwind_data (Dwfl_Module *m,
   scn = NULL;
   while ((scn = elf_nextscn(elf, scn)))
     {
+      const char *sh_name;
       shdr = gelf_getshdr(scn, &shdr_mem);
-      if (strcmp(elf_strptr(elf, ehdr->e_shstrndx, shdr->sh_name),
-		 ".debug_frame") == 0)
+      sh_name = elf_strptr(elf, ehdr->e_shstrndx, shdr->sh_name);
+      // decompression is done via dwarf_begin_elf / global_read / check_section
+      // / elf_compress_gnu / __libelf_decompress in libelf/elf_compress_gnu.c
+      if (strcmp(sh_name, ".debug_frame") == 0
+          || strcmp(sh_name, ".zdebug_frame") == 0)
 	{
 	  data = elf_rawdata(scn, NULL);
 	  *debug_frame = data->d_buf;
@@ -6979,9 +6983,13 @@ static void find_debug_frame_offset (Dwfl_Module *m,
 
   while ((scn = elf_nextscn(elf, scn)))
     {
+      const char *sh_name;
       shdr = gelf_getshdr(scn, &shdr_mem);
-      if (strcmp(elf_strptr(elf, ehdr->e_shstrndx, shdr->sh_name),
-		 ".debug_frame") == 0)
+      sh_name = elf_strptr(elf, ehdr->e_shstrndx, shdr->sh_name);
+      // decompression is done via dwarf_begin_elf / global_read / check_section
+      // / elf_compress_gnu / __libelf_decompress in libelf/elf_compress_gnu.c
+      if (strcmp(sh_name, ".debug_frame") == 0
+          || strcmp(sh_name, ".zdebug_frame") == 0)
 	{
 	  data = elf_rawdata(scn, NULL);
 	  break;
@@ -7121,9 +7129,13 @@ dump_line_tables (Dwfl_Module *m, unwindsym_dump_context *c,
   ehdr = gelf_getehdr(elf, &ehdr_mem);
   while ((scn = elf_nextscn(elf, scn)))
     {
+      const char *sh_name;
       shdr = gelf_getshdr(scn, &shdr_mem);
-      if (strcmp(elf_strptr(elf, ehdr->e_shstrndx, shdr->sh_name),
-                 ".debug_line") == 0)
+      sh_name = elf_strptr(elf, ehdr->e_shstrndx, shdr->sh_name);
+      // decompression is done via dwarf_begin_elf / global_read / check_section
+      // / elf_compress_gnu / __libelf_decompress in libelf/elf_compress_gnu.c
+      if (strcmp(sh_name, ".debug_line") == 0
+          || strcmp(sh_name, ".zdebug_line") == 0)
         {
           data = elf_rawdata(scn, NULL);
           if (dump_line_tables_check(data->d_buf, data->d_size) == DWARF_CB_ABORT)
