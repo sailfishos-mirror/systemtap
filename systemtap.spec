@@ -46,7 +46,7 @@
 %{!?with_sysusers: %global with_sysusers 0%{?fedora} >= 32 || 0%{?rhel} >= 9}
 
 # Virt is supported on these arches, even on el7, but it's not in core EL7
-%if 0%{?rhel} <= 7
+%if 0%{?rhel} && 0%{?rhel} <= 7
 %ifarch ppc64le aarch64
 %global with_virthost 0
 %endif
