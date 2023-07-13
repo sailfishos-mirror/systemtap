@@ -685,6 +685,19 @@ static void _stp_stack_user_print(struct context *c, int sym_flags)
 #endif
 }
 
+static void __stp_sprint_begin(struct _stp_log *log)
+{
+	__stp_print_flush(log);
+	log->no_flush = true;
+}
+
+static void __stp_sprint_end(struct _stp_log *log)
+{
+	log->no_flush = false;
+	log->is_full = false;
+	log->len = 0;
+}
+
 /** Writes stack backtrace to a string
  *
  * @param str string
@@ -709,12 +722,12 @@ static void _stp_stack_kernel_sprint(char *str, int size, struct context* c,
 	}
 
 	log = per_cpu_ptr(_stp_log_pcpu, raw_smp_processor_id());
-	__stp_print_flush(log);
+	__stp_sprint_begin(log);
 	_stp_stack_kernel_print(c, sym_flags);
 	bytes = min_t(int, size - 1, log->len);
 	memcpy(str, log->buf, bytes);
 	str[bytes] = '\0';
-	log->len = 0;
+	__stp_sprint_end(log);
 	_stp_print_unlock_irqrestore(&flags);
 }
 
@@ -736,12 +749,12 @@ static void _stp_stack_user_sprint(char *str, int size, struct context* c,
 	}
 
 	log = per_cpu_ptr(_stp_log_pcpu, raw_smp_processor_id());
-	__stp_print_flush(log);
+	__stp_sprint_begin(log);
 	_stp_stack_user_print(c, sym_flags);
 	bytes = min_t(int, size - 1, log->len);
 	memcpy(str, log->buf, bytes);
 	str[bytes] = '\0';
-	log->len = 0;
+	__stp_sprint_end(log);
 	_stp_print_unlock_irqrestore(&flags);
 }
 

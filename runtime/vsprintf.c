@@ -730,7 +730,6 @@ _stp_vsnprintf(char *buf, size_t size, const char *fmt, va_list args)
 	    return 0;
 	  str = (char*)_stp_reserve_bytes(num_bytes);
 	  if (str == NULL) {
-	    _stp_error("Couldn't reserve any print buffer space\n");
 	    goto err_unlock;
 	  }
 	  got_print_lock = true;

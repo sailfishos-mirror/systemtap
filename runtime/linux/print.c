@@ -40,6 +40,8 @@ struct _stp_log {
 	char *buf; /* NB we don't use arrays here to avoid allocating memory
 		      on offline CPUs (but still possible ones) */
 	atomic_t reentrancy_lock;
+	bool no_flush;
+	bool is_full;
 };
 #include "print_flush.c"
 
@@ -238,6 +240,9 @@ static void * _stp_reserve_bytes (int numbytes)
 	if (unlikely(numbytes > (STP_BUFFER_SIZE - log->len)))
 		__stp_print_flush(log);
 
+	if (log->is_full)
+		return NULL;
+
 	ret = &log->buf[log->len];
 	log->len += numbytes;
 	return ret;
@@ -318,7 +323,7 @@ static void _stp_print (const char *str)
 		return;
 
 	log = per_cpu_ptr(_stp_log_pcpu, raw_smp_processor_id());
-	while (1) {
+	while (!log->is_full) {
 		while (log->len < STP_BUFFER_SIZE && *str)
 			log->buf[log->len++] = *str++;
 		if (likely(!*str))
@@ -339,7 +344,10 @@ static void _stp_print_char (const char c)
 	log = per_cpu_ptr(_stp_log_pcpu, raw_smp_processor_id());
 	if (unlikely(log->len == STP_BUFFER_SIZE))
 		__stp_print_flush(log);
-	log->buf[log->len++] = c;
+
+	if (likely(!log->no_flush || !log->is_full))
+		log->buf[log->len++] = c;
+
 	_stp_print_unlock_irqrestore(&flags);
 }
 

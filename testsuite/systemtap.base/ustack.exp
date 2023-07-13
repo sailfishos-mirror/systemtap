@@ -47,3 +47,25 @@ if {$res ne ""} {
         send_log "stderr:\n$stderr"
     }
 }
+
+# --- TEST 3 ---
+
+set subtest3 "TEST 3: sprint_ubacktrace()"
+
+set res [target_compile ${testpath}/${test}_3.c ./a.out executable \
+    "additional_flags=-O additional_flags=-g additional_flags=-O0"]
+if {$res ne ""} {
+    verbose "target_compile failed: $res" 2
+    fail "$test: $subtest2: unable to compile ${test}_3.c"
+} else {
+    set test_name "$test: $subtest3"
+
+    set cmd "stap -DMAXBACKTRACE=256 --ldd -c ./a.out '$srcdir/$subdir/${test}_3.stp'"
+    set exit_code [run_cmd_2way $cmd out stderr]
+    set out_pat "bt: mark.*"
+    like "${test_name}: stdout" $out $out_pat ""
+    is "${test_name}: exit code" $exit_code 0
+    if {$stderr ne ""} {
+        send_log "stderr:\n$stderr"
+    }
+}

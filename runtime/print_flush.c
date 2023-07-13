@@ -27,6 +27,12 @@ static void __stp_print_flush(struct _stp_log *log)
 	/* check to see if there is anything in the buffer */
 	if (likely(len == 0))
 		return;
+
+	if (unlikely(log->no_flush)) {
+		log->is_full = true;
+		return;
+	}
+
 	log->len = 0; /* clear it for later reuse */
 	dbug_trans(1, "len = %zu\n", len);
 
