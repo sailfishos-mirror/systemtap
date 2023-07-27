@@ -293,7 +293,7 @@ compiles systemtap scripts to kernel objects on their demand.
 
 %package devel
 Summary: Programmable system-wide instrumentation system - development headers, tools
-License: GPL-2.0-or-later AND GPL-2.0-only AND BSD-3-Clause AND LGPL-2.1-only
+License: GPL-2.0-or-later AND GPL-2.0-only AND BSD-3-Clause AND LGPL-2.1-only AND BSD-2-Clause
 URL: http://sourceware.org/systemtap/
 
 %if 0%{?rhel} >= 8 || 0%{?fedora} >= 20
@@ -338,7 +338,7 @@ using a local or remote systemtap-devel installation.
 
 %package client
 Summary: Programmable system-wide instrumentation system - client
-License: GPL-2.0-or-later AND GPL-2.0-only AND BSD-3-Clause AND LGPL-2.1-only AND GFDL-1.2-or-later
+License: GPL-2.0-or-later AND GPL-2.0-only AND BSD-3-Clause AND LGPL-2.1-only AND GFDL-1.2-or-later AND BSD-2-Clause
 URL: http://sourceware.org/systemtap/
 Requires: zip unzip
 Requires: systemtap-runtime = %{version}-%{release}
