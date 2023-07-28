@@ -55,8 +55,7 @@ int init_backlog(int cpu)
 	int order = 0;
 	if (!fnum_max)
 		return 0;
-	while (fnum_max >> order) order++;
-	if (fnum_max == 1<<(order-1)) order--;
+	while (fnum_max > 1<<order) order++;
 	time_backlog[cpu] = (time_t *)calloc(1<<order, sizeof(time_t));
 	if (time_backlog[cpu] == NULL) {
 		_err("Memory allocation failed\n");
