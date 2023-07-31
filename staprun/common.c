@@ -115,7 +115,7 @@ void parse_args(int argc, char **argv)
 	target_pid = 0;
 	target_namespaces_pid = 0;
 	buffer_size = 0;
-        reader_timeout_ms = 0;
+        reader_timeout_ms = 200;
 	target_cmd = NULL;
 	outfile_name = NULL;
 	rename_mod = 0;

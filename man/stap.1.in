@@ -388,7 +388,7 @@ With \-o option, run staprun in background as a daemon and show its pid.
 Sets the maximum size of output file and the maximum number of output files.
 If the size of output file will exceed
 .B size
-, systemtap switches output file to the next file. And if the number of
+megabytes, systemtap switches output file to the next file. And if the number of
 output files exceed
 .B N
 , systemtap removes the oldest output file. You can omit the second argument.

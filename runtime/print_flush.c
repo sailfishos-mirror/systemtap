@@ -43,6 +43,7 @@ static void __stp_print_flush(struct _stp_log *log)
         if (likely(entry && bytes_reserved > hlen)) {
                 /* copy new _stp_trace_ header */
                 struct _stp_trace t = {
+                        .magic = STAP_TRACE_MAGIC,
                         .sequence = _stp_seq_inc(),
                         .pdu_len = len
                 };

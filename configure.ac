@@ -490,6 +490,8 @@ if test "$with_rpm" != "no"; then
   fi
 fi
 
+AC_CHECK_HEADERS([stdatomic.h])
+
 dnl Look for rpmcrypto.h
 AC_CHECK_HEADERS([rpm/rpmcrypto.h], [
 		    AC_DEFINE([HAVE_RPMCRYPTO_H],[1],[have rpmcrypto_h])

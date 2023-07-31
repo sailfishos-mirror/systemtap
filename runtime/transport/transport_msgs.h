@@ -1,7 +1,7 @@
 /* -*- linux-c -*- 
  * transport_msgs.h - messages exchanged between module and userspace
  *
- * Copyright (C) Red Hat Inc, 2006-2011
+ * Copyright (C) Red Hat Inc, 2006-2023
  *
  * This file is part of systemtap, and is free software.  You can
  * redistribute it and/or modify it under the terms of the GNU General
@@ -19,7 +19,9 @@
 #define STP_TZ_NAME_LEN 64
 #define STP_REMOTE_URI_LEN 128
 
+#define STAP_TRACE_MAGIC "\xF0\x9F\xA9\xBA" /* unicode stethoscope 🩺 in UTF-8 */
 struct _stp_trace {
+        char magic[4];          /* framing helper */
 	uint32_t sequence;	/* event number */
 	uint32_t pdu_len;	/* length of data after this trace */
 };
@@ -30,7 +32,7 @@ enum
 	/** stapio sends a STP_START after recieving a STP_TRANSPORT from
 	    the module. The module sends STP_START back with result of call
 	    systemtap_module_init() which will install all initial probes.  */
-	STP_START,
+	STP_START = 0x50, // renumbered in version 5.0 to force incompatibility
 	/** stapio sends STP_EXIT to signal it wants to stop the module
 	    itself or in response to receiving a STP_REQUEST_EXIT.
 	    The module sends STP_EXIT once _stp_clean_and_exit has been
@@ -87,16 +89,21 @@ enum
 	/** Send by staprun to notify module of remote identity, if any.
             Only send once at startup.  */
         STP_REMOTE_ID,
+	/** Placeholder, it was mistakenly labeled STP_MAX_CMD */
+	STP_MAX_CMD_PLACEHOLDER,
+        /** Sent by stapio after having recevied STP_TRANSPORT. Notifies
+            the module of the target namespaces pid.*/
+        STP_NAMESPACES_PID,
+        
+        /** INSERT NEW MESSAGE TYPES HERE */
+        
 	/** Max number of message types, sanity check only.  */
 	STP_MAX_CMD,
-  /** Sent by stapio after having recevied STP_TRANSPORT. Notifies
-      the module of the target namespaces pid.*/
-  STP_NAMESPACES_PID
 };
 
 #ifdef DEBUG_TRANS
-static const char *_stp_command_name[] = {
-	"STP_START",
+static const char *_stp_command_name[STP_MAX_CMD] = {
+	[STP_START]="STP_START",
 	"STP_EXIT",
 	"STP_OOB_DATA",
 	"STP_SYSTEM",
@@ -113,7 +120,9 @@ static const char *_stp_command_name[] = {
 	"STP_TZINFO",
 	"STP_PRIVILEGE_CREDENTIALS",
 	"STP_REMOTE_ID",
-  "STP_NAMESPACES_PID",
+        "STP_MAX_CMD_PLACEHOLDER",
+        "STP_NAMESPACE_PID",
+        [STP_MAX_CMD]="?"   /* in control.c, STP_MAX_CMD represents unknown message numbers/names */
 };
 #endif /* DEBUG_TRANS */
 

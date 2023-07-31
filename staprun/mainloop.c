@@ -7,7 +7,7 @@
  * Public License (GPL); either version 2, or (at your option) any
  * later version.
  *
- * Copyright (C) 2005-2021 Red Hat Inc.
+ * Copyright (C) 2005-2023 Red Hat Inc.
  */
 
 #include "staprun.h"
@@ -23,31 +23,9 @@
 
 /* globals */
 int ncpus;
-static int pending_interrupts = 0;
+static volatile sig_atomic_t pending_interrupts = 0; // tells stp_main_loop to trigger STP_EXIT message to kernel
 static int target_pid_failed_p = 0;
 
-/* Setup by setup_main_signals, used by signal_thread to notify the
-   main thread of interruptable events. */
-static pthread_t main_thread;
-
-static void set_nonblocking_std_fds(void)
-{
-  int fd;
-  for (fd = 1; fd < 3; fd++) {
-    /* NB: writing to stderr/stdout blockingly in signal handler is
-     * dangerous since it may prevent the stap process from quitting
-     * gracefully on receiving SIGTERM/etc signals when the stderr/stdout
-     * write buffer is full. PR23891 */
-    int flags = fcntl(fd, F_GETFL);
-    if (flags == -1)
-      continue;
-
-    if (flags & O_NONBLOCK)
-      continue;
-
-    (void) fcntl(fd, F_SETFL, flags | O_NONBLOCK);
-  }
-}
 
 static void set_blocking_std_fds(void)
 {
@@ -77,43 +55,16 @@ static void my_exit(int rc)
   _exit(rc);
 }
 
-static void *signal_thread(void *arg)
-{
-  sigset_t *s = (sigset_t *) arg;
-  int signum = 0;
 
-  while (1) {
-    if (sigwait(s, &signum) < 0) {
-      _perr("sigwait");
-      continue;
-    }
+
+static void interrupt_handler(int signum)
+{
     if (signum == SIGQUIT) {
       load_only = 1; /* flag for stp_main_loop */
-      pending_interrupts ++;
-    } else if (signum == SIGINT || signum == SIGHUP || signum == SIGTERM
-               || signum == SIGPIPE)
-    {
-      pending_interrupts ++;
     }
-    if (pending_interrupts > 2) {
-      set_nonblocking_std_fds();
-      pthread_kill (main_thread, SIGURG);
-    }
-    dbug(2, "sigproc %d (%s)\n", signum, strsignal(signum));
-  }
-  /* Notify main thread (interrupts select). */
-  pthread_kill (main_thread, SIGURG);
-  return NULL;
+    pending_interrupts ++;
 }
 
-static void urg_proc(int signum)
-{
-  /* This handler is just notified from the signal_thread
-     whenever an interruptable condition is detected. The
-     handler itself doesn't do anything. But this will
-     result select to detect an EINTR event. */
-  dbug(2, "urg_proc %d (%s)\n", signum, strsignal(signum));
-}
 
 static void chld_proc(int signum)
 {
@@ -143,9 +94,9 @@ static void chld_proc(int signum)
   (void) rc; /* XXX: notused */
 }
 
+
 static void setup_main_signals(void)
 {
-  pthread_t tid;
   struct sigaction sa;
   sigset_t *s = malloc(sizeof(*s));
   if (!s) {
@@ -153,24 +104,10 @@ static void setup_main_signals(void)
     exit(1);
   }
 
-  /* The main thread will only handle SIGCHLD and SIGURG.
-     SIGURG is send from the signal thread in case the interrupt
-     flag is set. This will then interrupt any select call. */
-  main_thread = pthread_self();
-  sigfillset(s);
-  pthread_sigmask(SIG_SETMASK, s, NULL);
-
   memset(&sa, 0, sizeof(sa));
   /* select will report EINTR even when SA_RESTART is set. */
   sa.sa_flags = SA_RESTART;
   sigfillset(&sa.sa_mask);
-
-  /* Ignore all these events on the main thread. */
-  sa.sa_handler = SIG_IGN;
-  sigaction(SIGINT, &sa, NULL);
-  sigaction(SIGTERM, &sa, NULL);
-  sigaction(SIGHUP, &sa, NULL);
-  sigaction(SIGQUIT, &sa, NULL);
 
   /* This is to notify when our child process (-c) ends. */
   sa.sa_handler = chld_proc;
@@ -182,25 +119,20 @@ static void setup_main_signals(void)
       sigaction(SIGWINCH, &sa, NULL);
     }
 
-  /* This signal handler is notified from the signal_thread
-     whenever a interruptable event is detected. It will
-     result in an EINTR event for select or sleep. */
-  sa.sa_handler = urg_proc;
-  sigaction(SIGURG, &sa, NULL);
+  // listen to these signals via general interrupt handler in whatever thread
+  memset(&sa, 0, sizeof(sa));
+  sa.sa_flags = SA_RESTART;
+  sigfillset(&sa.sa_mask);
 
-  /* Everything else is handled on a special signal_thread. */
-  sigemptyset(s);
-  sigaddset(s, SIGINT);
-  sigaddset(s, SIGTERM);
-  sigaddset(s, SIGHUP);
-  sigaddset(s, SIGQUIT);
-  sigaddset(s, SIGPIPE);
-  pthread_sigmask(SIG_SETMASK, s, NULL);
-  if (pthread_create(&tid, NULL, signal_thread, s) < 0) {
-    _perr(_("failed to create thread"));
-    exit(1);
-  }
+  sa.sa_handler = interrupt_handler;
+  sigaction(SIGINT, &sa, NULL);
+  sigaction(SIGTERM, &sa, NULL);
+  sigaction(SIGHUP, &sa, NULL);
+  sigaction(SIGQUIT, &sa, NULL);
+
+  // Formerly, we had a signal catching thread.
 }
+
 
 /**
  * system_cmd() executes system commands in response
