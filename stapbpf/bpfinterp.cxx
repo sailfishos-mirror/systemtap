@@ -942,7 +942,8 @@ bpf_interpret(size_t ninsns, const struct bpf_insn insns[],
 	case BPF_ALU | BPF_OR  | BPF_K:  dr = (uint32_t)(dr | s1); break;
 	case BPF_ALU | BPF_LSH | BPF_X:
 	case BPF_ALU | BPF_LSH | BPF_K:
-          // XXX: signal to coverity that we really do want a 32-bit result
+          // signal to coverity that we really do want a 32-bit result
+          // coverity[overflow_before_widen:SUPPRESS]
           dr = (uint64_t)((uint32_t)dr << s1); break;
 	case BPF_ALU | BPF_RSH | BPF_X:
 	case BPF_ALU | BPF_RSH | BPF_K:  dr = (uint32_t)dr >> s1; break;
