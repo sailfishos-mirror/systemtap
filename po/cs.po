@@ -6068,10 +6068,6 @@ msgstr ""
 msgid "update_visitor dtor has unused values"
 msgstr "update_visitor nemá definovanou hodnotu"
 
-#: tapset-itrace.cxx:82
-msgid "process probes not available without kernel CONFIG_UTRACE"
-msgstr "sondy pro uživatelské procesy nejsou k dispozici bez CONFIG_UTRACE"
-
 #: tapset-itrace.cxx:326 tapset-itrace.cxx:341 tapset-mark.cxx:575
 #: tapset-netfilter.cxx:432 tapset-python.cxx:236 tapset-python.cxx:244
 #: tapsets.cxx:11020 tapset-timers.cxx:580 tapset-utrace.cxx:1323
@@ -6676,10 +6672,10 @@ msgstr ""
 
 #: tapsets.cxx:5506
 msgid ""
-"process probes not available without kernel CONFIG_UTRACE or "
+"process probes not available without kernel "
 "CONFIG_TRACEPOINTS/CONFIG_ARCH_SUPPORTS_UPROBES/CONFIG_UPROBES"
 msgstr ""
-"instrumentace userspace programů není dostupná bez kernel CONFIG_UTRACE nebo "
+"instrumentace userspace programů není dostupná bez kernel "
 "CONFIG_TRACEPOINTS/CONFIG_ARCH_SUPPORTS_UPROBES/CONFIG_UPROBES"
 
 #: tapsets.cxx:5573

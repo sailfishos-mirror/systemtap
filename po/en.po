@@ -5921,10 +5921,6 @@ msgstr ""
 msgid "update_visitor dtor has unused values"
 msgstr ""
 
-#: tapset-itrace.cxx:82
-msgid "process probes not available without kernel CONFIG_UTRACE"
-msgstr ""
-
 #: tapset-itrace.cxx:326 tapset-itrace.cxx:341 tapset-mark.cxx:575
 #: tapset-netfilter.cxx:432 tapset-python.cxx:236 tapset-python.cxx:244
 #: tapsets.cxx:11020 tapset-timers.cxx:580 tapset-utrace.cxx:1323
@@ -6534,7 +6530,7 @@ msgstr "no location for field %s: %s"
 
 #: tapsets.cxx:5506
 msgid ""
-"process probes not available without kernel CONFIG_UTRACE or "
+"process probes not available without kernel "
 "CONFIG_TRACEPOINTS/CONFIG_ARCH_SUPPORTS_UPROBES/CONFIG_UPROBES"
 msgstr ""
 

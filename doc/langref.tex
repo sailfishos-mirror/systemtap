@@ -2299,7 +2299,7 @@ The following code adapts to the presence of a kernel CONFIG option.
 
 \begin{vindent}
 \begin{verbatim}
-%( CONFIG_UTRACE == "y" %?
+%( CONFIG_UPROBE == "y" %?
     probe process.syscall {}
 %)
 \end{verbatim}
@@ -2345,7 +2345,7 @@ condition is evaluated. This can sometimes lead to errors:
 \begin{vindent}
 \begin{verbatim}
 // The following results in a conflict:
-%( CONFIG_UTRACE == "y" %?
+%( CONFIG_UPROBE == "y" %?
     @define foo %( process.syscall %)
 %:
     @define foo %( **ERROR** %)
@@ -2353,7 +2353,7 @@ condition is evaluated. This can sometimes lead to errors:
 
 // The following works properly as expected:
 @define foo %(
-  %( CONFIG_UTRACE == "y" %? process.syscall %: **ERROR** %)
+  %( CONFIG_UPROBE == "y" %? process.syscall %: **ERROR** %)
 %)
 \end{verbatim}
 \end{vindent}

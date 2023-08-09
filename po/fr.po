@@ -6075,11 +6075,6 @@ msgstr ""
 msgid "update_visitor dtor has unused values"
 msgstr ""
 
-#: tapset-itrace.cxx:82
-msgid "process probes not available without kernel CONFIG_UTRACE"
-msgstr ""
-"les probes 'process' ne sont pas disponibles sans un noyau CONFIG_UTRACE"
-
 #: tapset-itrace.cxx:326 tapset-itrace.cxx:341 tapset-mark.cxx:575
 #: tapset-netfilter.cxx:432 tapset-python.cxx:236 tapset-python.cxx:244
 #: tapsets.cxx:11020 tapset-timers.cxx:580 tapset-utrace.cxx:1323
@@ -6255,7 +6250,6 @@ msgstr ""
 msgid ""
 "unspecified process probe is invalid without a -c COMMAND [man stapprobes]"
 msgstr ""
-"les probes 'process' ne sont pas disponibles sans un noyau CONFIG_UTRACE"
 
 #: tapset-perfmon.cxx:375
 #, c-format
@@ -6699,10 +6693,10 @@ msgstr ""
 #: tapsets.cxx:5506
 #, fuzzy
 msgid ""
-"process probes not available without kernel CONFIG_UTRACE or "
+"process probes not available without kernel "
 "CONFIG_TRACEPOINTS/CONFIG_ARCH_SUPPORTS_UPROBES/CONFIG_UPROBES"
 msgstr ""
-"les probes 'process' ne sont pas disponibles sans un noyau CONFIG_UTRACE"
+"les probes 'process' ne sont pas disponibles sans un noyau CONFIG_TRACEPOINTS/CONFIG_ARCH_SUPPORTS_UPROBES/CONFIG_UPROBES"
 
 #: tapsets.cxx:5573
 msgid "missing relocation basis"
@@ -6913,7 +6907,6 @@ msgid ""
 "unspecified process probe is invalid without a -c COMMAND or -x PID [man "
 "stapprobes]"
 msgstr ""
-"les probes 'process' ne sont pas disponibles sans un noyau CONFIG_UTRACE"
 
 #: tapsets.cxx:8772 tapsets.cxx:8910
 #, c-format
@@ -6932,7 +6925,6 @@ msgstr[1] ""
 #, fuzzy
 msgid "process return probes not available [man error::inode-uprobes]"
 msgstr ""
-"les probes 'process' ne sont pas disponibles sans un noyau CONFIG_UTRACE"
 
 #: tapsets.cxx:8982
 #, c-format
@@ -6971,7 +6963,6 @@ msgstr "Erreur : ne peut trouver vmlinux."
 #, fuzzy
 msgid "absolute process probes not available [man error::inode-uprobes]"
 msgstr ""
-"les probes 'process' ne sont pas disponibles sans un noyau CONFIG_UTRACE"
 
 #: tapsets.cxx:9660
 #, c-format
@@ -6986,7 +6977,6 @@ msgstr ""
 #, fuzzy
 msgid "probe not compatible with BPF runtime"
 msgstr ""
-"les probes 'process' ne sont pas disponibles sans un noyau CONFIG_UTRACE"
 
 #: tapsets.cxx:11051
 msgid "CONFIG_PERF_EVENTS not available on this kernel"
@@ -7151,7 +7141,6 @@ msgstr "valeur de randomize hors limite"
 #, fuzzy
 msgid "profile timer probes not available with the dyninst runtime"
 msgstr ""
-"les probes 'process' ne sont pas disponibles sans un noyau CONFIG_UTRACE"
 
 #: tapset-timers.cxx:625
 msgid "profiling timer support (register_timer_hook) not found in kernel!"
@@ -7161,7 +7150,6 @@ msgstr ""
 #, fuzzy
 msgid "jiffies timer probes not available with the dyninst runtime"
 msgstr ""
-"les probes 'process' ne sont pas disponibles sans un noyau CONFIG_UTRACE"
 
 #: tapset-timers.cxx:649
 msgid "frequency must be greater than 0"
@@ -7220,7 +7208,6 @@ msgstr ""
 #, fuzzy
 msgid "process.syscall probes not available with the dyninst runtime"
 msgstr ""
-"les probes 'process' ne sont pas disponibles sans un noyau CONFIG_UTRACE"
 
 #: tapset-utrace.cxx:710
 msgid "empty module"
