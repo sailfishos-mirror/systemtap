@@ -5349,8 +5349,6 @@ translate_bpf_pass (systemtap_session& s)
       // XXX PR26234: need to warn about other probe groups....
       if (s.hwbkpt_derived_probes)
         warn_for_bpf(s, s.hwbkpt_derived_probes, "hardware breakpoint probe");
-      if (s.itrace_derived_probes)
-        warn_for_bpf(s, s.itrace_derived_probes, "process.insn probe");
       if (s.netfilter_derived_probes)
         warn_for_bpf(s, s.netfilter_derived_probes, "netfilter probe");
       if (s.profile_derived_probes)

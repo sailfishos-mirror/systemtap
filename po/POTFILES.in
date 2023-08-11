@@ -93,7 +93,6 @@ stringtable.h
 tapset-been.cxx
 tapset-dynprobe.cxx
 tapset-dynprobe.h
-tapset-itrace.cxx
 tapset-mark.cxx
 tapset-method.cxx
 tapset-netfilter.cxx

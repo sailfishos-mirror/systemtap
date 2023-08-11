@@ -406,9 +406,6 @@ proc test_probes { privilege } {
 	    process(number).insn.block -
 	    process(string).insn -
 	    process(string).insn.block
-	    {
-		if {![utrace_orig_p]} { setup_kfail ITRACE *-*-* }
-	    }
 	}
 
 	# Test the probe type. If successful, the stap rc will be 0.

@@ -103,11 +103,7 @@ __stp_tf_vma_new_entry(void)
 	// callback freeing the entries will not depend on using a function
 	// within this module to free the allocated memory (_stp_kfree), which
 	// lets us omit a costly rcu_barrier operation upon module unload.
-#ifdef CONFIG_UTRACE
-	entry = kmalloc(sizeof(*entry), STP_ALLOC_SLEEP_FLAGS);
-#else
 	entry = kmalloc(sizeof(*entry), STP_ALLOC_FLAGS);
-#endif
 	return entry;
 }
 

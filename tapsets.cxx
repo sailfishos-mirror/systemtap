@@ -5484,10 +5484,6 @@ kernel_supports_inode_uretprobes(systemtap_session& s)
 void
 check_process_probe_kernel_support(systemtap_session& s)
 {
-  // If we've got utrace, we're good to go.
-  if (s.kernel_config["CONFIG_UTRACE"] == "y")
-    return;
-
   // We don't have utrace.  For process probes that aren't
   // uprobes-based, we just need the task_finder.  The task_finder
   // needs CONFIG_TRACEPOINTS and specific tracepoints.  There is a
@@ -5505,7 +5501,7 @@ check_process_probe_kernel_support(systemtap_session& s)
       && kernel_supports_inode_uprobes(s))
     return;
 
-  throw SEMANTIC_ERROR (_("process probes not available without kernel CONFIG_UTRACE or CONFIG_TRACEPOINTS/CONFIG_ARCH_SUPPORTS_UPROBES/CONFIG_UPROBES"));
+  throw SEMANTIC_ERROR (_("process probes not available without kernel CONFIG_TRACEPOINTS/CONFIG_ARCH_SUPPORTS_UPROBES/CONFIG_UPROBES"));
 }
 
 
@@ -13186,7 +13182,6 @@ void
 register_standard_tapsets(systemtap_session & s)
 {
   register_tapset_been(s);
-  register_tapset_itrace(s);
   register_tapset_mark(s);
   register_tapset_procfs(s);
   register_tapset_timers(s);

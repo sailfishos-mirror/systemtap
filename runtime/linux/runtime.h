@@ -279,7 +279,7 @@ static void *kallsyms_get_mm_exe_file;
 #include "../regs.c"
 #include "regs-ia64.c"
 
-#if (defined(CONFIG_UTRACE) || defined(STAPCONF_UTRACE_VIA_TRACEPOINTS))
+#if (defined(STAPCONF_UTRACE_VIA_TRACEPOINTS))
 #define HAVE_TASK_FINDER
 #include "task_finder.c"
 #else
