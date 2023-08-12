@@ -1,4 +1,4 @@
-#!stap -p2
+#! stap -p2
 
 # PR30570: ei should be resolvable in all of the following
 
