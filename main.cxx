@@ -1190,8 +1190,10 @@ passes_0_4 (systemtap_session &s)
 		  s.mok_fingerprints.clear();
 		  s.mok_fingerprints.push_back(mok_fingerprint);
 		}
-	      rc =
-		sign_module (s.tmpdir, s.module_filename(), s.mok_fingerprints, mok_path, s.kernel_build_tree);
+              if (s.verbose)
+                clog << _F("Signing %s with mok key %s", s.module_filename().c_str(), mok_path.c_str())
+                     << endl;
+	      rc = sign_module (s.tmpdir, s.module_filename(), s.mok_fingerprints, mok_path, s.kernel_build_tree);
 	    }
 #endif
 
@@ -1310,8 +1312,30 @@ passes_0_4 (systemtap_session &s)
       if (! s.use_script_cache && s.last_pass <= 4)
         s.save_module = true;
 
+#if HAVE_NSS
+      // PR30749
+      if (!rc && s.module_sign_given)
+        {
+          // when run on client as --sign-module, mok fingerprints are result of mokutil -l
+          // when run from server as --sign-module=PATH, mok fingerprint is given by PATH
+          string mok_path;
+          if (!s.module_sign_mok_path.empty())
+            {
+              string mok_fingerprint;
+              split_path (s.module_sign_mok_path, mok_path, mok_fingerprint);
+              s.mok_fingerprints.clear();
+              s.mok_fingerprints.push_back(mok_fingerprint);
+            }
+          
+          if (s.verbose)
+            clog << _F("Signing %s with mok key %s", s.module_filename().c_str(), mok_path.c_str())
+                 << endl;
+          rc = sign_module (s.tmpdir, s.module_filename(), s.mok_fingerprints, mok_path, s.kernel_build_tree);
+        }
+#endif
+      
       // Copy module to the current directory.
-      if (s.save_module && !pending_interrupts)
+      if (!rc && s.save_module && !pending_interrupts)
         {
 	  string module_src_path = s.tmpdir + "/" + s.module_filename();
 	  string module_dest_path = s.module_filename();
@@ -1327,29 +1351,11 @@ passes_0_4 (systemtap_session &s)
         }
     }
   
-#if HAVE_NSS
-  if (s.module_sign_given)
-    {
-      // when run on client as --sign-module, mok fingerprints are result of mokutil -l
-      // when run from server as --sign-module=PATH, mok fingerprint is given by PATH
-      string mok_path;
-      if (!s.module_sign_mok_path.empty())
-	{
-	  string mok_fingerprint;
-	  split_path (s.module_sign_mok_path, mok_path, mok_fingerprint);
-	  s.mok_fingerprints.clear();
-	  s.mok_fingerprints.push_back(mok_fingerprint);
-	}
-
-      rc = sign_module (s.tmpdir, s.module_filename(), s.mok_fingerprints, mok_path, s.kernel_build_tree);
-    }
-#endif
-  
   PROBE1(stap, pass4__end, &s);
 
   return rc;
 }
-
+ 
 int
 pass_5 (systemtap_session &s, vector<remote*> targets)
 {
