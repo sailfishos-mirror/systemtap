@@ -76,7 +76,8 @@ int main (int argc, char *argv[])
 			fprintf(stderr, "error opening file %s.\n", argv[optind - 1]);
 			return -1;
 		}
-                (void) fread(buf, 4, 1, fp[i]); // read & ignore magic word
+                if (fread(buf, 4, 1, fp[i]) != 1) // read magic word
+                  fprintf(stderr, "warning: erro reading magic word\n");
 		if (fread (buf, TIMESTAMP_SIZE, 1, fp[i]))
 			num[i] = *((int *)buf);
 		else
@@ -134,7 +135,8 @@ int main (int argc, char *argv[])
 			count = min;
 		}
 
-                (void) fread(buf, 4, 1, fp[i]); // read & ignore magic word
+                if (fread(buf, 4, 1, fp[i]) != 1) // read magic word
+                  fprintf(stderr, "warning: erro reading magic word\n");
 		if (fread (buf, TIMESTAMP_SIZE, 1, fp[j]))
 			num[j] = *((int *)buf);
 		else
