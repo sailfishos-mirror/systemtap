@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright (C) Red Hat Inc, 2007
+# Copyright (C) Red Hat Inc, 2007-2023
 #
 #
 
@@ -51,6 +51,8 @@ foreach file $files {
 	exit 1
     }
     fconfigure $fd($n) -translation binary
+    # read & ignore magic
+    read $fd($n) 4
     if {![binary scan [read $fd($n) 4] $int_format timestamp($n)]} {
 	continue
     }
@@ -90,6 +92,9 @@ while {1} {
     set data [read $fd($mincpu) $len]
     puts -nonewline $outfile $data
 
+    # read & ignore magic
+    read $fd($mincpu) 4
+    
     set data [read $fd($mincpu) 4]
     if {$data == ""} {
 	unset fd($mincpu)
