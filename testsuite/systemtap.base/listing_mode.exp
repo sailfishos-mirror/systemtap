@@ -478,14 +478,6 @@ proc report_untested_probes {} {
             }
          }
 
-         process(string).insn -
-         process(number).insn -
-         process(string).insn.block -
-         process(number).insn.block
-         {
-            setup_kfail ITRACE *-*-*
-         }
-
          process(number).statement(number).absolute -
          process(number).statement(number).absolute.return
          {
@@ -1542,8 +1534,6 @@ stap_list "process($valid_pid).thread.end"
    #process(string).function(string).inline
    #process(string).function(string).label(string)
    #process(string).function(string).return
-   #process(string).insn
-   #process(string).insn.block
    #process(string).library(string).function(number)
    #process(string).library(string).function(number).call
    #process(string).library(string).function(number).exported

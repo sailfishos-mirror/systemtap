@@ -1460,42 +1460,6 @@ probe process("...").plt process("...").library("...").plt { ... }
 \end{verbatim}
 \end{vindent}
 
-\subsubsection{Instruction probes}
-\label{sec:insnprobes}
-Constructs:
-\begin{vindent}
-\begin{verbatim}
-process("PATH").insn
-process(PID).insn
-
-process("PATH").insn.block
-process(PID).insn.block
-\end{verbatim}
-\end{vindent}
-The \texttt{process().insn} and \texttt{process().insn.block} probes
-inspect the process after each instruction or block of instructions is
-executed. These probes are not implemented on all architectures. If
-they are not implemented on your system, you will receive an error
-message when the script starts.
-
-The \texttt{.insn} probe is called for every single-stepped
-instruction of the process described by \texttt{PID} or \texttt{PATH}.
-
-The \texttt{.insn.block} probe is called for every block-stepped
-instruction of the process described by \texttt{PID} or \texttt{PATH}.
-
-To count the total number of instructions that a process executes,
-type a command similar to:
-\begin{vindent}
-\begin{verbatim}
-$ stap -e 'global steps; probe process("/bin/ls").insn {steps++}
-           probe end {printf("Total instructions: %d\n", steps);}' \
-       -c /bin/ls
-\end{verbatim}
-\end{vindent}
-
-Using this feature will significantly slow process execution.
-
 \subsubsection{Static userspace probing}
 \label{sec:staticuserspace}
 You can probe symbolic static instrumentation compiled into programs

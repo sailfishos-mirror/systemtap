@@ -853,10 +853,6 @@ process.syscall
 process(PID).syscall.return
 process("FULLPATH").syscall.return
 process.syscall.return
-process(PID).insn
-process("FULLPATH").insn
-process(PID).insn.block
-process("FULLPATH").insn.block
 .ESAMPLE
 
 .PP
@@ -893,11 +889,6 @@ in the
 .BR $return
 context variable.
 A
-.B process.insn
-probe gets called for every single-stepped instruction of the process described by PID or FULLPATH.
-A
-.B process.insn.block
-probe gets called for every block-stepped instruction of the process described by PID or FULLPATH.
 
 .PP
 If a process probe is specified without a PID or FULLPATH, all user

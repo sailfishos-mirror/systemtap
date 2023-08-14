@@ -16,7 +16,6 @@ set test_scripts {
 "probe process.mark(\"*\"){exit();}"
 "probe process.provider(\"*\").mark(\"*\"){exit();}"
 
-"probe process(\$1).insn{exit();}"
 "probe process(\$1).statement(200){exit();}"
 }
 
