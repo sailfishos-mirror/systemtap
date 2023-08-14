@@ -1,13 +1,8 @@
 #! /usr/bin/env stap
 #
-# Note that there are 2 sets of filemap kernel tracepoints:
-#
-# - older kernels RHEL5 (2.6.18) - RHEL6 (2.6.32): mm_filemap_fault,
-#   mm_filemap_cow, mm_filemap_unmap mm_filemap_userunmap
-# - newer kernels: mm_filemap_add_to_page_cache,
+# filemap kernel tracepoints:
+# mm_filemap_add_to_page_cache,
 #   mm_filemap_delete_from_page_cache
-#
-# This script attempts to handle them both.
 
 global traced_pid, command
 global allocation, free
@@ -30,30 +25,6 @@ probe kernel.{trace("mm_page_alloc")!, trace("mm_page_allocation")} {
 probe kernel.{trace("mm_page_free")!, trace("mm_page_free_direct")} {
   if (!log_event()) next
   free[pid()] <<< 1
-}
-
-probe kernel.trace("mm_filemap_fault")? {
-  if (!log_event()) next
-  old_set_hits <<< 1
-  file_fault[pid()] <<< 1
-}
-
-probe kernel.trace("mm_filemap_cow")? {
-  if (!log_event()) next
-  old_set_hits <<< 1
-  file_cow[pid()] <<< 1
-}
-
-probe kernel.trace("mm_filemap_unmap")? {
-  if (!log_event()) next
-  old_set_hits <<< 1
-  file_kunmap[pid()] <<< 1
-}
-
-probe kernel.trace("mm_filemap_userunmap")? {
-  if (!log_event()) next
-  old_set_hits <<< 1
-  file_uunmap[pid()] <<< 1
 }
 
 probe kernel.trace("mm_filemap_add_to_page_cache")? {
@@ -119,9 +90,7 @@ function print_new_format:long ()
 probe end {
   printf("Terminating data collection\n")
 
-  # We'll either have hits from the old set of filemap tracepoints
-  # (mm_filemap_fault, mm_filemap_cow, mm_filemap_unmap,
-  # mm_filemap_userunmap) or the new set of filemap tracepoints
+  # We'll have hits from the filemap tracepoints
   # (mm_filemap_add_to_page_cache,
   # mm_filemap_delete_from_page_cache). Print out the set that got
   # hits.

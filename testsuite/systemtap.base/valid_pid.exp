@@ -30,7 +30,7 @@ set pids "1234567890 $valid_pid"
 foreach test_script $test_scripts {
     foreach pid $pids {
        verbose -log "PID under test is $pid"
-       if {((([regexp {insn} $test_script] || [regexp {statement} $test_script]) || ![uprobes_p]) || ([regexp {plt} $test_script] && ![plt_probes_p])} {
+       if {(([regexp {insn} $test_script] || [regexp {statement} $test_script]) || ![uprobes_p]) || ([regexp {plt} $test_script] && ![plt_probes_p])} {
             untested "script: $test_script"
             continue
         } else {

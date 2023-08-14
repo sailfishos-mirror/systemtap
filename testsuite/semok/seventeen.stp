@@ -1,8 +1,7 @@
 #! stap -p2
 
 global foo
-probe kernel.function(
-%( kernel_v < "2.6.19" %? "pipe_writev" %: "pipe_write" %) )
+probe kernel.function("pipe_write")
 {
    a = @choose_defined($nr_segs,$iocb)
    foo [a] = 1
