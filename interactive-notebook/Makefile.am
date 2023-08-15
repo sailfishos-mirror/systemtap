@@ -24,8 +24,9 @@ install-data-local:
 	$(INSTALL_DATA) -D constants.py $(DESTDIR)$(pkgdatadir)/interactive-notebook/isystemtap/constants.py
 
 clean-local:
-	rm constants.py stap-jupyter-container stap-jupyter-install
+	rm -f constants.py stap-jupyter-container stap-jupyter-install
 
 uninstall-local:
 	rm -rf $(DESTDIR)$(pkgdatadir)/interactive-notebook
-	rm -f $(DESTDIR)$(bindir)/stap-jupyter-*
+	rm -f $(DESTDIR)$(bindir)/stap-jupyter-container
+	rm -f $(DESTDIR)$(bindir)/stap-jupyter-install
