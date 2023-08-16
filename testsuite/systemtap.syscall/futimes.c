@@ -90,7 +90,7 @@ int main()
 #endif
 #endif /* __NR_futimesat */
 
-#if defined(__NR_utimensat) && LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,22)
+#if defined(__NR_utimensat)
   ts[0].tv_sec = 1000000000;
   ts[0].tv_nsec = 123456789;
   ts[1].tv_sec = 2000000000;

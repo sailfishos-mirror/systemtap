@@ -385,7 +385,6 @@ compile_pass (systemtap_session& s)
   output_autoconf(s, o, cs, "autoconf-grsecurity.c", "STAPCONF_GRSECURITY", NULL);
   output_autoconf(s, o, cs, "autoconf-trace-printk.c", "STAPCONF_TRACE_PRINTK", NULL);
   output_autoconf(s, o, cs, "autoconf-regset.c", "STAPCONF_REGSET", NULL);
-  output_autoconf(s, o, cs, "autoconf-utrace-regset.c", "STAPCONF_UTRACE_REGSET", NULL);
   output_autoconf(s, o, cs, "autoconf-hlist-4args.c", "STAPCONF_HLIST_4ARGS", NULL);
   output_autoconf(s, o, cs, "autoconf-get-kretprobe.c", "STAPCONF_GET_KRETPROBE", NULL);
   output_exportconf(s, o2, "tsc_khz", "STAPCONF_TSC_KHZ");

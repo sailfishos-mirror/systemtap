@@ -323,13 +323,9 @@ stapiu_decrement_process_semaphores(struct stapiu_process *p,
     struct task_struct *task;
     rcu_read_lock();
     
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,24)
-    /* We'd like to call find_task_by_pid_ns() here, but it isn't
-     * exported.  So, we call what it calls...  */
-    task = pid_task(find_pid_ns(p->tgid, &init_pid_ns), PIDTYPE_PID);
-#else
-    task = find_task_by_pid(p->tgid);
-#endif
+  /* We'd like to call find_task_by_pid_ns() here, but it isn't
+    * exported.  So, we call what it calls...  */
+  task = pid_task(find_pid_ns(p->tgid, &init_pid_ns), PIDTYPE_PID);
 
     /* The task may have exited while we weren't watching.  */
     if (task) {

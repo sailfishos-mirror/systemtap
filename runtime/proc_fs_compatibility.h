@@ -34,11 +34,7 @@ static void proc_set_user(struct proc_dir_entry *de, kuid_t uid, kgid_t gid)
 #endif
 
 // 2.6.24 fixed proc_dir_entry refcounting.
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,24)
-#define LAST_ENTRY_COUNT 0
-#else
 #define LAST_ENTRY_COUNT 1
-#endif
 
 /* Notice that this proc_remove() compatibility function isn't
  * exactly like the original, since it can remove entire

@@ -85,10 +85,7 @@ static void *kallsyms_nmi_uaccess_okay = NULL;
 #endif
 #endif
 
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,23)
 #include <linux/user_namespace.h>
-#endif
 
 #if !defined (CONFIG_DEBUG_FS)  && !defined (CONFIG_DEBUG_FS_MODULE)
 #error "DebugFS is required and was not found in the kernel."

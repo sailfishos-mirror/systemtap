@@ -9964,13 +9964,9 @@ uprobe_derived_probe_group::emit_module_utrace_exit (systemtap_session& s)
   // Do a pid->task_struct* lookup.  For 2.6.24+, this code assumes
   // that the pid is always in the global namespace, not in any
   // private namespace.
-  s.op->newline() << "#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,24)";
   // We'd like to call find_task_by_pid_ns() here, but it isn't
   // exported.  So, we call what it calls...
   s.op->newline() << "  tsk = pid_task(find_pid_ns(pid, &init_pid_ns), PIDTYPE_PID);";
-  s.op->newline() << "#else";
-  s.op->newline() << "  tsk = find_task_by_pid (pid);";
-  s.op->newline() << "#endif /* 2.6.24 */";
 
   s.op->newline() << "if (tsk) {"; // just in case the thing exited while we weren't watching
   s.op->newline(1) << "if (__access_process_vm_noflush(tsk, sup->sdt_sem_address, &sdt_semaphore, sizeof(sdt_semaphore), 0)) {";

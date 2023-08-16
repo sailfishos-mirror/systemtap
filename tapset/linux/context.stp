@@ -114,13 +114,7 @@ function ns_ppid:long()
  */
 function pgrp:long ()
 %{ /* pure */ /* unprivileged */ /* stable */
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 24)
-	struct signal_struct *ss = kread( &(current->signal) );
-	STAP_RETVALUE = kread ( &(ss->pgrp) );
-	CATCH_DEREF_FAULT();
-#else
 	STAP_RETVALUE = task_pgrp_nr_ns(current, &init_pid_ns);
-#endif
 %}
 
 /**
@@ -145,13 +139,7 @@ function ns_pgrp:long ()
  */
 function sid:long ()
 %{ /* pure */ /* unprivileged */ /* stable */
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 24)
-	struct signal_struct *ss = kread( &(current->signal) );
-	STAP_RETVALUE = kread ( &(ss->session) );
-	CATCH_DEREF_FAULT();
-#else
 	STAP_RETVALUE = task_session_nr_ns(current, &init_pid_ns);
-#endif
 %}
 
 /**

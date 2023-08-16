@@ -30,13 +30,8 @@
 function tcp_get_info_rto:long(sock:long)
 %{ /* pure */
 	struct sock *sk = (struct sock *)(uintptr_t) STAP_ARG_sock;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,10)
-	struct tcp_opt *tp = tcp_sk(sk);
-	STAP_RETVALUE = (int64_t) jiffies_to_usecs(kread(&(tp->rto)));
-#else
 	const struct inet_connection_sock *icsk = inet_csk(sk);
 	STAP_RETVALUE = (int64_t) jiffies_to_usecs(kread(&(icsk->icsk_rto)));
-#endif
 	CATCH_DEREF_FAULT();
 %}
 
@@ -47,11 +42,7 @@ function tcp_get_info_rto:long(sock:long)
 function tcp_get_info_snd_cwnd:long(sock:long)
 %{ /* pure */
 	struct sock *sk = (struct sock *)(uintptr_t) STAP_ARG_sock;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,10)
-	struct tcp_opt *tp = tcp_sk(sk);
-#else
 	struct tcp_sock *tp = tcp_sk(sk);
-#endif
 	STAP_RETVALUE = (int64_t) kread(&(tp->snd_cwnd));
 	CATCH_DEREF_FAULT();
 %}
@@ -196,11 +187,7 @@ function tcp_sockstate_str:string (state:long) {
 function tcp_ts_get_info_snd_ssthresh:long(sock:long)
 %{ /* pure */
 	struct sock *sk = (struct sock *)(uintptr_t) STAP_ARG_sock;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,10)
-	struct tcp_opt *tp = tcp_sk(sk);
-#else
 	struct tcp_sock *tp = tcp_sk(sk);
-#endif
 	STAP_RETVALUE = (int64_t) kread(&(tp->snd_ssthresh));
 	CATCH_DEREF_FAULT();
 %}
@@ -210,13 +197,8 @@ function tcp_ts_get_info_snd_ssthresh:long(sock:long)
 function tcp_ts_get_info_rcv_mss:long(sock:long)
 %{ /* pure */
 	struct sock *sk = (struct sock *)(uintptr_t) STAP_ARG_sock;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,10)
-	struct tcp_opt *tp = tcp_sk(sk);
-	STAP_RETVALUE = (int64_t) kread(&(tp->ack.rcv_mss));
-#else
 	const struct inet_connection_sock *icsk = inet_csk(sk);
 	STAP_RETVALUE = (int64_t) kread(&(icsk->icsk_ack.rcv_mss));
-#endif
 	CATCH_DEREF_FAULT();
 %}
 

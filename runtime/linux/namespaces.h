@@ -191,15 +191,8 @@ static struct user_namespace *get_user_namespace(int target_ns)
   if (!target_ns_task)
     return NULL;
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 29)
-  target_user_ns = target_ns_task->nsproxy->user_ns;
-#else
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 39)
-  target_user_ns = (task_cred_xxx(target_ns_task, user))->user_ns;
-#else /* LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 39) */
+ /* LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 39) */
   target_user_ns = task_cred_xxx(target_ns_task, user_ns);
-#endif
-#endif
 
   if (target_user_ns)
     get_user_ns(target_user_ns);

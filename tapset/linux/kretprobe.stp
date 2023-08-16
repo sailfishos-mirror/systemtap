@@ -18,11 +18,9 @@
 static void *
 _kretprobe_data(struct kretprobe_instance *pi, size_t offset, size_t length)
 {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,25)
 	size_t end = offset + length;
 	if (end > offset && pi && end <= pi->rp->data_size)
 		return &pi->data[offset];
-#endif
 	return NULL;
 }
 %}

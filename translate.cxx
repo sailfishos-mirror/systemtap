@@ -1200,11 +1200,7 @@ c_unparser::emit_common_header ()
       // to enable/disable probes.
       o->newline( 0)  << "#include <linux/workqueue.h>";
       o->newline( 0)  << "static struct work_struct module_refresher_work;";
-      o->newline( 0)  << "#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,20)";
-      o->newline( 0)  << "static void module_refresher(void *data) {";
-      o->newline( 0)  << "#else";
       o->newline( 0)  << "static void module_refresher(struct work_struct *work) {";
-      o->newline( 0)  << "#endif";
       o->newline( 1)  <<    "systemtap_module_refresh(NULL);";
       o->newline(-1)  << "}";
 
@@ -2050,11 +2046,7 @@ c_unparser::emit_module_init ()
   if (!session->runtime_usermode_p())
     {
       // Initialize workqueue needed for on-the-fly arming/disarming
-      o->newline() << "#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,20)";
-      o->newline() << "INIT_WORK(&module_refresher_work, module_refresher, NULL);";
-      o->newline() << "#else";
       o->newline() << "INIT_WORK(&module_refresher_work, module_refresher);";
-      o->newline() << "#endif";
     }
 
   // Run all probe registrations.  This actually runs begin probes.
@@ -8422,9 +8414,7 @@ translate_pass (systemtap_session& s)
           // background timer (module_refresh_timer). We need to disable that
           // part if hrtimers are not supported.
           s.op->newline() << "#include <linux/version.h>";
-          s.op->newline() << "#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,17)";
           s.op->newline() << "#define STP_ON_THE_FLY_TIMER_ENABLE";
-          s.op->newline() << "#endif";
         }
 
       // Emit embeds ahead of time, in case they affect context layout

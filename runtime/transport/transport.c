@@ -236,23 +236,6 @@ static void _stp_handle_start(struct _stp_msg_start *st)
 	if (handle_startup) {
 		dbug_trans(1, "stp_handle_start\n");
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,23) // linux commit #5f4352fb
-#if LINUX_VERSION_CODE <  KERNEL_VERSION(2,6,29) // linux commit #9be260a6
-#ifdef STAPCONF_VM_AREA
-		{ /* PR9740: workaround for kernel valloc bug. */
-                  /* PR14611: not required except within above kernel range. */
-			void *dummy;
-#ifdef STAPCONF_VM_AREA_PTE
-			dummy = alloc_vm_area (PAGE_SIZE, NULL);
-#else
-			dummy = alloc_vm_area (PAGE_SIZE);
-#endif
-			free_vm_area (dummy);
-		}
-#endif
-#endif
-#endif
-
 		_stp_target = st->target;
 
 #if defined(CONFIG_USER_NS)
@@ -341,7 +324,7 @@ static int _stp_handle_kallsyms_lookups(void)
   }
 #endif
   /* PR13489, missing inode-uprobes symbol-export workaround */
-#if !defined(STAPCONF_TASK_USER_REGSET_VIEW_EXPORTED) && !defined(STAPCONF_UTRACE_REGSET) /* RHEL5 era utrace */
+#if !defined(STAPCONF_TASK_USER_REGSET_VIEW_EXPORTED) /* RHEL5 era utrace */
         kallsyms_task_user_regset_view = (void*) kallsyms_lookup_name ("task_user_regset_view");
         /* There exist interesting kernel versions without task_user_regset_view(), like ARM before 3.0.
            For these kernels, uprobes etc. are out of the question, but plain kernel stap works fine.
@@ -693,12 +676,8 @@ static inline void _stp_lock_inode(struct inode *inode)
 #ifdef STAPCONF_INODE_RWSEM
 	inode_lock(inode);
 #else
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,16)
 	might_sleep();
 	mutex_lock(&inode->i_mutex);
-#else
-	down(&inode->i_sem);
-#endif
 #endif
 }
 
@@ -707,11 +686,7 @@ static inline void _stp_unlock_inode(struct inode *inode)
 #ifdef STAPCONF_INODE_RWSEM
 	inode_unlock(inode);
 #else
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,16)
 	mutex_unlock(&inode->i_mutex);
-#else
-	up(&inode->i_sem);
-#endif
 #endif
 }
 
