@@ -93,7 +93,8 @@ run "hostname"
 run "nslookup `hostname`"
 run "cat /etc/hosts"
 run "cat /var/log/stap-server/log"
-run "cat /proc/cpuinfo | egrep 'processor|vendor_id|model name'"
+run "cat /proc/cpuinfo | egrep 'processor|vendor_id|model name|flags|bugs'"
+run "cat /sys/kernel/security/lockdown"
 if [ -x /usr/bin/dpkg ]; then
   # debian/ubuntu
   run "dpkg --list | egrep 'systemtap|elfutils|kernel|linux|gcc|dyninst|java|byteman|avahi|nss|nspr|dejagnu|libdw' | awk '{print \$2,\$3}' | sort"

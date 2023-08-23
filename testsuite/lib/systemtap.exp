@@ -594,7 +594,7 @@ proc fullpath { path } {
 }
 
 proc get_system_info {} {
-    global Host Snapshot Distro DistroID DistroVer GCC_Version GCC_FullVersion ELF_Version env SElinux Dracut_Version
+    global Host Snapshot Distro DistroID DistroVer GCC_Version GCC_FullVersion ELF_Version env SElinux CPUFlags Lockdown Dracut_Version
 
     set Host [exec /bin/uname -a]
     if [file exists ../SNAPSHOT] {
@@ -642,6 +642,13 @@ proc get_system_info {} {
         set SElinux [exec /usr/sbin/getenforce]
     } else {
         set SElinux "unknown"
+    }
+    # Get cpu flags
+    set CPUFlags [exec grep flags /proc/cpuinfo | sort -u]
+    if [file exists /sys/kernel/security/lockdown] {
+        set Lockdown [exec cat /sys/kernel/security/lockdown]
+    } else {
+        set Lockdown ""
     }
     # Parse dracut version
     regexp {\d[^\-]*} [exec sh -c "dracut --help 2>&1 | grep Version || echo 0"] Dracut_Version

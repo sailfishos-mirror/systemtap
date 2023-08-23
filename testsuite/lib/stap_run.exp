@@ -159,7 +159,7 @@ proc wait_5_secs {} {
 }
 
 proc print_system_info {} {
-	global Host Snapshot Distro GCC_FullVersion SElinux
+	global Host Snapshot Distro GCC_FullVersion SElinux CPUFlags Lockdown
 
 	clone_output "\nHost: $Host"
 	if {[string compare $Snapshot "unknown"]!=0} {
@@ -168,6 +168,8 @@ proc print_system_info {} {
 	clone_output "GCC: $GCC_FullVersion"
 	clone_output "Distro: $Distro"
         clone_output "SElinux: $SElinux"
+        clone_output "CPUFlags: $CPUFlags"
+        clone_output "Lockdown: $Lockdown"    
         clone_output "\n"
 }
 
