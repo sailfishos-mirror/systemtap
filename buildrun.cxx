@@ -118,6 +118,9 @@ make_any_make_cmd(systemtap_session& s, const string& dir, const string& target)
 
       // linux 5.11 wants btf but no, baby, no
       "CONFIG_DEBUG_INFO_BTF_MODULES=",
+
+      // PR30716: work around objtool stac/clac warning
+      "CONFIG_HAVE_UACCESS_VALIDATION=",
       
       // RHBZ1321628: suppress stack validation; expected to be temporary
       // "CONFIG_STACK_VALIDATION=",
