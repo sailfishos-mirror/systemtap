@@ -5484,10 +5484,6 @@ kernel_supports_inode_uretprobes(systemtap_session& s)
 void
 check_process_probe_kernel_support(systemtap_session& s)
 {
-  // If we've got utrace, we're good to go.
-  if (s.kernel_config["CONFIG_UTRACE"] == "y")
-    return;
-
   // We don't have utrace.  For process probes that aren't
   // uprobes-based, we just need the task_finder.  The task_finder
   // needs CONFIG_TRACEPOINTS and specific tracepoints.  There is a
@@ -5505,7 +5501,7 @@ check_process_probe_kernel_support(systemtap_session& s)
       && kernel_supports_inode_uprobes(s))
     return;
 
-  throw SEMANTIC_ERROR (_("process probes not available without kernel CONFIG_UTRACE or CONFIG_TRACEPOINTS/CONFIG_ARCH_SUPPORTS_UPROBES/CONFIG_UPROBES"));
+  throw SEMANTIC_ERROR (_("process probes not available without kernel CONFIG_TRACEPOINTS/CONFIG_ARCH_SUPPORTS_UPROBES/CONFIG_UPROBES"));
 }
 
 
@@ -9968,13 +9964,9 @@ uprobe_derived_probe_group::emit_module_utrace_exit (systemtap_session& s)
   // Do a pid->task_struct* lookup.  For 2.6.24+, this code assumes
   // that the pid is always in the global namespace, not in any
   // private namespace.
-  s.op->newline() << "#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,24)";
   // We'd like to call find_task_by_pid_ns() here, but it isn't
   // exported.  So, we call what it calls...
   s.op->newline() << "  tsk = pid_task(find_pid_ns(pid, &init_pid_ns), PIDTYPE_PID);";
-  s.op->newline() << "#else";
-  s.op->newline() << "  tsk = find_task_by_pid (pid);";
-  s.op->newline() << "#endif /* 2.6.24 */";
 
   s.op->newline() << "if (tsk) {"; // just in case the thing exited while we weren't watching
   s.op->newline(1) << "if (__access_process_vm_noflush(tsk, sup->sdt_sem_address, &sdt_semaphore, sizeof(sdt_semaphore), 0)) {";
@@ -13186,7 +13178,6 @@ void
 register_standard_tapsets(systemtap_session & s)
 {
   register_tapset_been(s);
-  register_tapset_itrace(s);
   register_tapset_mark(s);
   register_tapset_procfs(s);
   register_tapset_timers(s);

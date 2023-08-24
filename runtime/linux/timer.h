@@ -12,9 +12,6 @@
 #define _LINUX_TIMER_H_
 
 // If we're on kernels < 2.6.17, then hrtimers are not supported.
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,17)
-#error "hrtimers not implemented"
-#else /* kernel version >= 2.6.17 */
 #include <linux/hrtimer.h>
 
 static unsigned long stap_hrtimer_resolution = 0;
@@ -45,7 +42,5 @@ typedef enum hrtimer_restart hrtimer_return_t;
 #ifdef STAPCONF_HRTIMER_REL
 #define HRTIMER_MODE_REL HRTIMER_REL
 #endif
-
-#endif /* kernel version >= 2.6.17 */
 
 #endif /* _LINUX_TIMER_H_ */

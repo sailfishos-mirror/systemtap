@@ -20,15 +20,6 @@ proc grep_kallsyms { pattern } {
 }
 
 
-# Test for kernel built-in utrace (CONFIG_UTRACE).
-# Only original rhel5/6-era utrace need apply.
-proc utrace_orig_p {} {
-    # We want utrace_attach (rhel5) or utrace_attach_task (rhel6), but don't
-    # get confused by the private module version of any active stap module.
-    return [expr [grep_kallsyms "T utrace_attach"] || [grep_kallsyms "T .utrace_attach_task"]]
-}
-
-
 # Test for tracepoint-based utrace, or rather the in-kernel
 # facilities which enable our emulation of utrace.
 proc utrace_emu_p {} {
@@ -46,7 +37,7 @@ proc utrace_emu_p {} {
 
 # Test for utrace - any flavor will do...
 proc utrace_p {} {
-    return [expr [utrace_orig_p] || [utrace_emu_p] ]
+    return [utrace_emu_p]
 }
 
 
@@ -56,7 +47,7 @@ proc classic_uprobes_p {} {
     #
     # Although ia64 has classical utrace, uprobes hasn't been
     # ported there (PR7081).
-    return [expr [utrace_orig_p] && ! [istarget ia64-*-*] ]
+    return [expr ! [istarget ia64-*-*] ]
 }
 
 proc inode_uprobes_p {} {

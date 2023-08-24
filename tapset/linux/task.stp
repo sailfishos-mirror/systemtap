@@ -10,9 +10,7 @@
 %{
 #include <linux/version.h>
 #include <linux/file.h>
-#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,25)
 #include <linux/fdtable.h>
-#endif
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,9,0)
 #include <linux/sched/rt.h>
 #endif
@@ -248,19 +246,10 @@ function pid2task:long (pid:long) {
     return & @task(%{ /* pure */ ({
         struct task_struct *t = NULL;
         pid_t t_pid  = (pid_t)(long)STAP_ARG_pid;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,31)
         struct pid *p_pid = find_get_pid(t_pid);
         rcu_read_lock();
         t = pid_task(p_pid, PIDTYPE_PID);
         put_pid(p_pid);
-#else
-        rcu_read_lock();
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,24)
-        t = find_task_by_vpid (t_pid);
-#else
-        t = find_task_by_pid (t_pid);
-#endif /* 2.6.24 */
-#endif /* 2.6.31 */
         rcu_read_unlock();
         (unsigned long)t;
     }) %})
@@ -609,21 +598,11 @@ function task_open_file_handles:long (task:long)
     int locked = 0;
     unsigned int count=0, fd, max;
     struct task_struct *t;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,15)
-    /* Older kernels */
-    struct files_struct *f;
-#else
     struct files_struct *fs;
     struct fdtable *f;
-#endif
     t = (struct task_struct *)(uintptr_t)STAP_ARG_task;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,15)
-    /* Older kernels */
-    f = kread(&(t->files));
-#else
     fs = kread(&(t->files));
     f = kread(&(fs->fdt));
-#endif
     rcu_read_lock();
     locked = 1;
     max = kread(&(f->max_fds));
@@ -648,19 +627,11 @@ function task_max_file_handles:long (task:long)
 %{ /* pure */
     int locked = 0;
     struct task_struct *t;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,15)
-    struct files_struct *f;
-#else
     struct files_struct *fs;
     struct fdtable *f;
-#endif
     t = (struct task_struct *)(uintptr_t)STAP_ARG_task;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,15)
-    f = kread(&(t->files));
-#else
     fs = kread (&(t->files));
     f = kread(&(fs->fdt));
-#endif
     rcu_read_lock();
     locked = 1;
     STAP_RETVALUE = kread(&(f->max_fds));

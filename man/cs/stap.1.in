@@ -984,7 +984,7 @@ chybám:
 
 .SAMPLE
 // Následující kód způsobí chybu:
-%( CONFIG_UTRACE == "y" %?
+%( CONFIG_UPROBE == "y" %?
     @define foo %( process.syscall %)
 %:
     @define foo %( **ERROR** %)
@@ -992,7 +992,7 @@ chybám:
 
 // Následující kód bude fungovat správně:
 @define foo %(
-  %( CONFIG_UTRACE == "y" %? process.syscall %: **ERROR** %)
+  %( CONFIG_UPROBE == "y" %? process.syscall %: **ERROR** %)
 %)
 .ESAMPLE
 

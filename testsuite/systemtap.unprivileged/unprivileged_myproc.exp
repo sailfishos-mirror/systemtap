@@ -67,8 +67,6 @@ set myproc_probe_types [list \
   "process.thread.end" \
   "process(number).begin" \
   "process(number).end" \
-  "process(number).insn" \
-  "process(number).insn.block" \
   "process(number).statement(number).absolute" \
   "process(number).statement(number).absolute.return" \
   "process(number).syscall" \
@@ -117,8 +115,6 @@ set myproc_probe_types [list \
   "process(string).function(string).callee(string).return" \
   "process(string).function(string).callees" \
   "process(string).function(string).callees(number)" \
-  "process(string).insn" \
-  "process(string).insn.block" \
   "process(string).library(string).function(number)" \
   "process(string).library(string).function(number).call" \
   "process(string).library(string).function(number).inline" \
@@ -339,18 +335,6 @@ proc test_probes { privilege } {
 		set tested($probe_type) 1
 		continue
 	    }
-	    process(number).insn -
-	    process(number).insn.block -
-	    process(string).insn -
-	    process(string).insn.block
-	    {
-		# These probe types are not valid for unprivileged users.
-		if {$privilege == "stapusr"} {
-		    untested "$test: $option $probe_type"
-		    set tested($probe_type) 1
-		    continue
-		}
-	    }
 	}
 
 	# There are currently some known and expected failures
@@ -401,13 +385,6 @@ proc test_probes { privilege } {
 		} elseif {![uretprobes_p]} {
 		    setup_kfail URETPROBES *-*-*
 		}
-	    }
-	    process(number).insn -
-	    process(number).insn.block -
-	    process(string).insn -
-	    process(string).insn.block
-	    {
-		if {![utrace_orig_p]} { setup_kfail ITRACE *-*-* }
 	    }
 	}
 

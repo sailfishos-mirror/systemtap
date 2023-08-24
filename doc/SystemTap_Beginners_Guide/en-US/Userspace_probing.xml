@@ -29,23 +29,6 @@ If uprobes is integrated, the output of this command is as follows:
 
 <screen>CONFIG_UPROBES=y</screen>
 
-<para>
-If you are running a kernel prior to version 3.5, SystemTap automatically
-builds the uprobes module. However, you also need the utrace kernel
-extensions required by the SystemTap user-space probing to track
-various user-space events. More details about the utrace infrastructure are
-available at <ulink url="http://sourceware.org/systemtap/wiki/utrace" />.
-To determine whether the currently running Linux kernel provides the needed utrace support, type the following at a shell prompt:
-</para>
-
-<screen><command>grep CONFIG_UTRACE /boot/config-`uname -r`</command></screen>
-
-<para>
-If the Linux kernel supports user-space probing, the command produces the following output:
-</para>
-
-<screen>CONFIG_UTRACE=y</screen>
-
 <!-- FIXME How does uprobes work for cross compilation and
  using a compile server? -->
 

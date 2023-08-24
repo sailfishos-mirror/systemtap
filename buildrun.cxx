@@ -388,8 +388,6 @@ compile_pass (systemtap_session& s)
   output_autoconf(s, o, cs, "autoconf-grsecurity.c", "STAPCONF_GRSECURITY", NULL);
   output_autoconf(s, o, cs, "autoconf-trace-printk.c", "STAPCONF_TRACE_PRINTK", NULL);
   output_autoconf(s, o, cs, "autoconf-regset.c", "STAPCONF_REGSET", NULL);
-  output_autoconf(s, o, cs, "autoconf-utrace-regset.c", "STAPCONF_UTRACE_REGSET", NULL);
-  output_autoconf(s, o, cs, "autoconf-uprobe-get-pc.c", "STAPCONF_UPROBE_GET_PC", NULL);
   output_autoconf(s, o, cs, "autoconf-hlist-4args.c", "STAPCONF_HLIST_4ARGS", NULL);
   output_autoconf(s, o, cs, "autoconf-get-kretprobe.c", "STAPCONF_GET_KRETPROBE", NULL);
   output_exportconf(s, o2, "tsc_khz", "STAPCONF_TSC_KHZ");
@@ -855,13 +853,6 @@ uprobes_pass (systemtap_session& s)
 {
   if (!s.need_uprobes || kernel_built_uprobes(s))
     return 0;
-
-  if (s.kernel_config["CONFIG_UTRACE"] != string("y"))
-    {
-      clog << _("user-space process-tracking facilities not available [man error::process-tracking]") << endl;
-      s.set_try_server ();
-      return 1;
-    }
 
   /*
    * We need to use the version of uprobes that comes with SystemTap.  Try to

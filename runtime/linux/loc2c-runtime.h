@@ -62,21 +62,14 @@
 
 /* PR 10601: user-space (user_regset) register access.
    Needs arch specific code, only i386 and x86_64 for now.  */
-#if ((defined(STAPCONF_REGSET) || defined(STAPCONF_UTRACE_REGSET)) \
+#if ((defined(STAPCONF_REGSET)) \
      && (defined (__i386__) || defined (__x86_64__)))
 
 #if defined(STAPCONF_REGSET)
 #include <linux/regset.h>
 #endif
 
-#if defined(STAPCONF_UTRACE_REGSET)
-#include <linux/tracehook.h>
-/* adapt new names to old decls */
-#define user_regset_view utrace_regset_view
-#define user_regset utrace_regset
-#define task_user_regset_view utrace_native_view
-
-#else // PR13489, inodes-uprobes export kludge
+// PR13489, inodes-uprobes export kludge
 #if !defined(STAPCONF_TASK_USER_REGSET_VIEW_EXPORTED)
 // First typedef from the original decl, then #define it as a typecasted call.
 // NB: not all archs actually have the function, but the decl is universal in regset.h
@@ -85,7 +78,6 @@ typedef typeof(&task_user_regset_view) task_user_regset_view_fn;
 #define task_user_regset_view(t) (kallsyms_task_user_regset_view ? \
                                   (* (task_user_regset_view_fn)(kallsyms_task_user_regset_view))((t)) : \
                                   NULL)
-#endif
 #endif
 
 struct usr_regset_lut {

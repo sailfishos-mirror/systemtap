@@ -1064,7 +1064,7 @@ conditional expressions will be macroexpanded regardless of how the
 condition is evaluated. This can sometimes lead to errors:
 .SAMPLE
 // The following results in a conflict:
-%( CONFIG_UTRACE == "y" %?
+%( CONFIG_UPROBE == "y" %?
     @define foo %( process.syscall %)
 %:
     @define foo %( **ERROR** %)
@@ -1072,7 +1072,7 @@ condition is evaluated. This can sometimes lead to errors:
 
 // The following works properly as expected:
 @define foo %(
-  %( CONFIG_UTRACE == "y" %? process.syscall %: **ERROR** %)
+  %( CONFIG_UPROBE == "y" %? process.syscall %: **ERROR** %)
 %)
 .ESAMPLE
 The first example is incorrect because both @defines are evaluated in

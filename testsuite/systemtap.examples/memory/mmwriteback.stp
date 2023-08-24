@@ -8,9 +8,7 @@ function log_event:long ()
   return (!traced_pid || traced_pid == pid())
 }
 
-probe kernel.trace("balance_dirty_pages") !,		# v3.2+
-      kernel.trace("mm_balancedirty_writeout") !,	# RHEL6(2.6.32)
-      kernel.trace("mm_pdflush_bgwriteout")		# RHEL5(2.6.18)
+probe kernel.trace("balance_dirty_pages")		# v3.2+
 {
   if (!log_event()) next
   bgwriteout[pid()] <<< (@defined($dirtied) ? $dirtied
@@ -18,19 +16,14 @@ probe kernel.trace("balance_dirty_pages") !,		# v3.2+
   command[pid()] = execname()
 }
 
-probe kernel.trace("writeback_pages_written") !,	# v2.6.36+
-							#   & RHEL6(2.6.32)
-      kernel.trace("mm_pdflush_kupdate")		# RHEL5(2.6.18)
+probe kernel.trace("writeback_pages_written")	# v2.6.36+
 {
   if (!log_event()) next
   kupdate[pid()] <<< (@defined($pages_written) ? $pages_written : $count)
   command[pid()] = execname()
 }
 
-probe kernel.trace("mm_vmscan_writepage") !,		# v2.6.36+
-							#   & RHEL6(2.6.32)
-      kernel.trace("mm_pagereclaim_pgout")		# RHEL5(2.6.18)
-							#   & RHEL6(2.6.32)
+probe kernel.trace("mm_vmscan_writepage")		# v2.6.36+
 {
   if (!log_event()) next
   pgout[pid()] <<< 1

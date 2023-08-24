@@ -686,10 +686,6 @@ static int _stp_build_id_check (struct _stp_module *m,
 #endif
 
       /*
-       * Why check CONFIG_UTRACE here? If we're using real in-kernel
-       * utrace, we can always just call get_user() (since we're
-       * either reading kernel memory or tsk == current).
-       *
        * Since we're only reading here, we can call
        * __access_process_vm_noflush(), which only calls things that
        * are exported.
@@ -697,9 +693,7 @@ static int _stp_build_id_check (struct _stp_module *m,
        * PR26811: Kernel 5.10+ after set_fs() removal no longer supports
        * reading kernel addresses with get_user.
        */
-#if defined(CONFIG_UTRACE) && !defined(STAPCONF_SET_FS)
-      rc = get_user(practice, ((unsigned char*)(void*)(notes_addr + j)));
-#elif defined(STAPCONF_SET_FS)
+#if defined(STAPCONF_SET_FS)
       if (!tsk || tsk == current) {
 	rc = get_user(practice, ((unsigned char*)(void*)(notes_addr + j)));
       }

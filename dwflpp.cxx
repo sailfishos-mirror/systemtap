@@ -4662,11 +4662,6 @@ dwflpp::build_kernel_blocklist()
   if (sess.architecture == "i686")
     blfn_ret += "|__switch_to";
 
-  // RHEL6 pre-beta 2.6.32-19.el6
-  blfn += "|special_mapping_.*";
-  blfn += "|.*_pte_.*"; // or "|smaps_pte_range";
-  blfile += "|fs/seq_file\\.c";
-
   blfn += ")$";
   blfn_ret += ")$";
   blfile += ")$";

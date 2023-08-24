@@ -791,24 +791,14 @@ utrace_derived_probe_group::emit_linux_probe_decl (systemtap_session& s,
     // stops the thread, that works around bug 6841.
     case UDPF_SYSCALL:
       s.op->line() << " .flags=(UDPF_SYSCALL),";
-      s.op->newline() << "#if !defined(CONFIG_UTRACE)";
       s.op->newline() << " .ops={ .report_syscall_entry=stap_utrace_probe_syscall,  .report_death=stap_utrace_task_finder_report_death },";
       s.op->line() << " .events=(UTRACE_EVENT(SYSCALL_ENTRY)|UTRACE_EVENT(DEATH)),";
-      s.op->newline() << "#else";
-      s.op->newline() << " .ops={ .report_syscall_entry=stap_utrace_probe_syscall,  .report_exit=stap_utrace_task_finder_report_exit },";
-      s.op->line() << " .events=(UTRACE_EVENT(SYSCALL_ENTRY)|UTRACE_EVENT(EXIT)),";
-      s.op->newline() << "#endif";
       s.op->newline();
       break;
     case UDPF_SYSCALL_RETURN:
       s.op->line() << " .flags=(UDPF_SYSCALL_RETURN),";
-      s.op->newline() << "#if !defined(CONFIG_UTRACE)";
       s.op->newline() << " .ops={ .report_syscall_exit=stap_utrace_probe_syscall, .report_death=stap_utrace_task_finder_report_death },";
       s.op->line() << " .events=(UTRACE_EVENT(SYSCALL_EXIT)|UTRACE_EVENT(DEATH)),";
-      s.op->newline() << "#else";
-      s.op->newline() << " .ops={ .report_syscall_exit=stap_utrace_probe_syscall, .report_exit=stap_utrace_task_finder_report_exit },";
-      s.op->line() << " .events=(UTRACE_EVENT(SYSCALL_EXIT)|UTRACE_EVENT(EXIT)),";
-      s.op->newline() << "#endif";
       s.op->newline();
       break;
 
@@ -1269,18 +1259,10 @@ utrace_derived_probe_group::emit_module_linux_exit (systemtap_session& s)
 {
   if (probes_by_path.empty() && probes_by_pid.empty()) return;
 
-  // Only runtime/linux/task_finder.c uses stap_utrace_detach_ops()
-  if (s.kernel_config["CONFIG_UTRACE"] != string("y")) return;
-
   s.op->newline();
   s.op->newline() << "/* ---- utrace probes ---- */";
   s.op->newline() << "for (i=0; i<ARRAY_SIZE(stap_utrace_probes); i++) {";
   s.op->newline(1) << "struct stap_utrace_probe *p = &stap_utrace_probes[i];";
-
-  s.op->newline() << "if (p->engine_attached) {";
-  s.op->newline(1) << "stap_utrace_detach_ops(&p->ops);";
-
-  s.op->newline(-1) << "}";
   s.op->newline(-1) << "}";
 }
 

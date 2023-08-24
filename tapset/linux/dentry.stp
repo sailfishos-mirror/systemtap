@@ -9,9 +9,7 @@
 
 %{
 // Make sure the filesystem "magic" constants we use are defined.
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,19))
 #include <linux/magic.h>
-#endif
 #ifndef PIPEFS_MAGIC
 #define PIPEFS_MAGIC            0x50495045
 #endif
@@ -273,18 +271,6 @@ function task_dentry_path:string(task:long,dentry:long,vfsmnt:long)
 					continue
 				}
 				break
-			}
-			/* RHEL6-era kernels */
-			else {
-				/* Global root? */
-				if (vfsmnt->mnt_parent == vfsmnt)
-					return sprintf("%s%s",
-						       d_name(vfsmnt->mnt_mountpoint),
-						       name)
-
-				dentry = vfsmnt->mnt_mountpoint
-				vfsmnt = vfsmnt->mnt_parent
-				continue
 			}
 		}
 		name = __dentry_prepend(dentry, name)

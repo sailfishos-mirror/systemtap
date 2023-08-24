@@ -33,19 +33,13 @@ function rlimit_from_str:long (lim_str:string)
     aux_rlimit(RLIMIT_AS);
     aux_rlimit(RLIMIT_LOCKS);
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,8)
     aux_rlimit(RLIMIT_SIGPENDING);
     aux_rlimit(RLIMIT_MSGQUEUE);
-#endif
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,12)
     aux_rlimit(RLIMIT_NICE);
     aux_rlimit(RLIMIT_RTPRIO);
-#endif
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,25)
     aux_rlimit(RLIMIT_RTTIME);
-#endif
 
     STAP_RETVALUE = -1;
 

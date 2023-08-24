@@ -767,10 +767,6 @@ process.syscall
 process(PID).syscall.return
 process("FULLPATH").syscall.return
 process.syscall.return
-process(PID).insn
-process("FULLPATH").insn
-process(PID).insn.block
-process("FULLPATH").insn.block
 .ESAMPLE
 .PP
 
@@ -804,13 +800,6 @@ volání.  Číslo systémového volání je přístupné v kontextové proměnn
 a návratová hodnota systémového volání pak v rámci kontextové proměnné
 .BR $return .
 Sonda
-.B process.insn
-je aktivována pro každou atomickou instrukci procesu PID nebo
-FULLPATH.
-Sonda
-.B process.insn.block
-je aktivována pro blok instrukcí procesu daného PID nebo
-FULLPATH.
 .PP
 Pokud je sonda specifikována bez PID, nebo FULLPATH, budou analyzována vlákna
 všech uživatelských procesů.  Ovšem pokud byl stap volán s přepínačem

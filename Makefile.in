@@ -204,7 +204,6 @@ am__dirstamp = $(am__leading_dot)dirstamp
 @BUILD_TRANSLATOR_TRUE@	stap-tapset-netfilter.$(OBJEXT) \
 @BUILD_TRANSLATOR_TRUE@	stap-tapset-perfmon.$(OBJEXT) \
 @BUILD_TRANSLATOR_TRUE@	stap-tapset-mark.$(OBJEXT) \
-@BUILD_TRANSLATOR_TRUE@	stap-tapset-itrace.$(OBJEXT) \
 @BUILD_TRANSLATOR_TRUE@	stap-tapset-utrace.$(OBJEXT) \
 @BUILD_TRANSLATOR_TRUE@	stap-task_finder.$(OBJEXT) \
 @BUILD_TRANSLATOR_TRUE@	stap-dwflpp.$(OBJEXT) \
@@ -356,7 +355,6 @@ am__depfiles_remade = ./$(DEPDIR)/stap-analysis.Po \
 	./$(DEPDIR)/stap-stringtable.Po \
 	./$(DEPDIR)/stap-tapset-been.Po \
 	./$(DEPDIR)/stap-tapset-dynprobe.Po \
-	./$(DEPDIR)/stap-tapset-itrace.Po \
 	./$(DEPDIR)/stap-tapset-mark.Po \
 	./$(DEPDIR)/stap-tapset-method.Po \
 	./$(DEPDIR)/stap-tapset-netfilter.Po \
@@ -699,10 +697,10 @@ oldinclude_HEADERS = includes/sys/sdt.h includes/sys/sdt-config.h
 @BUILD_TRANSLATOR_TRUE@	dwarf_wrappers.cxx tapset-been.cxx \
 @BUILD_TRANSLATOR_TRUE@	tapset-procfs.cxx tapset-timers.cxx \
 @BUILD_TRANSLATOR_TRUE@	tapset-netfilter.cxx tapset-perfmon.cxx \
-@BUILD_TRANSLATOR_TRUE@	tapset-mark.cxx tapset-itrace.cxx \
-@BUILD_TRANSLATOR_TRUE@	tapset-utrace.cxx task_finder.cxx \
-@BUILD_TRANSLATOR_TRUE@	dwflpp.cxx rpm_finder.cxx setupdwfl.cxx \
-@BUILD_TRANSLATOR_TRUE@	remote.cxx privilege.cxx cmdline.cxx \
+@BUILD_TRANSLATOR_TRUE@	tapset-mark.cxx tapset-utrace.cxx \
+@BUILD_TRANSLATOR_TRUE@	task_finder.cxx dwflpp.cxx \
+@BUILD_TRANSLATOR_TRUE@	rpm_finder.cxx setupdwfl.cxx remote.cxx \
+@BUILD_TRANSLATOR_TRUE@	privilege.cxx cmdline.cxx \
 @BUILD_TRANSLATOR_TRUE@	tapset-dynprobe.cxx tapset-method.cxx \
 @BUILD_TRANSLATOR_TRUE@	translator-output.cxx stapregex.cxx \
 @BUILD_TRANSLATOR_TRUE@	stapregex-tree.cxx stapregex-parse.cxx \
@@ -1129,7 +1127,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stap-stringtable.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stap-tapset-been.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stap-tapset-dynprobe.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stap-tapset-itrace.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stap-tapset-mark.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stap-tapset-method.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stap-tapset-netfilter.Po@am__quote@ # am--include-marker
@@ -1508,20 +1505,6 @@ stap-tapset-mark.obj: tapset-mark.cxx
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='tapset-mark.cxx' object='stap-tapset-mark.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(stap_CPPFLAGS) $(CPPFLAGS) $(stap_CXXFLAGS) $(CXXFLAGS) -c -o stap-tapset-mark.obj `if test -f 'tapset-mark.cxx'; then $(CYGPATH_W) 'tapset-mark.cxx'; else $(CYGPATH_W) '$(srcdir)/tapset-mark.cxx'; fi`
-
-stap-tapset-itrace.o: tapset-itrace.cxx
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(stap_CPPFLAGS) $(CPPFLAGS) $(stap_CXXFLAGS) $(CXXFLAGS) -MT stap-tapset-itrace.o -MD -MP -MF $(DEPDIR)/stap-tapset-itrace.Tpo -c -o stap-tapset-itrace.o `test -f 'tapset-itrace.cxx' || echo '$(srcdir)/'`tapset-itrace.cxx
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/stap-tapset-itrace.Tpo $(DEPDIR)/stap-tapset-itrace.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='tapset-itrace.cxx' object='stap-tapset-itrace.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(stap_CPPFLAGS) $(CPPFLAGS) $(stap_CXXFLAGS) $(CXXFLAGS) -c -o stap-tapset-itrace.o `test -f 'tapset-itrace.cxx' || echo '$(srcdir)/'`tapset-itrace.cxx
-
-stap-tapset-itrace.obj: tapset-itrace.cxx
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(stap_CPPFLAGS) $(CPPFLAGS) $(stap_CXXFLAGS) $(CXXFLAGS) -MT stap-tapset-itrace.obj -MD -MP -MF $(DEPDIR)/stap-tapset-itrace.Tpo -c -o stap-tapset-itrace.obj `if test -f 'tapset-itrace.cxx'; then $(CYGPATH_W) 'tapset-itrace.cxx'; else $(CYGPATH_W) '$(srcdir)/tapset-itrace.cxx'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/stap-tapset-itrace.Tpo $(DEPDIR)/stap-tapset-itrace.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='tapset-itrace.cxx' object='stap-tapset-itrace.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(stap_CPPFLAGS) $(CPPFLAGS) $(stap_CXXFLAGS) $(CXXFLAGS) -c -o stap-tapset-itrace.obj `if test -f 'tapset-itrace.cxx'; then $(CYGPATH_W) 'tapset-itrace.cxx'; else $(CYGPATH_W) '$(srcdir)/tapset-itrace.cxx'; fi`
 
 stap-tapset-utrace.o: tapset-utrace.cxx
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(stap_CPPFLAGS) $(CPPFLAGS) $(stap_CXXFLAGS) $(CXXFLAGS) -MT stap-tapset-utrace.o -MD -MP -MF $(DEPDIR)/stap-tapset-utrace.Tpo -c -o stap-tapset-utrace.o `test -f 'tapset-utrace.cxx' || echo '$(srcdir)/'`tapset-utrace.cxx
@@ -2392,7 +2375,6 @@ distclean: distclean-recursive
 	-rm -f ./$(DEPDIR)/stap-stringtable.Po
 	-rm -f ./$(DEPDIR)/stap-tapset-been.Po
 	-rm -f ./$(DEPDIR)/stap-tapset-dynprobe.Po
-	-rm -f ./$(DEPDIR)/stap-tapset-itrace.Po
 	-rm -f ./$(DEPDIR)/stap-tapset-mark.Po
 	-rm -f ./$(DEPDIR)/stap-tapset-method.Po
 	-rm -f ./$(DEPDIR)/stap-tapset-netfilter.Po
@@ -2511,7 +2493,6 @@ maintainer-clean: maintainer-clean-recursive
 	-rm -f ./$(DEPDIR)/stap-stringtable.Po
 	-rm -f ./$(DEPDIR)/stap-tapset-been.Po
 	-rm -f ./$(DEPDIR)/stap-tapset-dynprobe.Po
-	-rm -f ./$(DEPDIR)/stap-tapset-itrace.Po
 	-rm -f ./$(DEPDIR)/stap-tapset-mark.Po
 	-rm -f ./$(DEPDIR)/stap-tapset-method.Po
 	-rm -f ./$(DEPDIR)/stap-tapset-netfilter.Po

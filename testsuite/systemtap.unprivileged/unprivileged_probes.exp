@@ -193,7 +193,6 @@ set unrestricted_probe_types [list \
 
 # These probes should not be acceptable to pass 2 for unprivileged users
 set restricted_probe_types [list \
-  "process(string).insn" \
   "kernel.data(number).length(number).rw" \
   "kernel.data(number).length(number).write" \
   "kernel.data(number).rw" \
@@ -262,9 +261,6 @@ set restricted_probe_types [list \
   "perf.type(number).config(number).process" \
   "perf.type(number).config(number).process(string)" \
   "perf.type(number).config(number).process(string).counter(string)" \
-  "process(number).insn" \
-  "process(number).insn.block" \
-  "process(string).insn.block" \
   "procfs.read" \
   "procfs.write" \
   "procfs.read.maxsize(number)" \

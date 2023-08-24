@@ -72,17 +72,10 @@ static void _stp_vma_match_vdso(struct task_struct *tsk)
 		unsigned char b;
 
 		/*
-		 * Why check CONFIG_UTRACE here? If we're using real
-		 * in-kernel utrace, we can always just call
-		 * get_user() (since tsk == current).
-		 *
 		 * Since we're only reading here, we can call
 		 * __access_process_vm_noflush(), which only calls
 		 * things that are exported.
 		 */
-#ifdef CONFIG_UTRACE
-		rc = copy_from_user(&b, (void*)(notes_addr + j), 1);
-#else
 		if (tsk == current)
 		  {
 		    rc = copy_from_user(&b, (void*)(notes_addr + j), 1);
@@ -92,7 +85,6 @@ static void _stp_vma_match_vdso(struct task_struct *tsk)
 		    rc = (__access_process_vm_noflush(tsk, (notes_addr + j),
 						      &b, 1, 0) != 1);
 		  }
-#endif
 		if (rc || b != m->build_id_bits[j])
 		  {
 		    dbug_task_vma(1,"darn, not equal (rc=%d) at %d (0x%x != 0x%x)\n",
@@ -294,8 +286,7 @@ static int _stp_vma_init(void)
 /* Get rid of the vma tracker (memory). */
 static void _stp_vma_done(void)
 {
-/* NB HAVE_TASK_FINDER already includes the case of CONFIG_UTRACE.
- * See runtime/linux/runtime.h for more details. See also PR26123 */
+/* See runtime/linux/runtime.h for more details. See also PR26123 */
 #ifdef HAVE_TASK_FINDER
 	stap_destroy_vma_map();
 #endif

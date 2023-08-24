@@ -9,27 +9,6 @@ global devices, reads, writes
 %)
 
 /* data collection: SCSI disk */
-%(kernel_v < "2.6.24" %?
-probe module("sd_mod").function("sd_init_command") !,
-      kernel.function("sd_init_command")
-{
-  device = kernel_string(@__disk_name($SCpnt->request))
-  sector_size = $SCpnt->device->sector_size
-  nr_sectors = $SCpnt->request->nr_sectors
-  devices[device] = 1
-%(kernel_v >= "2.6.19" %?
-  if ($SCpnt->request->cmd_flags & 1)
-%:
-  if ($SCpnt->request->flags & 1)
-%)
-    writes[device] <<< nr_sectors * sector_size
-  else
-    reads[device] <<< nr_sectors * sector_size
-}
-
-%:
-
-%(kernel_v >= "2.6.31" %?
 %{
 #include <linux/blkdev.h>
 #include <linux/blk-mq.h>
@@ -39,18 +18,15 @@ function get_nr_sectors:long(rq:long)
 %{ /* pure */
   STAP_RETVALUE = blk_rq_sectors((const struct request *)(long)STAP_ARG_rq);
 %}
-%)
+
 
 probe sd_prep_fn = module("sd_mod").function("sd_prep_fn") !,
 		   kernel.function("sd_prep_fn")
 {
   device = kernel_string(@__disk_name($rq))
   sector_size = @cast($q->queuedata, "scsi_device", "kernel<scsi/scsi_device.h>")->sector_size
-%(kernel_v>="2.6.31" %?
   nr_sectors = get_nr_sectors($rq)
-%:
-  nr_sectors = $rq->nr_sectors
-%)
+
   _cmd_flags = $rq->cmd_flags
 }
 
@@ -82,8 +58,6 @@ probe sd_prep_fn !, sd_init_command
   else
     reads[device] <<< nr_sectors * sector_size
 }
-
-%)
 
 /* data collection: SCSI tape */
 probe module("st").function("st_do_scsi").call !,

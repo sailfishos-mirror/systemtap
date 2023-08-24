@@ -4,6 +4,10 @@
   the transport more reliable, but becoming incompatible across
   pre-5.0 versions.  Use matching versions of stap and staprun.
 
+- RHEL6, kernel 2.6.32* as well as older releases have been depreacted from
+  the codebase. RHEL7 and kernel version 3.10 are now the oldest supported versions 
+  for Systemtap. 
+
 * What's new in version 4.9, 2023-04-28
 
 - ISystemtap: the new interactive systemtap jupyter kernel. This provides

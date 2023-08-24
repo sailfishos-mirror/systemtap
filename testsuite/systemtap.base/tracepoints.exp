@@ -100,11 +100,8 @@ if {[string length $tracepoints]} {
 
       # Consider this an error if kernel_v >= 2.6.32, which has
       # TRACE_SYSTEM support
-      if {[min_kernel_vers_p 2.6.32]} {
-         fail "$test - TRACE_SYSTEM not printed"
-      } else {
-         untested "$test - no TRACE_SYSTEM support"
-      }
+      fail "$test - TRACE_SYSTEM not printed"
+      
    } else {
 
       # The following tests assume there is a sched system with multiple

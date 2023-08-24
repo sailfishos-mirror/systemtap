@@ -65,9 +65,6 @@
    %else
       %if 0%{?rhel} >= 6
          %define udevrulesdir /lib/udev/rules.d
-      %else
-         # RHEL5
-         %define udevrulesdir /etc/udev/rules.d
       %endif
    %endif
 %endif
@@ -84,11 +81,7 @@
     %define dracutbindir %{_bindir}
 %endif
 
-%if 0%{?rhel} == 6
-    %{!?_rpmmacrodir: %define _rpmmacrodir /etc/rpm/}
-%else
-    %{!?_rpmmacrodir: %define _rpmmacrodir %{_rpmconfigdir}/macros.d}
-%endif
+%{!?_rpmmacrodir: %define _rpmmacrodir %{_rpmconfigdir}/macros.d}
 
 # To avoid testsuite/*/*.stp has shebang which doesn't start with '/'
 %define __brp_mangle_shebangs_exclude_from .stp$
@@ -221,9 +214,6 @@ BuildRequires: pkgconfig(libvirt)
 BuildRequires: pkgconfig(libxml-2.0)
 %endif
 BuildRequires: readline-devel
-%if 0%{?rhel} <= 5
-BuildRequires: pkgconfig(ncurses)
-%endif
 %if %{with_python2_probes}
 BuildRequires: python2-devel
 %if 0%{?fedora} >= 1

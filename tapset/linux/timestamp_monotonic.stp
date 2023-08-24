@@ -17,8 +17,7 @@
 // HAVE_UNSTABLE_SCHED_CLOCK archs (included in 2.6.32), and commit b9f8fcd5
 // for the rest (included in 2.6.33).  So before that, we'll just pretend that
 // cpu_clock and local_clock don't exist.
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,32)) \
-    || (!defined (CONFIG_HAVE_UNSTABLE_SCHED_CLOCK) \
+#if (!defined (CONFIG_HAVE_UNSTABLE_SCHED_CLOCK) \
         && (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,33)))
 #undef STAPCONF_CPU_CLOCK
 #undef STAPCONF_LOCAL_CLOCK
