@@ -6,11 +6,11 @@
 #if !defined(STAPCONF_TASK_WORK_ADD_EXPORTED)
 // First typedef from the original decls, then #define as typecasted calls.
 typedef typeof(&task_work_add) task_work_add_fn;
-#define task_work_add (* (task_work_add_fn)kallsyms_task_work_add)
+#define task_work_add(a,b,c) ibt_wrapper(int, (* (task_work_add_fn)kallsyms_task_work_add)((a), (b), (c)))
 #endif
 #if !defined(STAPCONF_TASK_WORK_CANCEL_EXPORTED)
 typedef typeof(&task_work_cancel) task_work_cancel_fn;
-#define task_work_cancel (* (task_work_cancel_fn)kallsyms_task_work_cancel)
+#define task_work_cancel(a,b) ibt_wrapper(struct callback_head *, (* (task_work_cancel_fn)kallsyms_task_work_cancel)((a), (b)))
 #endif
 
 /* To avoid a crash when a task_work callback gets called after the

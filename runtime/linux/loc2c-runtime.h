@@ -76,7 +76,8 @@
 typedef typeof(&task_user_regset_view) task_user_regset_view_fn;
 /* Special macro to tolerate the kallsyms function pointer being zero. */
 #define task_user_regset_view(t) (kallsyms_task_user_regset_view ? \
-                                  (* (task_user_regset_view_fn)(kallsyms_task_user_regset_view))((t)) : \
+				  ibt_wrapper(const struct user_regset_view *,
+(* (task_user_regset_view_fn)(kallsyms_task_user_regset_view))((t))) :	\
                                   NULL)
 #endif
 
@@ -409,8 +410,9 @@ static void ursl_store64 (const struct usr_regset_lut* lut,unsigned lutsize,  in
 typedef typeof(&copy_to_kernel_nofault) copy_to_kernel_nofault_fn;
 #define copy_to_kernel_nofault(dst, src, size)                      \
   (kallsyms_copy_to_kernel_nofault ?                                \
-   (* (copy_to_kernel_nofault_fn)(kallsyms_copy_to_kernel_nofault)) \
-   ((dst),(src),(size)) :                                           \
+  ibt_wrapper(long,						    \
+	      ((* (copy_to_kernel_nofault_fn)(kallsyms_copy_to_kernel_nofault)) \
+	       ((dst),(src),(size)))) :					\
    -EFAULT)
 
 #define __stp_get_either(v, addr, seg)          \

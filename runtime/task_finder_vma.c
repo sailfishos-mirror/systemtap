@@ -431,7 +431,7 @@ stap_find_exe_file(struct mm_struct* mm)
         if (kallsyms_get_mm_exe_file == NULL)
           return NULL; /* can't happen; _stp_handle_start would abort before this point */
         else
-          return (* (get_mm_exe_file_fn) kallsyms_get_mm_exe_file)(mm);
+          return ibt_wrapper(struct file *, (* (get_mm_exe_file_fn) kallsyms_get_mm_exe_file)(mm));
 #endif
 #else
 	struct file *exe_file = NULL;

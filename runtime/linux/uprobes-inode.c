@@ -34,7 +34,8 @@ typedef typeof(&register_uprobe) uprobe_register_fn;
 typedef typeof(&uprobe_register) uprobe_register_fn;
 #endif
 // Then define the typecasted call via function pointer
-#define uprobe_register (* (uprobe_register_fn)kallsyms_uprobe_register)
+#define uprobe_register(a,b,c) \
+ibt_wrapper(int, (* (uprobe_register_fn)kallsyms_uprobe_register)((a), (b), (c)))
 #elif defined(STAPCONF_OLD_INODE_UPROBES)
 // In this case, just need to map the new name to the old
 #define uprobe_register register_uprobe
@@ -48,7 +49,8 @@ typedef typeof(&unregister_uprobe) uprobe_unregister_fn;
 typedef typeof(&uprobe_unregister) uprobe_unregister_fn;
 #endif
 // Then define the typecasted call via function pointer
-#define uprobe_unregister (* (uprobe_unregister_fn)kallsyms_uprobe_unregister)
+#define uprobe_unregister(a,b,c) \
+void_ibt_wrapper((* (uprobe_unregister_fn)kallsyms_uprobe_unregister)((a),(b),(c)))
 #elif defined(STAPCONF_OLD_INODE_UPROBES)
 // In this case, just need to map the new name to the old
 #define uprobe_unregister unregister_uprobe
@@ -63,7 +65,8 @@ typedef typeof(&uprobe_unregister) uprobe_unregister_fn;
 #if !defined(STAPCONF_UPROBE_GET_SWBP_ADDR_EXPORTED)
 // First typedef from the original decl, then #define it as a typecasted call.
 typedef typeof(&uprobe_get_swbp_addr) uprobe_get_swbp_addr_fn;
-#define uprobe_get_swbp_addr (* (uprobe_get_swbp_addr_fn)kallsyms_uprobe_get_swbp_addr)
+#define uprobe_get_swbp_addr(a) \
+  ibt_wrapper(unsigned long, (* (uprobe_get_swbp_addr_fn)kallsyms_uprobe_get_swbp_addr)((a)))
 #endif
 #endif
 

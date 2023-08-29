@@ -287,7 +287,7 @@ static inline int stp_wake_up_state(struct task_struct *p, unsigned int state)
 // Otherwise, we'll have to look up wake_up_state() with kallsyms.
 #else
 typedef typeof(&wake_up_state) wake_up_state_fn;
-#define stp_wake_up_state (* (wake_up_state_fn)kallsyms_wake_up_state)
+#define stp_wake_up_state(a, b) ibt_wrapper(int, (* (wake_up_state_fn)kallsyms_wake_up_state)((a), (b)))
 #endif
 
 #if !defined(STAPCONF_SIGNAL_WAKE_UP_STATE_EXPORTED)
@@ -298,7 +298,7 @@ void signal_wake_up_state(struct task_struct *t, unsigned int state);
 
 // First typedef from the original decl, then #define as typecasted call.
 typedef typeof(&signal_wake_up_state) signal_wake_up_state_fn;
-#define signal_wake_up_state (* (signal_wake_up_state_fn)kallsyms_signal_wake_up_state)
+#define signal_wake_up_state(a,b) void_ibt_wrapper((* (signal_wake_up_state_fn)kallsyms_signal_wake_up_state)((a),(b)))
 #endif
 
 #if !defined(STAPCONF_SIGNAL_WAKE_UP_EXPORTED)
@@ -310,7 +310,7 @@ typedef typeof(&signal_wake_up) signal_wake_up_fn;
 #if !defined(STAPCONF___LOCK_TASK_SIGHAND_EXPORTED)
 // First typedef from the original decl, then #define as typecasted call.
 typedef typeof(&__lock_task_sighand) __lock_task_sighand_fn;
-#define __lock_task_sighand (* (__lock_task_sighand_fn)kallsyms___lock_task_sighand)
+#define __lock_task_sighand(a,b) ibt_wrapper(struct sighand_struct *, (* (__lock_task_sighand_fn)kallsyms___lock_task_sighand)((a), (b)))
 
 /*
  * __lock_task_sighand() is called from the inline function

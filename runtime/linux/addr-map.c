@@ -64,7 +64,7 @@ stp_nmi_uaccess_okay(void)
     /* newer kernels (since 5.18) no longer export nmi_uaccess_okay()
      * but we can still get it from the kernel symbol tables. */
     if (kallsyms_nmi_uaccess_okay != NULL)
-        return ((bool (*)(void)) kallsyms_nmi_uaccess_okay)();
+      return ibt_wrapper(bool, ((bool (*)(void)) kallsyms_nmi_uaccess_okay)());
 
     return true;  /* don't bother */
 #endif

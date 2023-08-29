@@ -192,7 +192,8 @@ static void _stp_stack_print_fallback(struct context *c, unsigned long sp,
 		return;
 	}
 
-        num_entries = (*stack_trace_save_regs_fn)(regs, &entries[0], MAXBACKTRACE, skip);
+        num_entries = ibt_wrapper(unsigned int,
+				  (*stack_trace_save_regs_fn)(regs, &entries[0], MAXBACKTRACE, skip));
 #else
 	struct stack_trace trace;
 	/* If don't have save_stack_trace_regs unwinder, just give up. */

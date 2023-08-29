@@ -98,7 +98,7 @@ static void *kallsyms_nmi_uaccess_okay = NULL;
 #undef udelay
 static void *kallsyms_udelay_simple;
 typedef typeof(&udelay_simple) udelay_simple_fn;
-#define udelay(x) ((* (udelay_simple_fn)(kallsyms_udelay_simple))((x)))
+#define udelay(x) void_ibt_wrapper((* (udelay_simple_fn)(kallsyms_udelay_simple))((x)))
 #endif
 
 #ifndef clamp
@@ -263,6 +263,53 @@ static void *kallsyms___lock_task_sighand;
 #endif
 #if !defined(STAPCONF_GET_MM_EXE_FILE_EXPORTED)
 static void *kallsyms_get_mm_exe_file;
+#endif
+
+/* PR30777: Need a mechanism to temporarily turn off Intel IBT */
+#ifdef CONFIG_X86_KERNEL_IBT
+
+__noendbr u64 ibt_save(bool disable)
+{
+	u64 msr = 0;
+
+	if (cpu_feature_enabled(X86_FEATURE_IBT)) {
+		rdmsrl(MSR_IA32_S_CET, msr);
+		if (disable)
+			wrmsrl(MSR_IA32_S_CET, msr & ~CET_ENDBR_EN);
+	}
+
+	return msr;
+}
+
+__noendbr void ibt_restore(u64 save)
+{
+	u64 msr;
+
+	if (cpu_feature_enabled(X86_FEATURE_IBT)) {
+		rdmsrl(MSR_IA32_S_CET, msr);
+		msr &= ~CET_ENDBR_EN;
+		msr |= (save & CET_ENDBR_EN);
+		wrmsrl(MSR_IA32_S_CET, msr);
+	}
+}
+
+#define ibt_wrapper(rettype, function)  ({	\
+  u64 ibt_value = ibt_save(true);		\
+  rettype retval = (function);			\
+  ibt_restore(ibt_value);			\
+  retval;					\
+})
+
+#define void_ibt_wrapper(function)  ({		\
+  u64 ibt_value = ibt_save(true);		\
+  (function);					\
+  ibt_restore(ibt_value);			\
+  0;						\
+})
+
+#else
+#define ibt_wrapper(rettype, function)  ({ (function); })
+#define void_ibt_wrapper(function)  ({ (function); })
 #endif
 
 #include "access_process_vm.h"

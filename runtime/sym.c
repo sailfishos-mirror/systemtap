@@ -1130,7 +1130,8 @@ unsigned long kallsyms_lookup_name (const char *name)
         /* First, try to use a kallsyms_lookup_name address passed to us
            through the relocation mechanism. */
         if (_stp_kallsyms_lookup_name != NULL)
-                return (* (kallsyms_lookup_name_fn)_stp_kallsyms_lookup_name)(name);
+	  return ibt_wrapper(unsigned long,
+			     (* (kallsyms_lookup_name_fn)_stp_kallsyms_lookup_name)(name));
 
         /* NB: PR14804: definitely don't use _stp_error here.  It's called
            too early for the actual message buffer goo to be allocated. */
@@ -1162,7 +1163,8 @@ int kallsyms_on_each_symbol(int (*fn)(void *, const char *, struct module *,
         /* First, try to use a kallsyms_lookup_name address passed to us
            through the relocation mechanism. */
         if (_stp_kallsyms_on_each_symbol != NULL)
-                return (* (kallsyms_on_each_symbol_fn)_stp_kallsyms_on_each_symbol)(fn, data);
+	  return ibt_wrapper(int,
+			     (* (kallsyms_on_each_symbol_fn)_stp_kallsyms_on_each_symbol)(fn, data));
 
         /* Next, give up and signal a BUG. We should have detected
            that this function is not available and used a different
@@ -1197,9 +1199,11 @@ int module_kallsyms_on_each_symbol(int (*fn)(void *, const char *, struct module
            through the relocation mechanism. */
         if (_stp_module_kallsyms_on_each_symbol != NULL)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6,3,0)
-                return (* (module_kallsyms_on_each_symbol_fn)_stp_module_kallsyms_on_each_symbol)(modname, fn, data);
+		return ibt_wrapper(int,
+				   (* (module_kallsyms_on_each_symbol_fn)_stp_module_kallsyms_on_each_symbol)(modname, fn, data));
 #else
-                return (* (module_kallsyms_on_each_symbol_fn)_stp_module_kallsyms_on_each_symbol)(fn, data);
+		return ibt_wrapper(int,
+				   (* (module_kallsyms_on_each_symbol_fn)_stp_module_kallsyms_on_each_symbol)(fn, data));
 #endif
 
         /* Next, give up and signal a BUG. We should have detected
