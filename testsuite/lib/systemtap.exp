@@ -635,7 +635,11 @@ proc get_system_info {} {
         set SElinux "unknown"
     }
     # Get cpu flags
-    set CPUFlags [exec grep flags /proc/cpuinfo | sort -u]
+    if {! [catch {exec grep flags /proc/cpuinfo | sort -u} dummy]} {
+	set CPUFlags [exec grep flags /proc/cpuinfo | sort -u]
+    } else {
+	set CPUFlags ""
+    }
     if [file exists /sys/kernel/security/lockdown] {
         set Lockdown [exec cat /sys/kernel/security/lockdown]
     } else {
