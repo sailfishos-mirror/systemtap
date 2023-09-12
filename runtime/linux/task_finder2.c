@@ -1718,7 +1718,7 @@ stap_start_task_finder(void)
 	atomic_set(&__stp_task_finder_state, __STP_TF_RUNNING);
 
 	rcu_read_lock();
-	do_each_thread(grp, tsk) {
+	for_each_process_thread(grp, tsk) {
 		struct mm_struct *mm;
 		char *mmpath;
 		size_t mmpathlen;
@@ -1838,7 +1838,7 @@ stap_start_task_finder(void)
 			rc = 0;		/* ignore EPERM */
 			tgt->engine_attached = 1;
 		}
-	} while_each_thread(grp, tsk);
+	}
 stf_err:
 	rcu_read_unlock();
 	_stp_kfree(mmpath_buf);
@@ -1865,7 +1865,7 @@ stap_task_finder_post_init(void)
 
 	dbug_task(2, "entry.");
 	rcu_read_lock();
-	do_each_thread(grp, tsk) {
+	for_each_process_thread(grp, tsk) {
 		struct list_head *tgt_node;
 
 		if (atomic_read(&__stp_task_finder_state) != __STP_TF_RUNNING) {
@@ -1923,7 +1923,7 @@ stap_task_finder_post_init(void)
 				break;
 			}
 		}
-	} while_each_thread(grp, tsk);
+	}
 	rcu_read_unlock();
 	atomic_set(&__stp_task_finder_complete, 1);
 	dbug_task(2, "exit.");

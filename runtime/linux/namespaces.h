@@ -104,12 +104,12 @@ static int _stp_task_struct_valid(struct task_struct *t)
   int rc = 0;
 
   rcu_read_lock();
-  do_each_thread(grp, tsk) {
+  for_each_process_thread(grp, tsk) {
     if (tsk == t) {
       rc = 1;
       goto do_each_thread_out;
     }
-  } while_each_thread(grp, tsk);
+  }
 do_each_thread_out:
   rcu_read_unlock();
   return rc;
