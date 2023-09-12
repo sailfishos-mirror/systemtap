@@ -47,6 +47,22 @@ function describe_device_state:string(state:long)
 		default:                 strlcpy(STAP_RETVALUE, "[INVALID]",     MAXSTRINGLEN);
 	}
 %}
+
+@__private30 function scsi_cmd_to_rq:long(cmd:long)
+%{
+	struct scsi_cmnd *scmd = (struct scsi_cmnd *) STAP_ARG_cmd;
+	STAP_RETVALUE = (int64_t) scsi_cmd_to_rq(scmd);
+%}
+
+function get_scsi_request:long(scsi_cmd:long)
+{
+	if (@defined(@cast(scsi_cmd, "struct_cmnd", "kernel:scsi_mod")->request)) {
+		return @cast(scsi_cmd, "struct_cmnd *", "kernel:scsi_mod")->request
+	}else {
+		return scsi_cmd_to_rq(scsi_cmd)
+	}
+}
+
 /**
   * probe scsi.ioentry - Prepares a SCSI mid-layer request
   * @disk_major: The major number of the disk (-1 if no information)
@@ -108,7 +124,7 @@ probe scsi.iodispatching
 					 $cmd->request_buffer)
 	request_bufflen = @choose_defined($cmd->sdb->length,
 					  $cmd->request_bufflen)
-	req_addr = $cmd->request
+	req_addr = get_scsi_request($cmd)
 }
 
 /**
@@ -142,7 +158,7 @@ probe scsi.iodone
 	device_state_str = describe_device_state(device_state)
 	data_direction = $cmd->sc_data_direction
 	data_direction_str = describe_data_direction(data_direction)
-	req_addr = $cmd->request
+	req_addr = get_scsi_request($cmd)
 	scsi_timer_pending = scsi_timer_pending($cmd);
 }
 
@@ -173,7 +189,7 @@ probe scsi.iocompleted
 	device_state_str = describe_device_state(device_state)
 	data_direction = $cmd->sc_data_direction
 	data_direction_str = describe_data_direction(data_direction)
-	req_addr = $cmd->request
+	req_addr = get_scsi_request($cmd)
 	goodbytes = $good_bytes
 }
 
@@ -183,10 +199,16 @@ function timer_pending:long(timer:long)
 				@cast(timer, "timer_list", "kernel")->base) != 0)
 }
 
+@__private30 function cmd_request_timer_pending:long(cmd:long)
+{
+  request = get_scsi_request(&@cast(cmd, "scsi_cmnd", "kernel"))
+  return timer_pending(&@cast(request, "request", "kernel")->q->timeout)
+}
+
 function scsi_timer_pending:long(cmd:long)
 {
 %( kernel_v >= "2.6.28" %?
-	return timer_pending(&@cast(cmd, "scsi_cmnd", "kernel:scsi_mod")->request->q->timeout)
+	return cmd_request_timer_pending(cmd)
 %:
 	return timer_pending(&@cast(cmd, "scsi_cmnd", "kernel:scsi_mod")->eh_timeout)
 %)
