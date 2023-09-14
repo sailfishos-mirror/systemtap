@@ -6,11 +6,12 @@
 // Public License (GPL); either version 2, or (at your option) any
 // later version.
 
-
 #include "session.h"
 #include "tapsets.h"
 #include "translate.h"
 #include "util.h"
+
+#ifdef HAVE_LIBDEBUGINFOD
 
 #include <elfutils/debuginfod.h>
 #include <json-c/json.h>
@@ -171,6 +172,7 @@ debuginfod_builder::build_with_suffix(systemtap_session & sess, probe * base,
     return;
 }
 
+
 void
 register_tapset_debuginfod(systemtap_session& s)
 {
@@ -180,5 +182,15 @@ register_tapset_debuginfod(systemtap_session& s)
     // All suffixes will get caught and processed by build_with_suffix
     root->bind(TOK_DEBUGINFOD)->bind_str(TOK_PROCESS)->bind(builder);
 }
+
+#else /* ! HAVE_DEBUGINFOD */
+
+void
+register_tapset_debuginfod(systemtap_session& s)
+{
+  (void) s;
+}
+
+#endif
 
 /* vim: set sw=2 ts=8 cino=>4,n-2,{2,^-2,t0,(0,u0,w1,M1 : */
