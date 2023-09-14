@@ -14,6 +14,7 @@
 #include <iostream>
 #include <unistd.h>
 #include "config.h"
+#include "stdint.h"
 #if HAVE_JSON_C
     #include <json-c/json.h>
 #else
