@@ -158,6 +158,7 @@ public:
   int  parse_cmdline (int argc, char * const argv []);
   bool parse_cmdline_runtime (const std::string& opt_runtime);
   std::string version_string ();
+  std::pair <std::string,std::string> kernel_version_range();
   void version ();
   void usage (int exitcode);
   void check_options (int argc, char * const argv []);

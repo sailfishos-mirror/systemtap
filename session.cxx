@@ -498,6 +498,13 @@ systemtap_session::version_string ()
   return string (VERSION) + "/" + elfutils_version2 + ", " + STAP_EXTENDED_VERSION;
 }
 
+
+pair <string,string>
+systemtap_session::kernel_version_range()
+{
+  return make_pair<string,string>("2.6.32", "6.5");    // PRERELEASE
+}
+
 void
 systemtap_session::version ()
 {
@@ -505,7 +512,8 @@ systemtap_session::version ()
              "Copyright (C) 2005-2023 Red Hat, Inc. and others\n"   // PRERELEASE
              "This is free software; see the source for copying conditions.\n",
              version_string().c_str());
-  cout << _F("tested kernel versions: %s ... %s\n", "2.6.32", "6.3.0-rc1");   // PRERELEASE
+  auto vr = kernel_version_range();
+  cout << _F("tested kernel versions: %s ... %s\n", vr.first.c_str(), vr.second.c_str());
   
   cout << _("enabled features:")
 #ifdef HAVE_AVAHI

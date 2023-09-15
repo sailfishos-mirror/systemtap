@@ -1297,7 +1297,20 @@ passes_0_4 (systemtap_session &s)
     }
 
   if (rc && ! s.try_server ())
-    cerr << _("Pass 4: compilation failed.  [man error::pass4]") << endl;
+    {
+      cerr << _("Pass 4: compilation failed.  [man error::pass4]") << endl;
+      if (s.runtime_mode == systemtap_session::kernel_runtime)
+        {
+          // PR30858: report kernel version support
+          auto x = s.kernel_version_range();
+          bool outside = (strverscmp (x.first.c_str(), s.kernel_base_release.c_str()) > 0 ||
+                          strverscmp (x.second.c_str(), s.kernel_base_release.c_str()) < 0);
+          cerr << _F("Kernel version %s is %s tested range %s ... %s\n",
+                     s.kernel_base_release.c_str(),
+                     outside ? "outside" : "within",
+                     x.first.c_str(), x.second.c_str());
+        }
+    }
   else
     {
       // Update cache. Cache cleaning is kicked off at the
