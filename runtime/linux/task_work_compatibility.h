@@ -43,4 +43,8 @@ stp_init_task_work(struct task_work *twork, task_work_func_t func)
 
 #endif	/* !STAPCONF_TASK_WORK_STRUCT */
 
+#ifndef STAPCONF_TWA_RESUME
+#define TWA_RESUME true
+#endif
+
 #endif	/* _TASK_WORK_COMPATIBILITY_H_ */

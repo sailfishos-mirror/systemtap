@@ -441,6 +441,7 @@ compile_pass (systemtap_session& s)
   output_autoconf(s, o, cs, "autoconf-kernel_read-new-args.c", "STAPCONF_KERNEL_READ_NEW_ARGS", NULL);
   output_autoconf(s, o, cs, "autoconf-utrace-via-tracepoints.c", "STAPCONF_UTRACE_VIA_TRACEPOINTS", NULL);
   output_autoconf(s, o, cs, "autoconf-task_work-struct.c", "STAPCONF_TASK_WORK_STRUCT", NULL);
+  output_autoconf(s, o, cs, "autoconf-twa_resume.c", "STAPCONF_TWA_RESUME", NULL);
   output_autoconf(s, o, cs, "autoconf-vm-area-pte.c", "STAPCONF_VM_AREA_PTE", NULL);
   output_autoconf(s, o, cs, "autoconf-relay-umode_t.c", "STAPCONF_RELAY_UMODE_T", NULL);
   output_autoconf(s, o, cs, "autoconf-relay_buf-per_cpu_ptr.c", "STAPCONF_RELAY_BUF_PER_CPU_PTR", NULL);

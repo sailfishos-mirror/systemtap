@@ -89,7 +89,7 @@ stp_task_work_add(struct task_struct *task, struct task_work *twork)
 {
 	int rc;
 
-	rc = task_work_add(task, twork, true);
+	rc = task_work_add(task, twork, TWA_RESUME);
 	if (rc == 0)
 		stp_task_work_get();
 	return rc;
