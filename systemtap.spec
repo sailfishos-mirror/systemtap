@@ -163,6 +163,7 @@ BuildRequires: pkgconfig(nss)
 BuildRequires: pkgconfig(avahi-client)
 %if %{with_debuginfod}
 BuildRequires: pkgconfig(libdebuginfod)
+BuildRequires: pkgconfig(json-c)
 %endif
 %if %{with_dyninst}
 BuildRequires: dyninst-devel >= 10.0

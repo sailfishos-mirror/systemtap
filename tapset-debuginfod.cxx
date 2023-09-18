@@ -11,7 +11,7 @@
 #include "translate.h"
 #include "util.h"
 
-#ifdef HAVE_LIBDEBUGINFOD
+#if defined(HAVE_LIBDEBUGINFOD) && defined(HAVE_JSON_C)
 
 #include <elfutils/debuginfod.h>
 #include <json-c/json.h>
@@ -183,7 +183,7 @@ register_tapset_debuginfod(systemtap_session& s)
     root->bind(TOK_DEBUGINFOD)->bind_str(TOK_PROCESS)->bind(builder);
 }
 
-#else /* ! HAVE_DEBUGINFOD */
+#else /* no DEBUGINFOD and/or no JSON */
 
 void
 register_tapset_debuginfod(systemtap_session& s)

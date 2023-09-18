@@ -13761,13 +13761,6 @@ else
 fi
 
 
-# Check whether --enable-monitor was given.
-if test ${enable_monitor+y}
-then :
-  enableval=$enable_monitor;
-fi
-
-if test "$enable_monitor" != "no"; then
 
 pkg_failed=no
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for jsonc" >&5
@@ -13910,14 +13903,17 @@ else
 printf "%s\n" "yes" >&6; }
 	have_ncurses=yes
 fi
+
+# Check whether --enable-monitor was given.
+if test ${enable_monitor+y}
+then :
+  enableval=$enable_monitor;
+fi
+
+if test "$enable_monitor" != "no"; then
 if test "${have_jsonc}" = "yes" -a "${have_ncurses}" = yes; then
 
 printf "%s\n" "#define HAVE_MONITOR_LIBS 1" >>confdefs.h
-
-fi
-if test "${have_jsonc}" = "yes"; then
-
-printf "%s\n" "#define HAVE_JSON_C 1" >>confdefs.h
 
 fi
 fi
@@ -13929,6 +13925,11 @@ else
   HAVE_MONITOR_LIBS_FALSE=
 fi
 
+if test "${have_jsonc}" = "yes"; then
+
+printf "%s\n" "#define HAVE_JSON_C 1" >>confdefs.h
+
+fi
  if test "${have_jsonc}" = "yes"; then
   HAVE_JSON_C_TRUE=
   HAVE_JSON_C_FALSE='#'
