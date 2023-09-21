@@ -15,6 +15,7 @@
 
 #include <elfutils/debuginfod.h>
 #include <json-c/json.h>
+#include <unistd.h>
 
 using namespace std;
 using namespace __gnu_cxx;
