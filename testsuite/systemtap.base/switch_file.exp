@@ -5,8 +5,9 @@ if {![installtest_p]} { untested $test; return }
 catch {exec rm -f $test.out*}
 
 # run systemtap
-verbose -log "Running stap -vo $test.out -e {probe begin {switch_file(); exit()}}"
-catch {exec stap -vo $test.out -e {probe begin {switch_file(); exit()}} } res
+set stpfile "$srcdir/$subdir/$test.stp"
+verbose -log "Running stap -vo $test.out $stpfile"
+catch {exec stap -vo $test.out $stpfile } res
 verbose -log "$res"
 
 # check output file
