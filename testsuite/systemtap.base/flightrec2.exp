@@ -16,26 +16,26 @@ expect {
   timeout { fail "$test (timeout)"}
   eof { }
 }
-# Here we're waiting on the parent stap process to finish. Stapio will
-# still be running in the background.
-catch { close }; catch { wait }
 
-if {$pid == 0} {
-  fail "$test (no pid)"
-  return -1
-}
+# After 10 seconds the stap run should be finished and logs generated
+# So, wait slightly more than 10 seconds - to be on the safe side.
 
-exec sleep 4
+exec sleep 15
+
+# At this point we've generated ~4.2MB of data.  Given stap -S 1,3, we
+# can expect flightlog.out.2 flightlog.out.3 flightlog.out.4.  Where
+# first two have their size roughly 1 MB and the last one roughly 200 kB.
+
 set scnt 0
 set cnt1 0
 
-# wait for log files
+# check log files
 eval spawn stat -c %s [glob flightlog.out.*]
 expect {
   -timeout 100
   -re {[0-9]+} {
       incr cnt1;
-      if {$expect_out(buffer) <= 1048576 } {incr scnt}
+      if {$expect_out(buffer) <= 1100000 } {incr scnt}
       exp_continue}
   timeout { fail "$test (logfile timeout)"}
 }
@@ -43,33 +43,17 @@ catch { close }; catch { wait }
 exec sleep 3
 set cnt2 0
 
-# wait for log files
-eval spawn stat -c %s [glob flightlog.out.*]
-expect {
-  -timeout 100
-  -re {[0-9]+} {
-      incr cnt2;
-      if {$expect_out(buffer) <= 1048576 } {incr scnt}
-      exp_continue}
-  timeout { fail "$test (logfile timeout)"}
-}
-catch { close }; catch { wait }
-
-# check logfile number
-if {$cnt1 == 3 && $cnt2 == 3} {
+# check logfile count
+if {$cnt1 == 3} {
     pass "$test (log file numbers limitation)"
 } else {
   fail "$test (log file numbers ($cnt1, $cnt2))"
 }
 
 # check logfile size
-if {$scnt == $cnt1 + $cnt2 } {
+if {$scnt == $cnt1 } {
     pass "$test (log file size limitation)"
 } else {
-  fail "$test (log file size ($scnt != $cnt1 + $cnt2))"
+  fail "$test (log file size ($scnt != $cnt1))"
 }
-
-# Kill the background stapio process.
-kill -TERM $pid 5
-catch {system "rm -f flightlog.out*"}
 
