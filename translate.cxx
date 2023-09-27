@@ -1198,7 +1198,6 @@ c_unparser::emit_common_header ()
 
       // We will use a workqueue to schedule module_refresh work when we need
       // to enable/disable probes.
-      o->newline( 0)  << "#include <linux/workqueue.h>";
       o->newline( 0)  << "static struct work_struct module_refresher_work;";
       o->newline( 0)  << "static void module_refresher(struct work_struct *work) {";
       o->newline( 1)  <<    "systemtap_module_refresh(NULL);";
@@ -1216,7 +1215,7 @@ c_unparser::emit_common_header ()
       o->newline(+1)  <<   "if (atomic_cmpxchg(&need_module_refresh, 1, 0) == 1)";
       // NB: one might like to invoke systemtap_module_refresh(NULL) directly from
       // here ... however hrtimers are called from an unsleepable context, so no can do.
-      o->newline(+1)  <<     "schedule_work(&module_refresher_work);";
+      o->newline(+1)  <<     "queue_work(systemtap_wq, &module_refresher_work);";
       o->newline(-1)  <<   "hrtimer_set_expires(timer,";
       o->newline( 0)  <<   "  ktime_add(hrtimer_get_expires(timer),";
       o->newline( 0)  <<   "            ktime_set(0, STP_ON_THE_FLY_INTERVAL))); ";

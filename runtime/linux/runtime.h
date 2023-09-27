@@ -401,10 +401,12 @@ static struct kernel_param_ops param_ops_int64_t = {
 #endif
 #undef _STP_KERNEL_PARAM_ARG
 
+#include <linux/workqueue.h>
+struct workqueue_struct *systemtap_wq;
 
 static inline void stp_synchronize_sched(void)
 {
-  flush_scheduled_work();
+  flush_workqueue(systemtap_wq);
 #if defined(STAPCONF_SYNCHRONIZE_SCHED)
   synchronize_sched();
 #elif defined(STAPCONF_SYNCHRONIZE_RCU)
@@ -431,6 +433,10 @@ static int stap_init_module (void)
      stap, it is beneficial to add some runtime-random value to the
      map hash. */
   get_random_bytes(&stap_hash_seed, sizeof (stap_hash_seed));
+  systemtap_wq = alloc_workqueue("systemtap-wq",
+		WQ_UNBOUND | WQ_MEM_RECLAIM, 0);
+  if (!systemtap_wq)
+    return !systemtap_wq;
   rc = systemtap_kernel_module_init();
   if (rc)
     return rc;
@@ -449,6 +455,8 @@ void stap_cleanup_module(void)
      due to tapset-procfs.cxx cleaning up after procfs probes (such
      as in --monitor mode).  */
   systemtap_kernel_module_exit();
+  if (systemtap_wq)
+    destroy_workqueue(systemtap_wq);
 }
 
 module_exit(stap_cleanup_module);
