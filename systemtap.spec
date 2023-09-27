@@ -117,7 +117,7 @@ m     stapdev  stapdev
 Name: systemtap
 # PRERELEASE
 Version: 5.0
-Release: 0.1%{?release_override}%{?dist}
+Release: 1%{?release_override}%{?dist}
 # for version, see also configure.ac
 
 
