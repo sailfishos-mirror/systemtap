@@ -137,6 +137,7 @@ debuginfod_builder::build(systemtap_session & sess, probe * base,
           false);
     ppc->tok = base_pp->components[0]->tok;
     pp->components[0] = ppc;
+    pp->optional = true; // handle it similarly to a glob
 
     base_p->locations.push_back(pp);
   }

@@ -2502,14 +2502,20 @@ dwarf_query::query_module_functions ()
 }
 
 
-static void
-validate_module_elf (Dwfl_Module *mod, const char *name,  base_query *q)
+static bool
+validate_module_elf (systemtap_session& sess,
+                     Dwfl_Module *mod, const char *name,  base_query *q)
 {
   // Validate the machine code in this elf file against the
   // session machine.  This is important, in case the wrong kind
   // of debuginfo is being automagically processed by elfutils.
   // While we can tell i686 apart from x86-64, unfortunately
   // we can't help confusing i586 vs i686 (both EM_386).
+  //
+  // In case of a mismatch, soft-reject (ignore it with a warning).
+  // This is important in case of probing by buildid or mass
+  // debuginfod where some random architecture's module might come
+  // back.
 
   Dwarf_Addr bias;
   // We prefer dwfl_module_getdwarf to dwfl_module_getelf here,
@@ -2566,11 +2572,10 @@ validate_module_elf (Dwfl_Module *mod, const char *name,  base_query *q)
   if (fnmatch (expect_machine.c_str(), sess_machine.c_str(), 0) != 0 &&
       fnmatch (expect_machine2.c_str(), sess_machine.c_str(), 0) != 0)
     {
-      stringstream msg;
-      msg << _F("ELF machine %s|%s (code %d) mismatch with target %s in '%s'",
-                expect_machine.c_str(), expect_machine2.c_str(), elf_machine,
-                sess_machine.c_str(), debug_filename);
-      throw SEMANTIC_ERROR(msg.str ());
+      sess.print_warning (_F("ELF machine %s|%s (code %d) mismatch with target %s in '%s'",
+                             expect_machine.c_str(), expect_machine2.c_str(), elf_machine,
+                             sess_machine.c_str(), debug_filename));
+      return false;
     }
 
   if (q->sess.verbose>2)
@@ -2579,6 +2584,8 @@ validate_module_elf (Dwfl_Module *mod, const char *name,  base_query *q)
                q->dw.module_name.c_str(), q->dw.module_start, q->dw.module_end,
                q->dw.module_bias, debug_filename, expect_machine.c_str(),
                expect_machine2.c_str(), elf_machine);
+
+  return true;
 }
 
 
@@ -2650,7 +2657,10 @@ query_module (Dwfl_Module *mod,
         return pending_interrupts ? DWARF_CB_ABORT : DWARF_CB_OK;
 
       if (mod)
-        validate_module_elf(mod, name, q);
+        {
+          if (! validate_module_elf(q->sess, mod, name, q))
+            return DWARF_CB_OK;
+        }
       else
         assert(q->has_kernel);   // and no vmlinux to examine
 
