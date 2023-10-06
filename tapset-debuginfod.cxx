@@ -21,13 +21,14 @@ using namespace std;
 using namespace __gnu_cxx;
 
 static const string TOK_DEBUGINFOD("debuginfod");
+static const string TOK_PACKAGE("package");
 static const string TOK_PROCESS("process");
 
 void
-get_buildids(string process_path, set<interned_string>& buildids){
+get_buildids(string package, string process_path, set<interned_string>& buildids){
   static unique_ptr <debuginfod_client, void (*)(debuginfod_client*)>
     client (debuginfod_begin(), &debuginfod_end);
-
+  
   int metadata_fd;
   #ifdef METADATA_QUERY_ENABLED
     if((metadata_fd = debuginfod_find_metadata(client.get(), "glob", (char*)process_path.c_str(), NULL)) < 0)
@@ -62,6 +63,11 @@ get_buildids(string process_path, set<interned_string>& buildids){
     if(is_build_id(buildid) && buildids.find(buildid_is) == buildids.end() &&
         json_object_object_get_ex(file_metadata, "type", &json_field) && 0 == strcmp(json_object_get_string(json_field), "executable"))
     {
+      // Skip the buildid if it does not match the requested package
+      if(!package.empty())
+        if(!(json_object_object_get_ex(file_metadata, "archive", &json_field) && 0 == strcmp(json_object_get_string(json_field), package.c_str())))
+          continue;
+      
       buildids.insert(buildid_is);
 
       debuginfod_workers.push_back(stap_spawn_piped(0, {"debuginfod-find", "executable", buildid}, NULL, &d_out, &d_err));
@@ -104,16 +110,18 @@ debuginfod_builder::build(systemtap_session & sess, probe * base,
   literal_map_t const & parameters,
   vector<derived_probe *> & finished_results)
 {
+  interned_string package;
   interned_string process_path;
   bool has_debuginfod = has_null_param (parameters, TOK_DEBUGINFOD);
+  bool has_package    = get_param (parameters, TOK_PACKAGE, package);
   bool has_process    = get_param (parameters, TOK_PROCESS, process_path);
-
+  
   if(!has_debuginfod || !has_process)
     throw SEMANTIC_ERROR(_("the probe must be of the form debuginfod.process(\"foo/bar\").**{...}"));
 
   // The matching buildids from the packages/debuginfod
   set<interned_string> buildids;
-  get_buildids(process_path, buildids);
+  get_buildids(package, process_path, buildids);
 
   probe *base_p = new probe(base, location);
   probe_point *base_pp = base_p->locations[0];
@@ -160,11 +168,12 @@ debuginfod_builder::build_with_suffix(systemtap_session & sess, probe * base,
     std::vector<probe_point::component *> const & suffix){
 
     /* Extract the parameters for the head of the probe
-     * The probes are of the form debuginfod.process("foo/bar").**
-     * So the length should always be TWO (2)
+     * The probes are of the form debuginfod[.package(**)].process("foo/bar").**. 
+     * So thelength should always be TWO (2) or THREE (3), in the 
+     * case of a package parameter being provided.
      */
     unsigned num_param = location->components.size() - suffix.size();
-    assert(num_param == 2);
+    assert(num_param == 2 || num_param == 3);
 
     literal_map_t param_map;
     for (unsigned i=0; i<num_param; i++)
@@ -182,7 +191,13 @@ register_tapset_debuginfod(systemtap_session& s)
     derived_probe_builder *builder = new debuginfod_builder();
 
     // All suffixes will get caught and processed by build_with_suffix
+    
+    //debuginfod.process()
     root->bind(TOK_DEBUGINFOD)->bind_str(TOK_PROCESS)->bind(builder);
+
+    //debuginfod.package().process()
+    root->bind(TOK_DEBUGINFOD)->bind_str(TOK_PACKAGE)->bind_str(TOK_PROCESS)->bind(builder);
+
 }
 
 #else /* no DEBUGINFOD and/or no JSON */
