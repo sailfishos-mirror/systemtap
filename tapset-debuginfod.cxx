@@ -63,10 +63,16 @@ get_buildids(string package, string process_path, set<interned_string>& buildids
     if(is_build_id(buildid) && buildids.find(buildid_is) == buildids.end() &&
         json_object_object_get_ex(file_metadata, "type", &json_field) && 0 == strcmp(json_object_get_string(json_field), "executable"))
     {
-      // Skip the buildid if it does not match the requested package
+      // Skip the buildid if the archive file name does not contain the requested package string
       if(!package.empty())
-        if(!(json_object_object_get_ex(file_metadata, "archive", &json_field) && 0 == strcmp(json_object_get_string(json_field), package.c_str())))
+        {
+        json_object_object_get_ex(file_metadata, "archive", &json_field);
+        string path = json_object_get_string(json_field);
+        string base_filename = path.substr(path.find_last_of("/\\") + 1);
+        if(json_object_object_get_ex(file_metadata, "archive", &json_field) && 
+          std::string::npos == base_filename.find(package.c_str()))
           continue;
+        }
       
       buildids.insert(buildid_is);
 
@@ -113,11 +119,11 @@ debuginfod_builder::build(systemtap_session & sess, probe * base,
   interned_string package;
   interned_string process_path;
   bool has_debuginfod = has_null_param (parameters, TOK_DEBUGINFOD);
-  bool has_package    = get_param (parameters, TOK_PACKAGE, package);
   bool has_process    = get_param (parameters, TOK_PROCESS, process_path);
+                        get_param (parameters, TOK_PACKAGE, package);
   
   if(!has_debuginfod || !has_process)
-    throw SEMANTIC_ERROR(_("the probe must be of the form debuginfod.process(\"foo/bar\").**{...}"));
+    throw SEMANTIC_ERROR(_("the probe must be of the form debuginfod.[.package(\"foobar\")]process(\"foo/bar\").**{...}"));
 
   // The matching buildids from the packages/debuginfod
   set<interned_string> buildids;
@@ -169,8 +175,8 @@ debuginfod_builder::build_with_suffix(systemtap_session & sess, probe * base,
 
     /* Extract the parameters for the head of the probe
      * The probes are of the form debuginfod[.package(**)].process("foo/bar").**. 
-     * So thelength should always be TWO (2) or THREE (3), in the 
-     * case of a package parameter being provided.
+     * So the length should always be TWO (2) or THREE (3), 
+     * when a package parameter is provided.
      */
     unsigned num_param = location->components.size() - suffix.size();
     assert(num_param == 2 || num_param == 3);
