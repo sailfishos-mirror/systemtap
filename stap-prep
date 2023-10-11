@@ -80,7 +80,7 @@ prep_debuginfod() {
             echo "Download failed."
         fi
     else
-        echo 'Debuginfo automatic downloading is not configured via $DEBUGINFOD_URLS'
+        echo 'Suggestion: consider configuring automatic debuginfo downloading via debuginfod.'
     fi
 }
 
