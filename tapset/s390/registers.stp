@@ -4,6 +4,9 @@
 
 %{
 #include <asm/ptrace.h>
+#ifdef STAPCONF_STACKTRACE_H
+#include <asm/stacktrace.h>
+#endif
 
 /*
  * The following routines help with getting arguments off the s390x

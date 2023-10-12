@@ -400,6 +400,8 @@ compile_pass (systemtap_session& s)
   output_autoconf(s, o, cs, "autoconf-hw_breakpoint_context.c",
 		  "STAPCONF_HW_BREAKPOINT_CONTEXT", NULL);
   output_exportconf(s, o2, "save_stack_trace_regs", "STAPCONF_SAVE_STACK_TRACE_REGS_EXPORTED");
+  output_autoconf(s, o, cs, "autoconf-stacktrace_h.c",
+                  "STAPCONF_STACKTRACE_H", NULL);
   output_autoconf(s, o, cs, "autoconf-save-stack-trace.c",
                   "STAPCONF_KERNEL_STACKTRACE", NULL);
   output_autoconf(s, o, cs, "autoconf-save-stack-trace-no-bp.c",
