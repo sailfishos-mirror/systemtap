@@ -10,6 +10,7 @@
 #include "tapsets.h"
 #include "translate.h"
 #include "util.h"
+#include "fnmatch.h"
 
 #if defined(HAVE_LIBDEBUGINFOD) && defined(HAVE_JSON_C)
 
@@ -25,7 +26,7 @@ static const string TOK_PACKAGE("package");
 static const string TOK_PROCESS("process");
 
 void
-get_buildids(string package, string process_path, set<interned_string>& buildids){
+get_buildids(bool has_package, string package, string process_path, set<interned_string>& buildids){
   static unique_ptr <debuginfod_client, void (*)(debuginfod_client*)>
     client (debuginfod_begin(), &debuginfod_end);
   
@@ -64,13 +65,13 @@ get_buildids(string package, string process_path, set<interned_string>& buildids
         json_object_object_get_ex(file_metadata, "type", &json_field) && 0 == strcmp(json_object_get_string(json_field), "executable"))
     {
       // Skip the buildid if the archive file name does not contain the requested package string
-      if(!package.empty())
+      if(has_package)
         {
         json_object_object_get_ex(file_metadata, "archive", &json_field);
         string path = json_object_get_string(json_field);
         string base_filename = path.substr(path.find_last_of("/\\") + 1);
-        if(json_object_object_get_ex(file_metadata, "archive", &json_field) && 
-          std::string::npos == base_filename.find(package.c_str()))
+        if(json_object_object_get_ex(file_metadata, "archive", &json_field) &&
+          0 != fnmatch(package.c_str(), base_filename.c_str(), 0))
           continue;
         }
       
@@ -120,14 +121,14 @@ debuginfod_builder::build(systemtap_session & sess, probe * base,
   interned_string process_path;
   bool has_debuginfod = has_null_param (parameters, TOK_DEBUGINFOD);
   bool has_process    = get_param (parameters, TOK_PROCESS, process_path);
-                        get_param (parameters, TOK_PACKAGE, package);
+  bool has_package    = get_param (parameters, TOK_PACKAGE, package);
   
   if(!has_debuginfod || !has_process)
     throw SEMANTIC_ERROR(_("the probe must be of the form debuginfod.[.package(\"foobar\")]process(\"foo/bar\").**{...}"));
 
   // The matching buildids from the packages/debuginfod
   set<interned_string> buildids;
-  get_buildids(package, process_path, buildids);
+  get_buildids(has_package, package, process_path, buildids);
 
   probe *base_p = new probe(base, location);
   probe_point *base_pp = base_p->locations[0];
@@ -158,10 +159,6 @@ debuginfod_builder::build(systemtap_session & sess, probe * base,
 
   vector<derived_probe *> results;
   derive_probes(sess, base_p, results, false, true);
-
-  if(results.size() < buildids.size())
-    throw SEMANTIC_ERROR (_F("at least %d probes should be derived but only %d were",
-      (int)buildids.size(), (int)results.size()));
 
   finished_results.insert(finished_results.end(), results.begin(), results.end());
 }
