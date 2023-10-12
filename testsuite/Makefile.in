@@ -204,45 +204,6 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 AUTOMAKE_OPTIONS = dejagnu no-dist subdir-objects
 TESTAPPS = @enable_testapps@
-TOOL_OPTS = 
-
-# The SYSTEMTAP_TESTSUITE_RESUME environmental variable will turn on the
-# "resume mode" of the systemtap testsuite if set to some non-zero value.  In
-# this mode, tests, that have already been run, are not being re-executed, and
-# their existing test results are being reused and merged instead.  This can be
-# useful e.g. when some of the tests causes kernel panic or stall.  Using the
-# "resume mode", it is possible to reboot the testing box, and then re-run the
-# testsuite skipping already executed tests.  In this case, the problematic
-# testcase is left in an "unfinished" state. See "make list-unfinished".  In
-# case the testsuite was running in the parallel testing mode, more than one
-# test will be left unfinished of course.  Unfinished tests need separate
-# investigation.  The "resume mode" can be used with "make installcheck", or
-# "make installcheck-parallel" targets.
-SKIPTESTS = --ignore \'$(shell \
-	test -z $(SYSTEMTAP_TESTSUITE_RESUME) || \
-	  grep -r 'Running.*testsuite.*exp\ ...' systemtap.log 2>/dev/null |\
-	  grep -o '[^\/]*\.exp' |\
-	  sort -u |\
-	  tr '\n' ' ' |\
-	  sed 's/\ $$/\n/' \
-	)\'
-
-
-# TESTS exists for the user to pass on the command line to easily
-# say "Only run these tests."  With check or installcheck it's not necessary, but
-# with installcheck-parallel there's no other way to (easily) specify a subset
-# of tests. To specify all tests in a subdirectory, use TESTS=systemtap.subdir/*.exp.
-# E.g., make check TESTS="gdb.server/*.exp gdb.threads/*.exp".
-expanded_tests := $(patsubst $(srcdir)/%,%,$(wildcard $(addprefix $(srcdir)/,$(TESTS))))
-
-# Following are all tests we want to run within the installcheck-parallel target.
-# Those are either specified via the TESTS env var, or all the available tests.
-all_tests := $(or $(expanded_tests),$(shell cd $(srcdir) && find systemtap.* -name '*.exp' -print))
-
-# Tests that need to run serially. This namely applies to systemtap.server tests.
-# They start a new systemtap server and only expect one local server to run.
-all_serial_tests := $(shell cd $(srcdir) && find systemtap.server -name '*.exp' -print)
-serial_tests := $(filter $(all_tests),$(all_serial_tests))
 
 # There are a few tests known to be slow. We run them right from the beginning
 # to try to lessen the overall time taken by the test suite -- if one of these
@@ -282,7 +243,7 @@ PYEXECDIR = @pyexecdir@
 PYTHON3 = @python3@
 PY3EXECDIR = @py3execdir@
 SYSCONFDIR = @sysconfdir@
-RUNTESTDEFAULTFLAGS = --tool $$tool --tool_opts \'$(TOOL_OPTS)\' --srcdir $(shell readlink -f $(srcdir))
+RUNTESTDEFAULTFLAGS = --tool $$tool --srcdir $(shell readlink -f $(srcdir))
 EXPECT = expect
 RUNTEST = env --unset=DEBUGINFOD_VERBOSE --unset=DEBUGINFOD_PROGRESS XDG_DATA_DIRS= SYSTEMTAP_SYNC=1 LANG=C SYSTEMTAP_TESTREMOTES=$(TESTREMOTES) SYSTEMTAP_TESTAPPS=$(TESTAPPS) SYSTEMTAP_RUNTIME=$(SYSTEMTAP_RUNTIME) SYSTEMTAP_TAPSET=$(SYSTEMTAP_TAPSET) CRASH_LIBDIR=$(CRASH_LIBDIR) PATH=$(SYSTEMTAP_PATH):$(SYSTEMTAP_SPATH):$$PATH SYSTEMTAP_PATH=$(SYSTEMTAP_PATH) SYSTEMTAP_SPATH=$(SYSTEMTAP_SPATH) SYSTEMTAP_INCLUDES=$(SYSTEMTAP_INCLUDES) PKGLIBDIR=$(pkglibexecdir) PYTHON=$(PYTHON) PYEXECDIR=$(PYEXECDIR) PYTHON3=$(PYTHON3) PY3EXECDIR=$(PY3EXECDIR) SYSCONFDIR=$(SYSCONFDIR) runtest
 all: all-am
@@ -494,72 +455,10 @@ clean-local:
 	-rm -f ./stap_*.ko
 	-rm -f flightrec*
 	-rm -f *.so
-	-rm -f uprobe_*
-	-rm -rf artifacts
 
 # but installcheck does not follow an implicit check-DEJAGNU, go figure
 installcheck: site.exp
-	-rm -rf artifacts
-	-test -z $(SYSTEMTAP_TESTSUITE_RESUME) && $(MAKE) clean && $(MAKE) site.exp
-	-mv systemtap.log systemtap.temp1.log 2>/dev/null
-	-mv systemtap.sum systemtap.temp1.sum 2>/dev/null
-	-rmmod uprobes 2>/dev/null
-	-$(MAKE) $(AM_MAKEFLAGS) check-DEJAGNU RUNTESTFLAGS="$(RUNTESTFLAGS) $(SKIPTESTS) --tool_opts \'install $(TOOL_OPTS)\'"
-	if test -e systemtap.temp1.log -o -e systemtap.temp1.sum; then \
-	  mv systemtap.log systemtap.temp2.log; \
-	  mv systemtap.sum systemtap.temp2.sum; \
-	  $(SHELL) $(srcdir)/dg-extract-results.sh `find . -name 'systemtap.temp[1,2].sum' -print` > systemtap.sum; \
-	  $(SHELL) $(srcdir)/dg-extract-results.sh -L `find . -name 'systemtap.temp[1,2].log' -print` > systemtap.log; \
-	  rm -f systemtap.temp1.log systemtap.temp1.sum systemtap.temp2.log systemtap.temp2.sum; \
-	fi
-	-sed -ne '/systemtap.Summary/,$$ p' < systemtap.sum
-
-# In the parallel mode, the dg-extract-results.sh generates common .sum and .log
-# files for all the tests, plus separate logs per testcase are kept in the artifacts
-# directory. Serial tests (see below) log to artifacts/__serialtests.
-installcheck-parallel: site.exp
-	-test -z $(SYSTEMTAP_TESTSUITE_RESUME) && $(MAKE) clean && $(MAKE) site.exp
-	-rmmod uprobes 2>/dev/null
-	mkdir -p artifacts/__serialtests
-	MAKEFLAGS= $(RUNTEST) systemtap.base/environment_sanity.exp
-	-$(MAKE) -k do-installcheck-parallel; \
-	result=$$?; \
-	$(SHELL) $(srcdir)/dg-extract-results.sh \
-	`find artifacts -name systemtap.sum -print` > systemtap.sum; \
-	$(SHELL) $(srcdir)/dg-extract-results.sh -L \
-	`find artifacts -name systemtap.log -print` > systemtap.log;
-	-tail systemtap.sum
-	exit $$result
-
-do-installcheck-parallel: installcheck-serial-tests $(REGULAR_TEST_TARGETS)
-	@:
-
-installcheck-serial-tests: site.exp
-	-mv artifacts/__serialtests/systemtap.log artifacts/__serialtests/systemtap.temp1.log 2>/dev/null
-	-mv artifacts/__serialtests/systemtap.sum artifacts/__serialtests/systemtap.temp1.sum 2>/dev/null
-	test -z $(serial_tests) || MAKEFLAGS= $(MAKE) $(AM_MAKEFLAGS) check-DEJAGNU RUNTESTFLAGS="--outdir=artifacts/__serialtests $(serial_tests) $(RUNTESTFLAGS) $(SKIPTESTS) --tool_opts \'install $(TOOL_OPTS)\'" STAP_PARALLEL=yes
-	mv artifacts/__serialtests/systemtap.log artifacts/__serialtests/systemtap.temp2.log
-	mv artifacts/__serialtests/systemtap.sum artifacts/__serialtests/systemtap.temp2.sum
-	$(SHELL) $(srcdir)/dg-extract-results.sh `find ./artifacts/__serialtests -name 'systemtap.*sum' -print` > artifacts/__serialtests/systemtap.sum
-	$(SHELL) $(srcdir)/dg-extract-results.sh -L `find ./artifacts/__serialtests -name 'systemtap.*log' -print` > artifacts/__serialtests/systemtap.log
-	rm -f artifacts/__serialtests/systemtap.temp*
-
-installcheck/%.exp: site.exp
-	if test -e artifacts/$* ; then \
-	echo "Using existing test result for $*.exp"; \
-	else \
-	mkdir -p artifacts/$* ; \
-	MAKEFLAGS= $(MAKE) $(AM_MAKEFLAGS) check-DEJAGNU RUNTESTFLAGS="--outdir=artifacts/$* $*.exp $(RUNTESTFLAGS) --tool_opts \'install $(TOOL_OPTS)\'" STAP_PARALLEL=yes; \
-	fi
-
-# In case a test caused kernel panic or stall, followed by the test box reboot
-# and testsuite re-run, it will stay unfinished.  All other testcases that might
-# have been running in parallel with it, are left unfinished too.  After the the
-# last testsuite re-run, after all the testcases have been executed, unfinished
-# testcases should be listed and investigated manually.  The "make clean" target
-# cleans whole the table entirely.
-list-unfinished:
-	@find . -type f -name systemtap.log | xargs awk '/Running.*testsuite.*exp .../ {tests[$$2]++}  /testcase.*testsuite.*completed in.*seconds/ {tests[$$2]++} END {for (key in tests) if (tests[key] != 2) { print key }}'
+	$(MAKE) $(AM_MAKEFLAGS) check-DEJAGNU RUNTESTFLAGS="$(RUNTESTFLAGS) --tool_opts install"
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

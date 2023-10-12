@@ -1,7 +1,6 @@
 set test "environment_sanity_test"
 
 environment_sanity_test
-print_system_info
+# a failure causes a NOTREACHED early dejagnu exit
 
 pass $test
-
