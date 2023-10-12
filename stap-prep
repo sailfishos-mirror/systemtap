@@ -101,7 +101,15 @@ for VARIANT in debug kdump PAE xen; do
 done
 KERN_ARCH=`uname -m`
 KERN_REV=`echo $UNAME | sed s/.$KERN_ARCH//` # strip arch from uname
-if [ -x /usr/bin/dnf ]; then
+if [ -x /usr/bin/dnf4 ]; then
+    DI="dnf4 debuginfo-install"
+    DI_DEPS=""
+    D="dnf4"
+elif [ -x /usr/bin/dnf-3 ]; then
+    DI="dnf-3 debuginfo-install"
+    DI_DEPS=""
+    D="dnf-3"
+elif [ -x /usr/bin/dnf ]; then
     DI="dnf debuginfo-install"
     DI_DEPS=""
     D="dnf"
