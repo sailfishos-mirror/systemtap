@@ -591,6 +591,7 @@ builddir = @builddir@
 datadir = @datadir@
 datarootdir = @datarootdir@
 debuginfod_CFLAGS = @debuginfod_CFLAGS@
+debuginfod_LDFLAGS = @debuginfod_LDFLAGS@
 debuginfod_LIBS = @debuginfod_LIBS@
 docdir = @docdir@
 dracutbindir = @dracutbindir@
@@ -714,7 +715,8 @@ oldinclude_HEADERS = includes/sys/sdt.h includes/sys/sdt-config.h
 @BUILD_TRANSLATOR_TRUE@	$(am__append_24)
 @BUILD_TRANSLATOR_TRUE@noinst_HEADERS = sdt_types.h
 @BUILD_TRANSLATOR_TRUE@stap_LDADD = @stap_LIBS@ @sqlite3_LIBS@ \
-@BUILD_TRANSLATOR_TRUE@	@LIBINTL@ -lpthread @debuginfod_LIBS@ \
+@BUILD_TRANSLATOR_TRUE@	@LIBINTL@ -lpthread \
+@BUILD_TRANSLATOR_TRUE@	@debuginfod_LDFLAGS@ @debuginfod_LIBS@ \
 @BUILD_TRANSLATOR_TRUE@	@DYNINST_LDFLAGS@ @DYNINST_LIBS@ \
 @BUILD_TRANSLATOR_TRUE@	$(am__append_9) $(am__append_10) \
 @BUILD_TRANSLATOR_TRUE@	$(am__append_15) $(am__append_21) \
@@ -744,8 +746,9 @@ PHONIES = $(am__append_23) runcheck update-po dist-gzip rpm srpm \
 @BUILD_TRANSLATOR_TRUE@stap_CFLAGS = $(AM_CFLAGS) @PIECFLAGS@ \
 @BUILD_TRANSLATOR_TRUE@	$(am__append_18)
 @BUILD_TRANSLATOR_TRUE@stap_CXXFLAGS = $(AM_CXXFLAGS) @PIECXXFLAGS@ \
-@BUILD_TRANSLATOR_TRUE@	@ALIGNEDNEW@ $(am__append_13) \
-@BUILD_TRANSLATOR_TRUE@	$(am__append_19) $(am__append_22)
+@BUILD_TRANSLATOR_TRUE@	@ALIGNEDNEW@ @debuginfod_CFLAGS@ \
+@BUILD_TRANSLATOR_TRUE@	$(am__append_13) $(am__append_19) \
+@BUILD_TRANSLATOR_TRUE@	$(am__append_22)
 @BUILD_TRANSLATOR_TRUE@stap_CPPFLAGS = $(AM_CPPFLAGS) -DSTAP_SDT_V2 \
 @BUILD_TRANSLATOR_TRUE@	$(am__append_14) $(am__append_20)
 @BUILD_TRANSLATOR_TRUE@stap_LDFLAGS = $(AM_LDFLAGS) @PIELDFLAGS@ @BOOST_SYSTEM_LIB@

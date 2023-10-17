@@ -55,7 +55,7 @@ stap_SOURCES = main.cxx session.cxx \
 	stapregex-dfa.cxx stringtable.cxx tapset-python.cxx \
 	tapset-debuginfod.cxx analysis.cxx
 noinst_HEADERS = sdt_types.h
-stap_LDADD = @stap_LIBS@ @sqlite3_LIBS@ @LIBINTL@ -lpthread @debuginfod_LIBS@ @DYNINST_LDFLAGS@ @DYNINST_LIBS@
+stap_LDADD = @stap_LIBS@ @sqlite3_LIBS@ @LIBINTL@ -lpthread @debuginfod_LDFLAGS@ @debuginfod_LIBS@ @DYNINST_LDFLAGS@ @DYNINST_LIBS@
 stap_DEPENDENCIES =
 
 if HAVE_LANGUAGE_SERVER_SUPPORT
@@ -137,7 +137,7 @@ cscope:
 PHONIES =
 if BUILD_TRANSLATOR
 stap_CFLAGS = $(AM_CFLAGS) @PIECFLAGS@
-stap_CXXFLAGS = $(AM_CXXFLAGS) @PIECXXFLAGS@ @ALIGNEDNEW@
+stap_CXXFLAGS = $(AM_CXXFLAGS) @PIECXXFLAGS@ @ALIGNEDNEW@ @debuginfod_CFLAGS@
 stap_CPPFLAGS = $(AM_CPPFLAGS) -DSTAP_SDT_V2
 stap_LDFLAGS = $(AM_LDFLAGS) @PIELDFLAGS@ @BOOST_SYSTEM_LIB@
 
