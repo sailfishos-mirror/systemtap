@@ -15,6 +15,7 @@ AM_MAINTAINER_MODE
 
 m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])])
 
+PKG_PROG_PKG_CONFIG
 AC_USE_SYSTEM_EXTENSIONS
 AC_PROG_MKDIR_P
 AC_SUBST(MKDIR_P)
@@ -201,27 +202,43 @@ AC_SUBST(PIECFLAGS)
 AC_SUBST(PIECXXFLAGS)
 
 dnl Handle optional debuginfod support. If not specified by the user,
-dnl use it if present.
+dnl use it if present.  If given --with-debuginfod=/PATH, interpret /PATH as a prefix
+dnl of an elfutils install tree.
 AC_ARG_WITH([debuginfod],
   AS_HELP_STRING([--with-debuginfod],[Enable debuginfo lookups with debuginfod (auto/yes/no)]),
                  [], [with_debuginfod=auto])
 AC_MSG_CHECKING([whether to use debuginfod])
-AC_MSG_RESULT([$with_debuginfod])
-if test "x$with_debuginfod" != xno; then
+if expr "$with_debuginfod" : "/.*" >/dev/null; then
+dnl take the user at his or her word
+  debuginfod_LDFLAGS=-L$with_debuginfod/lib
+  debuginfod_LIBS=-ldebuginfod
+  debuginfod_CFLAGS=-I$with_debuginfod/include
+  have_debuginfod=1
+  AC_DEFINE([HAVE_LIBDEBUGINFOD], [1], [Define to 1 if debuginfod is enabled.])
+  AC_MSG_RESULT([yes])
+elif test "x$with_debuginfod" != xno; then
+dnl check in the system pkgconfig
   PKG_CHECK_MODULES([debuginfod], [libdebuginfod >= 0.179],
-    [AC_DEFINE([HAVE_LIBDEBUGINFOD], [1], [Define to 1 if debuginfod is enabled.])],
+    [have_debuginfod=1],
     [if test "x$with_debuginfod" = xyes; then
        AC_MSG_ERROR(["--with-debuginfod was given, but libdebuginfod is missing or unusable."])
-     else
-       AC_MSG_WARN([libdebuginfod is missing or unusable; some features may be unavailable.])
      fi])
+  AC_DEFINE([HAVE_LIBDEBUGINFOD], [1], [Define to 1 if debuginfod is enabled.])
+  AC_MSG_RESULT([yes])  
 else
-  AC_MSG_WARN([debuginfod support disabled; some features may be unavailable.])
+  AC_MSG_RESULT([no])
 fi
 
+ac_save_CFLAGS="$CFLAGS"
+ac_save_LDFLAGS="$LDFLAGS"
+CFLAGS="$CFLAGS $debuginfod_CFLAGS"
+LDFLAGS="$LDFLAGS $debuginfod_LDFLAGS"
 AC_CHECK_LIB(debuginfod, debuginfod_find_metadata, [
   AC_DEFINE([METADATA_QUERY_ENABLED], [1], [Define if a new enough version of elfutils exists to support metadata querying])
 ])
+CFLAGS="$ac_save_CFLAGS"
+LDFLAGS="$ac_save_LDFLAGS"
+AC_SUBST(debuginfod_LDFLAGS)
 
 dnl Handle optional sqlite support.  If enabled/disabled by the user,
 dnl do the right thing.  If not specified by the user, use it if
