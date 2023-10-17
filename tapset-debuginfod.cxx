@@ -78,6 +78,8 @@ get_buildids(bool has_package, string package, string process_path, set<interned
       buildids.insert(buildid_is);
 
       debuginfod_workers.push_back(stap_spawn_piped(0, {"debuginfod-find", "executable", buildid}, NULL, &d_out, &d_err));
+      // NB: we don't really have to preload the debuginfo - a probe point may not call for dwarf
+      // NB: but if it does, we'd suffer latency by downloading one at a time, sequentially
       debuginfod_workers.push_back(stap_spawn_piped(0, {"debuginfod-find", "debuginfo" , buildid}, NULL, &d_out, &d_err));
     }
   }
@@ -134,6 +136,8 @@ debuginfod_builder::build(systemtap_session & sess, probe * base,
   probe_point *base_pp = base_p->locations[0];
   base_p->locations.clear();  // The new probe points are created below as derivatives of base_pp
   base_pp->components.erase(base_pp->components.begin()); // Remove the 'debuginfod'
+  if (has_package)
+    base_pp->components.erase(base_pp->components.begin()); // Remove the 'package' too
 
   for(auto it = buildids.begin(); it != buildids.end(); ++it){
     interned_string buildid = *it;
