@@ -22,11 +22,11 @@ using namespace std;
 using namespace __gnu_cxx;
 
 static const string TOK_DEBUGINFOD("debuginfod");
-static const string TOK_PACKAGE("package");
+static const string TOK_ARCHIVE("archive");
 static const string TOK_PROCESS("process");
 
 void
-get_buildids(bool has_package, string package, string process_path, set<interned_string>& buildids){
+get_buildids(bool has_archive, string archive, string process_path, set<interned_string>& buildids){
   static unique_ptr <debuginfod_client, void (*)(debuginfod_client*)>
     client (debuginfod_begin(), &debuginfod_end);
   
@@ -64,14 +64,14 @@ get_buildids(bool has_package, string package, string process_path, set<interned
     if(is_build_id(buildid) && buildids.find(buildid_is) == buildids.end() &&
         json_object_object_get_ex(file_metadata, "type", &json_field) && 0 == strcmp(json_object_get_string(json_field), "executable"))
     {
-      // Skip the buildid if the archive file name does not contain the requested package string
-      if(has_package)
+      // Skip the buildid if the archive file name does not contain the requested archive string
+      if(has_archive)
         {
         json_object_object_get_ex(file_metadata, "archive", &json_field);
         string path = json_object_get_string(json_field);
         string base_filename = path.substr(path.find_last_of("/\\") + 1);
         if(json_object_object_get_ex(file_metadata, "archive", &json_field) &&
-          0 != fnmatch(package.c_str(), base_filename.c_str(), 0))
+          0 != fnmatch(archive.c_str(), base_filename.c_str(), 0))
           continue;
         }
       
@@ -119,25 +119,25 @@ debuginfod_builder::build(systemtap_session & sess, probe * base,
   literal_map_t const & parameters,
   vector<derived_probe *> & finished_results)
 {
-  interned_string package;
+  interned_string archive;
   interned_string process_path;
   bool has_debuginfod = has_null_param (parameters, TOK_DEBUGINFOD);
   bool has_process    = get_param (parameters, TOK_PROCESS, process_path);
-  bool has_package    = get_param (parameters, TOK_PACKAGE, package);
+  bool has_archive    = get_param (parameters, TOK_ARCHIVE, archive);
   
   if(!has_debuginfod || !has_process)
-    throw SEMANTIC_ERROR(_("the probe must be of the form debuginfod.[.package(\"foobar\")]process(\"foo/bar\").**{...}"));
+    throw SEMANTIC_ERROR(_("the probe must be of the form debuginfod.[.archive(\"foobar\")]process(\"foo/bar\").**{...}"));
 
-  // The matching buildids from the packages/debuginfod
+  // The matching buildids from the archives/debuginfod
   set<interned_string> buildids;
-  get_buildids(has_package, package, process_path, buildids);
+  get_buildids(has_archive, archive, process_path, buildids);
 
   probe *base_p = new probe(base, location);
   probe_point *base_pp = base_p->locations[0];
   base_p->locations.clear();  // The new probe points are created below as derivatives of base_pp
   base_pp->components.erase(base_pp->components.begin()); // Remove the 'debuginfod'
-  if (has_package)
-    base_pp->components.erase(base_pp->components.begin()); // Remove the 'package' too
+  if (has_archive)
+    base_pp->components.erase(base_pp->components.begin()); // Remove the 'archive' too
 
   for(auto it = buildids.begin(); it != buildids.end(); ++it){
     interned_string buildid = *it;
@@ -175,9 +175,9 @@ debuginfod_builder::build_with_suffix(systemtap_session & sess, probe * base,
     std::vector<probe_point::component *> const & suffix){
 
     /* Extract the parameters for the head of the probe
-     * The probes are of the form debuginfod[.package(**)].process("foo/bar").**. 
+     * The probes are of the form debuginfod[.archive(**)].process("foo/bar").**. 
      * So the length should always be TWO (2) or THREE (3), 
-     * when a package parameter is provided.
+     * when a archive parameter is provided.
      */
     unsigned num_param = location->components.size() - suffix.size();
     assert(num_param == 2 || num_param == 3);
@@ -202,8 +202,8 @@ register_tapset_debuginfod(systemtap_session& s)
     //debuginfod.process()
     root->bind(TOK_DEBUGINFOD)->bind_str(TOK_PROCESS)->bind(builder);
 
-    //debuginfod.package().process()
-    root->bind(TOK_DEBUGINFOD)->bind_str(TOK_PACKAGE)->bind_str(TOK_PROCESS)->bind(builder);
+    //debuginfod.archive().process()
+    root->bind(TOK_DEBUGINFOD)->bind_str(TOK_ARCHIVE)->bind_str(TOK_PROCESS)->bind(builder);
 
 }
 
