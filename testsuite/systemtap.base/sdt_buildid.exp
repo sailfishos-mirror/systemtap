@@ -100,7 +100,11 @@ if [catch {exec /usr/bin/which debuginfod} debuginfod] then {
     # give it time to scan the build directory
     sleep 10
     # XXX: we could expect some verbose traffic
-    set env(DEBUGINFOD_URLS) "http://localhost:$port $env(DEBUGINFOD_URLS)"
+    if [info exists env(DEBUGINFOD_URLS)] {
+       set env(DEBUGINFOD_URLS) "http://localhost:$port $env(DEBUGINFOD_URLS)"
+    } else {
+       set env(DEBUGINFOD_URLS) "http://localhost:$port"
+    }
     verbose -log "started debuginfod on port $port"
 
     set subtest "$test debuginfod buildid-exe buildid-solib"
