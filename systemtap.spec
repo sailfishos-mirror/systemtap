@@ -400,7 +400,7 @@ URL: http://sourceware.org/systemtap/
 Requires: systemtap = %{version}-%{release}
 Requires: systemtap-sdt-devel = %{version}-%{release}
 Requires: systemtap-server = %{version}-%{release}
-Requires: dejagnu which elfutils grep nc
+Requires: dejagnu which elfutils grep nc wget
 %if %{with_debuginfod}
 Requires: elfutils-debuginfod
 %endif
