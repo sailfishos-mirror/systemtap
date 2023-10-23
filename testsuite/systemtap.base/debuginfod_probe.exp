@@ -98,6 +98,28 @@ if {"$debuginfod" == "" || $found_metadata_symbol != 0 || $found_jsonc != 0} the
     catch {close}; catch {wait}
     if {$pass == 1} then { pass $subtest } else { fail $subtest }
 
+    # Test 1d: package
+    set subtest "$test package"
+    set systemtap_script {
+        probe
+        debuginfod
+        .archive("*probe*")
+        .process("/usr/local/bin/hello")
+        .function("main")
+        { printf("HelloWorld\n") }
+    }
+    spawn sh -c "$stap_path -ve \'$systemtap_script\' -p2 2>&1"
+    wait_n_secs 5
+    set pass 0
+    expect {
+        -timeout 5
+        -re {.*process\(\"f0aa15b8aba4f3c28cac3c2a73801fefa644a9f2\"\).function\(\"main\"\)*} { incr pass }
+        eof { }
+        timeout { fail "$subtest (timeout)" }
+    }
+    catch {close}; catch {wait}
+    if {$pass == 1} then { pass $subtest } else { fail $subtest }
+
     # Cleanup
     catch { exec rm -rf "/tmp/staptest" }
     kill -INT $debuginfod_pid
