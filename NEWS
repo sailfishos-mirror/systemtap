@@ -5,12 +5,9 @@
 - Debuginfod probes may now be filtered by archive name.
   This allows for probing only certain versions of a program 
   though a glob on the basename of the archive/package name. 
-  For example if one of the files on the deubinfod server is 
-  curl-minimal-8.0.1-5.fc38, the probe can be filtered to only 
-  include the fedora 38 distro of the program (as in example below).
 
   # export DEBUGINFOD_URLS="URL1 URL2 ..."
-  # stap -e 'probe debuginfod.archive("*.fc38").process("/usr/*/curl").begin { log("Hello World") }'
+  # stap -e 'probe debuginfod.archive("*.fc38").process("/usr/*/c*").function("main") { log("Hello World") }'
 
 - The kernel-user message transport system added framing codes, making
   the transport more reliable, but becoming incompatible across
