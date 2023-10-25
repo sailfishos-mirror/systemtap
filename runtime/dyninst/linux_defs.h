@@ -97,6 +97,7 @@ static inline int atomic_cmpxchg(atomic_t *v, int old, int new)
 	__rem;							\
  })
 
+#if !__GLIBC_PREREQ(2, 38)
 static inline size_t strlcpy(char *dest, const char *src, size_t size)
 {
 	size_t ret = strlen(src);
@@ -127,6 +128,7 @@ static inline size_t strlcat(char *dest, const char *src, size_t count)
 	dest[len] = 0;
 	return res;
 }
+#endif
 
 #define __must_check 		__attribute__((warn_unused_result))
 # define __force
