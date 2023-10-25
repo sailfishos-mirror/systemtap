@@ -1,5 +1,7 @@
 * What's new in version 5.0, PRERELEASE
 
+- Tapset function print_ubacktrace_fileline() now understands DWARF5 (PR30407)
+
 - The kernel-user message transport system added framing codes, making
   the transport more reliable, but becoming incompatible across
   pre-5.0 versions.  Use matching versions of stap and staprun.

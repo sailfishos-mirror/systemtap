@@ -466,6 +466,13 @@ static const struct {
 #define	DW_OP_xderef_size	0x95
 #define	DW_OP_nop		0x96
 
+#define DW_LNCT_path		0x1
+#define DW_LNCT_directory_index	0x2
+
+#define DW_FORM_udata		0x0f
+#define DW_FORM_data16          0x1e
+#define DW_FORM_line_strp	0x1f
+
 struct unwind_item {
 	enum item_location {
 		Same,     /* no state */

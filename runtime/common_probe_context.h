@@ -206,3 +206,12 @@ long *perf_read_values;
 /* PR26673 we should allocate this array in struct context instead of on the
  * kernel stack */
 unsigned long kern_bt_entries[MAXBACKTRACE];
+
+/* PR30407 storage for dwarf data */
+#define STP_MAX_DW_SOURCES 255
+struct {
+  struct { uint16_t desc; uint16_t form; } dir_enc[STP_MAX_DW_SOURCES];
+  struct { uint16_t desc; uint16_t form; } file_enc[STP_MAX_DW_SOURCES];
+  struct { uint8_t offset; char *name; } src_dir[STP_MAX_DW_SOURCES];
+  struct { uint8_t offset; uint8_t dirindex; char *name; } src_file[STP_MAX_DW_SOURCES];
+} dw_data;

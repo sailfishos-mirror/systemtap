@@ -355,14 +355,28 @@ static void _stp_filename_lookup(struct _stp_module *mod, char ** filename,
     }
 }
 
+// At this point the compiler needs to know the context struct.  The context
+// struct is emitted by s.up->emit_common_header () within translate.cxx way
+// after this file. To solve this problem, keep only the function declaration
+// here, and move the actual function definition out to a separate sym2.c,
+// which is included once the context struct is known.
+static void _stp_filename_lookup_5(struct _stp_module *mod, char ** filename,
+                                   uint8_t *dirsecp, uint8_t *enddirsecp,
+                                   unsigned int length,
+                                   unsigned fileidx, int user, int compat_task,
+                                   struct context *c);
+
 #endif /* STP_NEED_LINE_DATA */
 
-unsigned long _stp_linenumber_lookup(unsigned long addr, struct task_struct *task, char ** filename, int need_filename)
+unsigned long _stp_linenumber_lookup(unsigned long addr, struct task_struct *task,
+                                     char ** filename, int need_filename,
+                                     struct context *c)
 {
   struct _stp_module *m;
   struct _stp_section *sec;
   const char *modname = NULL;
   uint8_t *linep, *enddatap;
+  uint8_t *str_linep, *str_enddatap;
   int compat_task = _stp_is_compat_task();
   int user = (task ? 1 : 0);
 
@@ -405,7 +419,7 @@ unsigned long _stp_linenumber_lookup(unsigned long addr, struct task_struct *tas
       addr = addr - offset;
     }
 
-
+  // The .debug_line section
   linep = m->debug_line;
   enddatap = m->debug_line + m->debug_line_len;
 
@@ -441,6 +455,16 @@ unsigned long _stp_linenumber_lookup(unsigned long addr, struct task_struct *tas
       endunitp = linep + unit_length;
 
       version = read_pointer ((const uint8_t **) &linep, endunitp, DW_EH_PE_data2, user, compat_task);
+
+      // Need to skip over DWARF 5's address_size and segment_selector_size right
+      // to hdr_length (analogy to what happens in pass2's dump_line_tables_check()
+      // PR29984
+      if (version >= 5)
+        {
+          if (unlikely (linep + 2 > enddatap))
+            return 0;
+          linep += 2;
+        }
 
       if (length == 4)
         hdr_length = (uint64_t) read_pointer ((const uint8_t **) &linep, endunitp, DW_EH_PE_data4, user, compat_task);
@@ -613,8 +637,15 @@ unsigned long _stp_linenumber_lookup(unsigned long addr, struct task_struct *tas
             if (row_end_sequence == 0 && row_addr <= addr && addr < curr_addr)
               {
                 if (need_filename)
-                  _stp_filename_lookup(m, filename, dirsecp, endhdrp,
-                                       row_file_idx, user, compat_task);
+                  {
+                    if (version > 4)
+                      _stp_filename_lookup_5(m, filename, dirsecp, endhdrp,
+                                             length, row_file_idx, user,
+                                             compat_task, c);
+                    else
+                      _stp_filename_lookup(m, filename, dirsecp, endhdrp,
+                                           row_file_idx, user, compat_task);
+                  }
                 return row_linenum;
               }
 
@@ -886,7 +917,7 @@ static int _stp_usermodule_check(struct task_struct *tsk, const char *path_name,
  * @note Symbolic lookups should not normally be done within
  * a probe because it is too time-consuming. Use at module exit time. */
 static int _stp_snprint_addr(char *str, size_t len, unsigned long address,
-			     int flags, struct task_struct *task)
+			     int flags, struct task_struct *task, struct context *c)
 {
   const char *modname = NULL;
   const char *name = NULL;
@@ -918,7 +949,7 @@ static int _stp_snprint_addr(char *str, size_t len, unsigned long address,
 
   if ((flags & _STP_SYM_LINENUMBER) || (flags & _STP_SYM_FILENAME)) {
       linenumber = _stp_linenumber_lookup (address, task, &filename,
-                                           (int) (flags & _STP_SYM_FILENAME));
+                                           (int) (flags & _STP_SYM_FILENAME), c);
   }
 
   switch (flags & ~_STP_SYM_INEXACT) {
@@ -1065,9 +1096,10 @@ static int _stp_snprint_addr(char *str, size_t len, unsigned long address,
 }
 
 static void _stp_print_addr(unsigned long address, int flags,
-			    struct task_struct *task)
+			    struct task_struct *task,
+                            struct context *c)
 {
-  _stp_snprint_addr(NULL, 0, address, flags, task);
+  _stp_snprint_addr(NULL, 0, address, flags, task, c);
 }
 
 /** @} */

@@ -6601,6 +6601,8 @@ struct unwindsym_dump_context
   Dwarf_Addr eh_frame_hdr_addr;
   void *debug_line;
   size_t debug_line_len;
+  void *debug_line_str;
+  size_t debug_line_str_len;
 
   set<string> undone_unwindsym_modules;
 };
@@ -7056,6 +7058,16 @@ dump_line_tables_check (void *data, size_t data_len)
       version  = *((uint16_t *)ptr);
       ptr += 2;
 
+      // Need to skip over DWARF 5's address_size and segment_selector_size right
+      // to hdr_length (analogy to what happens in pass2's dump_line_tables_check()
+      // PR29984
+      if (version >= 5)
+      {
+        if (ptr + 2 > (uint8_t *)data + data_len)
+            return DWARF_CB_ABORT;
+        ptr += 2;
+      }
+
       if (unit_length <= (2 + length))
         return DWARF_CB_ABORT;
 
@@ -7133,7 +7145,15 @@ dump_line_tables (Dwfl_Module *m, unwindsym_dump_context *c,
             return;
           c->debug_line = data->d_buf;
           c->debug_line_len = data->d_size;
-          break;
+          continue;
+        }
+       if (strcmp(sh_name, ".debug_line_str") == 0
+           || strcmp(sh_name, ".zdebug_line_str") == 0)
+        {
+          data = elf_rawdata(scn, NULL);
+          c->debug_line_str = data->d_buf;
+          c->debug_line_str_len = data->d_size;
+          continue;
         }
     }
 
@@ -7412,9 +7432,6 @@ dump_unwindsym_cxt_table(systemtap_session& session, ostream& output,
 			 const string& secname, unsigned secindex,
 			 const string& table, void*& data, size_t& len)
 {
-  if (data == NULL || len == 0)
-    return;
-
   if (len > MAX_UNWIND_TABLE_SIZE)
     {
       if (secname.empty())
@@ -7474,6 +7491,8 @@ dump_unwindsym_cxt (Dwfl_Module *m,
   Dwarf_Addr eh_frame_hdr_addr = c->eh_frame_hdr_addr;
   void *debug_line = c->debug_line;
   size_t debug_line_len = c->debug_line_len;
+  void *debug_line_str = c->debug_line_str;
+  size_t debug_line_str_len = c->debug_line_str_len;
 
   dump_unwindsym_cxt_table(c->session, c->output, modname, stpmod_idx, "", 0,
 			   "debug_frame", debug_frame, debug_len);
@@ -7486,6 +7505,9 @@ dump_unwindsym_cxt (Dwfl_Module *m,
 
   dump_unwindsym_cxt_table(c->session, c->output, modname, stpmod_idx, "", 0,
 			   "debug_line", debug_line, debug_line_len);
+
+  dump_unwindsym_cxt_table(c->session, c->output, modname, stpmod_idx, "", 0,
+			   "debug_line_str", debug_line_str, debug_line_str_len);
 
   if (c->session.need_unwind && debug_frame == NULL && eh_frame == NULL)
     {
@@ -7502,6 +7524,13 @@ dump_unwindsym_cxt (Dwfl_Module *m,
     {
       if (c->session.verbose > 2)
         c->session.print_warning ("No debug line data for " + modname + ", " +
+                                  dwfl_errmsg (-1));
+    }
+
+  if (c->session.need_lines && debug_line_str == NULL)
+    {
+      if (c->session.verbose > 2)
+        c->session.print_warning ("No debug line str data for " + modname + ", " +
                                   dwfl_errmsg (-1));
     }
 
@@ -7685,11 +7714,16 @@ dump_unwindsym_cxt (Dwfl_Module *m,
       c->output << ".debug_line = "
 		<< "_stp_module_" << stpmod_idx << "_debug_line, \n";
       c->output << ".debug_line_len = " << debug_line_len << ", \n";
+      c->output << ".debug_line_str = "
+		<< "_stp_module_" << stpmod_idx << "_debug_line_str, \n";
+      c->output << ".debug_line_str_len = " << debug_line_str_len << ", \n";
       c->output << "#else\n";
     }
 
   c->output << ".debug_line = NULL,\n";
   c->output << ".debug_line_len = 0,\n";
+  c->output << ".debug_line_str = NULL,\n";
+  c->output << ".debug_line_str_len = 0,\n";
 
   if (debug_line != NULL)
     c->output << "#endif /* STP_NEED_LINE_DATA */\n";
@@ -7873,6 +7907,8 @@ dump_unwindsyms (Dwfl_Module *m,
 
   c->debug_line = NULL;
   c->debug_line_len = 0;
+  c->debug_line_str = NULL;
+  c->debug_line_str_len = 0;
   if (res == DWARF_CB_OK && c->session.need_lines)
     // we dont set res = dump_line_tables() because unwindsym stuff should still
     // get dumped to the output even if gathering debug_line data fails
@@ -8044,6 +8080,8 @@ emit_symbol_data (systemtap_session& s)
 				 0, /* eh_frame_hdr_addr */
 				 NULL, /* debug_line */
 				 0, /* debug_line_len */
+				 NULL, /* debug_line_str */
+				 0, /* debug_line_str_len */
 				 s.unwindsym_modules };
 
   // Micro optimization, mainly to speed up tiny regression tests
@@ -8139,6 +8177,8 @@ self_unwind_declarations(unwindsym_dump_context *ctx)
   ctx->output << ".debug_frame_len = 0,\n";
   ctx->output << ".debug_line = NULL,\n";
   ctx->output << ".debug_line_len = 0,\n";
+  ctx->output << ".debug_line_str = NULL,\n";
+  ctx->output << ".debug_line_str_len = 0,\n";
   ctx->output << "};\n";
 }
 
@@ -8426,6 +8466,8 @@ translate_pass (systemtap_session& s)
 
       if (s.need_unwind)
 	s.op->newline() << "#include \"stack.c\"";
+
+      s.op->newline() << "#include \"sym2.c\"";
 
       if (s.globals.size()>0)
 	{

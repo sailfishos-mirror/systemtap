@@ -116,12 +116,14 @@ struct _stp_module {
 	   Note index for .debug_frame (hdr) is per section. */
 	void *debug_frame;
 	void *eh_frame;
-	void *unwind_hdr;	
-  void *debug_line;
+	void *unwind_hdr;
+	void *debug_line;
+	void *debug_line_str;
 	uint32_t debug_frame_len;
 	uint32_t eh_frame_len;
 	uint32_t unwind_hdr_len;
-  uint32_t debug_line_len;
+	uint32_t debug_line_len;
+	uint32_t debug_line_str_len;
 	unsigned long eh_frame_addr; /* Orig load address (offset) .eh_frame */
 	unsigned long unwind_hdr_addr; /* same for .eh_frame_hdr */
 

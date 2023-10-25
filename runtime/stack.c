@@ -137,7 +137,7 @@ static void print_stack_address(void *data, unsigned long addr, int reliable)
 	else if (sdata->levels > 0) {
 		_stp_print_addr(addr,
 				sdata->flags | (reliable ? 0 :_STP_SYM_INEXACT),
-				NULL);
+				NULL, NULL);
 		sdata->levels--;
 	}
 #ifdef STAPCONF_STACKTRACE_OPS_INT_ADDRESS
@@ -188,7 +188,7 @@ static void _stp_stack_print_fallback(struct context *c, unsigned long sp,
 #if defined(STAPCONF_STACK_TRACE_SAVE_REGS) /* linux 5.2+ apprx. */
 	if (!stack_trace_save_regs_fn) {
 		dbug_unwind(1, "no fallback kernel stacktrace (giving up)\n");
-		_stp_print_addr(0, sym_flags | _STP_SYM_INEXACT, NULL);
+		_stp_print_addr(0, sym_flags | _STP_SYM_INEXACT, NULL, c);
 		return;
 	}
 
@@ -199,7 +199,7 @@ static void _stp_stack_print_fallback(struct context *c, unsigned long sp,
 	/* If don't have save_stack_trace_regs unwinder, just give up. */
 	if (!save_stack_trace_regs_fn) {
 		dbug_unwind(1, "no fallback kernel stacktrace (giving up)\n");
-		_stp_print_addr(0, sym_flags | _STP_SYM_INEXACT, NULL);
+		_stp_print_addr(0, sym_flags | _STP_SYM_INEXACT, NULL, c);
 		return;
 	}
 
@@ -222,10 +222,10 @@ static void _stp_stack_print_fallback(struct context *c, unsigned long sp,
 		/* When we have frame pointers, the unwind addresses can be
 		   (mostly) trusted, otherwise it is all guesswork.  */
 #ifdef CONFIG_FRAME_POINTER
-		_stp_print_addr((unsigned long) entries[i], sym_flags, NULL);
+		_stp_print_addr((unsigned long) entries[i], sym_flags, NULL, c);
 #else
 		_stp_print_addr((unsigned long) entries[i], sym_flags | _STP_SYM_INEXACT,
-				NULL);
+				NULL, c);
 #endif
 	}
 }
@@ -450,10 +450,10 @@ static void _stp_stack_kernel_print(struct context *c, int sym_flags)
 	    && (sym_flags & _STP_SYM_FULL) == _STP_SYM_FULL) {
 		_stp_print("Returning from: ");
 		_stp_print_addr((unsigned long)_stp_probe_addr_r(c->ips.krp.pi),
-				sym_flags, NULL);
+				sym_flags, NULL, c);
 		_stp_print("Returning to  : ");
 	}
-	_stp_print_addr(_stp_stack_kernel_get(c, 0), sym_flags, NULL);
+	_stp_print_addr(_stp_stack_kernel_get(c, 0), sym_flags, NULL, c);
 
 #ifdef STP_USE_DWARF_UNWINDER
 	for (n = 1; n < MAXBACKTRACE; n++) {
@@ -472,7 +472,7 @@ static void _stp_stack_kernel_print(struct context *c, int sym_flags)
 							  sym_flags, remaining, 0);
 			break;
 		} else {
-			_stp_print_addr(l, sym_flags, NULL);
+			_stp_print_addr(l, sym_flags, NULL, c);
 			print_addr_seen = 1;
 		}
 	}
@@ -661,19 +661,19 @@ static void _stp_stack_user_print(struct context *c, int sym_flags)
 		if ((sym_flags & _STP_SYM_FULL) == _STP_SYM_FULL) {
 			_stp_print("Returning from: ");
 			/* ... otherwise this dereference fails */
-			_stp_print_addr(ri->rp->u.vaddr, sym_flags, current);
+			_stp_print_addr(ri->rp->u.vaddr, sym_flags, current, c);
 			_stp_print("Returning to  : ");
 		}
 	}
 #endif
-	_stp_print_addr(_stp_stack_user_get(c, 0), sym_flags, current);
+	_stp_print_addr(_stp_stack_user_get(c, 0), sym_flags, current, c);
 
 	/* print rest of stack... */
 #ifdef STP_USE_DWARF_UNWINDER
 	for (n = 1; n < MAXBACKTRACE; n++) {
 		l = _stp_stack_user_get(c, n);
 		if (l == 0) break; // No user space fallback available
-		_stp_print_addr(l, sym_flags, current);
+		_stp_print_addr(l, sym_flags, current, c);
 	}
 #else
 	/* User stack traces only supported for arches with dwarf unwinder. */

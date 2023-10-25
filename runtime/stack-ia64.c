@@ -27,7 +27,7 @@ static void __stp_show_stack_sym(struct unw_frame_info *info, void *arg)
 				skip = 0;
 			continue;
 		}
-		_stp_print_addr(ip, para->verbose, NULL);
+		_stp_print_addr(ip, para->verbose, NULL, NULL);
         } while (unw_unwind(info) >= 0);
 }
 

@@ -24,7 +24,7 @@ __stp_show_stack (unsigned long sp, unsigned long low,
 		ip = sf->gprs[8] & PSW_ADDR_INSN;
 		if (verbose)
 			_stp_printf("[%p] [%p] ", (int64_t)sp, (int64_t)ip);
-		_stp_print_addr((int64_t)ip, verbose, NULL);
+		_stp_print_addr((int64_t)ip, verbose, NULL, NULL);
 		/* Follow the back_chain */
 		while (1) {
 			low = sp;
@@ -37,7 +37,7 @@ __stp_show_stack (unsigned long sp, unsigned long low,
 			ip = sf->gprs[8] & PSW_ADDR_INSN;
 			if (verbose)
 				_stp_printf("[%p] [%p] ", (int64_t)sp, (int64_t)ip);
-			_stp_print_addr((int64_t)ip, verbose, NULL);
+			_stp_print_addr((int64_t)ip, verbose, NULL, NULL);
 		}
 		/* Zero backchain detected, check for interrupt frame. */
 		sp = (unsigned long) (sf + 1);
@@ -46,7 +46,7 @@ __stp_show_stack (unsigned long sp, unsigned long low,
 		regs = (struct pt_regs *) sp;
 		if (verbose)
 			_stp_printf("[%p] [%p] ", (int64_t)sp, (int64_t)ip);
-		_stp_print_addr((int64_t)ip, verbose, NULL);
+		_stp_print_addr((int64_t)ip, verbose, NULL, NULL);
 		low = sp;
 		sp = regs->gprs[15];
 	}
