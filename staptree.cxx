@@ -96,7 +96,7 @@ probe_point::probe_point (std::vector<component*> const & comps):
 {
 }
 
-// NB: shallow-copy of compoonents & condition!
+// NB: shallow-copy of components & condition!
 probe_point::probe_point (const probe_point& pp):
   components(pp.components), optional (pp.optional), sufficient (pp.sufficient),
   well_formed (pp.well_formed), condition (pp.condition), auto_path (pp.auto_path)
@@ -4063,6 +4063,12 @@ debug_print(const expression* x)
 }
 void
 debug_print(const statement* x)
+{
+  x->print(cout);
+  cout << endl;
+}
+void
+debug_print(const probe_point* x)
 {
   x->print(cout);
   cout << endl;

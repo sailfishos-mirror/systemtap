@@ -183,6 +183,8 @@ printscript(systemtap_session& s, ostream& o)
                       // We want to print the probe point signature (without the nested components).
                       std::ostringstream sig;
                       p->printsig_nonest(sig);
+                      if (s.verbose > 1)
+                        p->printsig_nested(sig);                        
 
                       if (s.dump_mode == systemtap_session::dump_matched_probes_vars && isatty(STDOUT_FILENO))
                         o << s.colorize(sig.str(), "source");

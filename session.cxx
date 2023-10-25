@@ -567,6 +567,12 @@ systemtap_session::version ()
 #ifdef HAVE_JSON_C
        << " JSON_C"
 #endif
+#ifdef HAVE_LIBDEBUGINFOD
+       << " LIBDEBUGINFOD" 
+#endif
+#ifdef METADATA_QUERY_ENABLED
+       << " METADATA"
+#endif
        << endl;
 }
 

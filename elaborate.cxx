@@ -92,30 +92,18 @@ derived_probe::printsig (ostream& o) const
   printsig_nested (o);
 }
 
+
 void
 derived_probe::printsig_nested (ostream& o) const
 {
-  // We'd like to enclose the probe derivation chain in a /* */
-  // comment delimiter.  But just printing /* base->printsig() */ is
-  // not enough, since base might itself be a derived_probe.  So we,
-  // er, "cleverly" encode our nesting state as a formatting flag for
-  // the ostream.
-  ios::fmtflags f = o.flags (ios::internal);
-  if (f & ios::internal)
-    {
-      // already nested
-      o << " <- ";
-      base->printsig (o);
-    }
-  else
-    {
-      // outermost nesting
-      o << " /* <- ";
-      base->printsig (o);
-      o << " */";
-    }
-  // restore flags
-  (void) o.flags (f);
+  vector<probe*> probes_list;
+  base->collect_derivation_chain(probes_list); // excluding this probe's own pp
+  o << " /* ";
+  for (auto i : probes_list) {
+    o << " <- ";
+    i->printsig (o);
+  }
+  o << " */ ";  
 }
 
 
