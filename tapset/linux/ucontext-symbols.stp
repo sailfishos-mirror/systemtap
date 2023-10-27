@@ -58,7 +58,7 @@ function ustack:long (n:long) {
 function usymname:string (addr: long) %{
 /* pure */ /* myproc-unprivileged */ /* pragma:vma */ /* pragma:symbols */
 	 _stp_snprint_addr(STAP_RETVALUE, MAXSTRINGLEN, STAP_ARG_addr,
-			   _STP_SYM_SYMBOL, current);
+			   _STP_SYM_SYMBOL, current, CONTEXT);
 %}
 
 /**
@@ -76,7 +76,7 @@ function usymname:string (addr: long) %{
 function usymdata:string (addr: long) %{
 /* pure */ /* myproc-unprivileged */ /* pragma:vma */ /* pragma:symbols */
 	 _stp_snprint_addr(STAP_RETVALUE, MAXSTRINGLEN, STAP_ARG_addr,
-			   _STP_SYM_DATA, current);
+			   _STP_SYM_DATA, current, CONTEXT);
 %}
 
 /**
@@ -184,7 +184,7 @@ function sprint_usyms (callers:string) {
 function usymfileline:string (addr:long) %{
 /* pure */ /* myproc-unprivileged */ /* pragma:symbols */ /* pragma:vma */ /* pragma:lines */
   _stp_snprint_addr(STAP_RETVALUE, MAXSTRINGLEN, STAP_ARG_addr,
-                    _STP_SYM_LINENUMBER + _STP_SYM_FILENAME, current);
+                    _STP_SYM_LINENUMBER + _STP_SYM_FILENAME, current, CONTEXT);
 %}
 
 /**
@@ -198,7 +198,7 @@ function usymfileline:string (addr:long) %{
 function usymfile:string (addr:long) %{
 /* pure */ /* myproc-unprivileged */ /* pragma:symbols */ /* pragma:vma */ /* pragma:lines */
   _stp_snprint_addr(STAP_RETVALUE, MAXSTRINGLEN, STAP_ARG_addr,
-                    _STP_SYM_FILENAME, current);
+                    _STP_SYM_FILENAME, current, CONTEXT);
 %}
 
 /**
@@ -212,5 +212,5 @@ function usymfile:string (addr:long) %{
 function usymline:string (addr:long) %{
 /* pure */ /* myproc-unprivileged */ /* pragma:symbols */ /* pragma:vma */ /* pragma:lines */
   _stp_snprint_addr(STAP_RETVALUE, MAXSTRINGLEN, STAP_ARG_addr,
-                    _STP_SYM_LINENUMBER, current);
+                    _STP_SYM_LINENUMBER, current, CONTEXT);
 %}

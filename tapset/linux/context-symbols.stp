@@ -125,7 +125,8 @@ function probefunc:string () %( systemtap_v < "2.0" %?
 		if (regs) {
 			_stp_snprint_addr(STAP_RETVALUE, MAXSTRINGLEN,
 					  REG_IP(regs), _STP_SYM_SYMBOL,
-					  (user_mode ? current : NULL));
+					  (user_mode ? current : NULL),
+                                          CONTEXT);
 		}
 	}
 %}
@@ -226,7 +227,7 @@ function modname:string (addr: long) %{ /* pure */
  */
 function symname:string (addr: long) %{ /* pure */ /* pragma:symbols */
 	 _stp_snprint_addr(STAP_RETVALUE, MAXSTRINGLEN, STAP_ARG_addr,
-			   _STP_SYM_SYMBOL, NULL);
+			   _STP_SYM_SYMBOL, NULL, CONTEXT);
 %}
 
 /**
@@ -243,7 +244,7 @@ function symname:string (addr: long) %{ /* pure */ /* pragma:symbols */
  */
 function symdata:string (addr: long) %{ /* pure */ /* pragma:symbols */
 	_stp_snprint_addr(STAP_RETVALUE, MAXSTRINGLEN, STAP_ARG_addr,
-			  _STP_SYM_DATA, NULL);
+			  _STP_SYM_DATA, NULL, CONTEXT);
 %}
 
 /**
@@ -312,7 +313,7 @@ function sprint_syms (callers:string) {
 function symfileline:string (addr:long) %{
 /* pure */ /* pragma:symbols */ /* pragma:lines */
   _stp_snprint_addr(STAP_RETVALUE, MAXSTRINGLEN, STAP_ARG_addr,
-                    _STP_SYM_LINENUMBER + _STP_SYM_FILENAME, NULL);
+                    _STP_SYM_LINENUMBER + _STP_SYM_FILENAME, NULL, CONTEXT);
 %}
 
 /**
@@ -326,7 +327,7 @@ function symfileline:string (addr:long) %{
 function symfile:string (addr:long) %{
 /* pure */ /* pragma:symbols */ /* pragma:lines */
   _stp_snprint_addr(STAP_RETVALUE, MAXSTRINGLEN, STAP_ARG_addr,
-                    _STP_SYM_FILENAME, NULL);
+                    _STP_SYM_FILENAME, NULL, CONTEXT);
 %}
 
 /**
@@ -340,5 +341,5 @@ function symfile:string (addr:long) %{
 function symline:string (addr:long) %{
 /* pure */ /* pragma:symbols */ /* pragma:lines */
   _stp_snprint_addr(STAP_RETVALUE, MAXSTRINGLEN, STAP_ARG_addr,
-                    _STP_SYM_LINENUMBER, NULL);
+                    _STP_SYM_LINENUMBER, NULL, CONTEXT);
 %}
