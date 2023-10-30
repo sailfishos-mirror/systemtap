@@ -29,6 +29,9 @@
 - The testsuite Makefile has been simplified to remove concurrency,
   so "parallel" and "resume" modes are gone.
 
+- New runtime macro STP_TIMING_NSECS is now supported for reporting probe timing
+  stats in nsecs instead of cycles.
+
 * What's new in version 4.9, 2023-04-28
 
 - ISystemtap: the new interactive systemtap jupyter kernel. This provides

@@ -130,7 +130,13 @@ common_probe_entryfn_prologue (systemtap_session& s,
     s.op->newline() << "#ifdef STP_TIMING";
 
   if (! s.runtime_usermode_p())
-    s.op->newline() << "cycles_t cycles_atstart = get_cycles ();";
+    {
+      s.op->newline() << "#ifdef STP_TIMING_NSECS";
+      s.op->newline() << "s64 cycles_atstart = ktime_get_ns ();";
+      s.op->newline() << "#else";
+      s.op->newline() << "cycles_t cycles_atstart = get_cycles ();";
+      s.op->newline() << "#endif";
+    }
   else
     {
     s.op->newline() << "struct timespec timespec_atstart;";
@@ -270,6 +276,18 @@ common_probe_entryfn_epilogue (systemtap_session& s,
   s.op->indent(1);
   if (! s.runtime_usermode_p())
     {
+      s.op->newline() << "#ifdef STP_TIMING_NSECS";
+
+      s.op->newline() << "s64 cycles_atend = ktime_get_ns ();";
+      // NB: we truncate nsecs to 64 bits.  Perhaps it should be
+      // fewer, if the hardware counter rolls over really quickly.  We
+      // handle 64-bit wraparound here.
+      s.op->newline() << "s64 cycles_elapsed = ((s64)cycles_atend > (s64)cycles_atstart)";
+      s.op->newline(1) << "? ((s64)cycles_atend - (s64)cycles_atstart)";
+      s.op->newline() << ": (~(s64)0) - (s64)cycles_atstart + (s64)cycles_atend + 1;";
+
+      s.op->newline() << "#else";
+
       s.op->newline() << "cycles_t cycles_atend = get_cycles ();";
       // NB: we truncate cycles counts to 32 bits.  Perhaps it should be
       // fewer, if the hardware counter rolls over really quickly.  We
@@ -277,6 +295,8 @@ common_probe_entryfn_epilogue (systemtap_session& s,
       s.op->newline() << "int32_t cycles_elapsed = ((int32_t)cycles_atend > (int32_t)cycles_atstart)";
       s.op->newline(1) << "? ((int32_t)cycles_atend - (int32_t)cycles_atstart)";
       s.op->newline() << ": (~(int32_t)0) - (int32_t)cycles_atstart + (int32_t)cycles_atend + 1;";
+
+      s.op->newline() << "#endif";
       s.op->indent(-1);
     }
   else

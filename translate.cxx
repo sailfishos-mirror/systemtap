@@ -2184,7 +2184,11 @@ c_unparser::emit_module_refresh ()
   if (!session->runtime_usermode_p())
     {
       o->newline() << "#if defined(STP_TIMING)";
+      o->newline() << "#ifdef STP_TIMING_NSECS";
+      o->newline() << "s64 cycles_atstart = ktime_get_ns();";
+      o->newline() << "#else";
       o->newline() << "cycles_t cycles_atstart = get_cycles();";
+      o->newline() << "#endif";
       o->newline() << "#endif";
     }
 
@@ -2219,10 +2223,17 @@ c_unparser::emit_module_refresh ()
       // see also common_probe_entryfn_epilogue()
       o->newline() << "#if defined(STP_TIMING)";
       o->newline() << "if (likely(g_refresh_timing)) {";
+      o->newline() << "#ifdef STP_TIMING_NSECS";
+      o->newline(1) << "s64 cycles_atend = ktime_get_ns ();";
+      o->newline() << "s64 cycles_elapsed = ((s64)cycles_atend > (s64)cycles_atstart)";
+      o->newline(1) << "? ((s64)cycles_atend - (s64)cycles_atstart)";
+      o->newline() << ": (~(s64)0) - (s64)cycles_atstart + (s64)cycles_atend + 1;";
+      o->newline() << "#else";
       o->newline(1) << "cycles_t cycles_atend = get_cycles ();";
       o->newline() << "int32_t cycles_elapsed = ((int32_t)cycles_atend > (int32_t)cycles_atstart)";
       o->newline(1) << "? ((int32_t)cycles_atend - (int32_t)cycles_atstart)";
       o->newline() << ": (~(int32_t)0) - (int32_t)cycles_atstart + (int32_t)cycles_atend + 1;";
+      o->newline() << "#endif";
       o->indent(-1);
       // STP_TIMING requires min, max, avg (and thus count and sum) as well as variance.
       o->newline() << "_stp_stat_add(g_refresh_timing, cycles_elapsed, 1, 1, 1, 1, 1);";
@@ -2344,28 +2355,38 @@ c_unparser::emit_module_exit ()
   o->newline() << "preempt_disable();";
 
   // print per probe point timing/alibi statistics
-  o->newline() << "#if !defined(STP_STDOUT_NOT_ATTY) && defined(STP_TIMING) || defined(STP_ALIBI)";
+  o->newline() << "#if defined(STP_TIMING) || defined(STP_ALIBI)";
+  o->newline() << "#ifndef STP_STDOUT_NOT_ATTY";
   o->newline() << "_stp_printf(\"----- probe hit report: \\n\");";
+  o->newline() << "#endif"; // !defined(STP_STDOUT_NOT_ATTY)
   o->newline() << "for (i = 0; i < ARRAY_SIZE(stap_probes); ++i) {";
   o->newline(1) << "const struct stap_probe *const p = &stap_probes[i];";
+  o->newline() << "#ifndef STP_STDOUT_NOT_ATTY";
   o->newline() << "#ifdef STP_ALIBI";
   o->newline() << "int alibi = atomic_read(probe_alibi(i));";
   o->newline() << "if (alibi)";
   o->newline(1) << "_stp_printf (\"%s, (%s), hits: %d,%s, index: %d\\n\",";
   o->newline(2) << "p->pp, p->location, alibi, p->derivation, i);";
   o->newline(-3) << "#endif"; // STP_ALIBI
+  o->newline() << "#endif"; // !defined(STP_STDOUT_NOT_ATTY)
   o->newline() << "#ifdef STP_TIMING";
   o->newline() << "if (likely (probe_timing(i))) {"; // NB: check for null stat object
+  o->newline() << "#ifndef STP_STDOUT_NOT_ATTY";
   o->newline(1) << "struct stat_data *stats = _stp_stat_get (probe_timing(i), 0);";
   o->newline() << "if (stats->count) {";
   o->newline(1) << "int64_t avg = _stp_div64 (NULL, stats->sum, stats->count);";
-  o->newline() << "_stp_printf (\"%s, (%s), hits: %lld, "
-	       << (!session->runtime_usermode_p() ? "cycles" : "nsecs")
-	       << ": %lldmin/%lldavg/%lldmax, variance: %lld,%s, index: %d\\n\",";
-  o->newline(2) << "p->pp, p->location, (long long) stats->count,";
+  o->newline() << "_stp_printf (\"%s, (%s), hits: %lld, \"";
+  o->newline() << "#ifdef STP_TIMING_NSECS";
+  o->newline(2) << "\"nsecs\"";
+  o->newline(-2) << "#else";
+  o->newline(2) << (!session->runtime_usermode_p() ? "\"cycles\"" : "\"nsecs\"");
+  o->newline(-2) << "#endif";
+  o->newline(2) << "\": %lldmin/%lldavg/%lldmax, variance: %lld,%s, index: %d\\n\",";
+  o->newline() << "p->pp, p->location, (long long) stats->count,";
   o->newline() << "(long long) stats->min, (long long) avg, (long long) stats->max,";
   o->newline() << "(long long) stats->variance, p->derivation, i);";
   o->newline(-3) << "}";
+  o->newline() << "#endif"; // !defined(STP_STDOUT_NOT_ATTY)
   o->newline() << "_stp_stat_del (probe_timing(i));";
   o->newline(-1) << "}";
   o->newline() << "#endif"; // STP_TIMING
@@ -2379,12 +2400,21 @@ c_unparser::emit_module_exit ()
       o->newline(1) << "struct stat_data *stats = _stp_stat_get (g_refresh_timing, 0);";
       o->newline() << "if (stats->count) {";
       o->newline(1) << "int64_t avg = _stp_div64 (NULL, stats->sum, stats->count);";
-      o->newline() << "_stp_printf (\"hits: %lld, cycles: %lldmin/%lldavg/%lldmax, "
-                   << "variance: %lld\\n\",";
-      o->newline(2) << "(long long) stats->count, (long long) stats->min, ";
+      o->newline() << "_stp_printf (\"hits: %lld, \"";
+      o->newline() << "#ifdef STP_TIMING_NSECS";
+      o->newline(2) << "\"nsecs\"";
+      o->newline(-2) << "#else";
+      o->newline(2) << "\"cycles\"";
+      o->newline(-2) << "#endif";
+      o->newline(2) << "\": %lldmin/%lldavg/%lldmax, variance: %lld\\n\",";
+      o->newline() << "(long long) stats->count, (long long) stats->min, ";
       o->newline() <<  "(long long) avg, (long long) stats->max, (long long) stats->variance);";
       o->newline(-3) << "}";
       o->newline() << "_stp_stat_del (g_refresh_timing);";
+      o->newline(-1) << "}";
+      o->newline() << "#elif defined(STP_TIMING)"; // STP_TIMING
+      o->newline() << "if (likely (g_refresh_timing)) {";
+      o->newline(1) << "_stp_stat_del (g_refresh_timing);";
       o->newline(-1) << "}";
       o->newline() << "#endif"; // STP_TIMING
     }
