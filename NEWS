@@ -1,31 +1,33 @@
 * What's new in version 5.0, PRERELEASE
 
-- Tapset function print_ubacktrace_fileline() now understands DWARF5 (PR30407)
+- Tapset function print_ubacktrace_fileline() now understands DWARF5.
 
-- Debuginfod probes may now be filtered by archive name.
-  This allows for probing only certain versions of a program 
-  though a glob on the basename of the archive/package name. 
-
+- The target(s) of process probes may be specified by path name globs,
+  which can be found on one or more debuginfod servers.  This requires
+  the debuginfod servers to support "metadata" queries, and allows for
+  all versions of a program to be probed without needing to determine
+  the specific buildids.  The following probes all of the binaries
+  matching /usr/*/curl known to the debuginfod servers, regardless of
+  what's currently installed as the system /usr/bin/curl:
+  
   # export DEBUGINFOD_URLS="URL1 URL2 ..."
-  # stap -e 'probe debuginfod.archive("*.fc38").process("/usr/*/c*").function("main") { log("Hello World") }'
+  # stap -e 'probe debuginfod.process("/usr/*/curl").begin { log("hi") }'
+
+  The archive glob may be given as an optional component to filter further:
+
+  # stap -e 'probe debuginfod.archive("*.fc38")
+             .process("/usr/*/c*").function("main") { log("Hello World") }'
 
 - The kernel-user message transport system added framing codes, making
   the transport more reliable, but becoming incompatible across
   pre-5.0 versions.  Use matching versions of stap and staprun.
 
-- RHEL6, kernel 2.6.32* as well as older releases have been deprecated from
-  the codebase. RHEL7 and kernel version 3.10 are now the oldest supported versions 
-  for Systemtap. 
+- RHEL6, kernel 2.6.32* as well as older releases have been deprecated
+  from the codebase. RHEL7 and kernel version 3.10 are now the oldest
+  supported versions for Systemtap.
 
-- The target(s) of process probes may be specified by path names,
-  which can be found on one or more debuginfod servers. This allows
-  for all versions of a program to be probed without needing to
-  determine the specific buildids. The following probes all of the 
-  curl versions matching /usr/*/curl (known to the debuginfod servers) 
-  running on the machine.
-  
-  # export DEBUGINFOD_URLS="URL1 URL2 ..."
-  # stap -e 'probe debuginfod.process("/usr/*/curl").begin { log("hi") }'
+- The testsuite Makefile has been simplified to remove concurrency,
+  so "parallel" and "resume" modes are gone.
 
 * What's new in version 4.9, 2023-04-28
 
