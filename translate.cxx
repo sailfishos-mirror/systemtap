@@ -2387,7 +2387,9 @@ c_unparser::emit_module_exit ()
   o->newline() << "(long long) stats->variance, p->derivation, i);";
   o->newline(-3) << "}";
   o->newline() << "#endif"; // !defined(STP_STDOUT_NOT_ATTY)
+  o->newline() << "preempt_enable_no_resched();";
   o->newline() << "_stp_stat_del (probe_timing(i));";
+  o->newline() << "preempt_disable();";
   o->newline(-1) << "}";
   o->newline() << "#endif"; // STP_TIMING
   o->newline(-1) << "}";
@@ -2410,11 +2412,15 @@ c_unparser::emit_module_exit ()
       o->newline() << "(long long) stats->count, (long long) stats->min, ";
       o->newline() <<  "(long long) avg, (long long) stats->max, (long long) stats->variance);";
       o->newline(-3) << "}";
+      o->newline() << "preempt_enable_no_resched();";
       o->newline() << "_stp_stat_del (g_refresh_timing);";
+      o->newline() << "preempt_disable();";
       o->newline(-1) << "}";
       o->newline() << "#elif defined(STP_TIMING)"; // STP_TIMING
       o->newline() << "if (likely (g_refresh_timing)) {";
-      o->newline(1) << "_stp_stat_del (g_refresh_timing);";
+      o->newline(1) << "preempt_enable_no_resched();";
+      o->newline() << "_stp_stat_del (g_refresh_timing);";
+      o->newline() << "preempt_disable();";
       o->newline(-1) << "}";
       o->newline() << "#endif"; // STP_TIMING
     }
