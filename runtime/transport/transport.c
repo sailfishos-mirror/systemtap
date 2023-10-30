@@ -302,8 +302,11 @@ unsigned _stp_need_kallsyms_stext;
 // time:
 static int _stp_handle_kallsyms_lookups(void)
 {
+  might_sleep();
+
 #ifndef STAPCONF_NMI_UACCESS_OKAY
   kallsyms_nmi_uaccess_okay = (void*) kallsyms_lookup_name ("nmi_uaccess_okay");
+  cond_resched();  /* kallsyms_lookup_name is expensive; avoid blocking here */
   if (kallsyms_nmi_uaccess_okay == NULL) {
     /* Not finding this symbol is non-fatal for non-X86 architectures
      * since nmi_uaccess_okay() does not do anything for non-X86 archs.
@@ -318,6 +321,7 @@ static int _stp_handle_kallsyms_lookups(void)
 #if !defined(STAPCONF_SET_FS)
   /* PR26811, missing copy_to_kernel_nofault symbol-export */
   kallsyms_copy_to_kernel_nofault = (void*) kallsyms_lookup_name ("copy_to_kernel_nofault");
+  cond_resched();  /* kallsyms_lookup_name is expensive; avoid blocking here */
   /* Not finding this symbol is non-fatal. Kernel writes will fault safely: */
   if (kallsyms_copy_to_kernel_nofault == NULL) {
     ;
@@ -326,6 +330,7 @@ static int _stp_handle_kallsyms_lookups(void)
   /* PR13489, missing inode-uprobes symbol-export workaround */
 #if !defined(STAPCONF_TASK_USER_REGSET_VIEW_EXPORTED) /* RHEL5 era utrace */
         kallsyms_task_user_regset_view = (void*) kallsyms_lookup_name ("task_user_regset_view");
+        cond_resched();  /* kallsyms_lookup_name is expensive; avoid blocking here */
         /* There exist interesting kernel versions without task_user_regset_view(), like ARM before 3.0.
            For these kernels, uprobes etc. are out of the question, but plain kernel stap works fine.
            All we have to accomplish is have the loc2c runtime code compile.  For that, it's enough
@@ -337,8 +342,10 @@ static int _stp_handle_kallsyms_lookups(void)
 #if defined(CONFIG_UPROBES) // i.e., kernel-embedded uprobes
 #if !defined(STAPCONF_UPROBE_REGISTER_EXPORTED)
         kallsyms_uprobe_register = (void*) kallsyms_lookup_name ("uprobe_register");
+        cond_resched();  /* kallsyms_lookup_name is expensive; avoid blocking here */
         if (kallsyms_uprobe_register == NULL) {
                 kallsyms_uprobe_register = (void*) kallsyms_lookup_name ("register_uprobe");
+                cond_resched();  /* kallsyms_lookup_name is expensive; avoid blocking here */
         }
         if (kallsyms_uprobe_register == NULL) {
                 _stp_error("Can't resolve uprobe_register!");
@@ -347,8 +354,10 @@ static int _stp_handle_kallsyms_lookups(void)
 #endif
 #if !defined(STAPCONF_UPROBE_UNREGISTER_EXPORTED)
         kallsyms_uprobe_unregister = (void*) kallsyms_lookup_name ("uprobe_unregister");
+        cond_resched();  /* kallsyms_lookup_name is expensive; avoid blocking here */
         if (kallsyms_uprobe_unregister == NULL) {
                 kallsyms_uprobe_unregister = (void*) kallsyms_lookup_name ("unregister_uprobe");
+                cond_resched();  /* kallsyms_lookup_name is expensive; avoid blocking here */
         }
         if (kallsyms_uprobe_unregister == NULL) {
                 _stp_error("Can't resolve uprobe_unregister!");
@@ -357,6 +366,7 @@ static int _stp_handle_kallsyms_lookups(void)
 #endif
 #if !defined(STAPCONF_UPROBE_GET_SWBP_ADDR_EXPORTED)
         kallsyms_uprobe_get_swbp_addr = (void*) kallsyms_lookup_name ("uprobe_get_swbp_addr");
+        cond_resched();  /* kallsyms_lookup_name is expensive; avoid blocking here */
         if (kallsyms_uprobe_get_swbp_addr == NULL) {
                 _stp_error("Can't resolve uprobe_get_swbp_addr!");
                 goto err0;
@@ -364,6 +374,7 @@ static int _stp_handle_kallsyms_lookups(void)
 #endif
 #if !defined(STAPCONF_GET_MM_EXE_FILE_EXPORTED) && (defined(get_file_rcu) || LINUX_VERSION_CODE >= KERNEL_VERSION(4,1,0))
         kallsyms_get_mm_exe_file = (void*) kallsyms_lookup_name ("get_mm_exe_file");
+        cond_resched();  /* kallsyms_lookup_name is expensive; avoid blocking here */
         if (kallsyms_get_mm_exe_file == NULL) {
                 _stp_error("Can't resolve get_mm_exe_file!");
                 goto err0;
@@ -375,6 +386,7 @@ static int _stp_handle_kallsyms_lookups(void)
                 uint64_t address;
                 if (_stp_need_kallsyms_stext) {
                         address = kallsyms_lookup_name("_stext");
+                        cond_resched();  /* kallsyms_lookup_name is expensive; avoid blocking here */
                         _stp_set_stext(address);
                         _stp_need_kallsyms_stext = 0;
                 }
