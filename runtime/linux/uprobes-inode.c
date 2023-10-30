@@ -183,6 +183,12 @@ stap_get_real_inode(struct dentry *dentry)
 }
 
 static int
+stapiu_change_plus(struct stapiu_consumer* c, struct task_struct *task,
+		   unsigned long relocation, unsigned long length,
+		   unsigned long offset, unsigned long vm_flags,
+		   struct inode *inode);
+
+static int
 stapiu_probe_prehandler (struct uprobe_consumer *inst, struct pt_regs *regs)
 {
   int ret;
@@ -459,13 +465,75 @@ stapiu_init(struct stapiu_consumer *consumers, size_t nconsumers)
 {
   int ret = 0;
   size_t i;
+
+  might_sleep();
+
   for (i = 0; i < nconsumers; ++i) {
     struct stapiu_consumer *c = &consumers[i];
     INIT_LIST_HEAD(&c->instance_list_head);
     INIT_LIST_HEAD(&c->process_list_head);
     mutex_init(&c->consumer_lock);
     spin_lock_init(&c->process_list_lock);
-    
+
+    if (strcmp(c->finder.purpose, "inode-uprobes") == 0) {
+      /* PR31014: Uprobes registered in task finder would block the
+       * target processes for long time; so, we register them early
+       * here upon module loading. */
+
+      struct path path;
+      struct inode *inode = NULL;
+
+      const char *pathname = c->finder.procname;
+      if (pathname == NULL)
+        pathname = c->solib_pathname;
+
+      if (pathname == NULL) {
+        if (likely(c->solib_build_id_len > 0)) {
+          // this is a buildid-based uprobe; we'll postpone the uprobe
+          // registration to the task finder callbacks.
+          continue;
+        }
+
+        ret = EINVAL;
+        _stp_error("Couldn't find proc name or so lib path for the inode uprobe\n");
+        break;
+      }
+
+      /* NB Alas. we cannot check build id here since we do not have loaded
+       * memory pages to work with at this early stage. Fortunately, one
+       * advantage of the early uprobe registration is that we can ensure
+       * it is the file path in stap's own mount namespace and build id
+       * checks do not matter too much anyway. (Executables of the same
+       * file paths in other mount namespaces won't hit, as desired.) */
+      ret = kern_path(pathname, LOOKUP_FOLLOW, &path);
+      if (unlikely(ret != 0)) {
+        _stp_error("Couldn't resolve target program file path '%s': %d\n",
+                   pathname, ret);
+        break;
+      }
+
+      inode = stap_get_real_inode(path.dentry);
+      if (likely(inode != NULL)) {
+        ret = stapiu_change_plus(c, NULL, 0, TASK_SIZE, 0, 0, inode);
+        path_put(&path);
+        if (unlikely(ret != 0))
+          break;
+      } else {
+        path_put(&path);
+      }
+
+      /* NB uprobe_register() calls are expensive (8+ ms) and blocking;
+       * make sure we yield in between the calls. */
+      cond_resched();
+    }
+  }
+
+  if (unlikely(ret != 0)) {
+    return ret;
+  }
+
+  for (i = 0; i < nconsumers; ++i) {
+    struct stapiu_consumer *c = &consumers[i];
     dbug_uprobes("registering task-finder for procname:%s buildid:%s\n",
                  ((char*)c->finder.procname ?: ""),
                  ((char*)c->finder.build_id ?: ""));
@@ -514,15 +582,17 @@ stapiu_change_plus(struct stapiu_consumer* c, struct task_struct *task,
       goto out;
     }
 
-  /* Do the buildid check.  NB: on F29+, offset may not equal
-     0 for LOADable "R E" segments, because the read-only .note.*
-     stuff may have been loaded earlier, separately.  PR23890. */
-  // NB: this is not really necessary for buildid-based probes,
-  // which had this verified already.
-  rc = _stp_usermodule_check(task, c->module_name,
-			     relocation - offset);
-  if (rc)
-    goto out;
+  if (task != NULL) {
+    /* Do the buildid check.  NB: on F29+, offset may not equal
+       0 for LOADable "R E" segments, because the read-only .note.*
+       stuff may have been loaded earlier, separately.  PR23890. */
+    // NB: this is not really necessary for buildid-based probes,
+    // which had this verified already.
+    rc = _stp_usermodule_check(task, c->module_name,
+                               relocation - offset);
+    if (rc)
+      goto out;
+  }
 
   dbug_uprobes("notified for inode-offset arrival u%sprobe "
 	       "%lu:%p pidx %zu target procname:%s buildid:%s\n",
@@ -548,6 +618,16 @@ stapiu_change_plus(struct stapiu_consumer* c, struct task_struct *task,
   }
 
   if (!inst) { // new instance; need new uprobe etc.
+    if (task != NULL) {
+      if (c->solib_build_id_len == 0) {
+        // instance should have been initialized early in stapiu_init; if not,
+        // this must be a mismatch. And we do nothing here.
+        goto out1;
+      }
+      /* At this point, we know it is a buildid-based uprobe;
+       * go ahead to register a new uprobe. */
+    }
+
     inst = _stp_kzalloc(sizeof(struct stapiu_instance));
     if (! inst) {
       rc = -ENOMEM;
@@ -555,14 +635,14 @@ stapiu_change_plus(struct stapiu_consumer* c, struct task_struct *task,
     }
 
     inst->sconsumer = c; // back link essential; that's how we go from uprobe *handler callback
-          
+
     /* Grab the inode first (to prevent TOCTTOU problems). */
     inst->inode = igrab(inode);
     if (!inst->inode) {
       rc = -EINVAL;
       goto out2;
     }
-  
+
     // Add the inode/instance to the list
     list_add(&inst->instance_list, &c->instance_list_head);
 
@@ -575,9 +655,11 @@ stapiu_change_plus(struct stapiu_consumer* c, struct task_struct *task,
   // initialization and sdt.h semaphore manipulation!
   
   // Perform perfctr registration if required
-  for (j=0; j < c->perf_counters_dim; j++) {
-    if ((c->perf_counters)[j] > -1)
-      (void) _stp_perf_read_init ((c->perf_counters)[j], task);
+  if (task != NULL) {
+    for (j=0; j < c->perf_counters_dim; j++) {
+      if ((c->perf_counters)[j] > -1)
+        (void) _stp_perf_read_init ((c->perf_counters)[j], task);
+    }
   }
 
   // NB: process_list[] already extended up in stapiu_mmap_found().
