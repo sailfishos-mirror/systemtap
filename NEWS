@@ -32,6 +32,8 @@
 - New runtime macro STP_TIMING_NSECS is now supported for reporting probe timing
   stats in nsecs instead of cycles.
 
+- Add new runtime macro STP_FORCE_STDOUT_TTY to override STP_STDOUT_NOT_ATTY.
+
 * What's new in version 4.9, 2023-04-28
 
 - ISystemtap: the new interactive systemtap jupyter kernel. This provides

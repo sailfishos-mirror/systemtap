@@ -8441,7 +8441,11 @@ translate_pass (systemtap_session& s)
       if (s.timing || s.monitor)
 	s.op->hdr->newline() << "#define STP_TIMING";
       if (!isatty(STDOUT_FILENO))
-  s.op->hdr->newline() << "#define STP_STDOUT_NOT_ATTY";
+        {
+          s.op->hdr->newline() << "#ifndef STP_FORCE_STDOUT_TTY";
+          s.op->hdr->newline() << "#define STP_STDOUT_NOT_ATTY";
+          s.op->hdr->newline() << "#endif";
+        }
 
       if (s.need_unwind)
 	s.op->hdr->newline() << "#define STP_NEED_UNWIND_DATA 1";
