@@ -59,6 +59,10 @@ struct unwind_frame_info
 #define DW_EH_PE_indirect 0x80
 #define DW_EH_PE_omit     0xff
 
+#define DW_FORM_udata		0x0f
+#define DW_FORM_data16		0x1e
+#define DW_FORM_line_strp	0x1f
+
 typedef unsigned long uleb128_t;
 typedef   signed long sleb128_t;
 
@@ -468,10 +472,6 @@ static const struct {
 
 #define DW_LNCT_path		0x1
 #define DW_LNCT_directory_index	0x2
-
-#define DW_FORM_udata		0x0f
-#define DW_FORM_data16          0x1e
-#define DW_FORM_line_strp	0x1f
 
 struct unwind_item {
 	enum item_location {

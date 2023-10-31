@@ -7750,9 +7750,12 @@ dump_unwindsym_cxt (Dwfl_Module *m,
       c->output << ".debug_line = "
 		<< "_stp_module_" << stpmod_idx << "_debug_line, \n";
       c->output << ".debug_line_len = " << debug_line_len << ", \n";
-      c->output << ".debug_line_str = "
-		<< "_stp_module_" << stpmod_idx << "_debug_line_str, \n";
-      c->output << ".debug_line_str_len = " << debug_line_str_len << ", \n";
+      if (debug_line_str != NULL)
+        {
+          c->output << ".debug_line_str = "
+                    << "_stp_module_" << stpmod_idx << "_debug_line_str, \n";
+          c->output << ".debug_line_str_len = " << debug_line_str_len << ", \n";
+        }
       c->output << "#else\n";
     }
 

@@ -9,7 +9,7 @@
  * later version.
  */
 
-#if defined _STP_SYM_C_ && defined STP_NEED_LINE_DATA
+#if defined(_STP_SYM_C_) && defined(STP_NEED_LINE_DATA)
 
 // At this point the compiler needs to know the context struct.  The context
 // struct is emitted by s.up->emit_common_header () within translate.cxx
@@ -23,14 +23,6 @@ static void _stp_filename_lookup_5(struct _stp_module *mod, char ** filename,
                                    unsigned fileidx, int user, int compat_task,
                                    struct context *c)
 {
-  // We rely on struct context for c->dw_data.
-  // That needs to be known at this point.
-  if (c == NULL)
-    {
-      _stp_error("BUG: Unknown context in _stp_filename_lookup_5()\n");
-      return;
-    }
-
   // Pointer to the .debug_line section
   // pointing at just after standard_opcode_lengths
   // which is the last header item common to DWARF v4 and v5.
@@ -49,6 +41,14 @@ static void _stp_filename_lookup_5(struct _stp_module *mod, char ** filename,
   // rhel9 build system allows that.  We need to stay compatible though..
   // https://lwn.net/Articles/885941/
   int i = 0, j = 0;
+
+  // We rely on struct context for c->dw_data.
+  // That needs to be known at this point.
+  if (c == NULL)
+    {
+      _stp_error("BUG: Unknown context in _stp_filename_lookup_5()\n");
+      return;
+    }
 
   // Initialize the *filename
   *filename = "unknown";
