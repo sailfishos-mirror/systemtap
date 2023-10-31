@@ -3981,10 +3981,25 @@ c_unparser::visit_block (block *s)
  
       // if needed, find the lock insertion site; instruct it to lock
       if (pushdown_lock_p(s))
-        for (unsigned i=0; i<s->statements.size(); i++)
-          if (locks_needed_p (s->statements[i]))
-            { pushdown_lock.insert(s->statements[i]); pushed_lock_down = true; break; }
-      
+        {
+          for (unsigned i=0; i<s->statements.size(); i++)
+            {
+              struct statement *stmt = s->statements[i];
+              if (locks_needed_p (stmt))
+                {
+                  pushed_lock_down = true;
+                  pushdown_lock.insert (stmt);
+
+                  if (! stmt->might_pushdown_lock ())
+                    {
+                      // now we know the subsquement stmts must have locks
+                      // held, so we don't bother going forward.
+                      break;
+                    }
+                }
+            }
+        }
+
       // if needed, find the unlock insertion site; instruct it to unlock
       if (pushdown_unlock_p(s))
         for (ssize_t i=s->statements.size()-1; i>=0; i--) // NB: traverse backward!

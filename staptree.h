@@ -713,6 +713,7 @@ struct statement : public visitable
   statement ();
   statement (const token* tok);
   virtual ~statement ();
+  virtual bool might_pushdown_lock () = 0;
 };
 
 std::ostream& operator << (std::ostream& o, const statement& k);
@@ -729,6 +730,7 @@ struct embeddedcode: public statement
   bool tagged_p (const interned_string& tag) const;
   void print (std::ostream& o) const;
   void visit (visitor* u);
+  virtual bool might_pushdown_lock () { return false; };
 };
 
 
@@ -741,6 +743,7 @@ struct block: public statement
   block (statement* car, statement* cdr);
   block (statement* car, statement* cdr1, statement* cdr2);
   virtual ~block () {}
+  virtual bool might_pushdown_lock () { return true; };
 };
 
 
@@ -751,6 +754,9 @@ struct try_block: public statement
   symbol* catch_error_var; // may be 0
   void print (std::ostream& o) const;
   void visit (visitor* u);
+
+  // PR26296: for try/catch, don't try to push lock/unlock down
+  virtual bool might_pushdown_lock () { return false; };
 };
 
 
@@ -763,6 +769,10 @@ struct for_loop: public statement
   statement* block;
   void print (std::ostream& o) const;
   void visit (visitor* u);
+
+  // PR26269 lockpushdown:
+  // for loops, forget optimizing, just emit locks at top & bottom
+  virtual bool might_pushdown_lock () { return false; };
 };
 
 
@@ -781,6 +791,10 @@ struct foreach_loop: public statement
   statement* block;
   void print (std::ostream& o) const;
   void visit (visitor* u);
+
+  // PR26269 lockpushdown:
+  // for loops, forget optimizing, just emit locks at top & bottom
+  virtual bool might_pushdown_lock () { return false; };
 };
 
 
@@ -789,6 +803,7 @@ struct null_statement: public statement
   void print (std::ostream& o) const;
   void visit (visitor* u);
   null_statement (const token* tok);
+  virtual bool might_pushdown_lock () { return false; };
 };
 
 
@@ -797,6 +812,7 @@ struct expr_statement: public statement
   expression* value;  // executed for side-effects
   void print (std::ostream& o) const;
   void visit (visitor* u);
+  virtual bool might_pushdown_lock () { return false; };
 };
 
 
@@ -807,6 +823,7 @@ struct if_statement: public statement
   statement* elseblock; // may be 0
   void print (std::ostream& o) const;
   void visit (visitor* u);
+  virtual bool might_pushdown_lock () { return true; };
 };
 
 
@@ -814,6 +831,10 @@ struct return_statement: public expr_statement
 {
   void print (std::ostream& o) const;
   void visit (visitor* u);
+
+  // PR26296: We should not encounter a RETURN statement in a
+  // lock-relevant section of code (a probe handler body) at all.
+  virtual bool might_pushdown_lock () { return false; };
 };
 
 
@@ -821,6 +842,7 @@ struct delete_statement: public expr_statement
 {
   void print (std::ostream& o) const;
   void visit (visitor* u);
+  virtual bool might_pushdown_lock () { return false; };
 };
 
 
@@ -828,6 +850,7 @@ struct break_statement: public statement
 {
   void print (std::ostream& o) const;
   void visit (visitor* u);
+  virtual bool might_pushdown_lock () { return false; };
 };
 
 
@@ -835,6 +858,7 @@ struct continue_statement: public statement
 {
   void print (std::ostream& o) const;
   void visit (visitor* u);
+  virtual bool might_pushdown_lock () { return false; };
 };
 
 
@@ -842,6 +866,7 @@ struct next_statement: public statement
 {
   void print (std::ostream& o) const;
   void visit (visitor* u);
+  virtual bool might_pushdown_lock () { return false; };
 };
 
 
