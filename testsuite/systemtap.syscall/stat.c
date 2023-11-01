@@ -35,6 +35,7 @@
   (_XOPEN_SOURCE >= 700 || _POSIX_C_SOURCE >= 200809L \
    || defined(_ATFILE_SOURCE))
 
+#if !__GLIBC_PREREQ(2, 28)
 #ifdef __NR_statx
 static inline
 ssize_t statx(int dfd, const char *filename, unsigned flags,
@@ -42,6 +43,7 @@ ssize_t statx(int dfd, const char *filename, unsigned flags,
 {
         return syscall(__NR_statx, dfd, filename, flags, mask, buffer);
 }
+#endif
 #endif
 
 int main()
