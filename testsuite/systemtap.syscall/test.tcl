@@ -42,6 +42,8 @@ proc run_one_test {filename flags bits suite} {
     }
 
     set flags "$flags additional_flags=-lrt"
+    # Newer compiler have -Werror set by default, disable various warnings
+    set flags "$flags additional_flags=-Wno-stringop-overflow"
     set res [target_compile $filename $syscall_dir/$testname executable $flags ]
     if { $res != "" } {
 	send_log "$bits-bit $testname $suite : no corresponding devel environment found\n"
