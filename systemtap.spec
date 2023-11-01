@@ -1299,8 +1299,9 @@ exit 0
 
 # PRERELEASE
 %changelog
-* Mon Jun 12 2023 Frank Ch. Eigler <fche@redhat.com> - 5.0-0.1
-- migrated to SPDX license
+* Fri Nov 03 2023 Frank Ch. Eigler <fche@redhat.com> - 5.0-1
+- Upstream release, see wiki page below for detailed notes.
+  https://sourceware.org/systemtap/wiki/SystemTapReleases
 
 * Fri Apr 28 2023 Frank Ch. Eigler <fche@redhat.com> - 4.9-1
 - Upstream release, see wiki page below for detailed notes.

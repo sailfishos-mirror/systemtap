@@ -502,7 +502,7 @@ systemtap_session::version_string ()
 pair <string,string>
 systemtap_session::kernel_version_range()
 {
-  return make_pair<string,string>("2.6.32", "6.5");    // PRERELEASE
+  return make_pair<string,string>("2.6.32", "6.6-rc1");    // PRERELEASE
 }
 
 void
