@@ -168,6 +168,20 @@ struct stapiu_consumer {
 static int
 stapiu_probe_handler (struct stapiu_consumer *c, struct pt_regs *regs);
 
+static inline struct inode *
+stap_get_real_inode(struct dentry *dentry)
+{
+  if (unlikely(dentry == NULL))
+    return NULL;
+
+  return
+#ifdef STAPCONF_D_REAL_INODE
+    d_real_inode(dentry);
+#else
+  dentry->d_inode;
+#endif
+}
+
 static int
 stapiu_probe_prehandler (struct uprobe_consumer *inst, struct pt_regs *regs)
 {
@@ -729,8 +743,11 @@ stapiu_get_task_inode(struct task_struct *task)
 
 	vm_file = stap_find_exe_file(mm);
 	if (vm_file) {
-		if (vm_file->f_path.dentry)
-			inode = vm_file->f_path.dentry->d_inode;
+		if (vm_file->f_path.dentry) {
+			// PR31024: we must get the real inode since for overlay fs, we
+			// might only get the proxying inode instead.
+			inode = stap_get_real_inode(vm_file->f_path.dentry);
+		}
 		fput(vm_file);
 	}
 	return inode;
@@ -811,6 +828,7 @@ stapiu_mmap_found(struct stap_task_finder_target *tf_target,
   struct stapiu_process* p;
   int known_mapping_p;
   unsigned long flags;
+  struct inode *real_inode = stap_get_real_inode(dentry);
 
   /*
   We need to verify that this file/mmap corresponds to the given stapiu_consumer.
@@ -859,7 +877,7 @@ stapiu_mmap_found(struct stap_task_finder_target *tf_target,
   spin_lock_irqsave(&c->process_list_lock, flags);
   list_for_each_entry(p, &c->process_list_head, process_list) {
     if (p->tgid != task->tgid) continue;
-    if (p->inode != dentry->d_inode) continue;
+    if (p->inode != real_inode) continue;
     known_mapping_p = 1;
     break;
   }
@@ -912,7 +930,7 @@ stapiu_mmap_found(struct stap_task_finder_target *tf_target,
     if (p) {
       p->tgid = task->tgid;
       p->relocation = addr;
-      p->inode = dentry->d_inode;
+      p->inode = real_inode;
       p->base = addr-offset; // ... in case caught this during the second mmap
       spin_lock_irqsave (&c->process_list_lock, flags);
       list_add(&p->process_list, &c->process_list_head);
@@ -925,7 +943,7 @@ stapiu_mmap_found(struct stap_task_finder_target *tf_target,
   /* Check non-writable, executable sections for probes. */
   if ((vm_flags & VM_EXEC) && !(vm_flags & VM_WRITE))
     rc = stapiu_change_plus(c, task, addr, length,
-			     offset, vm_flags, dentry->d_inode);
+			     offset, vm_flags, real_inode);
 
   /* Check writeable sections for semaphores.
    * NB: They may have also been executable for the check above,
@@ -935,7 +953,7 @@ stapiu_mmap_found(struct stap_task_finder_target *tf_target,
    */
 
   if ((rc == 0) && (vm_flags & VM_WRITE))
-    rc = stapiu_change_semaphore_plus(c, task, addr, dentry->d_inode);
+    rc = stapiu_change_semaphore_plus(c, task, addr, real_inode);
 
   return rc;
 }

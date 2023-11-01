@@ -355,6 +355,7 @@ compile_pass (systemtap_session& s)
 
   vector<string> cs;  // to hold autoconf C file names
 
+  output_autoconf(s, o, cs, "autoconf-d-real-inode.c", "STAPCONF_D_REAL_INODE", NULL);
   output_autoconf(s, o, cs, "autoconf-hrtimer-rel.c", "STAPCONF_HRTIMER_REL", NULL);
   output_exportconf(s, o2, "hrtimer_get_res", "STAPCONF_HRTIMER_GET_RES");
   output_autoconf(s, o, cs, "autoconf-generated-compile.c", "STAPCONF_GENERATED_COMPILE", NULL);
