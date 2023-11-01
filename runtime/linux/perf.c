@@ -143,6 +143,13 @@ static void _stp_perf_del (struct stap_perf_probe *stp)
       perf_event_release_kernel(stp->e.t.per_thread_event);
     }
     stp->e.t.per_thread_event = NULL;
+
+#ifdef STP_PERF_USE_TASK_FINDER
+    if (stp->task_finder) {
+      struct stap_task_finder_target *tgt = &stp->e.t.tgt;
+      stap_cleanup_task_finder_target(tgt);
+    }
+#endif
   }
 }
 

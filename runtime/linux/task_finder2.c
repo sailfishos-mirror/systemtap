@@ -14,6 +14,7 @@
 #include "syscall.h"
 #include "task_finder_map.c"
 #include "task_finder_vma.c"
+#include "linux/stap_fs.h"
 
 #ifndef VMA_ITERATOR
 #define VMA_ITERATOR(name, mm, addr) \
@@ -91,6 +92,10 @@ struct stap_task_finder_target {
 	unsigned mmap_events:1;
 	unsigned munmap_events:1;
 	unsigned mprotect_events:1;
+	unsigned new_procname_p:1;  /* set to true when a new procname
+				       buffer is dynamically allocated
+				       (like in
+				       stap_register_task_finder_target) */
 
 /* public: */
 	pid_t pid;
@@ -300,6 +305,16 @@ static void
 __stp_call_mmap_callbacks_for_task(struct stap_task_finder_target *tgt,
 				   struct task_struct *tsk);
 
+static void
+stap_cleanup_task_finder_target(struct stap_task_finder_target *tgt)
+{
+    if (tgt->new_procname_p) {
+        _stp_kfree((void *) tgt->procname);
+        tgt->procname = "<freed>";
+        tgt->new_procname_p = 0;
+    }
+}
+
 static int
 stap_register_task_finder_target(struct stap_task_finder_target *new_tgt)
 {
@@ -318,9 +333,35 @@ stap_register_task_finder_target(struct stap_task_finder_target *new_tgt)
 	if (new_tgt == NULL)
 		return EFAULT;
 
-	if (new_tgt->procname != NULL)
-		new_tgt->pathlen = strlen(new_tgt->procname);
-	else
+	if (new_tgt->procname != NULL) {
+		int ret;
+		char *p;
+		size_t len;
+		const char *pathname = new_tgt->procname;
+
+		p = stap_real_path(pathname, &len);
+		if (p != NULL) {
+			if (unlikely(IS_ERR(p)))
+				return -PTR_ERR(p);
+
+			/* stap_real_path() allocates a new string buffer in
+			 * p. */
+
+			if (unlikely(new_tgt->new_procname_p))
+				_stp_kfree((void *) new_tgt->procname);
+			else
+				new_tgt->new_procname_p = 1;
+
+			/* NB: this buffer will be freed by
+			 * stap_cleanup_task_finder_target() */
+			new_tgt->procname = (const char *) p;
+			new_tgt->pathlen = len;
+
+		} else {
+			new_tgt->pathlen = strlen(pathname);
+		}
+
+	} else
 		new_tgt->pathlen = 0;
 
 	// Make sure everything is initialized properly.

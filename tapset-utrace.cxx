@@ -1263,6 +1263,7 @@ utrace_derived_probe_group::emit_module_linux_exit (systemtap_session& s)
   s.op->newline() << "/* ---- utrace probes ---- */";
   s.op->newline() << "for (i=0; i<ARRAY_SIZE(stap_utrace_probes); i++) {";
   s.op->newline(1) << "struct stap_utrace_probe *p = &stap_utrace_probes[i];";
+  s.op->newline() << "stap_cleanup_task_finder_target(&p->tgt);";
   s.op->newline(-1) << "}";
 }
 

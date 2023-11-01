@@ -277,6 +277,9 @@ static int _stp_vma_init(void)
 	dbug_task_vma(1,
 		  "registering vmcb (_stap_target: %d)\n", _stp_target);
 	rc = stap_register_task_finder_target (& vmcb);
+        /* NB: we don't need to call stap_cleanup_task_finder_target() to
+         * free up any dynamically-allocated procname buffers since .procname
+         * is always NULL (see above). */
 	if (rc != 0)
 		_stp_error("Couldn't register task finder target: %d\n", rc);
 #endif

@@ -433,6 +433,7 @@ stapiu_exit(struct stapiu_consumer *consumers, size_t nconsumers)
     mutex_lock(& c->consumer_lock);
     stapiu_consumer_unreg(c);
     mutex_unlock(& c->consumer_lock);
+    stap_cleanup_task_finder_target(&c->finder);
     /* NB: task_finder needs no unregister. */
   }
 }
