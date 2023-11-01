@@ -2,12 +2,12 @@
 .\"     Title: probe::socket.receive
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: April 2023
+.\"      Date: November 2023
 .\"    Manual: Socket Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "PROBE::SOCKET\&.RECE" "3stap" "April 2023" "SystemTap Tapset Reference" "Socket Tapset"
+.TH "PROBE::SOCKET\&.RECE" "3stap" "November 2023" "SystemTap Tapset Reference" "Socket Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -36,14 +36,14 @@ socket\&.receive
 .fi
 .SH "VALUES"
 .PP
-\fIname\fR
+\fIfamily\fR
 .RS 4
-Name of this probe
+Protocol family value
 .RE
 .PP
-\fIprotocol\fR
+\fItype\fR
 .RS 4
-Protocol value
+Socket type value
 .RE
 .PP
 \fIsize\fR
@@ -56,19 +56,19 @@ Size of message received (in bytes) or error code if success = 0
 Was send successful? (1 = yes, 0 = no)
 .RE
 .PP
-\fIfamily\fR
+\fIprotocol\fR
 .RS 4
-Protocol family value
-.RE
-.PP
-\fItype\fR
-.RS 4
-Socket type value
+Protocol value
 .RE
 .PP
 \fIstate\fR
 .RS 4
 Socket state value
+.RE
+.PP
+\fIname\fR
+.RS 4
+Name of this probe
 .RE
 .PP
 \fIflags\fR

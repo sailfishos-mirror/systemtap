@@ -2,12 +2,12 @@
 .\"     Title: function::long_to_fp
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: April 2023
+.\"      Date: November 2023
 .\"    Manual: Floating point processing Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "FUNCTION::LONG_TO_FP" "3stap" "April 2023" "SystemTap Tapset Reference" "Floating point processing Taps"
+.TH "FUNCTION::LONG_TO_FP" "3stap" "November 2023" "SystemTap Tapset Reference" "Floating point processing Taps"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------

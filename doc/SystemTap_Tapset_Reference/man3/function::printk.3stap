@@ -2,12 +2,12 @@
 .\"     Title: function::printk
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: April 2023
+.\"      Date: November 2023
 .\"    Manual: Logging Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "FUNCTION::PRINTK" "3stap" "April 2023" "SystemTap Tapset Reference" "Logging Tapset"
+.TH "FUNCTION::PRINTK" "3stap" "November 2023" "SystemTap Tapset Reference" "Logging Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------

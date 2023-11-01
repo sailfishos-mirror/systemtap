@@ -1,5 +1,5 @@
 .\" -*- nroff -*-
-.TH TAPSET::UCONVERSIONS-GURU 3stap "April 2023" "SystemTap Tapset Reference"
+.TH TAPSET::UCONVERSIONS-GURU 3stap "November 2023" "SystemTap Tapset Reference"
 .SH NAME
 tapset::uconversions-guru \- systemtap uconversions-guru tapset
  

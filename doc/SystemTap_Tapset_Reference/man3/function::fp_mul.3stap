@@ -2,12 +2,12 @@
 .\"     Title: function::fp_mul
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: April 2023
+.\"      Date: November 2023
 .\"    Manual: Floating point processing Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "FUNCTION::FP_MUL" "3stap" "April 2023" "SystemTap Tapset Reference" "Floating point processing Taps"
+.TH "FUNCTION::FP_MUL" "3stap" "November 2023" "SystemTap Tapset Reference" "Floating point processing Taps"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------

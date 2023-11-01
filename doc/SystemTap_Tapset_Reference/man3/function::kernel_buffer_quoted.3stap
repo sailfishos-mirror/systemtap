@@ -2,12 +2,12 @@
 .\"     Title: function::kernel_buffer_quoted
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: April 2023
+.\"      Date: November 2023
 .\"    Manual: String and data retrieving functions Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "FUNCTION::KERNEL_BUF" "3stap" "April 2023" "SystemTap Tapset Reference" "String and data retrieving fun"
+.TH "FUNCTION::KERNEL_BUF" "3stap" "November 2023" "SystemTap Tapset Reference" "String and data retrieving fun"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------

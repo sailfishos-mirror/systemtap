@@ -2,12 +2,12 @@
 .\"     Title: function::mdelay
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: April 2023
+.\"      Date: November 2023
 .\"    Manual: Guru tapsets
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "FUNCTION::MDELAY" "3stap" "April 2023" "SystemTap Tapset Reference" "Guru tapsets"
+.TH "FUNCTION::MDELAY" "3stap" "November 2023" "SystemTap Tapset Reference" "Guru tapsets"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------

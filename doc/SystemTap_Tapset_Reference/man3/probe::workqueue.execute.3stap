@@ -2,12 +2,12 @@
 .\"     Title: probe::workqueue.execute
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: April 2023
+.\"      Date: November 2023
 .\"    Manual: Interrupt Request (IRQ) Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "PROBE::WORKQUEUE\&.E" "3stap" "April 2023" "SystemTap Tapset Reference" "Interrupt Request (IRQ) Tapset"
+.TH "PROBE::WORKQUEUE\&.E" "3stap" "November 2023" "SystemTap Tapset Reference" "Interrupt Request (IRQ) Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -36,6 +36,11 @@ workqueue\&.execute
 .fi
 .SH "VALUES"
 .PP
+\fIwork_func\fR
+.RS 4
+pointer to handler function
+.RE
+.PP
 \fIwork\fR
 .RS 4
 work_struct* being executed
@@ -44,11 +49,6 @@ work_struct* being executed
 \fIwq_thread\fR
 .RS 4
 task_struct of the workqueue thread
-.RE
-.PP
-\fIwork_func\fR
-.RS 4
-pointer to handler function
 .RE
 .SH SEE ALSO\n 
 .IR tapset::irq (3stap)

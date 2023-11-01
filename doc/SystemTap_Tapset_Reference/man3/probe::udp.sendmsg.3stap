@@ -2,12 +2,12 @@
 .\"     Title: probe::udp.sendmsg
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: April 2023
+.\"      Date: November 2023
 .\"    Manual: Networking Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "PROBE::UDP\&.SENDMSG" "3stap" "April 2023" "SystemTap Tapset Reference" "Networking Tapset"
+.TH "PROBE::UDP\&.SENDMSG" "3stap" "November 2023" "SystemTap Tapset Reference" "Networking Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -36,24 +36,9 @@ udp\&.sendmsg
 .fi
 .SH "VALUES"
 .PP
-\fIsport\fR
+\fIname\fR
 .RS 4
-UDP source port
-.RE
-.PP
-\fIfamily\fR
-.RS 4
-IP address family
-.RE
-.PP
-\fIsaddr\fR
-.RS 4
-A string representing the source IP address
-.RE
-.PP
-\fIdport\fR
-.RS 4
-UDP destination port
+The name of this probe
 .RE
 .PP
 \fIsock\fR
@@ -61,9 +46,19 @@ UDP destination port
 Network socket used by the process
 .RE
 .PP
-\fIdaddr\fR
+\fIsaddr\fR
 .RS 4
-A string representing the destination IP address
+A string representing the source IP address
+.RE
+.PP
+\fIfamily\fR
+.RS 4
+IP address family
+.RE
+.PP
+\fIdport\fR
+.RS 4
+UDP destination port
 .RE
 .PP
 \fIsize\fR
@@ -71,9 +66,14 @@ A string representing the destination IP address
 Number of bytes sent by the process
 .RE
 .PP
-\fIname\fR
+\fIsport\fR
 .RS 4
-The name of this probe
+UDP source port
+.RE
+.PP
+\fIdaddr\fR
+.RS 4
+A string representing the destination IP address
 .RE
 .SH "CONTEXT"
 .PP

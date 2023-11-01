@@ -2,12 +2,12 @@
 .\"     Title: function::switch_file
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: April 2023
+.\"      Date: November 2023
 .\"    Manual: Output file switching Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "FUNCTION::SWITCH_FIL" "3stap" "April 2023" "SystemTap Tapset Reference" "Output file switching Tapset"
+.TH "FUNCTION::SWITCH_FIL" "3stap" "November 2023" "SystemTap Tapset Reference" "Output file switching Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -40,5 +40,7 @@ None
 .SH "DESCRIPTION"
 .PP
 This function sends a signal to the stapio process, commanding it to rotate to the next output file when output is sent to file(s)\&.
+.PP
+The mechanism of switching files was changed by upstream commit 5b39471380a238469c8fc18136f12600e5e9aec7 \&. With this commit, the rotation only works if there is some actual systemtap output\&.
 .SH SEE ALSO\n 
 .IR tapset::switchfile (3stap)

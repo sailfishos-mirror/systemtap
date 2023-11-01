@@ -2,12 +2,12 @@
 .\"     Title: probe::scheduler.process_free
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: April 2023
+.\"      Date: November 2023
 .\"    Manual: Scheduler Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "PROBE::SCHEDULER\&.P" "3stap" "April 2023" "SystemTap Tapset Reference" "Scheduler Tapset"
+.TH "PROBE::SCHEDULER\&.P" "3stap" "November 2023" "SystemTap Tapset Reference" "Scheduler Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -36,14 +36,14 @@ scheduler\&.process_free
 .fi
 .SH "VALUES"
 .PP
-\fIpid\fR
-.RS 4
-PID of the process getting freed
-.RE
-.PP
 \fIpriority\fR
 .RS 4
 priority of the process getting freed
+.RE
+.PP
+\fIpid\fR
+.RS 4
+PID of the process getting freed
 .RE
 .PP
 \fIname\fR

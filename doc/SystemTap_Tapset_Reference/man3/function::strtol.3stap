@@ -2,12 +2,12 @@
 .\"     Title: function::strtol
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: April 2023
+.\"      Date: November 2023
 .\"    Manual: A collection of standard string functions
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "FUNCTION::STRTOL" "3stap" "April 2023" "SystemTap Tapset Reference" "A collection of standard strin"
+.TH "FUNCTION::STRTOL" "3stap" "November 2023" "SystemTap Tapset Reference" "A collection of standard strin"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------

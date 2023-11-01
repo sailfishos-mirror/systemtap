@@ -2,12 +2,12 @@
 .\"     Title: function::task_dentry_path
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: April 2023
+.\"      Date: November 2023
 .\"    Manual: Directory-entry (dentry) Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "FUNCTION::TASK_DENTR" "3stap" "April 2023" "SystemTap Tapset Reference" "Directory-entry (dentry) Tapse"
+.TH "FUNCTION::TASK_DENTR" "3stap" "November 2023" "SystemTap Tapset Reference" "Directory-entry (dentry) Tapse"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------

@@ -2,12 +2,12 @@
 .\"     Title: function::bytes_to_string
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: April 2023
+.\"      Date: November 2023
 .\"    Manual: Memory Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "FUNCTION::BYTES_TO_S" "3stap" "April 2023" "SystemTap Tapset Reference" "Memory Tapset"
+.TH "FUNCTION::BYTES_TO_S" "3stap" "November 2023" "SystemTap Tapset Reference" "Memory Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
