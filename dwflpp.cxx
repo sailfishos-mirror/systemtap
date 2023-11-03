@@ -597,8 +597,10 @@ dwflpp::iterate_over_inline_instances<void>(int (*callback)(Dwarf_Die*, void*),
 void dwflpp::cache_call_sites (Dwarf_Die* die, Dwarf_Die *function)
 {
   Dwarf_Die origin;
-  if (dwarf_tag(die) == DW_TAG_GNU_call_site &&
-      dwarf_attr_die(die, DW_AT_abstract_origin, &origin))
+  if ((dwarf_tag(die) == DW_TAG_GNU_call_site &&
+       dwarf_attr_die(die, DW_AT_abstract_origin, &origin))
+       || (dwarf_tag(die) == DW_TAG_call_site &&
+	   dwarf_attr_die(die, DW_AT_call_origin, &origin)) )
     {
       vector<call_site_cache_t>*& v = cu_call_sites_cache[origin.addr];
       if (!v)
@@ -622,6 +624,7 @@ void dwflpp::cache_call_sites (Dwarf_Die* die, Dwarf_Die *function)
 	  case DW_TAG_try_block:
 	  case DW_TAG_entry_point:
 	  case DW_TAG_GNU_call_site:
+	  case DW_TAG_call_site:
 	    cache_call_sites(&child, function);
 	    break;
 
@@ -2182,7 +2185,15 @@ dwflpp::iterate_over_callees<void>(Dwarf_Die *begin_die,
           inlined = true;
           /* FALLTHROUGH */ /* thanks mjw */
         case DW_TAG_GNU_call_site:
-          callee.name = dwarf_diename(&die) ?: "";
+        case DW_TAG_call_site:
+	    if ((dwarf_tag(&die) == DW_TAG_GNU_call_site &&
+		 dwarf_attr_die(&die, DW_AT_abstract_origin, &origin))
+		|| (dwarf_tag(&die) == DW_TAG_call_site &&
+		    dwarf_attr_die(&die, DW_AT_call_origin, &origin)) ) {
+	      callee.name = dwarf_diename(&origin) ?: "";
+	    } else {
+	      callee.name = dwarf_diename(&die) ?: "";
+	    }
           if (callee.name.empty())
             continue;
           if (callee.name != sym)
@@ -2202,14 +2213,16 @@ dwflpp::iterate_over_callees<void>(Dwarf_Die *begin_die,
            * it will only be triggered when 'called' from the target func,
            * which is something we have to emulate for non-inlined funcs
            * (which is the purpose of the caller_uw_addr below) */
-          if (dwarf_attr_die(&die, DW_AT_abstract_origin, &origin) == NULL)
+          if ((dwarf_attr_die(&die, DW_AT_abstract_origin, &origin) == NULL)
+	      && (dwarf_attr_die(&die, DW_AT_call_origin, &origin) == NULL))
             continue;
 
           // the low_pc of the die in either cases is the pc that would
           // show up in a backtrace (inlines are a special case in which
           // the die's low_pc is also the abstract_origin's low_pc = the
           // 'start' of the inline instance)
-          if (dwarf_lowpc(&die, &caller_uw_addr) != 0)
+          if (dwarf_lowpc(&die, &caller_uw_addr) != 0
+	      && dwarf_lowpc(&origin, &caller_uw_addr) != 0)
             continue;
 
           if (inlined)
