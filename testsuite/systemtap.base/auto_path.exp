@@ -28,6 +28,7 @@ spawn stap -I $include_root -e {probe begin {println("begin")} probe ap1.process
 expect {
   -timeout 120
   -re "^begin\r\n$" {
+    sleep 1
     exec ${cmd_dir}/a/ap1
       expect {
         -timeout 10
@@ -43,6 +44,7 @@ spawn stap -I $include_root -e {probe begin {println("begin")} probe ap2 {printl
 expect {
   -timeout 120
   -re "^begin\r\n$" {
+    sleep 1
     exec ${cmd_dir}/a/b/ap2
     expect {
       -timeout 10
@@ -58,6 +60,7 @@ spawn stap -I $include_root -e {probe begin {println("begin")} probe ap3 {printl
 expect {
   -timeout 120
   -re "^begin\r\n$" {
+    sleep 1
     exec ${cmd_dir}/b/ap3
     expect {
         -timeout 10
