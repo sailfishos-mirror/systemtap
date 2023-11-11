@@ -48,7 +48,22 @@ static long _stp_allocated_net_memory = 0;
 static long _stp_allocated_memory = 0;
 
 #ifdef DEBUG_MEM
+
+#define STRINGIZE(x) STRINGIZE2(x)
+#define STRINGIZE2(x) #x
+#define LINE_STRING STRINGIZE(__LINE__)
+#define MTAG  _stp_curr_debug_mem_tag = __FILE__ ":" LINE_STRING;
+
+#else
+
+#define MTAG
+
+#endif
+
+#ifdef DEBUG_MEM
 static STP_DEFINE_SPINLOCK(_stp_mem_lock);
+
+static const char *_stp_curr_debug_mem_tag = NULL;
 
 #define STP_MEM_MAGIC 0xc11cf77f
 #define MEM_FENCE_SIZE 32
@@ -72,6 +87,7 @@ struct _stp_mem_entry {
 	enum _stp_memtype type;
 	size_t len;
 	void *addr;
+	const char *tag;
 };
 
 #define MEM_DEBUG_SIZE (2*MEM_FENCE_SIZE+sizeof(struct _stp_mem_entry))
@@ -117,6 +133,7 @@ static void *_stp_mem_debug_setup(void *addr, size_t size, enum _stp_memtype typ
 	m->type = type;
 	m->len = size;
 	m->addr = addr;
+	m->tag = _stp_curr_debug_mem_tag;
 	stp_spin_lock_irqsave(&_stp_mem_lock, flags);
 	list_add(p, &_stp_mem_list); 
 	stp_spin_unlock_irqrestore(&_stp_mem_lock, flags);
@@ -601,8 +618,9 @@ static void _stp_mem_debug_done(void)
 		m = list_entry(p, struct _stp_mem_entry, list);
 		list_del(p);
 
-		printk("SYSTEMTAP ERROR: Memory %p len=%d allocation type: %s. Not freed.\n", 
-		       m->addr, (int)m->len, _stp_malloc_types[m->type].alloc);
+		printk("SYSTEMTAP ERROR: Memory %p len=%d tag=%s allocation type: %s. Not freed.\n",
+		       m->addr, (int)m->len, m->tag ? m->tag : "",
+		       _stp_malloc_types[m->type].alloc);
 
 		if (m->magic != STP_MEM_MAGIC) {
 			printk("SYSTEMTAP ERROR: Memory at %p len=%d corrupted!!\n", m->addr, (int)m->len);
