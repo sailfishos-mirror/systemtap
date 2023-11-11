@@ -191,12 +191,6 @@ static void _stp_perf_init_work (struct work_struct *work)
 
     if (stp->system_wide)
       pwork->rc = _stp_perf_init(stp, NULL);
-    else if (stp->task_finder)
-#ifdef STP_PERF_USE_TASK_FINDER
-      pwork->rc = stap_register_task_finder_target(&stp->e.t.tgt);
-#else
-      pwork->rc = EINVAL;
-#endif
 
     if (pwork->rc) {
       pwork->probe_point = stp->probe->pp;
@@ -217,13 +211,46 @@ static int _stp_perf_init_n (struct stap_perf_probe *probes, size_t n,
 			     const char **ppfail)
 {
   struct _stp_perf_work pwork = { .probes = probes, .nprobes = n };
-  INIT_WORK_ONSTACK(&pwork.work, _stp_perf_init_work);
-  schedule_work(&pwork.work);
-  flush_work(&pwork.work);
-  if (pwork.rc)
-    *ppfail = pwork.probe_point;
-  destroy_work_on_stack(&pwork.work);
-  return pwork.rc;
+  int i;
+  bool found_system_wide = false;
+
+  for (i = 0; i < n; i++) {
+      int rc = 0;
+      struct stap_perf_probe* stp = &probes[i];
+
+      if (stp->system_wide) {
+          /* postponed to work queue since the perf event registration
+           * needs SYS_CAP_ADMIN which is missing in stapdev. */
+          found_system_wide = true;
+          continue;
+      }
+
+      if (stp->task_finder) {
+#ifdef STP_PERF_USE_TASK_FINDER
+          rc = stap_register_task_finder_target(&stp->e.t.tgt);
+#else
+          rc = EINVAL;
+#endif
+      }
+
+      if (unlikely(rc != 0)) {
+          *ppfail = stp->probe->pp;
+          _stp_perf_del_n(probes, i);
+          return rc;
+      }
+  }
+
+  if (found_system_wide) {
+    INIT_WORK_ONSTACK(&pwork.work, _stp_perf_init_work);
+    schedule_work(&pwork.work);
+    flush_work(&pwork.work);
+    if (unlikely(pwork.rc))
+      *ppfail = pwork.probe_point;
+    destroy_work_on_stack(&pwork.work);
+    return pwork.rc;
+  }
+
+  return 0;
 }
 
 
