@@ -529,6 +529,16 @@ stapiu_init(struct stapiu_consumer *consumers, size_t nconsumers)
   }
 
   if (unlikely(ret != 0)) {
+    for ( ;; ) {
+      struct stapiu_consumer *c = &consumers[i];
+      // protect against conceivable stapiu_refresh() at same time
+      mutex_lock(& c->consumer_lock);
+      stapiu_consumer_unreg(c);
+      mutex_unlock(& c->consumer_lock);
+      if (i == 0)
+        break;
+      i--;
+    }
     return ret;
   }
 
@@ -545,7 +555,27 @@ stapiu_init(struct stapiu_consumer *consumers, size_t nconsumers)
       break;
     }
   }
-  return ret;
+
+  if (unlikely(ret != 0)) {
+    int j;
+    for (j = 0; j < nconsumers; ++j) {
+      struct stapiu_consumer *c = &consumers[j];
+      // protect against conceivable stapiu_refresh() at same time
+      mutex_lock(& c->consumer_lock);
+      stapiu_consumer_unreg(c);
+      mutex_unlock(& c->consumer_lock);
+    }
+    for ( ;; ) {
+      struct stapiu_consumer *c = &consumers[i];
+      stap_cleanup_task_finder_target(&c->finder);
+      if (i == 0)
+        break;
+      i--;
+    }
+    return ret;
+  }
+
+  return 0;
 }
 
 
