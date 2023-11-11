@@ -22,6 +22,23 @@ static long _stp_allocated_net_memory = 0;
    suppress the oom-killer from kicking in. */
 #define STP_ALLOC_SLEEP_FLAGS (GFP_KERNEL | __GFP_NORETRY)
 
+#ifdef __GFP_DIRECT_RECLAIM
+
+#define STP_ALLOC_FLAGS_MIGHT_SLEEP(flags)  \
+	((flags) & (__GFP_DIRECT_RECLAIM | __GFP_IO | __GFP_FS))
+
+#elif defined(__GFP_WAIT)
+
+#define STP_ALLOC_FLAGS_MIGHT_SLEEP(flags)  \
+	((flags) & (__GFP_WAIT | __GFP_IO | __GFP_FS))
+
+#elif defined(__GFP_RECLAIM)
+
+#define STP_ALLOC_FLAGS_MIGHT_SLEEP(flags)  \
+	((flags) & (__GFP_RECLAIM | __GFP_IO | __GFP_FS))
+
+#endif
+
 /* #define DEBUG_MEMALLOC_MIGHT_SLEEP */
 /*
  * If DEBUG_MEMALLOC_MIGHT_SLEEP is defined (stap -DDEBUG_MEMALLOC_MIGHT_SLEEP ...)
@@ -301,7 +318,9 @@ static void *_stp_kmalloc_gfp(size_t size, gfp_t gfp_mask)
 {
 	void *ret;
 #ifdef DEBUG_MEMALLOC_MIGHT_SLEEP
-	might_sleep();
+	if (STP_ALLOC_FLAGS_MIGHT_SLEEP(gfp_mask)) {
+		might_sleep();
+	}
 #endif
 #ifdef STP_MAXMEMORY
 	if ((_STP_MODULE_CORE_SIZE + _stp_allocated_memory + size)
@@ -517,7 +536,9 @@ static void *_stp_kmalloc_node_gfp(size_t size, int node, gfp_t gfp_mask)
 {
 	void *ret;
 #ifdef DEBUG_MEMALLOC_MIGHT_SLEEP
-	might_sleep();
+	if (STP_ALLOC_FLAGS_MIGHT_SLEEP(gfp_mask)) {
+		might_sleep();
+	}
 #endif
 #ifdef STP_MAXMEMORY
 	if ((_STP_MODULE_CORE_SIZE + _stp_allocated_memory + size)
@@ -553,7 +574,9 @@ static void *_stp_kzalloc_node_gfp(size_t size, int node, gfp_t gfp_mask)
 	 */
 	void *ret = _stp_kmalloc_node_gfp(size, node, gfp_mask);
 #ifdef DEBUG_MEMALLOC_MIGHT_SLEEP
-	might_sleep();
+	if (STP_ALLOC_FLAGS_MIGHT_SLEEP(gfp_mask)) {
+		might_sleep();
+	}
 #endif
 	if (likely(ret)) {
 		memset (ret, 0, size);
@@ -572,9 +595,6 @@ static void *_stp_kzalloc_node(size_t size, int node)
 
 static void _stp_kfree(void *addr)
 {
-#ifdef DEBUG_MEMALLOC_MIGHT_SLEEP
-	might_sleep();
-#endif
 #ifdef DEBUG_MEM
 	_stp_mem_debug_free(addr, STP_MEM_KMALLOC);
 #else
@@ -596,9 +616,6 @@ static void _stp_vfree(void *addr)
 
 static void _stp_free_percpu(void *addr)
 {
-#ifdef DEBUG_MEMALLOC_MIGHT_SLEEP
-	might_sleep();
-#endif
 #ifdef DEBUG_MEM
 	_stp_mem_debug_free(addr, STP_MEM_PERCPU);
 #else
