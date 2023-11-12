@@ -286,7 +286,7 @@ common_probe_entryfn_epilogue (systemtap_session& s,
       s.op->newline(1) << "? ((s64)cycles_atend - (s64)cycles_atstart)";
       s.op->newline() << ": (~(s64)0) - (s64)cycles_atstart + (s64)cycles_atend + 1;";
 
-      s.op->newline() << "#else";
+      s.op->newline(-1) << "#else";
 
       s.op->newline() << "cycles_t cycles_atend = get_cycles ();";
       // NB: we truncate cycles counts to 32 bits.  Perhaps it should be

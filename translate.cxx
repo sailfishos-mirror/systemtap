@@ -2228,15 +2228,14 @@ c_unparser::emit_module_refresh ()
       o->newline() << "s64 cycles_elapsed = ((s64)cycles_atend > (s64)cycles_atstart)";
       o->newline(1) << "? ((s64)cycles_atend - (s64)cycles_atstart)";
       o->newline() << ": (~(s64)0) - (s64)cycles_atstart + (s64)cycles_atend + 1;";
-      o->newline() << "#else";
+      o->newline(-2) << "#else";
       o->newline(1) << "cycles_t cycles_atend = get_cycles ();";
       o->newline() << "int32_t cycles_elapsed = ((int32_t)cycles_atend > (int32_t)cycles_atstart)";
       o->newline(1) << "? ((int32_t)cycles_atend - (int32_t)cycles_atstart)";
       o->newline() << ": (~(int32_t)0) - (int32_t)cycles_atstart + (int32_t)cycles_atend + 1;";
-      o->newline() << "#endif";
-      o->indent(-1);
+      o->newline(-2) << "#endif";
       // STP_TIMING requires min, max, avg (and thus count and sum) as well as variance.
-      o->newline() << "_stp_stat_add(g_refresh_timing, cycles_elapsed, 1, 1, 1, 1, 1);";
+      o->newline(1) << "_stp_stat_add(g_refresh_timing, cycles_elapsed, 1, 1, 1, 1, 1);";
       o->newline(-1) << "}";
       o->newline() << "#endif";
     }
