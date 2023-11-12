@@ -1843,6 +1843,17 @@ c_unparser::emit_module_init ()
   // NB: This block of initialization only makes sense in kernel
   if (! session->runtime_usermode_p())
   {
+      if (!session->runtime_usermode_p())
+        {
+          o->newline() << "#if defined(STP_TIMING)";
+          o->newline() << "#ifdef STP_TIMING_NSECS";
+          o->newline() << "s64 cycles_atstart = ktime_get_ns();";
+          o->newline() << "#else";
+          o->newline() << "cycles_t cycles_atstart = get_cycles();";
+          o->newline() << "#endif";
+          o->newline() << "#endif";
+        }
+
       // XXX Plus, most of this code is completely static, so it probably should
       // move into the runtime, where kernel/dyninst is more easily separated.
 
@@ -2129,6 +2140,28 @@ c_unparser::emit_module_init ()
       o->newline() << "#endif /* STP_ON_THE_FLY_TIMER_ENABLE */";
     }
 
+  if (!session->runtime_usermode_p())
+    {
+      // see also common_probe_entryfn_epilogue()
+      o->newline() << "#if defined(STP_TIMING)";
+      o->newline() << "if (likely(g_module_init_timing)) {";
+      o->newline() << "#ifdef STP_TIMING_NSECS";
+      o->newline(1) << "s64 cycles_atend = ktime_get_ns ();";
+      o->newline() << "s64 cycles_elapsed = ((s64)cycles_atend > (s64)cycles_atstart)";
+      o->newline(1) << "? ((s64)cycles_atend - (s64)cycles_atstart)";
+      o->newline() << ": (~(s64)0) - (s64)cycles_atstart + (s64)cycles_atend + 1;";
+      o->newline(-2) << "#else";
+      o->newline(1) << "cycles_t cycles_atend = get_cycles ();";
+      o->newline() << "int32_t cycles_elapsed = ((int32_t)cycles_atend > (int32_t)cycles_atstart)";
+      o->newline(1) << "? ((int32_t)cycles_atend - (int32_t)cycles_atstart)";
+      o->newline() << ": (~(int32_t)0) - (int32_t)cycles_atstart + (int32_t)cycles_atend + 1;";
+      o->newline(-2) << "#endif";
+      // STP_TIMING requires min, max, avg (and thus count and sum) as well as variance.
+      o->newline(1) << "_stp_stat_add(g_module_init_timing, cycles_elapsed, 1, 1, 1, 1, 1);";
+      o->newline(-1) << "}";
+      o->newline() << "#endif";
+    }
+
   o->newline() << "return 0;";
 
   // Error handling path; by now all partially registered probe groups
@@ -2396,6 +2429,9 @@ c_unparser::emit_module_exit ()
   if (!session->runtime_usermode_p())
     {
       o->newline() << "#if !defined(STP_STDOUT_NOT_ATTY) && defined(STP_TIMING)";
+
+      /* module refresh timing report */
+
       o->newline() << "_stp_printf(\"----- refresh report:\\n\");";
       o->newline() << "if (likely (g_refresh_timing)) {";
       o->newline(1) << "struct stat_data *stats = _stp_stat_get (g_refresh_timing, 0);";
@@ -2415,12 +2451,43 @@ c_unparser::emit_module_exit ()
       o->newline() << "_stp_stat_del (g_refresh_timing);";
       o->newline() << "preempt_disable();";
       o->newline(-1) << "}";
+
+      /* module init timing report */
+
+      o->newline() << "_stp_printf(\"----- module init report:\\n\");";
+      o->newline() << "if (likely (g_module_init_timing)) {";
+      o->newline(1) << "struct stat_data *stats = _stp_stat_get (g_module_init_timing, 0);";
+      o->newline() << "if (stats->count) {";
+      o->newline(1) << "int64_t avg = _stp_div64 (NULL, stats->sum, stats->count);";
+      o->newline() << "_stp_printf (\"hits: %lld, \"";
+      o->newline() << "#ifdef STP_TIMING_NSECS";
+      o->newline(2) << "\"nsecs\"";
+      o->newline(-2) << "#else";
+      o->newline(2) << "\"cycles\"";
+      o->newline(-2) << "#endif";
+      o->newline(2) << "\": %lldmin/%lldavg/%lldmax, variance: %lld\\n\",";
+      o->newline() << "(long long) stats->count, (long long) stats->min, ";
+      o->newline() <<  "(long long) avg, (long long) stats->max, (long long) stats->variance);";
+      o->newline(-3) << "}";
+      o->newline() << "preempt_enable_no_resched();";
+      o->newline() << "_stp_stat_del (g_module_init_timing);";
+      o->newline() << "preempt_disable();";
+      o->newline(-1) << "}";
+
       o->newline() << "#elif defined(STP_TIMING)"; // STP_TIMING
+
       o->newline() << "if (likely (g_refresh_timing)) {";
       o->newline(1) << "preempt_enable_no_resched();";
       o->newline() << "_stp_stat_del (g_refresh_timing);";
       o->newline() << "preempt_disable();";
       o->newline(-1) << "}";
+
+      o->newline() << "if (likely (g_module_init_timing)) {";
+      o->newline(1) << "preempt_enable_no_resched();";
+      o->newline() << "_stp_stat_del (g_module_init_timing);";
+      o->newline() << "preempt_disable();";
+      o->newline(-1) << "}";
+
       o->newline() << "#endif"; // STP_TIMING
     }
 

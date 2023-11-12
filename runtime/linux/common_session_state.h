@@ -41,6 +41,7 @@ static inline Stat probe_timing(size_t index)
 	return g_probe_timing[index];
 }
 Stat g_refresh_timing;
+Stat g_module_init_timing;
 #endif
 
 
@@ -76,6 +77,7 @@ static int stp_session_init(void)
 		// passage to probe handlers and at final printing.
 	        g_probe_timing[i] = _stp_stat_init(STAT_OP_MIN, STAT_OP_MAX, STAT_OP_AVG, STAT_OP_VARIANCE, 0, NULL);
 	g_refresh_timing = _stp_stat_init(STAT_OP_MIN, STAT_OP_MAX, STAT_OP_AVG, STAT_OP_VARIANCE, 0, NULL);
+	g_module_init_timing = _stp_stat_init(STAT_OP_MIN, STAT_OP_MAX, STAT_OP_AVG, STAT_OP_VARIANCE, 0, NULL);
 #endif
 
 #if defined(STAPCONF_UDELAY_SIMPLE) && !defined(STAPCONF_UDELAY_SIMPLE_EXPORTED)
@@ -100,5 +102,6 @@ static void stp_session_exit(void)
 	for (i = 0; i < STP_PROBE_COUNT; ++i)
 		_stp_stat_del(g_probe_timing[i]);
 	_stp_stat_del(g_refresh_timing);
+	_stp_stat_del(g_module_init_timing);
 #endif
 }
