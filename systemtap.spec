@@ -563,7 +563,6 @@ This package installs the services necessary on a virtual machine for a
 systemtap-runtime-virthost machine to execute systemtap scripts.
 %endif
 
-%if %{with_python3} && %{with_monitor}
 %package jupyter
 Summary: ISystemtap jupyter kernel and examples
 License: GPL-2.0-or-later
@@ -574,7 +573,7 @@ Requires: systemtap = %{version}-%{release}
 This package includes files needed to build and run
 the interactive systemtap Jupyter kernel, either locally
 or within a container.
-%endif
+
 # ------------------------------------------------------------------------
 
 %prep
@@ -1280,14 +1279,12 @@ exit 0
 %{_sbindir}/stap-exporter
 %endif
 
-%if %{with_python3} && %{with_monitor}
 %files jupyter
 %{_bindir}/stap-jupyter-container
 %{_bindir}/stap-jupyter-install
 %{_mandir}/man1/stap-jupyter.1*
 %dir %{_datadir}/systemtap
 %{_datadir}/systemtap/interactive-notebook
-%endif
 
 # ------------------------------------------------------------------------
 
