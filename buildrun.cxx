@@ -629,7 +629,7 @@ compile_pass (systemtap_session& s)
   o << "EXTRA_CFLAGS += -Wno-pragmas" << endl;
 
   // Suppress gcc12 diagnostic bug in kernel-devel for 5.16ish
-  o << "EXTRA_CFLAGS += -Wno-infinite-recursion" << endl;
+  o << "EXTRA_CFLAGS += $(call cc-option,-Wno-infinite-recursion)" << endl;
 
   // Suppress gcc12 diagnostic about STAP_KPROBE_PROBE_STR_* null checks
   o << "EXTRA_CFLAGS += -Wno-address" << endl;
