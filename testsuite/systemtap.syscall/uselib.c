@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <sys/syscall.h>
 #include <linux/version.h>
+#include <sys/mman.h>
 
 int main()
 {
@@ -17,6 +18,8 @@ int main()
     // 2.6.22.
 #if defined(__NR_uselib)
 #define uselib(x) syscall(__NR_uselib,x)
+    mlockall(MCL_CURRENT);
+
     uselib("blah");
     //staptest// [[[[uselib ("blah") = -NNNN!!!!ni_syscall () = -NNNN (ENOSYS)]]]]
 

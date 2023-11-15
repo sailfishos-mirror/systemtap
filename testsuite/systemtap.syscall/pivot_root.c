@@ -3,12 +3,15 @@
 #define _GNU_SOURCE
 #include <unistd.h>
 #include <sys/syscall.h>
+#include <sys/mman.h>
 
 int main()
 {
 
     // We are not really going to let the syscall succeed.
     // Just sanity check it:
+
+    mlockall(MCL_CURRENT);
 
     syscall(__NR_pivot_root, "/tmp", "/");
     //staptest// pivot_root ("/tmp", "/") = NNNN

@@ -6,12 +6,15 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/socket.h>
+#include <sys/mman.h>
 
 int main()
 {
   int sock_stream;
   int sock_dgram;
   int fd_null;
+
+  mlockall(MCL_CURRENT);
 
   sock_stream = socket(PF_INET, SOCK_STREAM, 0);
   //staptest// socket (PF_INET, SOCK_STREAM, IPPROTO_IP) = NNNN

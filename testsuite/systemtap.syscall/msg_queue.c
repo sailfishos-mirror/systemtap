@@ -5,6 +5,7 @@
 #include <sys/ipc.h>
 #include <sys/msg.h>
 #include <sys/wait.h>
+#include <sys/mman.h>
      
 #define MSGTXTLEN 128   // msg text length
 
@@ -17,6 +18,8 @@ int
 main(int argc, char **argv)
 {
     int msgqid;
+
+    mlockall(MCL_CURRENT);
 
     // Test basic operation.
 

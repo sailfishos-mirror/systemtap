@@ -5,10 +5,13 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/syscall.h>
+#include <sys/mman.h>
 
 int main()
 {
   int fd;
+
+  mlockall(MCL_CURRENT);
 
   mkdir("foobar", 0765);
   //staptest// [[[[mkdir (!!!!mkdirat (AT_FDCWD, ]]]]"foobar", 0765) =

@@ -14,6 +14,7 @@
 #include <fcntl.h>
 #include <sys/syscall.h>
 #include <limits.h>
+#include <sys/mman.h>
 
 static int sfd;			/* shared between start_server and do_child */
 
@@ -98,6 +99,8 @@ int main()
     fd_set rdfds;
     struct timeval timeout;
     socklen_t fromlen;
+
+    mlockall(MCL_CURRENT);
 
     /* initialize sockaddr's */
     sin1.sin_family = AF_INET;

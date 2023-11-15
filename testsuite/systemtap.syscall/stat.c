@@ -12,6 +12,7 @@
 #include <string.h>
 #include <time.h>
 #include <stdio.h>
+#include <sys/mman.h>
 
 #ifdef __NR_statx
 /* For struct statx */
@@ -55,6 +56,8 @@ int main()
 #ifdef __NR_statx
   struct statx stx;
 #endif
+
+  mlockall(MCL_CURRENT);
 
   getcwd(cwd, 128);
   //staptest// getcwd (XXXX, 128) = NNNN

@@ -15,6 +15,7 @@
 #include <fcntl.h>
 #include <sys/syscall.h>
 #include <limits.h>
+#include <sys/mman.h>
 
 static int sfd, ufd;	/* shared between start_server and do_child */
 
@@ -149,6 +150,8 @@ int main()
     struct sockaddr_un sun1;
     char tmpsunpath[1024];
     struct timespec tim = {0, 20000};
+
+    mlockall(MCL_CURRENT);
 
     /* initialize sockaddr's */
     sin1.sin_family = AF_INET;

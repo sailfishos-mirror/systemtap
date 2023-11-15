@@ -1,6 +1,7 @@
 /* COVERAGE: mount oldumount umount */
 #include <sys/types.h>
 #include <sys/mount.h>
+#include <sys/mman.h>
 
 #ifndef MNT_FORCE
 #define MNT_FORCE    0x00000001      /* Attempt to forcibily umount */
@@ -16,6 +17,8 @@
 
 int main()
 {
+  mlockall(MCL_CURRENT);
+
   mount ("mount_source", "mount_target", "ext2", MS_NOSUID|MS_NOATIME|MS_NODIRATIME|MS_BIND, "some arguments");
   //staptest// mount ("mount_source", "mount_target", "ext2", MS_NOSUID|MS_NOATIME|MS_NODIRATIME|MS_BIND, "some arguments") = -NNNN (ENOENT)
 

@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <sys/quota.h>
 //#include <xfs/xqm.h>
+#include <sys/mman.h>
 
 
 #ifndef QFMT_VFS_V0
@@ -25,6 +26,8 @@ int main()
     // The latter isn't likely to be true, but we'll be careful
     // anyway.
     uid = getuid();
+
+    mlockall(MCL_CURRENT);
 
     quotactl(QCMD(Q_QUOTAON, USRQUOTA), "somedevice", QFMT_VFS_V0, "staptestmnt/aquota.user");
     //staptest// quotactl (Q_QUOTAON|USRQUOTA, "somedevice", QFMT_VFS_V0, "staptestmnt/aquota.user") = -NNNN

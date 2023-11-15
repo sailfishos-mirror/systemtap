@@ -9,12 +9,15 @@
 #include <linux/unistd.h>
 #include <sys/uio.h>
 #include <string.h>
+#include <sys/mman.h>
 
 int main()
 {
   int fd;
   struct iovec wr_iovec[3];
   char buf[64];
+
+  mlockall(MCL_CURRENT);
 
   fd = open("foobar1", O_WRONLY|O_CREAT, 0666);
   //staptest// [[[[open (!!!!openat (AT_FDCWD, ]]]]"foobar1", O_WRONLY|O_CREAT[[[[.O_LARGEFILE]]]]?, 0666) = NNNN

@@ -1,8 +1,11 @@
 /* COVERAGE: acct */
 #include <unistd.h>
+#include <sys/mman.h>
 
 int main()
 {
+  mlockall(MCL_CURRENT);
+
   acct("foobar");
   //staptest// acct ("foobar") = -NNNN
 

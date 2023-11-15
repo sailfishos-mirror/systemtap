@@ -1,6 +1,7 @@
 /* COVERAGE: swapon swapoff */
 #include <unistd.h>
 #include <sys/swap.h>
+#include <sys/mman.h>
 
 
 int main()
@@ -10,6 +11,8 @@ int main()
    * support swap files (like tmpfs or nfs). So, we'll specify a file
    * that doesn't exist. So, all of the following calls will fail (for
    * various reasons). */
+
+  mlockall(MCL_CURRENT);
 
   swapon("foobar_swap", 0);
   //staptest// swapon ("foobar_swap", 0x0) = -NNNN

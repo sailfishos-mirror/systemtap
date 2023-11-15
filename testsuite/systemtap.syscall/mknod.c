@@ -6,6 +6,7 @@
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <linux/fcntl.h>
+#include <sys/mman.h>
 
 #ifdef __NR_mknodat
 static inline int
@@ -18,6 +19,8 @@ __mknodat(int dirfd, const char *pathname, mode_t mode, dev_t dev)
 int main()
 {
     // ------- test normal operation
+
+    mlockall(MCL_CURRENT);
 
     mknod("testfile1", S_IFREG | 0644, 0);
     //staptest// [[[[mknod (!!!!mknodat (AT_FDCWD, ]]]]"testfile1", S_IFREG|0644, 0) = 0

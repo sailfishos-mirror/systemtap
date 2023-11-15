@@ -6,6 +6,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/syscall.h>
+#include <sys/mman.h>
 
 // To test for glibc support for fchmodat(), fchownat():
 //
@@ -21,6 +22,8 @@
 int main()
 {
   int fd;
+
+  mlockall(MCL_CURRENT);
 
   fd = open("foobar",O_WRONLY|O_CREAT, 0666);
   //staptest// [[[[open (!!!!openat (AT_FDCWD, ]]]]"foobar", O_WRONLY|O_CREAT[[[[.O_LARGEFILE]]]]?, 0666) = NNNN

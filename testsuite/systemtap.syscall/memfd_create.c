@@ -11,10 +11,13 @@
 #ifndef MFD_ALLOW_SEALING
 #define MFD_ALLOW_SEALING 0x0002u
 #endif
+#include <sys/mman.h>
 
 int main()
 {
 #ifdef __NR_memfd_create
+   mlockall(MCL_CURRENT);
+
    syscall(__NR_memfd_create,"memfd_create", MFD_CLOEXEC|MFD_ALLOW_SEALING);
    //staptest// [[[[memfd_create ("memfd_create", MFD_CLOEXEC|MFD_ALLOW_SEALING)!!!!ni_syscall ()]]]] = NNNN
    syscall(__NR_memfd_create, (size_t)-1, MFD_CLOEXEC|MFD_ALLOW_SEALING);

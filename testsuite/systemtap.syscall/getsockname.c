@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <sys/mman.h>
 
 int main()
 {
@@ -14,6 +15,8 @@ int main()
     int fd_null;
     struct sockaddr_in sin0, sin1;
     socklen_t sinlen;
+
+    mlockall(MCL_CURRENT);
 
     /* initialize local sockaddr */
     sin0.sin_family = AF_INET;

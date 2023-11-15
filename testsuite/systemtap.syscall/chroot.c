@@ -1,9 +1,12 @@
 /* COVERAGE: chroot */
 
 #include <unistd.h>
+#include <sys/mman.h>
 
 int main()
 {
+    mlockall(MCL_CURRENT);
+
     chroot("/tmp");
     //staptest// chroot ("/tmp") = NNNN
 

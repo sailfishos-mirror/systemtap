@@ -18,6 +18,7 @@
 #include <sys/syscall.h>
 #include <endian.h>
 #include <linux/fs.h>
+#include <sys/mman.h>
 
 #ifdef __NR_preadv2
 #define LO_HI_LONG(val) \
@@ -38,6 +39,8 @@ int main()
   int fd;
   struct iovec rd_iovec[3];
   char buf[64];
+
+  mlockall(MCL_CURRENT);
 
   fd = open("foobar1", O_WRONLY|O_CREAT, 0666);
   //staptest// [[[[open (!!!!openat (AT_FDCWD, ]]]]"foobar1", O_WRONLY|O_CREAT[[[[.O_LARGEFILE]]]]?, 0666) = NNNN

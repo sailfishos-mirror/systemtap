@@ -9,6 +9,7 @@
 #include <linux/unistd.h>
 #include <sys/uio.h>
 #include <sys/syscall.h>
+#include <sys/mman.h>
 
 #define STRING1 "red"
 #define STRING2 "green"
@@ -18,6 +19,8 @@ int main()
   int fd;
   loff_t res;
   char buf[64], buf1[32], buf2[32], buf3[32];
+
+  mlockall(MCL_CURRENT);
 
   /* glibc might substitute llseek() for lseek(), so we handle either. */
 
