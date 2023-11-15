@@ -3,11 +3,14 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <syscall.h>
+#include <sys/mman.h>
 
 int main()
 {
 #ifdef SYS_sysfs
     char buf[1024];
+
+    mlockall(MCL_CURRENT);
 
     int idx = syscall(SYS_sysfs, 1, "proc");
     //staptest// sysfs (1, "proc") = NNNN
