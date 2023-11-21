@@ -3,7 +3,11 @@
 // read the address of various task_struct members.
 // all should roughly be $p + offsetof(foo)
 probe kernel.function("release_task") {
-    println(& $p->state)  // long
+    // Linux 5.14 and new changes state to __state
+    if (@defined($p->state))
+        println(& $p->state)  // long
+    else
+        println(& $p->__state)  // long
     println(& $p->usage)  // atomic_t
     println(& $p->comm)   // comm[TASK_COMM_LEN]
     println(& $p->comm[1])
