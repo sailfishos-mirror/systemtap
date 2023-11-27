@@ -65,7 +65,14 @@ probe dw_syscall.futex = kernel.function("sys_futex").call ?
 	val = __int32($val)
 	utime_uaddr = $utime
 	uaddr2_uaddr = $uaddr2
-	val3 = __int32($val3)
+	// On 4.18.0-527.el8.s390x There's a read fault [man error::fault]
+	// at 0x1cf5f7f48 near identifier '$val3'. Snce it kills whole the
+	// syscall testsuite, let's do a best effort attempt to get $val3.
+	try {
+	    val3 = __int32($val3)
+	} catch {
+	    val3 = 0
+	}
 	@__futex_argstr(futex_uaddr, op, val, utime_uaddr, uaddr2_uaddr, val3)
 }
 probe dw_syscall.futex.return = kernel.function("sys_futex").return ?

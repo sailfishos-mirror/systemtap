@@ -51,6 +51,7 @@ probe init {
     __syscall_map["umount"] = ",umount2,"
     __syscall_map["uname"] = ",oldolduname,olduname,"
     __syscall_map["clock_adjtime"] = ",clock_adjtime64,"
+    __syscall_map["clock_settime"] = ",clock_settime64,"
     __syscall_map["timer_settime"] = ",timer_settime64,"
     __syscall_map["timer_gettime"] = ",timer_gettime64,"
 

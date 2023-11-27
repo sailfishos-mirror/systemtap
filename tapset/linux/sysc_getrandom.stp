@@ -41,8 +41,9 @@ probe syscall.getrandom.return = dw_syscall.getrandom.return !,
 probe dw_syscall.getrandom = kernel.function("sys_getrandom").call ?
 {
 	@_SYSCALL_GETRANDOM_NAME
-	buf = user_string_quoted($buf)
-	count = __ulong($count)
+	# Kernel commit a19402634c435
+	buf = user_string_quoted(@choose_defined($buf, $ubuf))
+	count = __ulong(@choose_defined($count, $len))
 	flags = __uint32($flags)
 	flags_str = _getrandom_flags_str(__uint32($flags))
 	@_SYSCALL_GETRANDOM_ARGSTR

@@ -1,4 +1,7 @@
 /* COVERAGE: gettimeofday settimeofday clock_gettime clock_settime clock_adjtime clock_getres clock_nanosleep time stime */
+
+#define _DEFAULT_SOURCE
+
 #include <sys/types.h>
 #include <unistd.h>
 #include <sys/time.h>
@@ -6,6 +9,7 @@
 #include <sys/syscall.h>
 #include <sys/timex.h>
 #include <string.h>
+#include <sys/mman.h>
 
 int main()
 {
@@ -14,6 +18,8 @@ int main()
   struct timespec ts;
   struct timex tx;
   time_t tt;
+
+  mlockall(MCL_CURRENT);
 
 #ifdef SYS_time
   syscall(SYS_time, &tt);
@@ -33,6 +39,9 @@ int main()
   t = syscall(SYS_gettimeofday, &tv, NULL);
   //staptest// gettimeofday (XXXX, 0x[0]+) = 0
 
+// The stime() was deprecated, and with modern glibc (glibc-2.34-88.el9.ppc64le)
+// isn't avail even with feature macros.  Glibc upstream commit 12cbde1dae6fa4 .
+#if defined(__GLIBC__) && defined(__GLIBC_MINOR__) && __GLIBC__ <= 2 && __GLIBC_MINOR__ <= 30
 #ifdef __NR_stime
   tt = tv.tv_sec;
   stime(&tt);
@@ -45,18 +54,23 @@ int main()
   //staptest// stime (0x[f]+) = -NNNN
 #endif
 #endif
+#endif
 
   settimeofday(&tv, NULL);
-  //staptest// settimeofday (\[NNNN.NNNN\], NULL) = NNNN
+  //staptest// [[[[settimeofday (\[NNNN.NNNN\], NULL)!!!!clock_settime (CLOCK_REALTIME, \[NNNN.NNNN\])]]]] = NNNN
 
+// With modern glibc, the first arg of settimeofday is marked as restrict,
+// and this sub testcase SEGVs.
+#if defined(__GLIBC__) && defined(__GLIBC_MINOR__) && __GLIBC__ <= 2 && __GLIBC_MINOR__ <= 30
   settimeofday((struct timeval *)-1, NULL);
 #ifdef __s390__
   //staptest// settimeofday (0x[7]?[f]+, NULL) = -NNNN (EFAULT)
 #else
   //staptest// settimeofday (0x[f]+, NULL) = -NNNN (EFAULT)
 #endif
+#endif
 
-  settimeofday(&tv, (struct timezone *)-1);
+  syscall(SYS_settimeofday, &tv, (struct timezone *)-1);
 #ifdef __s390__
   //staptest// settimeofday (\[NNNN.NNNN\], 0x[7]?[f]+) = -NNNN (EFAULT)
 #else
@@ -86,8 +100,11 @@ int main()
   syscall(SYS_clock_getres, CLOCK_REALTIME, &ts);
   //staptest// clock_getres (CLOCK_REALTIME, XXXX) = 0
 
+// On s390x, the following probe doesn't get the return hit, skip it.
+#if !defined(__s390__)
   syscall(SYS_clock_getres, -1, &ts);
   //staptest// clock_getres (0xffffffff, XXXX) = -NNNN (EINVAL)
+#endif
 
   syscall(SYS_clock_getres, CLOCK_REALTIME, -1);
 #ifdef __s390__
