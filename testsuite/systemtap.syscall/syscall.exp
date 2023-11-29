@@ -12,11 +12,12 @@ set test_script "sys.stp"
 set test_module_name "syscall_longlonglong"
 set wd [pwd]
 set test_module "${wd}/${test_module_name}.ko"
+set cached_module "/tmp/${test_module_name}.ko"
 
 source $srcdir/$subdir/test.tcl
 
 proc test_procedure {} {
-    global env srcdir subdir test_script test_module test_module_name
+    global env srcdir subdir test_script test_module test_module_name cached_module
     set flags ""
 
     set patterns []
@@ -57,9 +58,18 @@ proc test_procedure {} {
     set script "$srcdir/$subdir/${test_script}"
     set cmd "stap -p4 -I $srcdir/$subdir/tapset -m ${test_module_name} ${script}"
     exec /bin/rm -f ${test_module}
-    catch {eval exec $cmd} output
+    set output ""
+    if {[info exists env(REUSE_MODULE)] && \
+        ![string compare $env(REUSE_MODULE) 1] && \
+        [file exists ${cached_module}]} {
+        puts "ATTENTION: Reusing existing module since REUSE_MODULE was set."
+        exec /bin/cp ${cached_module} ${test_module}
+    } else {
+        catch {eval exec $cmd} output
+    }
     send_log "${output}\n"
     if {[file exists ${test_module}]} {
+	exec /bin/cp ${test_module} ${cached_module}
 	pass "${script} compilation"
     } else {
 	# If compiling the test module failed, there isn't much point
