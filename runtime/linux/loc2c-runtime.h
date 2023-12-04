@@ -1007,11 +1007,14 @@ static inline int _stp_store_deref_string_(char *src, void *addr, size_t len,
     {
       for (i = 0; i < len - 1; ++i)
 	{
+	  if (*src == '\0')
+	    break;
 	  err = __stp_put_either(*src++, (u8 *)addr + i, seg);
 	  if (err)
 	    goto out;
 	}
-      err = __stp_put_either('\0', (u8 *)addr + i, seg);
+      /* PR31074: cast (char) '\0' to make sure right size */
+      err = __stp_put_either((char) '\0', (u8 *)addr + i, seg);
     }
 
 out:
