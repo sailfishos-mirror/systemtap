@@ -15,11 +15,15 @@
 // Note, invalid calls are silently ignored...
 
 %{
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,11,0)
+#define get_kretprobe(p) ((p)->rp)
+#endif
+
 static void *
 _kretprobe_data(struct kretprobe_instance *pi, size_t offset, size_t length)
 {
 	size_t end = offset + length;
-	if (end > offset && pi && end <= pi->rp->data_size)
+	if (end > offset && pi && end <= get_kretprobe(pi)->data_size)
 		return &pi->data[offset];
 	return NULL;
 }
