@@ -65,7 +65,7 @@ proc test_procedure {} {
     # we can at least run the tests and possibly KFAIL the test results
     # where needed.
     set script "$srcdir/$subdir/${test_script}"
-    set cmd "stapi --skip-badvars -p4 -I $srcdir/$subdir/tapset -m ${test_module_name} ${script}"
+    set cmd "stap --skip-badvars -p4 -I $srcdir/$subdir/tapset -m ${test_module_name} ${script}"
     exec /bin/rm -f ${test_module}
     set output ""
     if {[info exists env(REUSE_MODULE)] && \
