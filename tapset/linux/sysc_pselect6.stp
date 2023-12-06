@@ -61,14 +61,7 @@ probe dw_syscall.pselect6 = kernel.function("sys_pselect6").call ?
 	exceptfds = $exp
 	timeout = $tsp
 	timeout_str = _struct_timespec_u(timeout, 1)
-	# On 4.18.0-527.el8.s390x, there is ERROR: read fault [man error::fault]
-	# at 0x152d7ff48 near identifier '$sig' ...  Since this breaks whole
-        # the syscall testsuite, work it around, get $sig best effort.
-	try {
-	    sigmask = $sig
-	} catch {
-	    sigmask = 0
-	}
+	sigmask = $sig
 	@_SYSCALL_PSELECT6_ARGSTR
 }
 probe dw_syscall.pselect6.return = kernel.function("sys_pselect6").return ?
