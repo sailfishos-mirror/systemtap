@@ -384,7 +384,7 @@ HTML_INSTALL_DIR = $(DESTDIR)$(datadir)/doc/systemtap/tapsets
 @XMLTO_STRINGPARAM_TRUE@XMLTOHTMLPARAMS = --stringparam use.id.as.filename=1 -m $(abs_srcdir)/generate-toc.xml
 @BUILD_HTMLDOCS_TRUE@@BUILD_REFDOCS_TRUE@SRCTREE = $(abs_top_srcdir)/
 @BUILD_HTMLDOCS_TRUE@@BUILD_REFDOCS_TRUE@DOCPROC = $(abs_builddir)/docproc
-CLEANFILES = stamp-* tapsets.pdf tapsets.xml
+CLEANFILES = stamp-* tapsets.xml
 all: all-am
 
 .SUFFIXES:

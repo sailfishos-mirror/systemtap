@@ -66,6 +66,6 @@ install-data-hook:
 endif
 endif
 
-CLEANFILES=stamp-* tapsets.pdf tapsets.xml
+CLEANFILES=stamp-* tapsets.xml
 clean-local:
 	rm -rf tapsets
