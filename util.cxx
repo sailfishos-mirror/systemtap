@@ -1301,10 +1301,9 @@ octal_character (unsigned c)
   return '0' + c % 8;
 }
 
-string
-escaped_character (unsigned c)
+static inline void
+escaped_character_impl (unsigned c, ostringstream &o)
 {
-  ostringstream o;
   int oc = (int)c;
 
   switch (oc)
@@ -1362,18 +1361,28 @@ escaped_character (unsigned c)
             << octal_character(oc);
         }
     }
+}
+
+string
+escaped_character (unsigned c)
+{
+  ostringstream o;
+
+  escaped_character_impl(c, o);
+
   return o.str();
 }
 
 string
 escaped_literal_string (const string& str)
 {
-  string op;
+  ostringstream o;
+
   for (unsigned i = 0; i < str.size (); i++)
     {
-      op += escaped_character((unsigned)str[i]);
+      escaped_character_impl((unsigned char)str[i], o);
     }
-  return op;
+  return o.str();
 }
 
 string
