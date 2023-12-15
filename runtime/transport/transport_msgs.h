@@ -102,7 +102,7 @@ enum
 };
 
 #ifdef DEBUG_TRANS
-static const char *_stp_command_name[STP_MAX_CMD] = {
+static const char *_stp_command_name[STP_MAX_CMD+1] = {
 	[STP_START]="STP_START",
 	"STP_EXIT",
 	"STP_OOB_DATA",
