@@ -177,7 +177,7 @@ proc process_template_file { template_file out_file bin_file err_var } {
         set nm_fh [open "| nm --defined-only ./a.out" r]
         set hits 0
         while {[gets $nm_fh line] >= 0} {
-            if {[regexp -- {^\s*([0-9a-f]+)\s+[DT]\s+([_a-zA-Z]\w*)\s*$} $line \
+            if {[regexp -- {^\s*([0-9a-f]+)\s+[DTBdtb]\s+([_a-zA-Z]\w*)\s*$} $line \
                     match addr name]} {
                 if {! [info exists names($name)]} {
                     continue
