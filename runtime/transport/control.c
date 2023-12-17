@@ -418,7 +418,7 @@ static void _stp_ctl_free_special_buffers(void)
 static struct _stp_buffer *_stp_ctl_get_buffer(int type, const char *data,
 					       unsigned len)
 {
-	unsigned long flags;
+	unsigned long flags = 0;
 	struct _stp_buffer *bptr = NULL;
 
 	/* Is it a dynamically allocated message type? */
@@ -481,12 +481,12 @@ static struct _stp_buffer *_stp_ctl_get_buffer(int type, const char *data,
 		}
 		if (bptr != NULL) {
 			/* OK, it is a special one, but is it free?  */
-			stp_spin_lock_irqsave(&_stp_ctl_special_msg_lock, flags);
+			stp_nmi_spin_lock_irqsave(&_stp_ctl_special_msg_lock, flags, failed);
 			if (bptr->type == _STP_CTL_MSG_UNUSED)
 				bptr->type = type;
 			else
 				bptr = NULL;
-			stp_spin_unlock_irqrestore(&_stp_ctl_special_msg_lock, flags);
+			stp_nmi_spin_unlock_irqrestore(&_stp_ctl_special_msg_lock, flags);
 		}
 
 		/* Got a special message buffer, with type set, fill it in,
@@ -501,6 +501,9 @@ static struct _stp_buffer *_stp_ctl_get_buffer(int type, const char *data,
 		}
 	}
 	return bptr;
+
+failed:
+	return NULL;
 }
 
 /* Returns the given buffer to the pool when dynamically allocated.
@@ -535,7 +538,7 @@ static int _stp_ctl_send(int type, void *data, unsigned len)
 {
 	struct context* __restrict__ c = NULL;
 	struct _stp_buffer *bptr;
-	unsigned long flags;
+	unsigned long flags = 0;
 	unsigned hlen;
 
 #ifdef DEBUG_TRANS
@@ -567,22 +570,23 @@ static int _stp_ctl_send(int type, void *data, unsigned len)
 	   skipped rather than deadlock.  */
 	c = _stp_runtime_entryfn_get_context();
 
+	stp_nmi_spin_lock_irqsave(&_stp_ctl_ready_lock, flags, no_lock);
+
 	/* get a buffer from the free pool */
 	bptr = _stp_ctl_get_buffer(type, data, len);
 	if (unlikely(bptr == NULL)) {
 		/* Nothing else we can do... but let's not spam the kernel
                    with these reports. */
                 /* printk(KERN_ERR "ctl_write_msg type=%d len=%d ENOMEM\n", type, len); */
-		_stp_runtime_entryfn_put_context(c);
-		return -ENOMEM;
+		goto no_mem;
 	}
 
 	/* Put it on the pool of ready buffers.  It's possible to recursively
 	   hit a probe here, like a kprobe in NMI or the lock tracepoints, but
 	   they will be squashed since we're holding the context busy.  */
-	stp_spin_lock_irqsave(&_stp_ctl_ready_lock, flags);
 	list_add_tail(&bptr->list, &_stp_ctl_ready_q);
-	stp_spin_unlock_irqrestore(&_stp_ctl_ready_lock, flags);
+
+	stp_nmi_spin_unlock_irqrestore(&_stp_ctl_ready_lock, flags);
 
 	_stp_runtime_entryfn_put_context(c);
 
@@ -590,6 +594,15 @@ static int _stp_ctl_send(int type, void *data, unsigned len)
 	   timer at this point, but calling mod_timer() at this
 	   point would bring in more locking issues... */
 	return len + sizeof(bptr->type);
+
+no_lock:
+	_stp_runtime_entryfn_put_context(c);
+	return -EBUSY;
+
+no_mem:
+	stp_nmi_spin_unlock_irqrestore(&_stp_ctl_ready_lock, flags);
+	_stp_runtime_entryfn_put_context(c);
+	return -ENOMEM;
 }
 
 /* Logs a warning or error through the control channel. This function mimics
@@ -603,12 +616,15 @@ static void _stp_ctl_log_werr(const char *logtype, size_t logtype_len,
 {
 	struct context *__restrict__ c;
 	struct _stp_buffer *bptr;
-	unsigned long flags;
+	unsigned long flags = 0;
 
 	c = _stp_runtime_entryfn_get_context();
+
+	stp_nmi_spin_lock_irqsave(&_stp_ctl_ready_lock, flags, put_context);
+
 	bptr = _stp_ctl_get_buffer(STP_OOB_DATA, logtype, logtype_len);
 	if (!bptr)
-		goto put_context;
+		goto unlock;
 
 	/*
 	 * This is a generic failure message for when there's no space left. We
@@ -634,9 +650,11 @@ static void _stp_ctl_log_werr(const char *logtype, size_t logtype_len,
 		bptr->buf[bptr->len++] = '\n';
 
 send_msg:
-	stp_spin_lock_irqsave(&_stp_ctl_ready_lock, flags);
 	list_add_tail(&bptr->list, &_stp_ctl_ready_q);
-	stp_spin_unlock_irqrestore(&_stp_ctl_ready_lock, flags);
+
+unlock:
+	stp_nmi_spin_unlock_irqrestore(&_stp_ctl_ready_lock, flags);
+
 put_context:
 	_stp_runtime_entryfn_put_context(c);
 }

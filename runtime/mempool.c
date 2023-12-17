@@ -75,20 +75,27 @@ err:
 /* allocate a buffer from a memory pool */
 static void *_stp_mempool_alloc(_stp_mempool_t *pool)
 {
-	unsigned long flags;
+	unsigned long flags = 0;
 	struct _stp_mem_buffer *ptr = NULL;
+	void *ret = NULL;
+
         /* PR14804: tolerate accidental early call, before pool is
          actually initialized. */
         if (pool == NULL)
                 return NULL;
-	stp_spin_lock_irqsave(&pool->lock, flags);
+
+	stp_nmi_spin_lock_irqsave(&pool->lock, flags, no_lock);
+
 	if (likely(!list_empty(&pool->free_list))) {
 		ptr = (struct _stp_mem_buffer *)pool->free_list.next;
 		list_del_init(&ptr->list);
-		stp_spin_unlock_irqrestore(&pool->lock, flags);
-		return &ptr->buf;
+		ret = &ptr->buf;
 	}
-	stp_spin_unlock_irqrestore(&pool->lock, flags);
+
+	stp_nmi_spin_unlock_irqrestore(&pool->lock, flags);
+	return ret;
+
+no_lock:
 	return NULL;
 }
 
