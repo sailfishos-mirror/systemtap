@@ -237,6 +237,7 @@ static void _stp_handle_start(struct _stp_msg_start *st)
 		dbug_trans(1, "stp_handle_start\n");
 
 		_stp_target = st->target;
+		_stp_orig_target = _stp_target;
 
 #if defined(CONFIG_USER_NS)
                 rcu_read_lock();

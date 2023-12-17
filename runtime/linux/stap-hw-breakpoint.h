@@ -12,6 +12,8 @@
 #define _STP_HW_BREAKPOINT_H_INCLUDED_
 
 struct stap_hwbkpt_probe {
+	bool kernel_p;
+
 	bool registered_p;
 	// registered_p = false signifies a probe that is unregistered (or failed)
 	// registered_p = true signifies a probe that got registered successfully
@@ -29,7 +31,7 @@ struct stap_hwbkpt_probe {
 
 static inline int
 stap_hwbkpt_init(perf_overflow_handler_t triggered, struct stap_hwbkpt_probe *probes, int probe_count,
-	struct perf_event_attr *probe_array, struct perf_event **ret_array[], const char **probe_point_ptr)
+	struct perf_event_attr *probe_array, void *ret_array[], const char **probe_point_ptr)
 {
 	int rc = 0;
 	int i;
@@ -81,14 +83,44 @@ stap_hwbkpt_init(perf_overflow_handler_t triggered, struct stap_hwbkpt_probe *pr
 		*probe_point_ptr = skp->probe->pp; // for error messages
 
 #ifdef STAPCONF_HW_BREAKPOINT_CONTEXT
-		ret_array[i] = register_wide_hw_breakpoint(hp, triggered, NULL);
-#else
-		ret_array[i] = register_wide_hw_breakpoint(hp, triggered);
+		if (skp->kernel_p) {
+#ifdef DEBUG_PROBES
+			pr_warn("%s:%d: registering kernel-mode hw breakpoint at %#lx\n",
+				__func__, __LINE__, (unsigned long) hp->bp_addr);
+#endif
+			ret_array[i] = register_wide_hw_breakpoint(hp, triggered, NULL);
+		} else {
+			if (likely(_stp_target > 0)) {
+				struct task_struct *tsk;
+				rcu_read_lock();
+				tsk = get_pid_task(find_vpid(_stp_orig_target), PIDTYPE_PID);
+				rcu_read_unlock();
+				if (unlikely(tsk == NULL)) {
+					ret_array[i] = ERR_PTR(-ESRCH);
+				} else {
+#ifdef DEBUG_PROBES
+					pr_warn("%s:%d: registering user hw breakpoint for pid %d (%s) at addr %#lx\n",
+						__func__, __LINE__, _stp_target, tsk->comm,
+						(unsigned long) hp->bp_addr);
+#endif
+					ret_array[i] = register_user_hw_breakpoint(hp, triggered, NULL, tsk);
+					put_task_struct(tsk);
+				}  /* tsk != NULL */
+			} else {  /* _stp_target <= 0 */
+				ret_array[i] = ERR_PTR(-ESRCH);
+			}
+		}  /* !skp->kernel_p */
+#else  /* !defined(STAPCONF_HW_BREAKPOINT_CONTEXT) */
+		if (unlikely(!skp->kernel_p))
+			ret_array[i] = ERR_PTR(-ENOTSUP);
+		else
+			ret_array[i] = register_wide_hw_breakpoint(hp, triggered);
 #endif
 		if (unlikely(IS_ERR(ret_array[i]))) {
 			rc = PTR_ERR(ret_array[i]);
 			ret_array[i] = 0;
-			_stp_error("Hwbkpt probe %s: registration error [man warning::pass5] %d, addr %p, name %s", skp->probe->pp, rc, addr, hwbkpt_symbol_name);
+			_stp_error("Hwbkpt probe %s: registration error [man warning::pass5] %d, addr %#lx, name %s",
+				   skp->probe->pp, rc, (unsigned long) addr, hwbkpt_symbol_name);
 			skp->registered_p = false;
 			break;
 		}
@@ -111,14 +143,18 @@ stap_hwbkpt_init(perf_overflow_handler_t triggered, struct stap_hwbkpt_probe *pr
 }
 
 static inline void
-stap_hwbkpt_exit(struct stap_hwbkpt_probe *probes, int probe_count, struct perf_event **ret_array[])
+stap_hwbkpt_exit(struct stap_hwbkpt_probe *probes, int probe_count, void *ret_array[])
 {
 	int i;
 	//Unregister hwbkpt probes.
 	for (i=0; i<probe_count; i++) {
 		struct stap_hwbkpt_probe *skp = & probes[i];
 		if (unlikely(!skp->registered_p)) continue;
-		unregister_wide_hw_breakpoint(ret_array[i]);
+		if (skp->kernel_p) {
+			unregister_wide_hw_breakpoint((struct perf_event **) ret_array[i]);
+		} else {
+			unregister_hw_breakpoint((struct perf_event *) ret_array[i]);
+		}
 		skp->registered_p = false;
 	}
 }

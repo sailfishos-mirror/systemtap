@@ -19,6 +19,7 @@
 static unsigned _stp_nsubbufs;
 static unsigned _stp_subbuf_size;
 static pid_t _stp_target;
+static pid_t _stp_orig_target;
 
 // flags to indicate choice of host filesystem for the relayfs
 // pseudofiles; chosen within _stp_transport_fs_init

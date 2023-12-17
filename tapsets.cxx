@@ -10762,11 +10762,13 @@ struct hwbkpt_derived_probe: public derived_probe
 			unsigned int len,
 			bool has_only_read_access,
 			bool has_only_write_access,
-			bool has_rw_access
+			bool has_rw_access,
+			bool is_kernel
                         );
   Dwarf_Addr hwbkpt_addr;
   string symbol_name;
   unsigned int hwbkpt_access,hwbkpt_len;
+  bool kernel_p;
 
   void printsig (std::ostream &o) const;
   void join_group (systemtap_session& s);
@@ -10795,11 +10797,13 @@ hwbkpt_derived_probe::hwbkpt_derived_probe (probe *base,
                                             unsigned int len,
                                             bool has_only_read_access,
                                             bool has_only_write_access,
-                                            bool):
+                                            bool,
+                                            bool is_kernel):
   derived_probe (base, location, true /* .components soon rewritten */ ),
   hwbkpt_addr (addr),
   symbol_name (symname),
-  hwbkpt_len (len)
+  hwbkpt_len (len),
+  kernel_p(is_kernel)
 {
   this->tok = base->tok;
 
@@ -10883,7 +10887,7 @@ hwbkpt_derived_probe_group::emit_module_decls (systemtap_session& s)
   s.op->newline() << "static struct perf_event_attr ";
   s.op->newline() << "stap_hwbkpt_probe_array[" << hwbkpt_probes.size() << "];";
 
-  s.op->newline() << "static struct perf_event **";
+  s.op->newline() << "static void *";
   s.op->newline() << "stap_hwbkpt_ret_array[" << hwbkpt_probes.size() << "];";
   s.op->newline() << "static struct stap_hwbkpt_probe stap_hwbkpt_probes[] = {";
   s.op->indent(1);
@@ -10892,6 +10896,8 @@ hwbkpt_derived_probe_group::emit_module_decls (systemtap_session& s)
     {
       hwbkpt_derived_probe* p = hwbkpt_probes.at(it);
       s.op->newline() << "{";
+      if (p->kernel_p)
+        s.op->line() << " .kernel_p=1" << ",";
       if (p->symbol_name.size())
       s.op->line() << " .address=(unsigned long)0x0" << "ULL,";
       else
@@ -10982,7 +10988,9 @@ warn_for_bpf(systemtap_session& s, hwbkpt_derived_probe_group *hpg,
 
 struct hwbkpt_builder: public derived_probe_builder
 {
-  hwbkpt_builder() {}
+  bool kernel_p;
+
+  hwbkpt_builder(bool is_kernel): kernel_p(is_kernel) {}
   virtual void build(systemtap_session & sess,
 		     probe * base,
 		     probe_point * location,
@@ -11013,7 +11021,8 @@ hwbkpt_builder::build(systemtap_session & sess,
   // See BZ1431263 (on aarch64, running the hw_watch_addr.stp
   // systemtap examples cause a stuck CPU).
   if (sess.architecture == string("arm64"))
-      throw SEMANTIC_ERROR (_("kernel.data probes are not supported on arm64 kernels"),
+      throw SEMANTIC_ERROR (_F("%s.data probes are not supported on arm64 kernels",
+                               kernel_p ? "kernel" : "process"),
                             location->components[0]->tok);
 
   has_addr = get_param (parameters, TOK_HWBKPT, hwbkpt_address);
@@ -11047,14 +11056,16 @@ hwbkpt_builder::build(systemtap_session & sess,
 							    hwbkpt_address,
 							    "",len,0,
 							    has_write,
-							    has_rw));
+							    has_rw,
+							    kernel_p));
   else if (has_symbol_str)
       finished_results.push_back (new hwbkpt_derived_probe (new_base,
 							    location,
 							    0,
 							    symbol_str_val,len,0,
 							    has_write,
-							    has_rw));
+							    has_rw,
+							    kernel_p));
   else
     assert (0);
 }
@@ -13185,22 +13196,33 @@ register_standard_tapsets(systemtap_session & s)
   s.pattern_root->bind(TOK_KPROBE)->bind_num(TOK_STATEMENT)
       ->bind(TOK_ABSOLUTE)->bind(new kprobe_builder());
 
-  //Hwbkpt based probe
+  //Hwbkpt based kernel probe
   // NB: we formerly registered the probe point types only if the kernel configuration
   // allowed it.  However, we get better error messages if we allow probes to resolve.
   s.pattern_root->bind(TOK_KERNEL)->bind_num(TOK_HWBKPT)
-    ->bind(TOK_HWBKPT_WRITE)->bind(new hwbkpt_builder());
+    ->bind(TOK_HWBKPT_WRITE)->bind(new hwbkpt_builder(true));
   s.pattern_root->bind(TOK_KERNEL)->bind_str(TOK_HWBKPT)
-    ->bind(TOK_HWBKPT_WRITE)->bind(new hwbkpt_builder());
+    ->bind(TOK_HWBKPT_WRITE)->bind(new hwbkpt_builder(true));
   s.pattern_root->bind(TOK_KERNEL)->bind_num(TOK_HWBKPT)
-    ->bind(TOK_HWBKPT_RW)->bind(new hwbkpt_builder());
+    ->bind(TOK_HWBKPT_RW)->bind(new hwbkpt_builder(true));
   s.pattern_root->bind(TOK_KERNEL)->bind_str(TOK_HWBKPT)
-    ->bind(TOK_HWBKPT_RW)->bind(new hwbkpt_builder());
+    ->bind(TOK_HWBKPT_RW)->bind(new hwbkpt_builder(true));
   s.pattern_root->bind(TOK_KERNEL)->bind_num(TOK_HWBKPT)
-    ->bind_num(TOK_LENGTH)->bind(TOK_HWBKPT_WRITE)->bind(new hwbkpt_builder());
+    ->bind_num(TOK_LENGTH)->bind(TOK_HWBKPT_WRITE)->bind(new hwbkpt_builder(true));
   s.pattern_root->bind(TOK_KERNEL)->bind_num(TOK_HWBKPT)
-    ->bind_num(TOK_LENGTH)->bind(TOK_HWBKPT_RW)->bind(new hwbkpt_builder());
+    ->bind_num(TOK_LENGTH)->bind(TOK_HWBKPT_RW)->bind(new hwbkpt_builder(true));
   // length supported with address only, not symbol names
+
+  //Hwbkpt based process probe
+  // NB: we don't support symbol names in the probe spec (yet).
+  s.pattern_root->bind(TOK_PROCESS)->bind_num(TOK_HWBKPT)
+    ->bind(TOK_HWBKPT_WRITE)->bind(new hwbkpt_builder(false));
+  s.pattern_root->bind(TOK_PROCESS)->bind_num(TOK_HWBKPT)
+    ->bind(TOK_HWBKPT_RW)->bind(new hwbkpt_builder(false));
+  s.pattern_root->bind(TOK_PROCESS)->bind_num(TOK_HWBKPT)
+    ->bind_num(TOK_LENGTH)->bind(TOK_HWBKPT_WRITE)->bind(new hwbkpt_builder(false));
+  s.pattern_root->bind(TOK_PROCESS)->bind_num(TOK_HWBKPT)
+    ->bind_num(TOK_LENGTH)->bind(TOK_HWBKPT_RW)->bind(new hwbkpt_builder(false));
 
   //perf event based probe
   register_tapset_perf(s);

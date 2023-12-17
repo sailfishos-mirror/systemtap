@@ -1,5 +1,13 @@
 * What's new in version 5.1, PRERELEASE
 
+- Add new probe-points for userland hardware breakpoints/watchpoints
+  targeting processes (PR31180):
+
+    probe process.data(ADDRESS).write
+    probe process.data(ADDRESS).rw
+    probe process.data(ADDRESS).length(LEN).write
+    probe process.data(ADDRESS).length(LEN).rw
+
 * What's new in version 5.0, 2023-11-04
 
 - Performance improvements in uprobe registration and module startup.

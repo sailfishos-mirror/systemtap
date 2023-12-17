@@ -1456,7 +1456,7 @@ The marker format string associated with a marker is available in
 And also the marker name string is available in
 .BR $name .
 
-.SS HARDWARE BREAKPOINTS
+.SS KERNEL HARDWARE BREAKPOINTS
 This family of probes is used to set hardware watchpoints for a given
  (global) kernel symbol. The probes take three components as inputs :
 
@@ -1505,6 +1505,30 @@ than the limits set by architecture. For example,a pass-2 warning is flashed
 when an input script requests 5 hardware breakpoint probes on an x86
 system while x86 architecture supports a maximum of 4 breakpoints.
 Users are cautioned to set probes judiciously.
+
+It is possible to specify userspace virtual memory addresses in this
+family of probes and the handlers would trigger upon the corresponding
+memory read/write events in those processes. But one cannot easily control
+which processes are monitored. Using `if (pid() == target())` is a workaround
+but it is inefficient. Better use the userland hardware breakpoint probes
+below instead.
+
+.SS USERLAND HARDWARE BREAKPOINTS
+
+This family of probes is very similar to its kernel-space counterpart
+but it targets the userland processes only.
+
+The following constructs are currently supported:
+.SAMPLE
+probe process.data(ADDRESS).write
+probe process.data(ADDRESS).rw
+probe process.data(ADDRESS).length(LEN).write
+probe process.data(ADDRESS).length(LEN).rw
+.ESAMPLE
+
+Currently, only the target process specified by -x PID or -c CMD has
+the watchpoints registered. The ADDRESS must be a valid virtual memory
+address in that process's address space.
 
 .SS PERF
 
