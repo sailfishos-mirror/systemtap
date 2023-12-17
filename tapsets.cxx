@@ -10863,6 +10863,7 @@ hwbkpt_derived_probe_group::emit_module_decls (systemtap_session& s)
 
   s.op->newline() << "#include <linux/perf_event.h>";
   s.op->newline() << "#include <linux/hw_breakpoint.h>";
+  s.op->newline() << "#include <linux/stap-hw-breakpoint.h>";
   s.op->newline();
 
   // Forward declare the main entry functions
@@ -10884,20 +10885,7 @@ hwbkpt_derived_probe_group::emit_module_decls (systemtap_session& s)
 
   s.op->newline() << "static struct perf_event **";
   s.op->newline() << "stap_hwbkpt_ret_array[" << hwbkpt_probes.size() << "];";
-  s.op->newline() << "static struct stap_hwbkpt_probe {";
-  s.op->newline() << "int registered_p:1;";
-// registered_p =  0 signifies a probe that is unregistered (or failed)
-// registered_p =  1 signifies a probe that got registered successfully
-
-  // Symbol Names are mostly small and uniform enough
-  // to justify putting const char*.
-  s.op->newline() << "const char * const symbol;";
-
-  s.op->newline() << "const unsigned long address;";
-  s.op->newline() << "uint8_t atype;";
-  s.op->newline() << "unsigned int len;";
-  s.op->newline() << "const struct stap_probe * const probe;";
-  s.op->newline() << "} stap_hwbkpt_probes[] = {";
+  s.op->newline() << "static struct stap_hwbkpt_probe stap_hwbkpt_probes[] = {";
   s.op->indent(1);
 
   for (unsigned int it = 0; it < hwbkpt_probes.size(); it++)
@@ -10964,73 +10952,17 @@ hwbkpt_derived_probe_group::emit_module_decls (systemtap_session& s)
 void
 hwbkpt_derived_probe_group::emit_module_init (systemtap_session& s)
 {
-  s.op->newline() << "for (i=0; i<" << hwbkpt_probes.size() << "; i++) {";
-  s.op->newline(1) << "struct stap_hwbkpt_probe *skp = & stap_hwbkpt_probes[i];";
-  s.op->newline() << "struct perf_event_attr *hp = & stap_hwbkpt_probe_array[i];";
-  s.op->newline() << "void *addr = (void *) skp->address;";
-  s.op->newline() << "const char *hwbkpt_symbol_name = addr ? NULL : skp->symbol;";
-  s.op->newline() << "hw_breakpoint_init(hp);";
-  s.op->newline() << "if (addr)";
-  s.op->newline(1) << "hp->bp_addr = (unsigned long) addr;";
-  s.op->newline(-1) << "else { ";
-  s.op->newline(1) << "hp->bp_addr = kallsyms_lookup_name(hwbkpt_symbol_name);";
-  s.op->newline() << "if (!hp->bp_addr) { ";
-  s.op->newline(1) << "_stp_warn(\"Probe %s registration skipped: invalid symbol %s \",skp->probe->pp,hwbkpt_symbol_name);";
-  s.op->newline() << "continue;";
-  s.op->newline(-1) << "}";
-  s.op->newline(-1) << "}";
-  s.op->newline() << "hp->bp_type = skp->atype;";
-
-  // Convert actual len to bp len.
-  s.op->newline() << "switch(skp->len) {";
-  s.op->newline() << "case 1:";
-  s.op->newline(1) << "hp->bp_len = HW_BREAKPOINT_LEN_1;";
-  s.op->newline() << "break;";
-  s.op->newline(-1) << "case 2:";
-  s.op->newline(1) << "hp->bp_len = HW_BREAKPOINT_LEN_2;";
-  s.op->newline() << "break;";
-  s.op->newline(-1) << "case 3:";
-  s.op->newline() << "case 4:";
-  s.op->newline(1) << "hp->bp_len = HW_BREAKPOINT_LEN_4;";
-  s.op->newline() << "break;";
-  s.op->newline(-1) << "case 5:";
-  s.op->newline() << "case 6:";
-  s.op->newline() << "case 7:";
-  s.op->newline() << "case 8:";
-  s.op->newline() << "default:"; // XXX: could instead reject
-  s.op->newline(1) << "hp->bp_len = HW_BREAKPOINT_LEN_8;";
-  s.op->newline() << "break;";
-  s.op->newline(-1) << "}";
-
-  s.op->newline() << "probe_point = skp->probe->pp;"; // for error messages
-  s.op->newline() << "#ifdef STAPCONF_HW_BREAKPOINT_CONTEXT";
-  s.op->newline() << "stap_hwbkpt_ret_array[i] = register_wide_hw_breakpoint(hp, &enter_hwbkpt_probe, NULL);";
-  s.op->newline() << "#else";
-  s.op->newline() << "stap_hwbkpt_ret_array[i] = register_wide_hw_breakpoint(hp, &enter_hwbkpt_probe);";
-  s.op->newline() << "#endif";
-  s.op->newline() << "rc = 0;";
-  s.op->newline() << "if (IS_ERR(stap_hwbkpt_ret_array[i])) {";
-  s.op->newline(1) << "rc = PTR_ERR(stap_hwbkpt_ret_array[i]);";
-  s.op->newline() << "stap_hwbkpt_ret_array[i] = 0;";
-  s.op->newline(-1) << "}";
-  s.op->newline() << "if (rc) {";
-  s.op->newline(1) << "_stp_warn(\"Hwbkpt probe %s: registration error [man warning::pass5] %d, addr %p, name %s\", probe_point, rc, addr, hwbkpt_symbol_name);";
-  s.op->newline() << "skp->registered_p = 0;";
-  s.op->newline(-1) << "}";
-  s.op->newline() << " else skp->registered_p = 1;";
-  s.op->newline(-1) << "}"; // for loop
+  s.op->newline() << "rc = stap_hwbkpt_init(&enter_hwbkpt_probe, stap_hwbkpt_probes, "
+    << hwbkpt_probes.size() << ", stap_hwbkpt_probe_array, "
+    << "stap_hwbkpt_ret_array, &probe_point);";
 }
 
 void
 hwbkpt_derived_probe_group::emit_module_exit (systemtap_session& s)
 {
   //Unregister hwbkpt probes.
-  s.op->newline() << "for (i=0; i<" << hwbkpt_probes.size() << "; i++) {";
-  s.op->newline(1) << "struct stap_hwbkpt_probe *skp = & stap_hwbkpt_probes[i];";
-  s.op->newline() << "if (skp->registered_p == 0) continue;";
-  s.op->newline() << "unregister_wide_hw_breakpoint(stap_hwbkpt_ret_array[i]);";
-  s.op->newline() << "skp->registered_p = 0;";
-  s.op->newline(-1) << "}";
+  s.op->newline() << "stap_hwbkpt_exit(stap_hwbkpt_probes, "
+    << hwbkpt_probes.size() << ", stap_hwbkpt_ret_array);";
 }
 
 
