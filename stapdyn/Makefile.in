@@ -453,14 +453,14 @@ AM_LDFLAGS = @PIELDFLAGS@ @BOOST_SYSTEM_LIB@ $(am__append_2)
 @HAVE_DYNINST_TRUE@stapdyn_SOURCES = stapdyn.cxx mutator.cxx mutatee.cxx \
 @HAVE_DYNINST_TRUE@				  dynprobe.cxx dynutil.cxx ../util.cxx
 
-@HAVE_DYNINST_TRUE@stapdyn_CXXFLAGS = $(AM_CXXFLAGS) @DYNINST_CXXFLAGS@
-@HAVE_DYNINST_TRUE@stapdyn_LDFLAGS = $(AM_LDFLAGS) @DYNINST_LDFLAGS@
+@HAVE_DYNINST_TRUE@stapdyn_CXXFLAGS = $(AM_CXXFLAGS) @DYNINST_CXXFLAGS@ $(debuginfod_CFLAGS)
+@HAVE_DYNINST_TRUE@stapdyn_LDFLAGS = $(AM_LDFLAGS) @DYNINST_LDFLAGS@ $(debuginfod_LDFLAGS)
 @HAVE_DYNINST_TRUE@stapdyn_LDADD = -ldl -ldyninstAPI -lsymtabAPI -lpthread $(debuginfod_LIBS)
 @HAVE_DYNINST_TRUE@stapdyn_CFLAGS = $(debuginfod_CFLAGS)
 @HAVE_DYNINST_TRUE@dynsdt_SOURCES = dynsdt.cxx dynutil.cxx ../util.cxx
 @HAVE_DYNINST_TRUE@dynsdt_CPPFLAGS = $(AM_CPPFLAGS)
-@HAVE_DYNINST_TRUE@dynsdt_CXXFLAGS = $(AM_CXXFLAGS) @DYNINST_CXXFLAGS@
-@HAVE_DYNINST_TRUE@dynsdt_LDFLAGS = $(AM_LDFLAGS) @DYNINST_LDFLAGS@
+@HAVE_DYNINST_TRUE@dynsdt_CXXFLAGS = $(AM_CXXFLAGS) @DYNINST_CXXFLAGS@ $(debuginfod_CFLAGS)
+@HAVE_DYNINST_TRUE@dynsdt_LDFLAGS = $(AM_LDFLAGS) @DYNINST_LDFLAGS@ $(debuginfod_LDFLAGS)
 @HAVE_DYNINST_TRUE@dynsdt_LDADD = -ldl -lelf -ldyninstAPI -lsymtabAPI -lpthread $(debuginfod_LIBS)
 @HAVE_DYNINST_TRUE@dynsdt_CFLAGS = $(debuginfod_CFLAGS)
 

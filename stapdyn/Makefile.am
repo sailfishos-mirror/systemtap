@@ -30,15 +30,15 @@ man_MANS = stapdyn.8
 
 stapdyn_SOURCES = stapdyn.cxx mutator.cxx mutatee.cxx \
 				  dynprobe.cxx dynutil.cxx ../util.cxx
-stapdyn_CXXFLAGS = $(AM_CXXFLAGS) @DYNINST_CXXFLAGS@
-stapdyn_LDFLAGS = $(AM_LDFLAGS) @DYNINST_LDFLAGS@
+stapdyn_CXXFLAGS = $(AM_CXXFLAGS) @DYNINST_CXXFLAGS@ $(debuginfod_CFLAGS)
+stapdyn_LDFLAGS = $(AM_LDFLAGS) @DYNINST_LDFLAGS@ $(debuginfod_LDFLAGS)
 stapdyn_LDADD = -ldl -ldyninstAPI -lsymtabAPI -lpthread $(debuginfod_LIBS)
 stapdyn_CFLAGS = $(debuginfod_CFLAGS)
 
 dynsdt_SOURCES = dynsdt.cxx dynutil.cxx ../util.cxx
 dynsdt_CPPFLAGS = $(AM_CPPFLAGS)
-dynsdt_CXXFLAGS = $(AM_CXXFLAGS) @DYNINST_CXXFLAGS@
-dynsdt_LDFLAGS = $(AM_LDFLAGS) @DYNINST_LDFLAGS@
+dynsdt_CXXFLAGS = $(AM_CXXFLAGS) @DYNINST_CXXFLAGS@ $(debuginfod_CFLAGS)
+dynsdt_LDFLAGS = $(AM_LDFLAGS) @DYNINST_LDFLAGS@ $(debuginfod_LDFLAGS)
 dynsdt_LDADD = -ldl -lelf -ldyninstAPI -lsymtabAPI -lpthread $(debuginfod_LIBS)
 dynsdt_CFLAGS = $(debuginfod_CFLAGS)
 

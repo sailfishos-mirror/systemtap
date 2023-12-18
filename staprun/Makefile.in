@@ -509,11 +509,12 @@ staprun_SOURCES = staprun.c staprun_funcs.c ctl.c common.c start_cmd.c \
 	../privilege.cxx ../util.cxx $(am__append_1)
 staprun_CFLAGS = $(AM_CFLAGS) -DSINGLE_THREADED $(debuginfod_CFLAGS) \
 	$(am__append_2)
-staprun_CXXFLAGS = $(AM_CXXFLAGS) -DSINGLE_THREADED $(am__append_3)
+staprun_CXXFLAGS = $(AM_CXXFLAGS) -DSINGLE_THREADED \
+	$(debuginfod_CFLAGS) $(am__append_3)
 staprun_CPPFLAGS = $(AM_CPPFLAGS)
 staprun_LDADD = libstrfloctime.a $(staprun_LIBS) $(debuginfod_LIBS) \
 	$(am__append_4) $(am__append_5)
-staprun_LDFLAGS = $(AM_LDFLAGS) -Wl,--whole-archive,libstrfloctime.a,--no-whole-archive
+staprun_LDFLAGS = $(AM_LDFLAGS) -Wl,--whole-archive,libstrfloctime.a,--no-whole-archive $(debuginfod_LDFLAGS)
 stapio_SOURCES = stapio.c mainloop.c common.c start_cmd.c ctl.c relay.c monitor.c
 stapio_LDADD = libstrfloctime.a -lpthread $(am__append_6)
 stapio_LDFLAGS = -Wl,--whole-archive,libstrfloctime.a,--no-whole-archive
