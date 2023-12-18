@@ -219,12 +219,11 @@ dnl take the user at his or her word
 elif test "x$with_debuginfod" != xno; then
 dnl check in the system pkgconfig
   PKG_CHECK_MODULES([debuginfod], [libdebuginfod >= 0.179],
-    [have_debuginfod=1],
+    [have_debuginfod=1
+     AC_DEFINE([HAVE_LIBDEBUGINFOD], [1], [Define to 1 if debuginfod is enabled.])],
     [if test "x$with_debuginfod" = xyes; then
        AC_MSG_ERROR(["--with-debuginfod was given, but libdebuginfod is missing or unusable."])
      fi])
-  AC_DEFINE([HAVE_LIBDEBUGINFOD], [1], [Define to 1 if debuginfod is enabled.])
-  AC_MSG_RESULT([yes])  
 else
   AC_MSG_RESULT([no])
 fi
