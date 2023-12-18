@@ -17,9 +17,18 @@
 
 #include <linux/spinlock.h>
 
+#ifndef STAP_SPIN_TRYLOCK_MAX_COUNT
+#define STAP_SPIN_TRYLOCK_MAX_COUNT  5000
+#endif
+
 #define stp_nmi_spin_lock_irqsave(lock, flags, label) \
 	if (in_nmi()) { \
-		if (!stp_spin_trylock(lock)) { \
+		long i; \
+		for (i = 0; i < STAP_SPIN_TRYLOCK_MAX_COUNT; i++) { \
+			if (stp_spin_trylock(lock))  \
+				break; \
+		} \
+		if (unlikely(i >= STAP_SPIN_TRYLOCK_MAX_COUNT)) { \
 			goto label; \
 		} \
 	} else { \
