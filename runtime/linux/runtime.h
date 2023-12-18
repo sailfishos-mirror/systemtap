@@ -434,15 +434,19 @@ static int stap_init_module (void)
      map hash. */
   get_random_bytes(&stap_hash_seed, sizeof (stap_hash_seed));
   systemtap_wq = alloc_workqueue("systemtap-wq",
-		WQ_UNBOUND | WQ_MEM_RECLAIM, 0);
+		WQ_UNBOUND, 0);
   if (!systemtap_wq)
-    return !systemtap_wq;
+    return -ENOMEM;
   rc = systemtap_kernel_module_init();
-  if (rc)
+  if (rc){
+    destroy_workqueue(systemtap_wq);
     return rc;
+  }
   rc = _stp_transport_init();
-  if (rc)
+  if (rc){
     systemtap_kernel_module_exit();
+    destroy_workqueue(systemtap_wq);
+  }
   return rc;
 }
 
@@ -455,8 +459,7 @@ void stap_cleanup_module(void)
      due to tapset-procfs.cxx cleaning up after procfs probes (such
      as in --monitor mode).  */
   systemtap_kernel_module_exit();
-  if (systemtap_wq)
-    destroy_workqueue(systemtap_wq);
+  destroy_workqueue(systemtap_wq);
 }
 
 module_exit(stap_cleanup_module);
