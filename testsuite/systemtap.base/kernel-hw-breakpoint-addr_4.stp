@@ -5,6 +5,6 @@ probe kernel.data(0x$^ADDR_a).write {
     }
 }
 
-probe timer.s(1) {
+probe timer.s(5) {
     exit();
 }

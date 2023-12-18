@@ -36,6 +36,22 @@ proc run_cmd_2way { cmd stdout_var stderr_var } {
     return $exit_code
 }
 
+# run_cmd_2way_as_root CMD STDOUT_VAR STDERR_VAR
+# similar to run_cmd_2way but runs the command as root.
+
+proc run_cmd_2way_as_root { cmd stdout_var stderr_var } {
+    set effective_uid [exec /usr/bin/id -u]
+
+    if {$effective_uid != 0} {
+        set cmd "sudo $cmd"
+    }
+
+    upvar 1 $stdout_var tmp_stdout
+    upvar 1 $stderr_var tmp_stderr
+
+    return [run_cmd_2way $cmd tmp_stdout tmp_stderr]
+}
+
 # like TEST_NAME GOT REGEX_PATTERN REGEX_OPTS
 # The test passes when the TARGET_STR string matches the regex in REGEX_PATTERN.
 # * TEST_NAME is a string describing the current check.
