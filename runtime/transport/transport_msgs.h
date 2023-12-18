@@ -91,10 +91,14 @@ enum
         STP_REMOTE_ID,
 	/** Placeholder, it was mistakenly labeled STP_MAX_CMD */
 	STP_MAX_CMD_PLACEHOLDER,
-        /** Sent by stapio after having recevied STP_TRANSPORT. Notifies
-            the module of the target namespaces pid.*/
-        STP_NAMESPACES_PID,
-        
+	/** Sent by stapio after having recevied STP_TRANSPORT. Notifies
+	  the module of the target namespaces pid.*/
+	STP_NAMESPACES_PID,
+	/** Sent by stapio after having recevied STP_TRANSPORT. Notifies
+	  the module of the target mount namespace fd and the original
+	  mount namespace fd. */
+	STP_MNT_NS_FDS,
+
         /** INSERT NEW MESSAGE TYPES HERE */
         
 	/** Max number of message types, sanity check only.  */
@@ -122,6 +126,7 @@ static const char *_stp_command_name[STP_MAX_CMD+1] = {
 	"STP_REMOTE_ID",
         "STP_MAX_CMD_PLACEHOLDER",
         "STP_NAMESPACE_PID",
+        "STP_MNT_NS_FDS",
         [STP_MAX_CMD]="?"   /* in control.c, STP_MAX_CMD represents unknown message numbers/names */
 };
 #endif /* DEBUG_TRANS */
@@ -156,6 +161,13 @@ struct _stp_msg_start
 struct _stp_msg_ns_pid
 {
   pid_t target;
+};
+
+/* target & original mount namespaces' fds */
+struct _stp_msg_mnt_ns_fds
+{
+  int target_fd;
+  int orig_fd;
 };
 
 /* Unwind data. stapio->module */

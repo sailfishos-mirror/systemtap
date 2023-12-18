@@ -289,6 +289,8 @@ extern char *modoptions[MAXMODOPTIONS];
 extern int target_pid;
 extern char *target_cmd;
 extern int target_namespaces_pid;
+extern int target_mnt_ns_fd;
+extern int orig_mnt_ns_fd;
 extern char *outfile_name;
 extern int read_stdin;
 extern int rename_mod;

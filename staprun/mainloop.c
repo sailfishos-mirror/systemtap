@@ -14,6 +14,7 @@
 #include <sys/utsname.h>
 #include <sys/ptrace.h>
 #include <sys/select.h>
+#include <sys/syscall.h>
 #include <search.h>
 #include <wordexp.h>
 
@@ -323,6 +324,16 @@ void cleanup_and_exit(int detach, int rc)
   sa.sa_handler = SIG_DFL;
   sigaction(SIGCHLD, &sa, NULL);
 
+  if (target_mnt_ns_fd > 0) {
+    if (close(target_mnt_ns_fd) != 0) {
+      perror("close(target_mnt_ns_fd) failed");
+      /* nonfatal */
+    } else
+      target_mnt_ns_fd = -1;
+  }
+
+  dbug(2, "forking\n");
+
   pid = fork();
   if (pid < 0) {
           _perr("fork");
@@ -338,6 +349,30 @@ void cleanup_and_exit(int detach, int rc)
                             color_mode == color_always ? "always"
                               : color_mode == color_auto ? "auto" : "never",
                             modname);
+
+          if (orig_mnt_ns_fd > 0) {
+            /* Make sure we switch back to the orignal mount namespace
+             * just in case the kernel module switches to a different
+             * one.
+             * Also, this must be done in the new child process since
+             * the parent process is multi-threaded. */
+
+#ifdef __NR_setns
+            dbug(2, "restoring the orignal mount namespace\n");
+
+            if (syscall(__NR_setns, orig_mnt_ns_fd, CLONE_NEWNS) == -1) {
+              perror("setns(orig_mnt_ns_fd) failed");
+              /* nonfatal; just the best effort */
+            }
+#endif
+
+            if (close(orig_mnt_ns_fd) != 0) {
+              perror("close(orig_mnt_ns_fd) failed");
+              /* nonfatal */
+            } else
+              orig_mnt_ns_fd = -1;
+          }
+
           if (rc >= 1) {
                   execlp("sh", "sh", "-c", cmd, NULL);
                   /* should not return */
@@ -347,6 +382,14 @@ void cleanup_and_exit(int detach, int rc)
                   perror("asprintf");
                   my_exit(-1);
           }
+  }
+
+  if (orig_mnt_ns_fd > 0) {
+    if (close(orig_mnt_ns_fd) != 0) {
+      perror("close(orig_mnt_ns_fd) failed");
+      /* nonfatal */
+    } else
+      orig_mnt_ns_fd = -1;
   }
 
   /* parent process */
@@ -383,6 +426,7 @@ int stp_main_loop(void)
       struct _stp_msg_start start;
       struct _stp_msg_cmd cmd;
       struct _stp_msg_ns_pid nspid;
+      struct _stp_msg_mnt_ns_fds nsfds;
     } payload;
   } recvbuf;
   int error_detected = 0;
@@ -646,21 +690,70 @@ int stp_main_loop(void)
         dbug(2, "STP_NAMESPACES_PID: %d\n", nspid->target);
         break;
       }
+    case STP_MNT_NS_FDS:
+      {
+        struct _stp_msg_mnt_ns_fds *nsfds = &recvbuf.payload.nsfds;
+        dbug(2, "STP_MNT_NS_FDS: target=%d orig=%d\n", nsfds->target_fd, nsfds->orig_fd);
+        break;
+      }
     case STP_TRANSPORT:
       {
         struct _stp_msg_start ts;
         struct _stp_msg_ns_pid nspid;
+        struct _stp_msg_mnt_ns_fds nsfds;
         if (init_relayfs() < 0) {
                 cleanup_and_exit(0, 1);
                 /* NOTREACHED */
         }
 
         if (target_namespaces_pid > 0) {
+          char buf[sizeof("/proc/4194304/ns/mnt")];
+          int fd;
+
           nspid.target = target_namespaces_pid;
+
           rc = send_request(STP_NAMESPACES_PID, &nspid, sizeof(nspid));
           if (rc != 0) {
 	    perror ("Unable to send STP_NAMESPACES_PID");
-	    cleanup_and_exit (1, rc);
+	    cleanup_and_exit (0, rc);
+	    /* NOTREACHED */
+	  }
+
+          if (snprintf_chk(buf, sizeof(buf), "/proc/%d/ns/mnt", target_namespaces_pid) != 0) {
+            perror ("Unable to construct the /proc/PID/ns/mnt file path");
+            cleanup_and_exit (0, rc);
+	    /* NOTREACHED */
+          }
+
+          fd = open(buf, O_RDONLY);
+          if (fd == -1) {
+            fprintf (stderr, "Failed to open file '%s': %s\n", buf,
+                     strerror(errno));
+            cleanup_and_exit (0, 1);
+	    /* NOTREACHED */
+          }
+
+          nsfds.target_fd = fd;
+          target_mnt_ns_fd = fd;
+
+          fd = open("/proc/self/ns/mnt", O_RDONLY);
+          if (fd == -1) {
+            close(nsfds.target_fd);
+            fprintf (stderr, "Failed to open file '%s': %s\n", buf,
+                     strerror(errno));
+            cleanup_and_exit (0, 1);
+	    /* NOTREACHED */
+          }
+
+          nsfds.orig_fd = fd;
+          orig_mnt_ns_fd = fd;
+
+          /* We will keep the fds open until cleanup_and_exit() is called. */
+
+          rc = send_request(STP_MNT_NS_FDS, &nsfds, sizeof(nsfds));
+          if (rc != 0) {
+	    perror ("Unable to send STP_MNT_NS_FDS");
+	    cleanup_and_exit (0, rc);
 	    /* NOTREACHED */
 	  }
         }

@@ -71,6 +71,11 @@ static void *kallsyms_copy_to_kernel_nofault;
 static void *kallsyms_nmi_uaccess_okay = NULL;
 #endif
 
+static void *kallsyms_switch_task_namespaces = NULL;
+static void *kallsyms_unshare_nsproxy_namespaces = NULL;
+static void *kallsyms_free_nsproxy = NULL;
+static void *kallsyms_proc_ns_file = NULL;
+
 /* A fallthrough; macro to let the runtime survive -Wimplicit-fallthrough=5 */
 /* from <linux/compiler_attribute.h> */
 #ifndef fallthrough

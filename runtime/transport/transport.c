@@ -303,7 +303,23 @@ unsigned _stp_need_kallsyms_stext;
 // time:
 static int _stp_handle_kallsyms_lookups(void)
 {
+  const char *symname = NULL;
   might_sleep();
+
+#define NEW_KALLSYMS_SYM(name) \
+  kallsyms_ ## name = (void *) kallsyms_lookup_name (#name); \
+  cond_resched(); \
+  if (unlikely(kallsyms_ ## name == NULL)) { \
+    /* ignore */ \
+    ; \
+  }
+
+NEW_KALLSYMS_SYM(switch_task_namespaces)
+NEW_KALLSYMS_SYM(unshare_nsproxy_namespaces)
+NEW_KALLSYMS_SYM(proc_ns_file)
+NEW_KALLSYMS_SYM(free_nsproxy)
+
+#undef KALLSYMS_LOOKUP_SYM
 
 #ifndef STAPCONF_NMI_UACCESS_OKAY
   kallsyms_nmi_uaccess_okay = (void*) kallsyms_lookup_name ("nmi_uaccess_okay");
@@ -482,7 +498,10 @@ static void _stp_detach(void)
 {
 	dbug_trans(1, "detach\n");
 	_stp_pid = 0;
-  _stp_namespaces_pid = 0;
+	_stp_namespaces_pid = 0;
+	_stp_target_mnt_ns_fd = -1;
+	_stp_orig_mnt_ns_fd = -1;
+	_stp_fs_struct_unshared = false;
 
 	if (!_stp_exit_flag)
 		_stp_transport_data_fs_overwrite(1);
@@ -733,10 +752,18 @@ static void _stp_handle_remote_id (struct _stp_msg_remote_id* rem)
 
 static void _stp_handle_namespaces_pid (struct _stp_msg_ns_pid *nspid)
 {
-  if (nspid->target > 0)
+  if (nspid->target > 0) {
     _stp_namespaces_pid = (int) nspid->target;
+  }
 }
 
+static void _stp_handle_mnt_ns_fds (struct _stp_msg_mnt_ns_fds *nsfds)
+{
+  if (nsfds->target_fd > 0) {
+    _stp_target_mnt_ns_fd = nsfds->target_fd;
+    _stp_orig_mnt_ns_fd = nsfds->orig_fd;
+  }
+}
 
 
 #endif /* _TRANSPORT_C_ */

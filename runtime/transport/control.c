@@ -26,6 +26,7 @@ static void _stp_handle_tzinfo (struct _stp_msg_tzinfo* tzi);
 static void _stp_handle_privilege_credentials (struct _stp_msg_privilege_credentials* pc);
 static void _stp_handle_remote_id (struct _stp_msg_remote_id* rem);
 static void _stp_handle_namespaces_pid (struct _stp_msg_ns_pid *nspid);
+static void _stp_handle_mnt_ns_fds (struct _stp_msg_mnt_ns_fds *nsfds);
 
 
 static ssize_t _stp_ctl_write_cmd(struct file *file, const char __user *buf, size_t count, loff_t *ppos)
@@ -194,6 +195,22 @@ static ssize_t _stp_ctl_write_cmd(struct file *file, const char __user *buf, siz
     _stp_handle_namespaces_pid(&nspid);
     }
     break;
+
+        case STP_MNT_NS_FDS:
+        {
+		static struct _stp_msg_mnt_ns_fds nsfds;
+		if (count < sizeof(nsfds)) {
+			rc = 0;
+			goto out;
+		}
+		if (copy_from_user(&nsfds, buf, sizeof(nsfds))) {
+			rc = -EFAULT;
+			goto out;
+		}
+
+		_stp_handle_mnt_ns_fds(&nsfds);
+        }
+        break;
 
 	default:
 #ifdef DEBUG_TRANS

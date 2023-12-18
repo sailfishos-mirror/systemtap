@@ -28,6 +28,8 @@ int verbose;
 int suppress_warnings;
 int target_pid;
 int target_namespaces_pid;
+int target_mnt_ns_fd = -1;
+int orig_mnt_ns_fd = -1;
 unsigned int buffer_size;
 unsigned int reader_timeout_ms;
 char *target_cmd;
