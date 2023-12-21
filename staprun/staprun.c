@@ -547,7 +547,7 @@ int main(int argc, char **argv)
            us to extend argv[], with all the C fun that entails. */
 #ifdef HAVE_OPENAT
         if (relay_basedir_fd >= 0) {
-                char ** new_argv = calloc(sizeof(char *),argc+2);
+                char ** new_argv = calloc(argc+2, sizeof(char *));
                 const int new_Foption_size = 10; /* -FNNNNN */
                 char * new_Foption = malloc(new_Foption_size);
                 int i;
