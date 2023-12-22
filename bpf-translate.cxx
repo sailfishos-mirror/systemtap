@@ -5041,9 +5041,9 @@ output_probe(BPF_Output &eo, program &prog,
 	}
     }
 
-  bpf_insn *buf = (bpf_insn*) calloc (sizeof(bpf_insn), ninsns);
+  bpf_insn *buf = (bpf_insn*) calloc (ninsns, sizeof(bpf_insn));
   assert (buf);
-  Elf64_Rel *rel = (Elf64_Rel*) calloc (sizeof(Elf64_Rel), nreloc);
+  Elf64_Rel *rel = (Elf64_Rel*) calloc (nreloc, sizeof(Elf64_Rel));
   assert (rel);
 
   unsigned i = 0, r = 0;
