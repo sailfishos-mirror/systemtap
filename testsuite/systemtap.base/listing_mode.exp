@@ -31,6 +31,7 @@ proc stap_list {pp {exp ""} {nlines_exp 1} {arguments ""}} {
    set subtest [regsub -all $exefullpath $subtest EXEFULLPATH]
    set subtest [regsub -all $sofullpath $subtest SOFULLPATH]
    set subtest [regsub -all $valid_pid $subtest VALIDPID]
+   set subtest [regsub -all {0x[0-9a-f]*} $subtest HEXADDR]
 
    if {$TARGET_SUBTEST != ""} {
       if {![string match $TARGET_SUBTEST $pp]} {
