@@ -6,11 +6,14 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/syscall.h>
+#include <sys/mman.h>
 
 int main()
 {
     int fd;
     char *string1 = "Hello world";
+
+    mlockall(MCL_CURRENT);
 
     sync();
     //staptest// sync () = 0
