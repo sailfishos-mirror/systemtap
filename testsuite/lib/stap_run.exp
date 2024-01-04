@@ -173,10 +173,6 @@ proc print_system_info {} {
         clone_output "\n"
 }
 
-if { ! [info exists env(STAP_PARALLEL)] } {
-    print_system_info
-}
-
 # tests better all be true
 #
 # BZ692445 was fixed by removing the '$' at the end of

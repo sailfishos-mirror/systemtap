@@ -735,33 +735,6 @@ if {! [setup_systemtap_environment]} then {
 print_systemtap_version
 get_system_info
 
-if { ! [info exists env(STAP_PARALLEL)] } {
-    environment_sanity_test
-}
-
-proc systemtap_init {args} {
-    global env srcdir artifactdir
-    if {[info exists env(STAP_PARALLEL)] } {
-        regsub {\.exp$} $args {} args
-        regsub ${srcdir}/ $args {} args
-        set artifactdir "$env(SYSTEMTAP_DIR)/../artifacts/$args"
-        if {[catch {exec mkdir -p $artifactdir} err_msg]} {
-            verbose -log "Failed to create artifacts directory: $err_msg"
-            exit 1
-        }
-        # Switch to the artifacts directory before the testcase starts
-        cd $artifactdir
-    }
-}
-
-proc systemtap_finish {args} {
-    global env srcdir
-    if {[info exists env(STAP_PARALLEL)] } {
-        # Return from the artifacts directory after the testcase finishes
-        cd $srcdir
-    }
-}
-
 proc systemtap_version {} {
     set location [exec /usr/bin/which stap]
     regexp {version [^)]*} [exec stap -V 2>@ stdout] version
