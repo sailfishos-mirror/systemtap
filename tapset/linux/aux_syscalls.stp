@@ -175,15 +175,25 @@ sigset_from_compat(sigset_t *set, compat_sigset_t *compat)
 #
 function _struct_timeval_u:string(uaddr:long, n:long)
 %{ /* pure */
+/* The utimes() syscall switched from using struct timeval to using
+ * struct __kernel_old_timeval in kernel version 5.5-rc1, see
+ * https://elixir.bootlin.com/linux/v5.5-rc1/source/fs/utimes.c#L198
+ * This applies to select() and settimeofday() syscalls as well.
+ */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,5,0)
+#define __TVSTRUCT timeval
+#else
+#define __TVSTRUCT __kernel_old_timeval
+#endif
 	int n = (int)STAP_ARG_n;
-	struct timeval tv[2]; /* maximum enforced below */
+	struct __TVSTRUCT tv[2]; /* maximum enforced below */
 	char *ptr = (char *)(uintptr_t)STAP_ARG_uaddr;
 	
 	if (ptr == NULL || n < 1 || n > 2)
 		strlcpy (STAP_RETVALUE, "NULL", MAXSTRINGLEN);
 	else {
 		if (_stp_copy_from_user((char*)&tv, ptr,
-					n*sizeof(struct timeval)) == 0) {
+					n*sizeof(struct __TVSTRUCT)) == 0) {
 			if (n == 2)
 				snprintf(STAP_RETVALUE, MAXSTRINGLEN,
 					 "[%ld.%06ld][%ld.%.06ld]", 
