@@ -57,6 +57,12 @@ int main()
   //staptest// [[[[select (1, XXXX, 0x[0]+, 0x[f]+, \[0.000123\]!!!!pselect6 (1, XXXX, 0x[0]+, 0x[f]+, \[0.000123[0]+\], 0x0]]]]) = [[[[0!!!!-NNNN (EFAULT)]]]]
 #endif
 
+// The following subtest SEGVs (the part using the glibc wrapper) with modern glibc having commit
+// "9d7c5cc38e linux: Normalize and return timeout on select (BZ #27651)" Since it's trying to
+// dereference the invalid timeout pointer (-1) like this:
+// __time64_t s = timeout != NULL ? timeout->tv_sec : 0;
+// Disable whole the subtest with modern glibc.
+#if defined(__GLIBC__) && defined(__GLIBC_MINOR__) && __GLIBC__ <= 2 && __GLIBC_MINOR__ <= 33
 #if defined(__arm__) || defined(__aarch64__)
   syscall(SYS_pselect6, 1, &rfds, NULL, NULL, (struct timeval *)-1);
 #else
@@ -66,6 +72,7 @@ int main()
   //staptest// select (1, XXXX, 0x[0]+, 0x[0]+, 0x[7]?[f]+) = -NNNN (EFAULT)
 #else
   //staptest// [[[[select (1, XXXX, 0x[0]+, 0x[0]+, 0x[f]+!!!!pselect6 (1, XXXX, 0x[0]+, 0x[0]+, 0x[f]+, 0x0]]]]) = -NNNN (EFAULT)
+#endif
 #endif
 
 #if defined(SYS_pselect6) || defined(SYS_pselect7)
