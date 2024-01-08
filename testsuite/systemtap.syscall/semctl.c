@@ -101,9 +101,12 @@ int main()
     semid = semget(IPC_PRIVATE, 10, 0666 | IPC_CREAT);
     //staptest// semget (IPC_PRIVATE, 10, IPC_CREAT|0666) = NNNN
 
+// The following SEGVs if compiled as a 32-on-64 bit binary on x86_64 in semun_to_semun64()
+#if __WORDSIZE == 64
     // Range checking.
     semctl(-1, 0, IPC_STAT, arg);
     //staptest// semctl (-1, 0, [[[[IPC_64|]]]]?IPC_STAT, XXXX) = -NNNN
+#endif
 
     semctl(semid, -1, GETPID);
     //staptest// semctl (NNNN, -1, [[[[IPC_64|]]]]?GETPID, XXXX) = -NNNN

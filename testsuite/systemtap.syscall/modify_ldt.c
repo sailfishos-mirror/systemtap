@@ -5,7 +5,7 @@
 #include <sys/types.h>
 #include <sys/syscall.h>
 
-#if defined(__NR_modify_ldt)
+#if defined(__NR_modify_ldt) && !defined(__powerpc64__)
 #include <asm/ldt.h>
 
 static inline int
@@ -17,7 +17,7 @@ __modify_ldt(int func, void *ptr, unsigned long bytecount)
 
 int main()
 {
-#if defined(__NR_modify_ldt)
+#if defined(__NR_modify_ldt) && !defined(__powerpc64__)
     struct user_desc desc;
 
     __modify_ldt(0, &desc, sizeof(desc));

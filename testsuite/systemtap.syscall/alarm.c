@@ -70,11 +70,14 @@ int main()
   nanosleep(&t, NULL); 
   //XXX// [[[[nanosleep (!!!!clock_nanosleep (CLOCK_REALTIME, 0x0, ]]]]\[0.000000789\], 0x[0]+) = 0
 
+// The following SEGVs in __nanosleep()
+#if 0
   nanosleep((struct timespec *)-1, NULL);
 #ifdef __s390__
   //XXX// [[[[nanosleep (!!!!clock_nanosleep (CLOCK_REALTIME, 0x0, ]]]]0x[7]?[f]+, 0x[0]+) = -NNNN
 #else
   //XXX// [[[[nanosleep (!!!!clock_nanosleep (CLOCK_REALTIME, 0x0, ]]]]0x[f]+, 0x[0]+) = -NNNN
+#endif
 #endif
 
   nanosleep(&t, (struct timespec *)-1);

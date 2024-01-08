@@ -18,11 +18,14 @@ int main()
     sched_rr_get_interval(999999, &tp);
     //staptest// sched_rr_get_interval (999999, XXXX) = -NNNN (ESRCH)
 
+// The following SEGVs if compiled as a 32-on-64 bit binary on x86_64 in valid_timespec64_to_timespec()
+#if __WORDSIZE == 64
     sched_rr_get_interval(0, (struct timespec *)-1);
 #ifdef __s390__
     //staptest// sched_rr_get_interval (0, 0x[7]?[f]+) = -NNNN (EFAULT)
 #else
     //staptest// sched_rr_get_interval (0, 0x[f]+) = -NNNN (EFAULT)
+#endif
 #endif
 
     return 0;

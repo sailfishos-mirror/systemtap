@@ -23,7 +23,11 @@
 #if GLIBC_SUPPORT
 static inline int __open(const char* pathname, int flags, mode_t mode)
 {
+#if defined(__aarch64__) && defined(SYS_openat)
+  return syscall(SYS_openat, pathname, flags, mode);
+#else
   return syscall(SYS_open, pathname, flags, mode);
+#endif
 }
 #endif
 

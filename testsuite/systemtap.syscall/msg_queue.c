@@ -103,11 +103,14 @@ main(int argc, char **argv)
     msgctl(msgqid, -1, NULL);
     //staptest// msgctl (NNNN, [[[[IPC_64|]]]]?XXXX, 0x0) = NNNN
 
+// The following SEGVs if compiled as a 32-on-64 bit binary on x86_64 in msqid_to_msqid64()
+#if __WORDSIZE == 64
     msgctl(msgqid, IPC_RMID, (struct msqid_ds *)-1);
 #ifdef __s390__
     //staptest// msgctl (NNNN, [[[[IPC_64|]]]]?IPC_RMID, 0x[7]?[f]+) = NNNN
 #else
     //staptest// msgctl (NNNN, [[[[IPC_64|]]]]?IPC_RMID, 0x[f]+) = NNNN
+#endif
 #endif
 
     return 0;

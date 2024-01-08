@@ -49,11 +49,14 @@ int main()
     shmctl(shmid, -1, NULL);
     //staptest// shmctl (NNNN, [[[[IPC_64|XXXX!!!!0x[f]+]]]], 0x0) = -NNNN
 
+// The following SEGVs if compiled as a 32-on-64 bit binary on x86_64 in shmid_to_shmid64()
+#if __WORDSIZE == 64
     shmctl(shmid, IPC_STAT, (struct shmid_ds *)-1);
 #ifdef __s390__
     //staptest// shmctl (NNNN, [[[[IPC_64|]]]]?IPC_STAT, 0x[7]?[f]+) = -NNNN
 #else
     //staptest// shmctl (NNNN, [[[[IPC_64|]]]]?IPC_STAT, 0x[f]+) = -NNNN
+#endif
 #endif
 
     shmctl(shmid, IPC_RMID, NULL);

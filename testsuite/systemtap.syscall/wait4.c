@@ -96,11 +96,14 @@ main()
 	exit(0);
     }
 
+// The following SEGVs if compiled as a 32-on-64 bit binary on x86_64
+#if __WORDSIZE == 64
     wait4(child, NULL, 0, (struct rusage *)-1);
 #ifdef __s390__
     //staptest// wait4 (NNNN, 0x0, 0x0, 0x[7]?[f]+) = -NNNN (EFAULT)
 #else
     //staptest// wait4 (NNNN, 0x0, 0x0, 0x[f]+) = -NNNN (EFAULT)
+#endif
 #endif
 
     // Just in case the failing wait4() call above didn't clean up...

@@ -61,11 +61,14 @@ int main()
     timerfd_settime(-1, -1, &val, &oval);
     //staptest// timerfd_settime (-1, TFD_TIMER_[^ ]+|XXXX, \[0.000000,0.000000\], XXXX) = NNNN
 
+// The following SEGVs if compiled as a 32-on-64 bit binary on x86_64 in __timerfd_settime()
+#if __WORDSIZE == 64
     timerfd_settime(-1, TFD_TIMER_ABSTIME, (struct itimerspec *)-1, &oval);
 #ifdef __s390__
     //staptest// timerfd_settime (-1, TFD_TIMER_ABSTIME, 0x[7]?[f]+, XXXX) = NNNN
 #else
     //staptest// timerfd_settime (-1, TFD_TIMER_ABSTIME, 0x[f]+, XXXX) = NNNN
+#endif
 #endif
 
     timerfd_settime(-1, TFD_TIMER_ABSTIME, &val, (struct itimerspec *)-1);

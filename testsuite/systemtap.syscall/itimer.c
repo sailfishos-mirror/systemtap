@@ -59,28 +59,37 @@ int main()
   setitimer(-1, &itv, &old_itv);
   //staptest// setitimer (0xffffffff, \[0.500000,1.000000\], XXXX) = -NNNN
 
+// The following SEGVs if compiled as a 32-on-64 bit binary on x86_64 in valid_timeval_to_timeval64()
+#if __WORDSIZE == 64
   setitimer(ITIMER_REAL, (struct itimerval *)-1, &old_itv);
 #ifdef __s390__
   //staptest// setitimer (ITIMER_REAL, 0x[7]?[f]+, XXXX) = -NNNN
 #else
   //staptest// setitimer (ITIMER_REAL, 0x[f]+, XXXX) = -NNNN
 #endif
+#endif
 
+// The following SEGVs if compiled as a 32-on-64 bit binary on x86_64 in valid_timeval_to_timeval64()
+#if __WORDSIZE == 64
   setitimer(ITIMER_REAL, &itv, (struct itimerval *)-1);
 #ifdef __s390__
   //staptest// setitimer (ITIMER_REAL, \[0.500000,1.000000\], 0x[7]?[f]+) = -NNNN
 #else
   //staptest// setitimer (ITIMER_REAL, \[0.500000,1.000000\], 0x[f]+) = -NNNN
 #endif
+#endif
 
   getitimer(-1, &itv);
   //staptest// getitimer (0xffffffff, XXXX) = -NNNN
 
+// The following SEGVs if compiled as a 32-on-64 bit binary on x86_64 in valid_timeval_to_timeval64()
+#if __WORDSIZE == 64
   getitimer(ITIMER_REAL, (struct itimerval *)-1);
 #ifdef __s390__
   //staptest// getitimer (ITIMER_REAL, 0x[7]?[f]+) = -NNNN
 #else
   //staptest// getitimer (ITIMER_REAL, 0x[f]+) = -NNNN
+#endif
 #endif
 
   return 0;

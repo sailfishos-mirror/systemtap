@@ -187,11 +187,14 @@ int main()
   //staptest// clock_nanosleep (CLOCK_REALTIME, 0x0, 0x[f]+, XXXX) = -NNNN (EFAULT)
 #endif
 
+// The following SEGVs if compiled as a 32-on-64 bit binary on x86_64 in valid_timex_to_timex64()
+#if __WORDSIZE == 64
   adjtimex((struct timex *)-1);
 #ifdef __s390__
   //staptest// adjtimex (0x[7]?[f]+) = NNNN
 #else
   //staptest// adjtimex (0x[f]+) = NNNN
+#endif
 #endif
 
 #ifdef __NR_clock_adjtime

@@ -29,11 +29,14 @@ int main()
     getrusage(-15, &usage);
     //staptest// getrusage (0xfffffff1, XXXX) = -NNNN
 
+// The following SEGVs if compiled as a 32-on-64 bit binary on x86_64 in rusage64_to_rusage()
+#if __WORDSIZE == 64
     getrusage(RUSAGE_SELF, (struct rusage *)-1);
 #ifdef __s390__
     //staptest// getrusage (RUSAGE_SELF, 0x[7]?[f]+) = -NNNN (EFAULT)
 #else
     //staptest// getrusage (RUSAGE_SELF, 0x[f]+) = -NNNN (EFAULT)
+#endif
 #endif
 
     return 0;

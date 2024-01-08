@@ -83,9 +83,11 @@ int main()
   sa.sa_handler = SIG_DFL;
   sigaction(SIGUSR1, &sa, NULL);
   //staptest// rt_sigaction (SIGUSR1, {SIG_DFL}, 0x[0]+, 8) = 0
-  
+
+#ifdef __NR_sigaction
   syscall(__NR_sigaction, -1, &sa, NULL);
   //staptest// rt_sigaction (0x[f]+, {SIG_DFL}, 0x[0]+, 8) = -NNNN
+#endif
 
   // Causes a SIGSEGV
   //sigaction(SIGUSR1, (struct sigaction *)-1, NULL);
@@ -167,8 +169,11 @@ int main()
   sigprocmask(SIG_BLOCK, &omask, NULL);
   //staptest// rt_sigprocmask (SIG_BLOCK, \[EMPTY\], 0x0, 8) = NNNN
 
+// The following SEGVs if compiled as a 32-on-64 bit binary on x86_64
+#if __WORDSIZE == 64
   sigprocmask(SIG_UNBLOCK, &omask2, NULL);
   //staptest// rt_sigprocmask (SIG_UNBLOCK, \[SIGUSR1|SIGUSR2\], 0x0, 8) = NNNN
+#endif
 
   sigemptyset(&mask);
   sigemptyset(&mask2);
@@ -191,8 +196,11 @@ int main()
   //staptest// alarm (5) = NNNN
 #endif
 
+// The following SEGVs if compiled as a 32-on-64 bit binary on x86_64
+#if __WORDSIZE == 64
   sigsuspend(&mask);
   //staptest// rt_sigsuspend (\[EMPTY\], 8) = NNNN
+#endif
 
   alarm(0);
 #if defined(__ia64__) || defined(__arm__) || defined(__aarch64__)
@@ -246,11 +254,14 @@ int main()
   //staptest// rt_sigtimedwait (\[SIGALRM\], 0x[f]+, \[6.000000000\], 8) = NNNN
 #endif
 
+// The following SEGVs if compiled as a 32-on-64 bit binary on x86_64 in valid_timespec_to_timespec64()
+#if __WORDSIZE == 64
   sigtimedwait(&mask, &siginfo, (struct timespec *)-1);
 #ifdef __s390__
   //staptest// rt_sigtimedwait (\[SIGALRM\], {si_signo=SIGALRM, si_code=SI_KERNEL}, 0x[7]?[f]+, 8) = NNNN
 #else
   //staptest// rt_sigtimedwait (\[SIGALRM\], {si_signo=SIGALRM, si_code=SI_KERNEL}, 0x[f]+, 8) = NNNN
+#endif
 #endif
 
   return 0;

@@ -8,15 +8,16 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-#ifdef __NR_memfd_secret
-
 int main()
 {
+#ifdef __NR_memfd_secret
     int fd;
     fd = syscall(__NR_memfd_secret, O_CLOEXEC);
     //staptest// memfd_secret (O_CLOEXEC) = NNNN
 
     close(fd);
+#endif
+    
+    return 0;
 }
 
-#endif

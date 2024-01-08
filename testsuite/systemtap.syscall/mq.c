@@ -77,17 +77,23 @@ int main() {
     mq_client = mq_open(QUEUE_NAME, O_WRONLY);
     //staptest// mq_open ("test_queue", O_WRONLY) = NNNN
 
+// The following SEGVs if compiled as a 32-on-64 bit binary on x86_64
+#if __WORDSIZE == 64
     mq_send(mq_client, MSG, MSG_LEN, 0);
     //staptest// mq_timedsend (NNNN, XXXX, NNNN, 0, XXXX) = 0
+#endif
 
     mq_close(mq_client);
     //staptest// close (NNNN) = 0
 
+// This would block in case there was no mq_send(), see above.
+#if __WORDSIZE == 64
     bytes_read = mq_receive(mq_server, buffer, MSG_LEN, NULL);
     //staptest// mq_timedreceive (NNNN, XXXX, NNNN, 0x0, 0x0) = NNNN
 
     buffer[bytes_read] = '\0';
     printf("Received: %s\n", buffer);
+#endif
 
 
 
@@ -165,11 +171,14 @@ int main() {
     mq_timedsend(mq_server, MSG, MSG_LEN, -1, &tsp);
     //staptest// mq_timedsend (NNNN, XXXX, 7, 4294967295, XXXX) = NNNN
 
+// The following SEGVs if compiled as a 32-on-64 bit binary on x86_64 in valid_timespec_to_timespec64()
+#if __WORDSIZE == 64
     mq_timedsend(mq_server, MSG, MSG_LEN, 0, (const struct timespec *)-1);
 #ifdef __s390__
     //staptest// mq_timedsend (NNNN, XXXX, 7, 0, 0x[7]?[f]+) = NNNN
 #else
     //staptest// mq_timedsend (NNNN, XXXX, 7, 0, 0x[f]+) = NNNN
+#endif
 #endif
 
     mq_timedreceive(-1, MSG, MSG_LEN, 0, &tsp);
@@ -196,11 +205,14 @@ int main() {
     //staptest// mq_timedreceive (NNNN, XXXX, 7, 0x[f]+, XXXX) = NNNN
 #endif
 
+// The following SEGVs if compiled as a 32-on-64 bit binary on x86_64 in valid_timespec_to_timespec64()
+#if __WORDSIZE == 64
     mq_timedreceive(mq_server, MSG, MSG_LEN, 0, (const struct timespec *)-1);
 #ifdef __s390__
     //staptest// mq_timedreceive (NNNN, XXXX, 7, 0x0, 0x[7]?[f]+) = NNNN
 #else
     //staptest// mq_timedreceive (NNNN, XXXX, 7, 0x0, 0x[f]+) = NNNN
+#endif
 #endif
 
     mq_send(-1, MSG, MSG_LEN, 0);

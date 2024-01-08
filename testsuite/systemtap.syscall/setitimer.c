@@ -17,6 +17,8 @@ int main()
     setitimer(-1, &value, &ovalue);
     //staptest// setitimer (0xffffffff, \[0\.000000,30\.000000\], XXXX) = -NNNN (EINVAL)
 
+// The following SEGVs if compiled as a 32-on-64 bit binary on x86_64 in valid_timeval_to_timeval64()
+#if __WORDSIZE == 64
     setitimer(ITIMER_VIRTUAL, (struct itimerval *)-1, &ovalue);
 #ifdef __s390__
     //staptest// setitimer (ITIMER_VIRTUAL, 0x[7]?[f]+, XXXX) = -NNNN (EFAULT)
@@ -29,6 +31,7 @@ int main()
     //staptest// setitimer (ITIMER_PROF, \[0\.000000,30\.000000\], 0x[7]?[f]+) = -NNNN (EFAULT)
 #else
     //staptest// setitimer (ITIMER_PROF, \[0\.000000,30\.000000\], 0x[f]+) = -NNNN (EFAULT)
+#endif
 #endif
 
     return 0;

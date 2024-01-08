@@ -94,11 +94,14 @@ int main()
     semtimedop(semid, NULL, -1, &ts);
     //staptest// semtimedop (NNNN, 0x0, 4294967295, \[5.000000000\]) = NNNN
 
+// The following SEGVs if compiled as a 32-on-64 bit binary on x86_64 in valid_timespec_to_timespec64()
+#if __WORDSIZE == 64
     semtimedop(semid, sops, 1, (struct timespec *)-1);
 #ifdef __s390__
     //staptest// semtimedop (NNNN, XXXX, 1, 0x[7]?[f]+) = NNNN
 #else
     //staptest// semtimedop (NNNN, XXXX, 1, 0x[f]+) = NNNN
+#endif
 #endif
 
     // Delete the set of semaphores (the 2nd argument is ignored).

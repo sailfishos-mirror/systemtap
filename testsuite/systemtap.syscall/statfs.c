@@ -1,18 +1,25 @@
 /* COVERAGE: fstatfs statfs ustat fstatfs64 statfs64 */
 
+// GLIBC cf2478d53a Deprecate ustat syscall interface
+#if defined(__GLIBC__) && defined(__GLIBC_MINOR__) && __GLIBC__ <= 2 && __GLIBC_MINOR__ <= 27
+#define __USTAT_NOT_DEPRECATED
+#endif
+
 #define _GNU_SOURCE
 #define _LARGEFILE64_SOURCE
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#ifdef __USTAT_NOT_DEPRECATED
 #include <ustat.h>
+#endif
 #include <sys/vfs.h>
 #include <sys/syscall.h>
 #include <sys/statfs.h>
 
 // glibc mangles some ustat calls, so define our own using syscall().
-#if defined(__NR_ustat)
+#if defined(__NR_ustat) && defined(__USTAT_NOT_DEPRECATED)
 static inline int __ustat(dev_t dev, struct ustat *ubuf)
 {
     return syscall(__NR_ustat, dev, ubuf);
@@ -57,7 +64,7 @@ int main()
     struct stat sbuf;
     struct statfs buf;
     struct statfs64 buf64;
-#ifdef __NR_ustat
+#if defined(__NR_ustat) && (__USTAT_NOT_DEPRECATED)
     struct ustat ubuf;
 #endif
 
@@ -66,7 +73,7 @@ int main()
 
     // Since ustat() can fail on NFS filesystems, don't check for
     // success here.
-#ifdef __NR_ustat
+#if defined(__NR_ustat) && (__USTAT_NOT_DEPRECATED)
     ustat(sbuf.st_dev, &ubuf);
     //staptest// ustat (NNNN, XXXX) = NNNN
 #endif
@@ -89,7 +96,7 @@ int main()
 
     /* Limit testing. */
 
-#ifdef __NR_ustat
+#if defined(__NR_ustat) && (__USTAT_NOT_DEPRECATED)
     __ustat(-1, &ubuf);
     //staptest// ustat (4294967295, XXXX) = NNNN
 
@@ -108,21 +115,27 @@ int main()
     //staptest// statfs (0x[f]+, XXXX) = NNNN
 #endif
 
+// The following SEGVs if compiled as a 32-on-64 bit binary on x86_64 in __statfs()))
+#if __WORDSIZE == 64
     statfs("abc", (struct statfs *)-1);
 #ifdef __s390__
     //staptest// statfs ("abc", 0x[7]?[f]+) = NNNN
 #else
     //staptest// statfs ("abc", 0x[f]+) = NNNN
 #endif
+#endif
 
     fstatfs(-1, &buf);
     //staptest// fstatfs (-1, XXXX) = NNNN
 
+// The following SEGVs if compiled as a 32-on-64 bit binary on x86_64 in __statfs()))
+#if __WORDSIZE == 64
     fstatfs(fd, (struct statfs *)-1);
 #ifdef __s390__
     //staptest// fstatfs (NNNN, 0x[7]?[f]+) = NNNN
 #else
     //staptest// fstatfs (NNNN, 0x[f]+) = NNNN
+#endif
 #endif
 
 #ifdef __NR_statfs64

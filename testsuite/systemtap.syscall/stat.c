@@ -219,15 +219,9 @@ int main()
   //staptest// utime (0x[f]+, \[Thu Jan  1 00:00:01 1970, Tue Dec 27 00:00:00 2005\]) = -NNNN
 #endif
 
-#if defined(__ia64__) || defined(__arm__) || defined(__aarch64__)
   // Avoid a SIGSEGV by specifying NULL, not -1.
   utime("foobar", (struct utimbuf *)NULL);
   //staptest// [[[[utimes ("foobar", NULL!!!!utimensat (AT_FDCWD, "foobar", NULL, 0x0]]]]) = NNNN
-#else
-  utime("foobar", (struct utimbuf *)-1);
-  //staptest// utime ("foobar", \[Thu Jan  1 00:00:00 1970, Thu Jan  1 00:00:00 1970\]) = -NNNN
-#endif
-
 
   return 0;
 }
