@@ -25,7 +25,11 @@ static inline int _stp_is_compat_task2(struct task_struct* tsk)
 #if defined (__x86_64__) && defined(TIF_IA32)
   return test_tsk_thread_flag(tsk, TIF_IA32);
 #elif defined (__x86_64__) /* post TIF_IA32 */
+#if MM_CONTEXT_UPROBE_IA32 != 0
   return (tsk->mm && (tsk->mm->context.flags & MM_CONTEXT_UPROBE_IA32));
+#else
+  return (tsk->mm && (test_bit(MM_CONTEXT_UPROBE_IA32, &tsk->mm->context.flags)));
+#endif
 #elif defined(__s390__) || defined(__s390x__)
   return test_tsk_thread_flag(tsk, TIF_31BIT);  
 #elif defined (__mips__) && !defined(TIF_32BIT)
