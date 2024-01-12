@@ -141,6 +141,10 @@ stap_CXXFLAGS = $(AM_CXXFLAGS) @PIECXXFLAGS@ @ALIGNEDNEW@ @debuginfod_CFLAGS@
 stap_CPPFLAGS = $(AM_CPPFLAGS) -DSTAP_SDT_V2
 stap_LDFLAGS = $(AM_LDFLAGS) @PIELDFLAGS@ @BOOST_SYSTEM_LIB@
 
+if HAVE_DYNINST
+stap_CXXFLAGS += $(DYNINST_CXXFLAGS)
+endif
+
 if HAVE_AVAHI
 stap_CXXFLAGS += $(avahi_CFLAGS)
 stap_CPPFLAGS += $(avahi_CFLAGS)
@@ -157,10 +161,6 @@ stap_CFLAGS += $(nss_CFLAGS) -DSTAP
 stap_CXXFLAGS += $(nss_CFLAGS)
 stap_CPPFLAGS += $(nss_CFLAGS)
 stap_LDADD += $(nss_LIBS)
-
-if HAVE_DYNINST
-stap_CXXFLAGS += $(DYNINST_CXXFLAGS)
-endif
 
 install-exec-local: install-scripts
 

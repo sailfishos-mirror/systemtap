@@ -109,16 +109,16 @@ bin_PROGRAMS = $(am__EXEEXT_1) $(am__EXEEXT_2)
 @BUILD_TRANSLATOR_TRUE@@HAVE_JSON_C_TRUE@am__append_10 = $(jsonc_LIBS)
 @BUILD_TRANSLATOR_TRUE@@HAVE_BPF_DECLS_TRUE@am__append_11 = bpf-base.cxx bpf-bitset.cxx bpf-translate.cxx bpf-opt.cxx
 @BUILD_TRANSLATOR_TRUE@@BUILD_VIRT_TRUE@am__append_12 = stapvirt
-@BUILD_TRANSLATOR_TRUE@@HAVE_AVAHI_TRUE@am__append_13 = $(avahi_CFLAGS)
+@BUILD_TRANSLATOR_TRUE@@HAVE_DYNINST_TRUE@am__append_13 = $(DYNINST_CXXFLAGS)
 @BUILD_TRANSLATOR_TRUE@@HAVE_AVAHI_TRUE@am__append_14 = $(avahi_CFLAGS)
-@BUILD_TRANSLATOR_TRUE@@HAVE_AVAHI_TRUE@am__append_15 = $(avahi_LIBS)
-@BUILD_TRANSLATOR_TRUE@@NEED_BASE_CLIENT_CODE_TRUE@am__append_16 = csclient.cxx
-@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@am__append_17 = nsscommon.cxx client-nss.cxx cscommon.cxx nss-server-info.cxx
-@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@am__append_18 = $(nss_CFLAGS) -DSTAP
-@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@am__append_19 = $(nss_CFLAGS)
+@BUILD_TRANSLATOR_TRUE@@HAVE_AVAHI_TRUE@am__append_15 = $(avahi_CFLAGS)
+@BUILD_TRANSLATOR_TRUE@@HAVE_AVAHI_TRUE@am__append_16 = $(avahi_LIBS)
+@BUILD_TRANSLATOR_TRUE@@NEED_BASE_CLIENT_CODE_TRUE@am__append_17 = csclient.cxx
+@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@am__append_18 = nsscommon.cxx client-nss.cxx cscommon.cxx nss-server-info.cxx
+@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@am__append_19 = $(nss_CFLAGS) -DSTAP
 @BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@am__append_20 = $(nss_CFLAGS)
-@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@am__append_21 = $(nss_LIBS)
-@BUILD_TRANSLATOR_TRUE@@HAVE_DYNINST_TRUE@@HAVE_NSS_TRUE@am__append_22 = $(DYNINST_CXXFLAGS)
+@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@am__append_21 = $(nss_CFLAGS)
+@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@am__append_22 = $(nss_LIBS)
 @BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@am__append_23 = install-scripts
 @BUILD_TRANSLATOR_TRUE@@HAVE_HTTP_SUPPORT_TRUE@am__append_24 = client-http.cxx
 @BUILD_TRANSLATOR_TRUE@@HAVE_HTTP_SUPPORT_TRUE@am__append_25 = $(libcurl_LIBS) $(jsonc_LIBS) $(openssl_LIBS)
@@ -711,7 +711,7 @@ oldinclude_HEADERS = includes/sys/sdt.h includes/sys/sdt-config.h
 @BUILD_TRANSLATOR_TRUE@	tapset-python.cxx tapset-debuginfod.cxx \
 @BUILD_TRANSLATOR_TRUE@	analysis.cxx $(am__append_7) \
 @BUILD_TRANSLATOR_TRUE@	$(am__append_8) $(am__append_11) \
-@BUILD_TRANSLATOR_TRUE@	$(am__append_16) $(am__append_17) \
+@BUILD_TRANSLATOR_TRUE@	$(am__append_17) $(am__append_18) \
 @BUILD_TRANSLATOR_TRUE@	$(am__append_24)
 @BUILD_TRANSLATOR_TRUE@noinst_HEADERS = sdt_types.h
 @BUILD_TRANSLATOR_TRUE@stap_LDADD = @stap_LIBS@ @sqlite3_LIBS@ \
@@ -719,7 +719,7 @@ oldinclude_HEADERS = includes/sys/sdt.h includes/sys/sdt-config.h
 @BUILD_TRANSLATOR_TRUE@	@debuginfod_LDFLAGS@ @debuginfod_LIBS@ \
 @BUILD_TRANSLATOR_TRUE@	@DYNINST_LDFLAGS@ @DYNINST_LIBS@ \
 @BUILD_TRANSLATOR_TRUE@	$(am__append_9) $(am__append_10) \
-@BUILD_TRANSLATOR_TRUE@	$(am__append_15) $(am__append_21) \
+@BUILD_TRANSLATOR_TRUE@	$(am__append_16) $(am__append_22) \
 @BUILD_TRANSLATOR_TRUE@	$(am__append_25)
 @BUILD_TRANSLATOR_TRUE@stap_DEPENDENCIES = 
 @BUILD_TRANSLATOR_TRUE@@BUILD_VIRT_TRUE@stapvirt_SOURCES = stapvirt.c
@@ -744,13 +744,13 @@ GIT_VERSION_CMD = $(SHELL) $(top_srcdir)/git_version.sh
 PHONIES = $(am__append_23) runcheck update-po dist-gzip rpm srpm \
 	uprobes install-uprobes
 @BUILD_TRANSLATOR_TRUE@stap_CFLAGS = $(AM_CFLAGS) @PIECFLAGS@ \
-@BUILD_TRANSLATOR_TRUE@	$(am__append_18)
+@BUILD_TRANSLATOR_TRUE@	$(am__append_19)
 @BUILD_TRANSLATOR_TRUE@stap_CXXFLAGS = $(AM_CXXFLAGS) @PIECXXFLAGS@ \
 @BUILD_TRANSLATOR_TRUE@	@ALIGNEDNEW@ @debuginfod_CFLAGS@ \
-@BUILD_TRANSLATOR_TRUE@	$(am__append_13) $(am__append_19) \
-@BUILD_TRANSLATOR_TRUE@	$(am__append_22)
+@BUILD_TRANSLATOR_TRUE@	$(am__append_13) $(am__append_14) \
+@BUILD_TRANSLATOR_TRUE@	$(am__append_20)
 @BUILD_TRANSLATOR_TRUE@stap_CPPFLAGS = $(AM_CPPFLAGS) -DSTAP_SDT_V2 \
-@BUILD_TRANSLATOR_TRUE@	$(am__append_14) $(am__append_20)
+@BUILD_TRANSLATOR_TRUE@	$(am__append_15) $(am__append_21)
 @BUILD_TRANSLATOR_TRUE@stap_LDFLAGS = $(AM_LDFLAGS) @PIELDFLAGS@ @BOOST_SYSTEM_LIB@
 @BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@stap_sign_module_SOURCES = stap-sign-module.cxx nsscommon.cxx util.cxx
 @BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@stap_sign_module_CPPFLAGS = $(AM_CPPFLAGS)
