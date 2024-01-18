@@ -119,7 +119,7 @@ getActiveDomains(virConnectPtr conn, int **ids)
     if (idsn <= 0)
         return idsn;
 
-    *ids = (int*) calloc(sizeof(int), idsn);
+    *ids = (int*) calloc(idsn, sizeof(int));
     if (*ids == NULL)
         return -1;
 
@@ -145,7 +145,7 @@ getInactiveDomains(virConnectPtr conn, char ***names)
     if (namesn <= 0)
         return namesn;
 
-    *names = (char**) calloc(sizeof(char*), namesn);
+    *names = (char**) calloc(namesn, sizeof(char*));
     if (*names == NULL)
         return -1;
 
@@ -188,7 +188,7 @@ getAllDomains(virConnectPtr conn, virDomainPtr **domains)
         goto cleanup_names;
 
     // Time to prepare virDomainPtr array
-    *domains = (virDomainPtr*) calloc(sizeof(virDomainPtr), idsn+namesn);
+    *domains = (virDomainPtr*) calloc(idsn+namesn, sizeof(virDomainPtr));
     if (*domains == NULL) {
         err("Can't allocate domains array\n");
         goto cleanup_names;
