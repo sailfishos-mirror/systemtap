@@ -13155,9 +13155,11 @@ fi
 case "$with_dyninst" in
 no) ;;
 ''|yes) # Try a simple-minded distro search
-     DYNINST_CXXFLAGS=""
+     DYNINST_CXXFLAGS="-I/usr/include/dyninst"
      old_LIBS="$LIBS"
      old_LDFLAGS="$LDFLAGS"
+     old_CPPFLAGS="$CPPFLAGS"
+     CPPFLAGS="$CPPFLAGS $DYNINST_CXXFLAGS"
      ac_ext=cpp
 ac_cpp='$CXXCPP $CPPFLAGS'
 ac_compile='$CXX -c $CXXFLAGS $CPPFLAGS conftest.$ac_ext >&5'
@@ -13197,6 +13199,7 @@ ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
+     CPPFLAGS="$old_CPPFLAGS"
      LDFLAGS="$old_LDFLAGS"
      LIBS="$old_LIBS"
 
@@ -13250,7 +13253,7 @@ fi
      fi
      ;;
 *)  # Use paths in the user-specified prefix
-    DYNINST_CXXFLAGS="-I$with_dyninst/include"
+    DYNINST_CXXFLAGS="-I$with_dyninst/include -I$with_dyninst/include/dyninst"
     DYNINST_LDFLAGS="-L$with_dyninst/lib64/dyninst -Wl,-rpath-link,$with_dyninst/lib64/dyninst"
     # Will assume Dyninst libraries are available as the path is specified
     save_LIBS="$LIBS"

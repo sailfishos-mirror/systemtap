@@ -643,9 +643,11 @@ AC_ARG_WITH([dyninst],
 case "$with_dyninst" in
 no) ;;
 ''|yes) # Try a simple-minded distro search
-     DYNINST_CXXFLAGS=""
+     DYNINST_CXXFLAGS="-I/usr/include/dyninst"
      old_LIBS="$LIBS"
      old_LDFLAGS="$LDFLAGS"
+     old_CPPFLAGS="$CPPFLAGS"
+     CPPFLAGS="$CPPFLAGS $DYNINST_CXXFLAGS"
      AC_LANG_PUSH(C++)
      for location in /usr/lib64/dyninst /usr/lib/dyninst ${libdir}/dyninst; do
        LDFLAGS="-L${location}"
@@ -660,6 +662,7 @@ no) ;;
        fi
      done
      AC_LANG_POP(C++)
+     CPPFLAGS="$old_CPPFLAGS"
      LDFLAGS="$old_LDFLAGS"
      LIBS="$old_LIBS"
 
@@ -672,7 +675,7 @@ no) ;;
      fi
      ;;
 *)  # Use paths in the user-specified prefix
-    DYNINST_CXXFLAGS="-I$with_dyninst/include"
+    DYNINST_CXXFLAGS="-I$with_dyninst/include -I$with_dyninst/include/dyninst"
     DYNINST_LDFLAGS="-L$with_dyninst/lib64/dyninst -Wl,-rpath-link,$with_dyninst/lib64/dyninst"
     # Will assume Dyninst libraries are available as the path is specified
     save_LIBS="$LIBS"

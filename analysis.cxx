@@ -16,6 +16,7 @@
 #include <dyninst/Symtab.h>
 #include <dyninst/Function.h>
 #include <dyninst/liveness.h>
+#include <dyninst/dyn_regs.h>
 
 using namespace Dyninst;
 using namespace SymtabAPI;
