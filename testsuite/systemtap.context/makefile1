@@ -1,4 +1,6 @@
-obj-m := systemtap_test_module1.o
+# Build both the modules using a single makefile.
+# This helps module1 to see symbols exported by module2.
+obj-m := systemtap_test_module1.o systemtap_test_module2.o
 KDIR := /lib/modules/$(shell uname -r)/build
 PWD := $(shell pwd)
 default:

@@ -35,12 +35,16 @@ proc build_modules {} {
     }
 
     # Build the modules
+    # --------------------
+    # Build both modules using a single makefile. This helps module1
+    # to see symbols exported by module2.
+    exec cp -p $srcdir/$subdir/makefile1 $build_dir/Makefile
+    if {[catch {exec make -C $build_dir clean} res]} {
+        verbose -log "$res"
+        return 0
+    }
+
     foreach n {2 1} {
-	exec cp -p $srcdir/$subdir/makefile$n $build_dir/Makefile
-	if {[catch {exec make -C $build_dir clean} res]} {
-	    verbose -log "$res"
-	    return 0
-	}
 	catch {exec make -C $build_dir} res
 	if {![file exists $build_dir/systemtap_test_module$n.ko]} {
 	    verbose -log "$res"

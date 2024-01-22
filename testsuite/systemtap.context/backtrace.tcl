@@ -15,6 +15,7 @@ expect {
     -timeout 120
     "<no kernel backtrace at begin>\r\n" {
 	pass "backtrace of begin probe"
+	sleep 1
 	exec echo 0 > /proc/stap_test_cmd
 	exp_continue
     }

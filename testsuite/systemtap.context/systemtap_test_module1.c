@@ -10,9 +10,18 @@
 
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/init.h>
 #include <linux/proc_fs.h>
 #include <linux/compiler.h>
 #include <linux/uaccess.h>
+
+MODULE_LICENSE("GPL");
+
+int my_init_module(void);
+void my_cleanup_module(void);
+module_init(my_init_module);
+module_exit(my_cleanup_module);
+
 
 /* The purpose of this module is to provide a bunch of functions that */
 /* do nothing important, and then call them in different contexts. */
@@ -20,6 +29,8 @@
 /* Then systemtap scripts set probes on the functions and run tests */
 /* to see if the expected output is received. This is better than using */
 /* the kernel because kernel internals frequently change. */
+
+/* The source is modelled after LTP's crasher testcase */
 
 /** These functions are in module 2 **/
 /* They are there to prevent compiler optimization from */
@@ -74,20 +85,20 @@ static ssize_t stm_write_cmd (struct file *file, const char __user *buf,
   return count;
 }
 
-static struct file_operations stm_fops_cmd = {
-	.owner = THIS_MODULE,
-	.write = stm_write_cmd,
+static const struct  proc_ops stm_pops_cmd = {
+	// .proc_owner = THIS_MODULE,
+	.proc_write = stm_write_cmd,
 };
 
-int init_module(void)
+int my_init_module(void)
 {
-	stm_ctl = proc_create ("stap_test_cmd", 0666, NULL, &stm_fops_cmd);
+	stm_ctl = proc_create_data ("stap_test_cmd", 0666, NULL, &stm_pops_cmd, NULL);
 	if (stm_ctl == NULL) 
 		return -1;
 	return 0;
 }
 
-void cleanup_module(void)
+void my_cleanup_module(void)
 {
 	if (stm_ctl)
 		remove_proc_entry ("stap_test_cmd", NULL);

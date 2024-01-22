@@ -3,6 +3,7 @@ eval spawn stap $srcdir/$subdir/num_args.stp
 expect {
     -timeout 120
     "READY" {
+	sleep 1
 	exec echo 1 > /proc/stap_test_cmd
 	expect {
 	    -timeout 5
