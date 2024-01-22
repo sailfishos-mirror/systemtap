@@ -7565,7 +7565,7 @@ dump_unwindsym_cxt_table(systemtap_session& session, ostream& output,
     }
 
   // if it is the debug_line data, do not need the unwind flags to be defined
-  if(table == "debug_line")
+  if((table == "debug_line") || (table == "debug_line_str"))
     output << "#if defined(STP_NEED_LINE_DATA)\n";
   else
     output << "#if defined(STP_USE_DWARF_UNWINDER) && defined(STP_NEED_UNWIND_DATA)\n";
@@ -7582,7 +7582,7 @@ dump_unwindsym_cxt_table(systemtap_session& session, ostream& output,
 	output << "\n" << "   ";
     }
   output << "};\n";
-  if (table == "debug_line")
+  if ((table == "debug_line") || (table == "debug_line_str"))
     output << "#endif /* STP_NEED_LINE_DATA */\n";
   else
     output << "#endif /* STP_USE_DWARF_UNWINDER && STP_NEED_UNWIND_DATA */\n";
