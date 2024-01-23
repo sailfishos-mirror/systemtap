@@ -775,6 +775,8 @@ PIECFLAGS
 PIELDFLAGS
 ALIGNEDNEW
 HAVE_CXX11
+Werror_FALSE
+Werror_TRUE
 py3execdir
 python3dir
 PYTHON3_PLATFORM
@@ -942,6 +944,7 @@ with_libintl_prefix
 with_python_sys_prefix
 with_python_prefix
 with_python_exec_prefix
+enable_Werror
 enable_prologues
 enable_sdt_probes
 with_debuginfod
@@ -1653,6 +1656,7 @@ Optional Features:
   --disable-largefile     omit support for large files
   --disable-nls           do not use Native Language Support
   --disable-rpath         do not hardcode runtime library paths
+  '--enable-Werror        compile with -Werror flags
   --enable-prologues      make -P prologue-searching default
   --disable-sdt-probes    disable process.mark probes in stap, staprun, stapio
   --enable-sqlite         build with sqlite support
@@ -10699,6 +10703,31 @@ fi
 # the subconfigure in the testsuite directory.
 as_fn_append ac_configure_args " python3='$PYTHON3' py3execdir='$ac_cv_py3execdir'"
 
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether to build with -Werror" >&5
+printf %s "checking whether to build with -Werror... " >&6; }
+# Check whether --enable-Werror was given.
+if test ${enable_Werror+y}
+then :
+  enableval=$enable_Werror;
+fi
+
+if test "${enable_Werror}" != "no"
+then :
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+printf "%s\n" "yes" >&6; }
+else $as_nop
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+fi
+ if test "${enable_Werror}" != "no"; then
+  Werror_TRUE=
+  Werror_FALSE='#'
+else
+  Werror_TRUE='#'
+  Werror_FALSE=
+fi
+
+
 if test "${enable_prologues+set}" != set; then
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking to see if prologue searching should be the default" >&5
 printf %s "checking to see if prologue searching should be the default... " >&6; }
@@ -14913,6 +14942,10 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${am__fastdepCXX_TRUE}" && test -z "${am__fastdepCXX_FALSE}"; then
   as_fn_error $? "conditional \"am__fastdepCXX\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${Werror_TRUE}" && test -z "${Werror_FALSE}"; then
+  as_fn_error $? "conditional \"Werror\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${BUILD_TRANSLATOR_TRUE}" && test -z "${BUILD_TRANSLATOR_FALSE}"; then

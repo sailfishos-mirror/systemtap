@@ -90,6 +90,8 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 target_triplet = @target@
+@Werror_TRUE@am__append_1 = -Werror
+@Werror_TRUE@am__append_2 = -Werror
 @HAVE_HTTP_SUPPORT_TRUE@pkglibexec_PROGRAMS = stap-httpd$(EXEEXT)
 subdir = httpd
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -442,8 +444,9 @@ uuid_CFLAGS = @uuid_CFLAGS@
 uuid_LIBS = @uuid_LIBS@
 SUBDIRS = docker
 AUTOMAKE_OPTIONS = no-dist foreign subdir-objects
-AM_CFLAGS = -Wall -Wextra -Werror -Wunused -W -Wformat=2 @PIECFLAGS@
-AM_CXXFLAGS = -Wall -Wextra -Werror -Wunused -W -Wformat=2 \
+AM_CFLAGS = -Wall -Wextra -Wunused -W -Wformat=2 $(am__append_1) \
+	@PIECFLAGS@ $(am__empty)
+AM_CXXFLAGS = -Wall -Wextra -Wunused -W -Wformat=2 $(am__append_2) \
 	@PIECXXFLAGS@ $(am__empty)
 AM_CPPFLAGS = -D_GNU_SOURCE -I$(srcdir)/../includes \
 	-I$(builddir)/../includes/sys -DBINDIR='"$(bindir)"' \

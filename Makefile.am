@@ -17,8 +17,12 @@ AM_CPPFLAGS = -DBINDIR='"$(bindir)"' \
               -DPY3EXECDIR='"$(py3execdir)"' \
 	      -I$(srcdir)/includes -I$(builddir)/includes/sys
 
-AM_CFLAGS = -D_GNU_SOURCE -fexceptions -Wall -Wextra -Werror -Wunused -Wformat=2 -W
-AM_CXXFLAGS = -Wall -Wextra -Werror
+AM_CFLAGS = -D_GNU_SOURCE -fexceptions -Wall -Wextra -Wunused -Wformat=2 -W
+AM_CXXFLAGS = -Wall -Wextra
+if Werror
+AM_CFLAGS += -Werror
+AM_CXXFLAGS += -Werror
+endif
 
 bin_SCRIPTS = stap-report stap-profile-annotate
 pkglibexec_SCRIPTS = stap-env

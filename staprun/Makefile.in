@@ -91,14 +91,16 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 target_triplet = @target@
+@Werror_TRUE@am__append_1 = -Werror
+@Werror_TRUE@am__append_2 = -Werror
 bin_PROGRAMS = staprun$(EXEEXT) stap-merge$(EXEEXT) stapsh$(EXEEXT)
 pkglibexec_PROGRAMS = stapio$(EXEEXT)
-@HAVE_NSS_TRUE@am__append_1 = modverify.c ../nsscommon.cxx
-@HAVE_NSS_TRUE@am__append_2 = $(nss_CFLAGS)
-@HAVE_NSS_TRUE@am__append_3 = $(nss_CFLAGS)
-@HAVE_NSS_TRUE@am__append_4 = $(nss_LIBS)
-@HAVE_HTTP_SUPPORT_TRUE@am__append_5 = $(openssl_LIBS)
-@HAVE_MONITOR_LIBS_TRUE@am__append_6 = $(jsonc_LIBS) -lpanel $(ncurses_LIBS)
+@HAVE_NSS_TRUE@am__append_3 = modverify.c ../nsscommon.cxx
+@HAVE_NSS_TRUE@am__append_4 = $(nss_CFLAGS)
+@HAVE_NSS_TRUE@am__append_5 = $(nss_CFLAGS)
+@HAVE_NSS_TRUE@am__append_6 = $(nss_LIBS)
+@HAVE_HTTP_SUPPORT_TRUE@am__append_7 = $(openssl_LIBS)
+@HAVE_MONITOR_LIBS_TRUE@am__append_8 = $(jsonc_LIBS) -lpanel $(ncurses_LIBS)
 subdir = staprun
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_check_compile_flag.m4 \
@@ -490,8 +492,9 @@ top_srcdir = @top_srcdir@
 uuid_CFLAGS = @uuid_CFLAGS@
 uuid_LIBS = @uuid_LIBS@
 AUTOMAKE_OPTIONS = subdir-objects
-AM_CFLAGS = -Wall -Wextra -Werror -Wunused -W -Wformat=2 @PIECFLAGS@
-AM_CXXFLAGS = -Wall -Wextra -Werror -Wunused -W -Wformat=2 \
+AM_CFLAGS = -Wall -Wextra -Wunused -W -Wformat=2 $(am__append_1) \
+	@PIECFLAGS@ $(am__empty)
+AM_CXXFLAGS = -Wall -Wextra -Wunused -W -Wformat=2 $(am__append_2) \
 	@PIECXXFLAGS@ $(am__empty)
 AM_CPPFLAGS = -D_GNU_SOURCE -I$(srcdir)/../includes \
 	-I$(builddir)/../includes/sys -DBINDIR='"$(bindir)"' \
@@ -506,17 +509,17 @@ noinst_LIBRARIES = libstrfloctime.a
 libstrfloctime_a_SOURCES = strfloctime.c
 libstrfloctime_a_CFLAGS = $(AM_CFLAGS) -Wno-format-nonliteral
 staprun_SOURCES = staprun.c staprun_funcs.c ctl.c common.c start_cmd.c \
-	../privilege.cxx ../util.cxx $(am__append_1)
+	../privilege.cxx ../util.cxx $(am__append_3)
 staprun_CFLAGS = $(AM_CFLAGS) -DSINGLE_THREADED $(debuginfod_CFLAGS) \
-	$(am__append_2)
+	$(am__append_4)
 staprun_CXXFLAGS = $(AM_CXXFLAGS) -DSINGLE_THREADED \
-	$(debuginfod_CFLAGS) $(am__append_3)
+	$(debuginfod_CFLAGS) $(am__append_5)
 staprun_CPPFLAGS = $(AM_CPPFLAGS)
 staprun_LDADD = libstrfloctime.a $(staprun_LIBS) $(debuginfod_LIBS) \
-	$(am__append_4) $(am__append_5)
+	$(am__append_6) $(am__append_7)
 staprun_LDFLAGS = $(AM_LDFLAGS) -Wl,--whole-archive,libstrfloctime.a,--no-whole-archive $(debuginfod_LDFLAGS)
 stapio_SOURCES = stapio.c mainloop.c common.c start_cmd.c ctl.c relay.c monitor.c
-stapio_LDADD = libstrfloctime.a -lpthread $(am__append_6)
+stapio_LDADD = libstrfloctime.a -lpthread $(am__append_8)
 stapio_LDFLAGS = -Wl,--whole-archive,libstrfloctime.a,--no-whole-archive
 man_MANS = staprun.8
 stap_merge_SOURCES = stap_merge.c

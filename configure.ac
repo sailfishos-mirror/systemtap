@@ -123,6 +123,13 @@ fi
 # the subconfigure in the testsuite directory.
 AS_VAR_APPEND([ac_configure_args], [" python3='$PYTHON3' py3execdir='$ac_cv_py3execdir'"])
 
+dnl Allow the build to exclude -Werror
+AC_MSG_CHECKING([whether to build with -Werror])
+AC_ARG_ENABLE([Werror],
+        AS_HELP_STRING('[--enable-Werror], [compile with -Werror flags]))
+AS_IF([test "${enable_Werror}" != "no"], [AC_MSG_RESULT([yes])], [AC_MSG_RESULT([no])])
+AM_CONDITIONAL([Werror], [test "${enable_Werror}" != "no"])
+
 dnl Handle the prologues option.
 dnl
 dnl If the user didn't specify --enable-prologues/--disable-prologues

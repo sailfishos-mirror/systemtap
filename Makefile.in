@@ -92,43 +92,45 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 target_triplet = @target@
+@Werror_TRUE@am__append_1 = -Werror
+@Werror_TRUE@am__append_2 = -Werror
 bin_PROGRAMS = $(am__EXEEXT_1) $(am__EXEEXT_2)
-@BUILD_TRANSLATOR_TRUE@am__append_1 = stap
-@BUILD_TRANSLATOR_TRUE@am__append_2 = dtrace
+@BUILD_TRANSLATOR_TRUE@am__append_3 = stap
+@BUILD_TRANSLATOR_TRUE@am__append_4 = dtrace
 @BUILD_TRANSLATOR_TRUE@pkglibexec_PROGRAMS = $(am__EXEEXT_3) \
 @BUILD_TRANSLATOR_TRUE@	$(am__EXEEXT_4)
-@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@am__append_3 = stap-sign-module stap-authorize-cert
-@BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@am__append_4 = stap-serverd stap-gen-cert
-@BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@am__append_5 = stap-server
-@BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@am__append_6 = stap-start-server stap-stop-server
-@BUILD_TRANSLATOR_TRUE@@HAVE_LANGUAGE_SERVER_SUPPORT_TRUE@am__append_7 = language-server/stap-language-server.cxx \
+@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@am__append_5 = stap-sign-module stap-authorize-cert
+@BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@am__append_6 = stap-serverd stap-gen-cert
+@BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@am__append_7 = stap-server
+@BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@am__append_8 = stap-start-server stap-stop-server
+@BUILD_TRANSLATOR_TRUE@@HAVE_LANGUAGE_SERVER_SUPPORT_TRUE@am__append_9 = language-server/stap-language-server.cxx \
 @BUILD_TRANSLATOR_TRUE@@HAVE_LANGUAGE_SERVER_SUPPORT_TRUE@	language-server/stap-code-completion.cxx language-server/jsonrpc.cxx
 
-@BUILD_TRANSLATOR_TRUE@@HAVE_LIBREADLINE_TRUE@am__append_8 = interactive.cxx
-@BUILD_TRANSLATOR_TRUE@@HAVE_LIBREADLINE_TRUE@am__append_9 = @READLINE_LIBS@
-@BUILD_TRANSLATOR_TRUE@@HAVE_JSON_C_TRUE@am__append_10 = $(jsonc_LIBS)
-@BUILD_TRANSLATOR_TRUE@@HAVE_BPF_DECLS_TRUE@am__append_11 = bpf-base.cxx bpf-bitset.cxx bpf-translate.cxx bpf-opt.cxx
-@BUILD_TRANSLATOR_TRUE@@BUILD_VIRT_TRUE@am__append_12 = stapvirt
-@BUILD_TRANSLATOR_TRUE@@HAVE_DYNINST_TRUE@am__append_13 = $(DYNINST_CXXFLAGS)
-@BUILD_TRANSLATOR_TRUE@@HAVE_AVAHI_TRUE@am__append_14 = $(avahi_CFLAGS)
-@BUILD_TRANSLATOR_TRUE@@HAVE_AVAHI_TRUE@am__append_15 = $(avahi_CFLAGS)
-@BUILD_TRANSLATOR_TRUE@@HAVE_AVAHI_TRUE@am__append_16 = $(avahi_LIBS)
-@BUILD_TRANSLATOR_TRUE@@NEED_BASE_CLIENT_CODE_TRUE@am__append_17 = csclient.cxx
-@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@am__append_18 = nsscommon.cxx client-nss.cxx cscommon.cxx nss-server-info.cxx
-@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@am__append_19 = $(nss_CFLAGS) -DSTAP
-@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@am__append_20 = $(nss_CFLAGS)
-@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@am__append_21 = $(nss_CFLAGS)
-@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@am__append_22 = $(nss_LIBS)
-@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@am__append_23 = install-scripts
-@BUILD_TRANSLATOR_TRUE@@HAVE_HTTP_SUPPORT_TRUE@am__append_24 = client-http.cxx
-@BUILD_TRANSLATOR_TRUE@@HAVE_HTTP_SUPPORT_TRUE@am__append_25 = $(libcurl_LIBS) $(jsonc_LIBS) $(openssl_LIBS)
-@BUILD_TRANSLATOR_TRUE@@HAVE_HTTP_SUPPORT_TRUE@@HAVE_NSS_TRUE@am__append_26 = $(openssl_LIBS)
-@BUILD_TRANSLATOR_TRUE@@HAVE_HTTP_SUPPORT_TRUE@@HAVE_NSS_TRUE@am__append_27 = $(openssl_LIBS)
-@BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_AVAHI_TRUE@@HAVE_NSS_TRUE@am__append_28 = $(avahi_CFLAGS)
-@BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_AVAHI_TRUE@@HAVE_NSS_TRUE@am__append_29 = $(avahi_CFLAGS)
-@BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_AVAHI_TRUE@@HAVE_NSS_TRUE@am__append_30 = $(avahi_LIBS)
-@BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_HTTP_SUPPORT_TRUE@@HAVE_NSS_TRUE@am__append_31 = $(openssl_LIBS)
-@BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_HTTP_SUPPORT_TRUE@@HAVE_NSS_TRUE@am__append_32 = $(openssl_LIBS)
+@BUILD_TRANSLATOR_TRUE@@HAVE_LIBREADLINE_TRUE@am__append_10 = interactive.cxx
+@BUILD_TRANSLATOR_TRUE@@HAVE_LIBREADLINE_TRUE@am__append_11 = @READLINE_LIBS@
+@BUILD_TRANSLATOR_TRUE@@HAVE_JSON_C_TRUE@am__append_12 = $(jsonc_LIBS)
+@BUILD_TRANSLATOR_TRUE@@HAVE_BPF_DECLS_TRUE@am__append_13 = bpf-base.cxx bpf-bitset.cxx bpf-translate.cxx bpf-opt.cxx
+@BUILD_TRANSLATOR_TRUE@@BUILD_VIRT_TRUE@am__append_14 = stapvirt
+@BUILD_TRANSLATOR_TRUE@@HAVE_DYNINST_TRUE@am__append_15 = $(DYNINST_CXXFLAGS)
+@BUILD_TRANSLATOR_TRUE@@HAVE_AVAHI_TRUE@am__append_16 = $(avahi_CFLAGS)
+@BUILD_TRANSLATOR_TRUE@@HAVE_AVAHI_TRUE@am__append_17 = $(avahi_CFLAGS)
+@BUILD_TRANSLATOR_TRUE@@HAVE_AVAHI_TRUE@am__append_18 = $(avahi_LIBS)
+@BUILD_TRANSLATOR_TRUE@@NEED_BASE_CLIENT_CODE_TRUE@am__append_19 = csclient.cxx
+@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@am__append_20 = nsscommon.cxx client-nss.cxx cscommon.cxx nss-server-info.cxx
+@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@am__append_21 = $(nss_CFLAGS) -DSTAP
+@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@am__append_22 = $(nss_CFLAGS)
+@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@am__append_23 = $(nss_CFLAGS)
+@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@am__append_24 = $(nss_LIBS)
+@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@am__append_25 = install-scripts
+@BUILD_TRANSLATOR_TRUE@@HAVE_HTTP_SUPPORT_TRUE@am__append_26 = client-http.cxx
+@BUILD_TRANSLATOR_TRUE@@HAVE_HTTP_SUPPORT_TRUE@am__append_27 = $(libcurl_LIBS) $(jsonc_LIBS) $(openssl_LIBS)
+@BUILD_TRANSLATOR_TRUE@@HAVE_HTTP_SUPPORT_TRUE@@HAVE_NSS_TRUE@am__append_28 = $(openssl_LIBS)
+@BUILD_TRANSLATOR_TRUE@@HAVE_HTTP_SUPPORT_TRUE@@HAVE_NSS_TRUE@am__append_29 = $(openssl_LIBS)
+@BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_AVAHI_TRUE@@HAVE_NSS_TRUE@am__append_30 = $(avahi_CFLAGS)
+@BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_AVAHI_TRUE@@HAVE_NSS_TRUE@am__append_31 = $(avahi_CFLAGS)
+@BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_AVAHI_TRUE@@HAVE_NSS_TRUE@am__append_32 = $(avahi_LIBS)
+@BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_HTTP_SUPPORT_TRUE@@HAVE_NSS_TRUE@am__append_33 = $(openssl_LIBS)
+@BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_HTTP_SUPPORT_TRUE@@HAVE_NSS_TRUE@am__append_34 = $(openssl_LIBS)
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_check_compile_flag.m4 \
@@ -686,11 +688,12 @@ AM_CPPFLAGS = -DBINDIR='"$(bindir)"' \
               -DPY3EXECDIR='"$(py3execdir)"' \
 	      -I$(srcdir)/includes -I$(builddir)/includes/sys
 
-AM_CFLAGS = -D_GNU_SOURCE -fexceptions -Wall -Wextra -Werror -Wunused -Wformat=2 -W
-AM_CXXFLAGS = -Wall -Wextra -Werror
-bin_SCRIPTS = stap-report stap-profile-annotate $(am__append_2) \
-	$(am__append_5)
-pkglibexec_SCRIPTS = stap-env $(am__append_6)
+AM_CFLAGS = -D_GNU_SOURCE -fexceptions -Wall -Wextra -Wunused \
+	-Wformat=2 -W $(am__append_1)
+AM_CXXFLAGS = -Wall -Wextra $(am__append_2)
+bin_SCRIPTS = stap-report stap-profile-annotate $(am__append_4) \
+	$(am__append_7)
+pkglibexec_SCRIPTS = stap-env $(am__append_8)
 oldinclude_HEADERS = includes/sys/sdt.h includes/sys/sdt-config.h
 @BUILD_TRANSLATOR_TRUE@stap_SOURCES = main.cxx session.cxx parse.cxx \
 @BUILD_TRANSLATOR_TRUE@	staptree.cxx elaborate.cxx \
@@ -709,18 +712,18 @@ oldinclude_HEADERS = includes/sys/sdt.h includes/sys/sdt-config.h
 @BUILD_TRANSLATOR_TRUE@	stapregex-tree.cxx stapregex-parse.cxx \
 @BUILD_TRANSLATOR_TRUE@	stapregex-dfa.cxx stringtable.cxx \
 @BUILD_TRANSLATOR_TRUE@	tapset-python.cxx tapset-debuginfod.cxx \
-@BUILD_TRANSLATOR_TRUE@	analysis.cxx $(am__append_7) \
-@BUILD_TRANSLATOR_TRUE@	$(am__append_8) $(am__append_11) \
-@BUILD_TRANSLATOR_TRUE@	$(am__append_17) $(am__append_18) \
-@BUILD_TRANSLATOR_TRUE@	$(am__append_24)
+@BUILD_TRANSLATOR_TRUE@	analysis.cxx $(am__append_9) \
+@BUILD_TRANSLATOR_TRUE@	$(am__append_10) $(am__append_13) \
+@BUILD_TRANSLATOR_TRUE@	$(am__append_19) $(am__append_20) \
+@BUILD_TRANSLATOR_TRUE@	$(am__append_26)
 @BUILD_TRANSLATOR_TRUE@noinst_HEADERS = sdt_types.h
 @BUILD_TRANSLATOR_TRUE@stap_LDADD = @stap_LIBS@ @sqlite3_LIBS@ \
 @BUILD_TRANSLATOR_TRUE@	@LIBINTL@ -lpthread \
 @BUILD_TRANSLATOR_TRUE@	@debuginfod_LDFLAGS@ @debuginfod_LIBS@ \
 @BUILD_TRANSLATOR_TRUE@	@DYNINST_LDFLAGS@ @DYNINST_LIBS@ \
-@BUILD_TRANSLATOR_TRUE@	$(am__append_9) $(am__append_10) \
-@BUILD_TRANSLATOR_TRUE@	$(am__append_16) $(am__append_22) \
-@BUILD_TRANSLATOR_TRUE@	$(am__append_25)
+@BUILD_TRANSLATOR_TRUE@	$(am__append_11) $(am__append_12) \
+@BUILD_TRANSLATOR_TRUE@	$(am__append_18) $(am__append_24) \
+@BUILD_TRANSLATOR_TRUE@	$(am__append_27)
 @BUILD_TRANSLATOR_TRUE@stap_DEPENDENCIES = 
 @BUILD_TRANSLATOR_TRUE@@BUILD_VIRT_TRUE@stapvirt_SOURCES = stapvirt.c
 @BUILD_TRANSLATOR_TRUE@@BUILD_VIRT_TRUE@stapvirt_CFLAGS =  \
@@ -741,16 +744,16 @@ oldinclude_HEADERS = includes/sys/sdt.h includes/sys/sdt-config.h
 BUILT_SOURCES = git_version.stamp
 CLEANFILES = git_version.h $(pkglibexec_PROGRAMS)
 GIT_VERSION_CMD = $(SHELL) $(top_srcdir)/git_version.sh
-PHONIES = $(am__append_23) runcheck update-po dist-gzip rpm srpm \
+PHONIES = $(am__append_25) runcheck update-po dist-gzip rpm srpm \
 	uprobes install-uprobes
 @BUILD_TRANSLATOR_TRUE@stap_CFLAGS = $(AM_CFLAGS) @PIECFLAGS@ \
-@BUILD_TRANSLATOR_TRUE@	$(am__append_19)
+@BUILD_TRANSLATOR_TRUE@	$(am__append_21)
 @BUILD_TRANSLATOR_TRUE@stap_CXXFLAGS = $(AM_CXXFLAGS) @PIECXXFLAGS@ \
 @BUILD_TRANSLATOR_TRUE@	@ALIGNEDNEW@ @debuginfod_CFLAGS@ \
-@BUILD_TRANSLATOR_TRUE@	$(am__append_13) $(am__append_14) \
-@BUILD_TRANSLATOR_TRUE@	$(am__append_20)
+@BUILD_TRANSLATOR_TRUE@	$(am__append_15) $(am__append_16) \
+@BUILD_TRANSLATOR_TRUE@	$(am__append_22)
 @BUILD_TRANSLATOR_TRUE@stap_CPPFLAGS = $(AM_CPPFLAGS) -DSTAP_SDT_V2 \
-@BUILD_TRANSLATOR_TRUE@	$(am__append_15) $(am__append_21)
+@BUILD_TRANSLATOR_TRUE@	$(am__append_17) $(am__append_23)
 @BUILD_TRANSLATOR_TRUE@stap_LDFLAGS = $(AM_LDFLAGS) @PIELDFLAGS@ @BOOST_SYSTEM_LIB@
 @BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@stap_sign_module_SOURCES = stap-sign-module.cxx nsscommon.cxx util.cxx
 @BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@stap_sign_module_CPPFLAGS = $(AM_CPPFLAGS)
@@ -760,7 +763,7 @@ PHONIES = $(am__append_23) runcheck update-po dist-gzip rpm srpm \
 @BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@stap_sign_module_LDADD =  \
 @BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@	$(nss_LIBS) \
 @BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@	$(debuginfod_LIBS) \
-@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@	$(am__append_26)
+@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@	$(am__append_28)
 @BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@stap_authorize_cert_SOURCES = stap-authorize-cert.cxx nsscommon.cxx util.cxx
 @BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@stap_authorize_cert_CPPFLAGS = $(AM_CPPFLAGS)
 @BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@stap_authorize_cert_CXXFLAGS = $(AM_CXXFLAGS) @PIECXXFLAGS@ $(nss_CFLAGS) $(debuginfod_CFLAGS)
@@ -769,31 +772,31 @@ PHONIES = $(am__append_23) runcheck update-po dist-gzip rpm srpm \
 @BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@stap_authorize_cert_LDADD =  \
 @BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@	$(nss_LIBS) \
 @BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@	$(debuginfod_LIBS) \
-@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@	$(am__append_27)
+@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@	$(am__append_29)
 @BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@stap_serverd_SOURCES = stap-serverd.cxx cscommon.cxx util.cxx privilege.cxx nsscommon.cxx cmdline.cxx
 @BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@stap_serverd_CXXFLAGS = $(AM_CXXFLAGS) \
 @BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@	@PIECXXFLAGS@ \
 @BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@	$(nss_CFLAGS) \
 @BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@	$(debuginfod_CFLAGS) \
-@BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@	$(am__append_29)
+@BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@	$(am__append_31)
 @BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@stap_serverd_CFLAGS = $(AM_CFLAGS) \
 @BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@	@PIECFLAGS@ \
 @BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@	$(nss_CFLAGS) \
 @BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@	$(debuginfod_CFLAGS) \
-@BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@	$(am__append_28)
+@BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@	$(am__append_30)
 @BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@stap_serverd_LDFLAGS = $(AM_LDFLAGS) @PIELDFLAGS@ $(debuginfod_LDFLAGS)
 @BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@stap_serverd_LDADD = $(nss_LIBS) \
 @BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@	-lpthread \
 @BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@	$(debuginfod_LIBS) \
-@BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@	$(am__append_30) \
-@BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@	$(am__append_31)
+@BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@	$(am__append_32) \
+@BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@	$(am__append_33)
 @BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@stap_gen_cert_SOURCES = stap-gen-cert.cxx util.cxx nsscommon.cxx
 @BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@stap_gen_cert_CXXFLAGS = $(AM_CXXFLAGS) @PIECXXFLAGS@ $(nss_CFLAGS) $(debuginfod_CFLAGS)
 @BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@stap_gen_cert_CFLAGS = $(AM_CFLAGS) @PIECFLAGS@ $(nss_CFLAGS) $(debuginfod_CFLAGS)
 @BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@stap_gen_cert_LDFLAGS = $(AM_LDFLAGS) @PIELDFLAGS@ $(debuginfod_LDFLAGS)
 @BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@stap_gen_cert_LDADD = $(nss_LIBS) \
 @BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@	$(debuginfod_LIBS) \
-@BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@	$(am__append_32)
+@BUILD_SERVER_TRUE@@BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@	$(am__append_34)
 
 # crash(8) extension
 @BUILD_CRASHMOD_TRUE@STAPLOG = staplog.so

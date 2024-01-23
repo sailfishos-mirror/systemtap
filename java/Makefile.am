@@ -9,7 +9,6 @@ JAR = jar
 BUILT_SOURCES = 
 CLEANFILES =
 
-#AM_CFLAGS = -Wall -Werror -W -Wformat=2 -g
 AM_CFLAGS = -g
 AM_CFLAGS += -I$(builddir)/../includes/sys
 AM_CFLAGS += -I$(srcdir)/../includes

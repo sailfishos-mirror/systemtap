@@ -90,12 +90,14 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 target_triplet = @target@
-@HAVE_SELINUX_TRUE@am__append_1 = $(selinux_CFLAGS)
-@HAVE_SELINUX_TRUE@am__append_2 = $(selinux_LIBS)
+@Werror_TRUE@am__append_1 = -Werror
+@Werror_TRUE@am__append_2 = -Werror
+@HAVE_SELINUX_TRUE@am__append_3 = $(selinux_CFLAGS)
+@HAVE_SELINUX_TRUE@am__append_4 = $(selinux_LIBS)
 bin_PROGRAMS = $(am__EXEEXT_1)
 noinst_PROGRAMS = $(am__EXEEXT_2)
-@HAVE_DYNINST_TRUE@am__append_3 = stapdyn
-@HAVE_DYNINST_TRUE@am__append_4 = dynsdt
+@HAVE_DYNINST_TRUE@am__append_5 = stapdyn
+@HAVE_DYNINST_TRUE@am__append_6 = dynsdt
 subdir = stapdyn
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_check_compile_flag.m4 \
@@ -441,14 +443,14 @@ top_srcdir = @top_srcdir@
 uuid_CFLAGS = @uuid_CFLAGS@
 uuid_LIBS = @uuid_LIBS@
 AUTOMAKE_OPTIONS = subdir-objects
-AM_CFLAGS = -Wall -Werror -Wunused -W -Wformat @PIECFLAGS@
-AM_CXXFLAGS = -Wall -Werror -Wunused -W -Wformat @PIECXXFLAGS@
+AM_CFLAGS = -Wall -Wunused -W -Wformat $(am__append_1) @PIECFLAGS@
+AM_CXXFLAGS = -Wall -Wunused -W -Wformat $(am__append_2) @PIECXXFLAGS@
 AM_CPPFLAGS = -D_GNU_SOURCE -I$(srcdir)/../includes \
 	-I$(builddir)/../includes/sys -DBINDIR='"$(bindir)"' \
 	-DSYSCONFDIR='"$(sysconfdir)"' -DPKGDATADIR='"${pkgdatadir}"' \
 	-DPKGLIBDIR='"$(pkglibexecdir)"' -DLOCALEDIR='"$(localedir)"' \
-	$(am__append_1)
-AM_LDFLAGS = @PIELDFLAGS@ @BOOST_SYSTEM_LIB@ $(am__append_2)
+	$(am__append_3)
+AM_LDFLAGS = @PIELDFLAGS@ @BOOST_SYSTEM_LIB@ $(am__append_4)
 @HAVE_DYNINST_TRUE@man_MANS = stapdyn.8
 @HAVE_DYNINST_TRUE@stapdyn_SOURCES = stapdyn.cxx mutator.cxx mutatee.cxx \
 @HAVE_DYNINST_TRUE@				  dynprobe.cxx dynutil.cxx ../util.cxx

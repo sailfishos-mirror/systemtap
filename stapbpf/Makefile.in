@@ -90,6 +90,8 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 target_triplet = @target@
+@Werror_TRUE@am__append_1 = -Werror
+@Werror_TRUE@am__append_2 = -Werror
 @HAVE_BPF_DECLS_TRUE@bin_PROGRAMS = stapbpf$(EXEEXT)
 subdir = stapbpf
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -438,8 +440,9 @@ top_srcdir = @top_srcdir@
 uuid_CFLAGS = @uuid_CFLAGS@
 uuid_LIBS = @uuid_LIBS@
 AUTOMAKE_OPTIONS = subdir-objects
-AM_CFLAGS = -Wall -Wextra -Werror -Wunused -W -Wformat=2 @PIECFLAGS@
-AM_CXXFLAGS = -Wall -Wextra -Werror -Wunused -W -Wformat=2 \
+AM_CFLAGS = -Wall -Wextra -Wunused -W -Wformat=2 $(am__append_1) \
+	@PIECFLAGS@ $(am__empty)
+AM_CXXFLAGS = -Wall -Wextra -Wunused -W -Wformat=2 $(am__append_2) \
 	@PIECXXFLAGS@ $(am__empty)
 AM_CPPFLAGS = -D_GNU_SOURCE -I$(srcdir)/../includes \
 	-I$(builddir)/../includes/sys -DBINDIR='"$(bindir)"' \
