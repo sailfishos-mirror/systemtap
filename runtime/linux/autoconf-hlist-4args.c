@@ -7,6 +7,7 @@ struct foo {
 
 struct hlist_head *h;
 
+void foo (void);
 void foo (void)
 {
         struct hlist_node *n;

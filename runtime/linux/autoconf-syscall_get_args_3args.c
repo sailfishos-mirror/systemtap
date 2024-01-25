@@ -7,6 +7,7 @@ struct task_struct *task;
 struct pt_regs *regs;
 unsigned long *args;
 
+void __something(void);
 void __something(void)
 {
 	syscall_get_arguments(task, regs, args);

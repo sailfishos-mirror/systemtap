@@ -457,6 +457,7 @@ static int stap_init_module (void)
 
 module_init(stap_init_module);
 
+void stap_cleanup_module(void);
 void stap_cleanup_module(void)
 {
   _stp_transport_close();

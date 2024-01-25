@@ -1,6 +1,8 @@
 #include <linux/fdtable.h>
 #include <linux/file.h>
 
+void foo(void);
+
 void
 foo(void)
 {

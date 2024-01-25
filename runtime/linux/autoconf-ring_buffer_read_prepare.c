@@ -2,6 +2,7 @@
 #include <linux/types.h>
 #include <linux/ring_buffer.h>
 
+void foo (void);
 void foo (void)
 {
   ring_buffer_read_prepare(NULL, 1);

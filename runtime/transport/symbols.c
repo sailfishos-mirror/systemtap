@@ -154,6 +154,8 @@ struct stap_module_sect_attrs
 void get_module_sect_attrs(struct module* mod,
                            struct stap_module_sect_attrs* as);
 
+void put_module_sect_attrs(struct stap_module_sect_attrs* as);
+
 void put_module_sect_attrs(struct stap_module_sect_attrs* as)
 {
         _stp_kfree(as->sections);

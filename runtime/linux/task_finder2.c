@@ -697,6 +697,10 @@ __stp_call_callbacks(struct stap_task_finder_target *tgt,
 
 bool
 __verify_build_id(struct task_struct *tsk, unsigned long addr,
+                  unsigned const char *build_id, int build_id_len);
+
+bool
+__verify_build_id(struct task_struct *tsk, unsigned long addr,
 			  unsigned const char *build_id, int build_id_len)
 {
 #define MAX_HEXSTR_LEN 64

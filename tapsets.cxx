@@ -12229,6 +12229,7 @@ tracepoint_derived_probe_group::emit_module_decls (systemtap_session& s)
       if (used_args.empty())
         {
           tpop->newline() << "STP_TRACE_ENTER_REAL_NOARGS(" << enter_real_fn << ");";
+          s.op->newline() << "STP_TRACE_ENTER_REAL_NOARGS(" << enter_real_fn << ");";
           s.op->newline() << "STP_TRACE_ENTER_REAL_NOARGS(" << enter_real_fn << ")";
         }
       else
@@ -12242,6 +12243,14 @@ tracepoint_derived_probe_group::emit_module_decls (systemtap_session& s)
               s.op->newline() << ", int64_t __tracepoint_arg_" << used_args[j]->name;
             }
           tpop->line() << ");";
+          s.op->newline() << ");";
+          s.op->indent(-2);
+          s.op->newline() << "STP_TRACE_ENTER_REAL(" << enter_real_fn;
+          s.op->indent(2);
+          for (unsigned j = 0; j < used_args.size(); ++j)
+            {
+              s.op->newline() << ", int64_t __tracepoint_arg_" << used_args[j]->name;
+            }
           s.op->newline() << ")";
           s.op->indent(-2);
         }
@@ -12294,6 +12303,8 @@ tracepoint_derived_probe_group::emit_module_decls (systemtap_session& s)
 
 
       // emit normalized registration functions
+      s.op->newline() << "int register_tracepoint_probe_" << i << "(void);";
+      tpop->newline() << "int register_tracepoint_probe_" << i << "(void);" << endl;
       tpop->newline() << "int register_tracepoint_probe_" << i << "(void) {";
       tpop->newline(1) << "return STP_TRACE_REGISTER(" << p->tracepoint_name
                        << ", " << enter_fn << ");";
@@ -12303,15 +12314,15 @@ tracepoint_derived_probe_group::emit_module_decls (systemtap_session& s)
       // can only occur if the tracepoint doesn't exist (yet?), or if we
       // weren't even registered.  The former should be OKed by the initial
       // registration call, and the latter is safe to ignore.
+      
+      // declare normalized registration functions
+      s.op->newline() << "void unregister_tracepoint_probe_" << i << "(void);";
+      tpop->newline() << "void unregister_tracepoint_probe_" << i << "(void);" << endl;
       tpop->newline() << "void unregister_tracepoint_probe_" << i << "(void) {";
       tpop->newline(1) << "(void) STP_TRACE_UNREGISTER(" << p->tracepoint_name
                        << ", " << enter_fn << ");";
       tpop->newline(-1) << "}";
       tpop->newline();
-
-      // declare normalized registration functions
-      s.op->newline() << "int register_tracepoint_probe_" << i << "(void);";
-      s.op->newline() << "void unregister_tracepoint_probe_" << i << "(void);";
 
       tpop->assert_0_indent();
     }

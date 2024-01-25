@@ -19,6 +19,8 @@
 #include <linux/percpu.h>
 #include <linux/bug.h>
 
+struct rchan_buf *relay_buf_test(struct rchan *chan, unsigned int cpu);
+
 struct rchan_buf *relay_buf_test(struct rchan *chan, unsigned int cpu)
 {
     BUILD_BUG_ON(sizeof(chan->buf) != sizeof(struct rchan_buf **));

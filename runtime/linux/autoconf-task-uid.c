@@ -1,5 +1,7 @@
 #include <linux/sched.h>
 
+int bar (struct task_struct *foo);
+
 int bar (struct task_struct *foo) { 
   return (foo->uid = 0); 
 }

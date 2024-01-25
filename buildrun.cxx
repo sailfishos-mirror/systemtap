@@ -315,6 +315,7 @@ compile_pass (systemtap_session& s)
   o << "CHECK_BUILD := $(CC) -DMODULE $(NOSTDINC_FLAGS) $(KBUILD_CPPFLAGS) $(CPPFLAGS) "
     << "$(LINUXINCLUDE) $(_KBUILD_CFLAGS) $(CFLAGS_KERNEL) $(EXTRA_CFLAGS) "
     << "$(CFLAGS) -DKBUILD_BASENAME=\\\"" << s.module_name << "\\\" "
+    << "-Wmissing-prototypes "  // GCC14 prep, PR31288
     << WERROR << " -S -o /dev/null -xc " << endl;
   o << "stap_check_build = $(shell " << superverbose << " if $(CHECK_BUILD) $(1) "
     << redirecterrors << " ; then echo \"$(2)\"; else echo \"$(3)\"; fi)" << endl;
@@ -345,6 +346,8 @@ compile_pass (systemtap_session& s)
   // o << module_cflags << " += -Iusr/include" << endl;
   // since such headers are cleansed of _KERNEL_ pieces that we need
 
+  o << module_cflags << " += -Wmissing-prototypes" << endl; // GCC14 prep, PR31288
+  
   o << "STAPCONF_HEADER := " << s.tmpdir << "/" << s.stapconf_name << endl;
   o << ".DELETE_ON_ERROR: $(STAPCONF_HEADER)" << endl;
   o << "$(STAPCONF_HEADER):" << endl;

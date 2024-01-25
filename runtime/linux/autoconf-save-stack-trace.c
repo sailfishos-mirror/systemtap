@@ -3,6 +3,8 @@
 #include <linux/stacktrace.h>
 #include <asm/stacktrace.h>
 
+void foo(struct task_struct *foo);
+
 void foo(struct task_struct *foo)
 {
   struct stack_trace trace;
@@ -15,6 +17,8 @@ void foo(struct task_struct *foo)
 }
 
 static const struct stacktrace_ops print_stack_ops;
+
+void dumper(struct task_struct *foo);
 
 void dumper(struct task_struct *foo)
 {

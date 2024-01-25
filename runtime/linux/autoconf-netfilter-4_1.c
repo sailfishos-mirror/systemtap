@@ -17,6 +17,11 @@
 unsigned int
 newer_style_hook(const struct nf_hook_ops *ops,
 		 struct sk_buff *skb,
+		 const struct nf_hook_state *state);
+
+unsigned int
+newer_style_hook(const struct nf_hook_ops *ops,
+		 struct sk_buff *skb,
 		 const struct nf_hook_state *state)
 {
   (void) ops; (void) skb; (void) state;

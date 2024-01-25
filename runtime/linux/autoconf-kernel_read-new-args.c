@@ -27,6 +27,8 @@
 
 #include <linux/fs.h>
 
+ssize_t foo(struct file *file, void *buf, size_t count, loff_t *pos);
+
 ssize_t foo(struct file *file, void *buf, size_t count, loff_t *pos)
 {
 	return kernel_read(file, buf, count, pos);

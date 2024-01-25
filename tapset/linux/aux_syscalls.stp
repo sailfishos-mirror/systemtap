@@ -152,6 +152,8 @@ _stp_lookup_or_str(const _stp_val_array * const array, long val, char *ptr,
 
 #ifndef STAPCONF_SIGSET_FROM_COMPAT_EXPORTED
 void
+sigset_from_compat(sigset_t *set, compat_sigset_t *compat);
+void
 sigset_from_compat(sigset_t *set, compat_sigset_t *compat)
 {
 	switch (_NSIG_WORDS) {

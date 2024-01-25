@@ -4,6 +4,8 @@
 
 #include <linux/proc_fs.h>
 
+void* __something(const struct inode* i);
+
 void* __something(const struct inode* i)
 {
         return pde_data (i);

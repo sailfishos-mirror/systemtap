@@ -368,9 +368,9 @@ static void _stp_filename_lookup_5(struct _stp_module *mod, char ** filename,
 
 #endif /* STP_NEED_LINE_DATA */
 
-unsigned long _stp_linenumber_lookup(unsigned long addr, struct task_struct *task,
-                                     char ** filename, int need_filename,
-                                     struct context *c)
+static unsigned long _stp_linenumber_lookup(unsigned long addr, struct task_struct *task,
+                                            char ** filename, int need_filename,
+                                            struct context *c)
 {
   struct _stp_module *m;
   struct _stp_section *sec;

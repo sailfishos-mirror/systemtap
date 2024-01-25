@@ -1,5 +1,7 @@
 #include <linux/perf_event.h>
 
+void fn (void);
+
 void fn (void) {
   struct perf_event_attr *attr = NULL;
   int cpu = 0;

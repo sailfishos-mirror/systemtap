@@ -19,6 +19,8 @@
  *       No intended functional changes in this commit.
  */
 
+void bar (void);
+
 void bar (void)
 {
         struct bio foo;

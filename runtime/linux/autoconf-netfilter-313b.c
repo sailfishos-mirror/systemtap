@@ -7,6 +7,13 @@
 
 unsigned int
 new_style_hook(const struct nf_hook_ops *ops,
+               struct sk_buff *skb,
+               const struct net_device *nf_in,
+               const struct net_device *nf_out,
+               const struct nf_hook_state *state);
+
+unsigned int
+new_style_hook(const struct nf_hook_ops *ops,
 		 struct sk_buff *skb,
 		 const struct net_device *nf_in,
 		 const struct net_device *nf_out,

@@ -13,6 +13,8 @@
 
 #include <linux/sched.h>
 
+unsigned int bar (struct task_struct *foo);
+
 unsigned int bar (struct task_struct *foo) { 
   return (foo->state = 0); 
 }

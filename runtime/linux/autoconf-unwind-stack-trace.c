@@ -1,6 +1,8 @@
 #include <linux/sched.h>
 #include <asm/unwind.h>
 
+void unwind_stack_trace (void);
+
 void unwind_stack_trace (void)
 {
   struct unwind_state state;

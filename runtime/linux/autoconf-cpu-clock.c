@@ -29,7 +29,8 @@
 //     reference sched_clock_cpu(). Thus it must be exported with the
 //     EXPORT_SYMBOL_GPL macro.
 //
-
+void foo (void);
+        
 void foo (void) {
    (void) cpu_clock(0);
 }

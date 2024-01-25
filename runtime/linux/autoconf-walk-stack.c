@@ -2,6 +2,8 @@
 #include <linux/sched.h>
 #include <asm/stacktrace.h>
 
+void foo (void);
+
 void foo (void)
 {
   struct stacktrace_ops t;

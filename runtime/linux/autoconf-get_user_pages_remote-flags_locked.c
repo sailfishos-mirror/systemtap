@@ -26,6 +26,11 @@
 long gupr_wrapper2(struct task_struct *tsk, struct mm_struct *mm,
                    unsigned long start, unsigned long nr_pages,
                    unsigned int gup_flags, struct page **pages,
+                   struct vm_area_struct **vmas, int *locked);
+
+long gupr_wrapper2(struct task_struct *tsk, struct mm_struct *mm,
+                   unsigned long start, unsigned long nr_pages,
+                   unsigned int gup_flags, struct page **pages,
                    struct vm_area_struct **vmas, int *locked)
 {
     return get_user_pages_remote(tsk, mm, start, nr_pages, gup_flags,

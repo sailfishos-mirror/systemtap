@@ -6,6 +6,10 @@
 
 int print_stack_address(void *data __attribute__ ((unused)),
 			unsigned long addr __attribute__ ((unused)),
+			int reliable __attribute__ ((unused)));
+
+int print_stack_address(void *data __attribute__ ((unused)),
+			unsigned long addr __attribute__ ((unused)),
 			int reliable __attribute__ ((unused)))
 {
     return 0;

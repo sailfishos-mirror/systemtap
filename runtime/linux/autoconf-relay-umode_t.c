@@ -27,6 +27,8 @@ static struct rchan_callbacks __stp_relay_callbacks = {
    .create_buf_file = umode_t_callback,
 };
 
+void foo (void);
+
 void foo (void) {
    (void) __stp_relay_callbacks.create_buf_file;
 }

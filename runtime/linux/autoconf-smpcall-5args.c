@@ -1,10 +1,14 @@
 #include <linux/kernel.h>
 #include <linux/smp.h>
 
+void foo (void *arg);
+
 void foo (void *arg)
 {
         (void) arg;
 }
+
+void bar (void);
 
 void bar (void)
 {

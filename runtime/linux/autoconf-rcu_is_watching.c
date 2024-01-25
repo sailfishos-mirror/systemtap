@@ -4,7 +4,8 @@
 //
 // We need to use rcu_is_watching() where available to skip probes in
 // rcu-idle state.
-
+struct context * _stp_runtime_get_context(void);
+        
 struct context * _stp_runtime_get_context(void)
 {
         if (! rcu_is_watching())

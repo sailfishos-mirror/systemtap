@@ -1,5 +1,7 @@
 #include <linux/stacktrace.h>
 
+unsigned int foo (void);
+
 unsigned int foo (void)
 {
         unsigned long e[10];

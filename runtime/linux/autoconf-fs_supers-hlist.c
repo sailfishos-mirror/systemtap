@@ -11,6 +11,8 @@ vfs: convert fs_supers to hlist
 Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
 */
 
+int foo (struct super_block *sb);
+
 int foo (struct super_block *sb) {
   return (hlist_unhashed (& sb->s_instances));
 }

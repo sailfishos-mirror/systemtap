@@ -30,6 +30,10 @@
 
 unsigned int even_newer_style_hook(void *priv,
 				   struct sk_buff *skb,
+				   const struct nf_hook_state *state);
+
+unsigned int even_newer_style_hook(void *priv,
+				   struct sk_buff *skb,
 				   const struct nf_hook_state *state)
 {
     (void) priv; (void) skb; (void) state;

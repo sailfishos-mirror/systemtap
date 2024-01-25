@@ -1211,6 +1211,7 @@ c_unparser::emit_common_header ()
       o->newline( 0)  << "#define STP_ON_THE_FLY_INTERVAL (100*1000*1000)"; // default to 100 ms
       o->newline( 0)  << "#endif";
 
+      o->newline( 0)  << "hrtimer_return_t module_refresh_timer_cb(struct hrtimer *timer);";
       o->newline( 0)  << "hrtimer_return_t module_refresh_timer_cb(struct hrtimer *timer) {";
       o->newline(+1)  <<   "if (atomic_cmpxchg(&need_module_refresh, 1, 0) == 1)";
       // NB: one might like to invoke systemtap_module_refresh(NULL) directly from

@@ -3,6 +3,8 @@
 #include <linux/stacktrace.h>
 #include <asm/stacktrace.h>
 
+void foo(struct task_struct *foo);
+
 void foo(struct task_struct *foo)
 {
   struct stack_trace trace;

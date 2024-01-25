@@ -8,6 +8,7 @@
 
 struct task_struct t;
 
+void foo (void);
 void foo (void)
 {
   struct task_struct *p;

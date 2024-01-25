@@ -32,6 +32,11 @@
 long gupr_wrapper(struct mm_struct *mm,
 		  unsigned long start, unsigned long nr_pages,
 		  unsigned int gup_flags, struct page **pages,
+		  struct vm_area_struct **vmas);
+
+long gupr_wrapper(struct mm_struct *mm,
+		  unsigned long start, unsigned long nr_pages,
+		  unsigned int gup_flags, struct page **pages,
 		  struct vm_area_struct **vmas)
 {
     return get_user_pages(mm, start, nr_pages, gup_flags, pages, vmas);

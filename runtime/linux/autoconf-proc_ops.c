@@ -8,6 +8,9 @@
 #include <linux/proc_fs.h>
 
 int
+proc_open_file_test(struct inode *inode, struct file *filp);
+
+int
 proc_open_file_test(struct inode *inode, struct file *filp)
 {
   return 0;

@@ -32,6 +32,11 @@
 //    parameter altogether.
 
 struct page *get_user_page_vma_remote_wrapper(struct mm_struct *mm,
+                                              unsigned long addr,
+                                              unsigned int gup_flags,
+                                              struct vm_area_struct **vmaps);
+
+struct page *get_user_page_vma_remote_wrapper(struct mm_struct *mm,
                    unsigned long addr,
                    unsigned int gup_flags,
                    struct vm_area_struct **vmaps)
