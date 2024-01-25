@@ -82,7 +82,7 @@ static void _stp_filename_lookup_5(struct _stp_module *mod, char ** filename,
           switch (c->dw_data.dir_enc[j].form)
             {
               case DW_FORM_line_strp:
-                c->dw_data.src_dir[i].offset = (uint8_t) read_pointer ((const uint8_t **) &debug_line_p,
+                c->dw_data.src_dir[i].offset = (uint32_t) read_pointer ((const uint8_t **) &debug_line_p,
                                                                        enddirsecp, DW_EH_PE_data4, user, compat_task);
                 if ((uint8_t *) mod->debug_line_str + c->dw_data.src_dir[i].offset > endstrsecp)
                   return;
@@ -126,7 +126,7 @@ static void _stp_filename_lookup_5(struct _stp_module *mod, char ** filename,
           switch (c->dw_data.file_enc[j].form)
             {
               case DW_FORM_line_strp:
-                c->dw_data.src_file[i].offset = (uint8_t) read_pointer ((const uint8_t **) &debug_line_p,
+                c->dw_data.src_file[i].offset = (uint32_t) read_pointer ((const uint8_t **) &debug_line_p,
                                                                         enddirsecp, DW_EH_PE_data4, user,
                                                                         compat_task);
                 if ((uint8_t *) mod->debug_line_str + c->dw_data.src_file[i].offset > endstrsecp)
