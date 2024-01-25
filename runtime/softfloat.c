@@ -614,6 +614,7 @@ uint_fast64_t
 |Converting a fp to a str 
 *------------------------------------------------------------------------*/
 
+char* itoa(uint64_t val);
 char* itoa(uint64_t val)
 {
     int base = 10;

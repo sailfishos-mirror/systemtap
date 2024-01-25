@@ -103,6 +103,7 @@ void
 stapdfa::emit_declaration (translator_output *o) const
 {
   o->newline() << "// DFA for \"" << orig_input << "\"";
+  o->newline() << "int " << func_name << " (struct context * __restrict__ c, const char *str);";
   o->newline() << "int " << func_name << " (struct context * __restrict__ c, const char *str) {";
   o->indent(1);
   
