@@ -191,9 +191,9 @@ int main()
 #if __WORDSIZE == 64
   adjtimex((struct timex *)-1);
 #ifdef __s390__
-  //staptest// adjtimex (0x[7]?[f]+) = NNNN
+  //staptest// [[[[adjtimex (!!!!clock_adjtime (CLOCK_REALTIME, ]]]]0x[7]?[f]+) = NNNN
 #else
-  //staptest// adjtimex (0x[f]+) = NNNN
+  //staptest// [[[[adjtimex (!!!!clock_adjtime (CLOCK_REALTIME, ]]]]0x[f]+) = NNNN
 #endif
 #endif
 
