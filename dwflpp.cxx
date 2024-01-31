@@ -1055,6 +1055,15 @@ dwflpp::iterate_over_functions<void>(int (*callback)(Dwarf_Die*, void*),
     }
 
   auto range = v->equal_range(function);
+  // version padding if the symbol is not found
+  if (range.first == range.second)
+    {
+      std::string function_with_ver = function + "@";
+      for (auto it = v->begin(); it != v->end(); ++it)
+        if (it->first.find(function_with_ver) == 0)
+          function_with_ver = it->first;
+      range = v->equal_range(function_with_ver);
+    }
   if (range.first != range.second)
     {
       for (auto it = range.first; it != range.second; ++it)
@@ -1098,7 +1107,10 @@ dwflpp::iterate_over_functions<void>(int (*callback)(Dwarf_Die*, void*),
           if (pending_interrupts) return DWARF_CB_ABORT;
           const string& func_name = it->first;
           Dwarf_Die& die = it->second;
-          if (function_name_matches_pattern (func_name, function))
+
+          // version padding if the pattern is not matched
+          if ((function_name_matches_pattern (func_name, function)) ||
+              (function_name_matches_pattern (func_name, function + "@*")))
             {
               if (sess.verbose > 4)
                 clog << _F("function cache %s:%s match %s vs %s", module_name.c_str(),
@@ -1141,6 +1153,15 @@ dwflpp::iterate_single_function<void>(int (*callback)(Dwarf_Die*, void*),
     }
 
   auto range = v->equal_range(function);
+  // version padding if the symbol is not found
+  if (range.first == range.second)
+    {
+      std::string function_with_ver = function + "@";
+      for (auto it = v->begin(); it != v->end(); ++it)
+        if (it->first.find(function_with_ver) == 0)
+          function_with_ver = it->first;
+      range = v->equal_range(function_with_ver);
+    }
   if (range.first != range.second)
     {
       for (auto it = range.first; it != range.second; ++it)
