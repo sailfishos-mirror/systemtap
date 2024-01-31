@@ -395,9 +395,10 @@ static unsigned long _stp_linenumber_lookup(unsigned long addr, struct task_stru
                     addr &= ((compat_ulong_t) ~0);
 #endif
 	    m = _stp_umod_lookup(addr, task, &modname, NULL, NULL, NULL);
-            // PR26843: In case the binary is PIE we need to relocate the addr
-            // For non-PIE binaries the addr stays unchanged.
-            addr = addr - _stp_umodule_relocate(m->path, rel_off, task);
+	    // PR26843: In case the binary is PIE we need to relocate the addr
+	    // For non-PIE binaries the addr stays unchanged.
+	    if (m != NULL)
+	        addr = addr - _stp_umodule_relocate(m->path, rel_off, task);
     }
   else
     m = _stp_kmod_sec_lookup(addr, &sec);
