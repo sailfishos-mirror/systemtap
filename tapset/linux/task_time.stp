@@ -131,6 +131,9 @@ function task_start_time:long (tid:long) {
       time_sec = task->real_start_time->tv_sec
       time_nsec = task->real_start_time->tv_nsec
       return time_sec * 1000000000 + time_nsec
+    } else if (@defined(@task(0)->start_boottime)) {
+      // renamed to start_boottime kernel commit cf25e24db61cc9d
+      return task->start_boottime
     } else {
       // simple u64 in ns since kernel commit 57e0be041d9e2
       return task->real_start_time
