@@ -1515,7 +1515,7 @@ function _msync_flag_str:string(f:long)
 %}
 
 %{
-#include <linux/wait.h>
+#include <uapi/linux/wait.h>
 
 static const _stp_val_array _stp_wait4_op_list[] = {
 	V(WNOHANG),
