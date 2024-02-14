@@ -48,6 +48,20 @@
 #include <generated/compile.h>
 #endif
 
+// PR31373: Linux 6.8 kernel removed strlcpy
+// This provides equivalent to strlcpy using strscpy
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,8,0)
+#define strlcpy(dest, src, count)  ({		\
+  size_t size=(count);				\
+  ssize_t retval = strscpy((dest), (src), size);\
+  if (retval<0)					\
+    retval = size; /* was truncated */		\
+  else						\
+    retval++; /* count the NULL */		\
+  retval;					\
+})
+#endif
+
 // PR26811: Replace some declarations after set_fs() removal in kernel 5.10+.
 // Should use the STP_* prefixed defines outside of STAPCONF_SET_FS.
 #if defined(STAPCONF_SET_FS)
