@@ -3405,7 +3405,11 @@ function _dup3_flag_str:string(f:long)
 %}
 
 %{
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6,8,0)
 #include <linux/shm.h>
+#else
+#include <uapi/linux/shm.h>
+#endif
 static const _stp_val_array _stp_shmat_list[] = {
 	V(SHM_RDONLY),
 	V(SHM_RND),
@@ -4149,7 +4153,11 @@ CATCH_DEREF_FAULT();
 
 %{
 #include <linux/ipc.h>
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6,8,0)
 #include <linux/shm.h>
+#else
+#include <uapi/linux/shm.h>
+#endif
 static const _stp_val_array _stp_shmget_flags_list[] = {
 	V(IPC_CREAT),
 	V(IPC_EXCL),
