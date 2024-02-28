@@ -12844,6 +12844,7 @@ tracepoint_builder::get_tracequery_modules(systemtap_session& s,
 	  // override DECLARE_TRACE to synthesize probe functions for us
 	  osrc << "#undef DECLARE_TRACE" << endl;
 	  osrc << "#define DECLARE_TRACE(name, proto, args) \\" << endl;
+	  osrc << "  void stapprobe_##name(proto); \\" << endl;
 	  osrc << "  void stapprobe_##name(proto) {}" << endl;
       } else {
 	  if (s.use_bpf_raw_tracepoint) {
