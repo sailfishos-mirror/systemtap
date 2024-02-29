@@ -34,12 +34,15 @@ extern "C" {
 #include <limits.h>
 #include <sys/utsname.h>
 #include <unistd.h>
+#include <elfutils/debuginfod.h>
 }
 
 // XXX: also consider adding $HOME/.debug/ for perf build-id-cache
 static const char *debuginfo_path_arr = "+:.debug:/usr/lib/debug:/var/cache/abrt-di/usr/lib/debug:build";
 static const char *debuginfo_env_arr = getenv("SYSTEMTAP_DEBUGINFO_PATH");
 static char *debuginfo_path = (char *)(debuginfo_env_arr ?: debuginfo_path_arr);
+
+static const char *debuginfod_progress = getenv("DEBUGINFOD_PROGRESS");
 
 // NB: kernel_build_tree doesn't enter into this, as it's for
 // kernel-side modules only.
@@ -350,12 +353,70 @@ void debuginfo_path_insert_sysroot(string sysroot)
   debuginfo_usr_path = path_insert_sysroot(sysroot, debuginfo_usr_path);
 }
 
+static
+int
+debufginfod_progress (debuginfod_client *c,
+              long a, long b)
+{
+  // PR31368: Cancel the download in case Ctrl-C is hit.
+  if (pending_interrupts > 0) {
+    fprintf(stderr, "\nInterrupt received, exiting.\n");
+    return 1;
+  }
+
+  // Skip showing unsolicited information.
+  if (debuginfod_progress == NULL
+      || strcmp(debuginfod_progress, "0") == 0)
+    return 0;
+
+  // Model after debuginfod-client.c's default_progressfn()
+  // If it was a public function, we could reuse, but alas.
+  const char* url = debuginfod_get_url (c);
+  int len = 0;
+
+  /* We prefer to print the host part of the URL to keep the
+     message short. */
+  if (url != NULL)
+    {
+      const char* buildid = strstr(url, "buildid/");
+      if (buildid != NULL)
+        len = (buildid - url);
+      else
+        len = strlen(url);
+    }
+
+  if (b == 0 || url==NULL) /* early stage */
+    dprintf(STDERR_FILENO,
+            "\rDownloading %c", "-/|\\"[a % 4]);
+  else if (b < 0) /* download in progress but unknown total length */
+    dprintf(STDERR_FILENO,
+            "\rDownloading from %.*s %ld",
+            len, url, a);
+  else /* download in progress, and known total length */
+    dprintf(STDERR_FILENO,
+            "\rDownloading from %.*s %ld/%ld",
+            len, url, a, b);
+
+  return 0;
+}
+
+void
+setup_debuginfod_progress(Dwfl *dwfl)
+{
+  debuginfod_client *c = dwfl_get_debuginfod_client (dwfl);
+  if (c != NULL)
+    debuginfod_set_progressfn (c, debufginfod_progress);
+}
+
+
 static Dwfl *
 setup_dwfl_kernel (unsigned *modules_found, systemtap_session &s)
 {
   Dwfl *dwfl = dwfl_begin (&kernel_callbacks);
   DWFL_ASSERT ("dwfl_begin", dwfl);
   dwfl_report_begin (dwfl);
+
+  setup_debuginfod_progress(dwfl);
 
   // We have a problem with -r REVISION vs -r BUILDDIR here.  If
   // we're running against a fedora/rhel style kernel-debuginfo
@@ -481,6 +542,8 @@ setup_dwfl_user(const std::string &name)
   DWFL_ASSERT("dwfl_begin", dwfl);
   dwfl_report_begin (dwfl);
 
+  setup_debuginfod_progress(dwfl);
+
   // XXX: should support buildid-based naming
   const char *cname = name.c_str();
   Dwfl_Module *mod = dwfl_report_offline (dwfl, cname, cname, -1);
@@ -506,6 +569,9 @@ setup_dwfl_user(std::vector<std::string>::const_iterator &begin,
   Dwfl *dwfl = dwfl_begin (&user_callbacks);
   DWFL_ASSERT("dwfl_begin", dwfl);
   dwfl_report_begin (dwfl);
+
+  setup_debuginfod_progress(dwfl);
+
   Dwfl_Module *mod = NULL;
   // XXX: should support buildid-based naming
   while (begin != end && dwfl != NULL)
