@@ -305,8 +305,6 @@ compile_pass (systemtap_session& s)
   if (s.verbose > 6)
     redirecterrors = "";
 
-  // PR30716 Turn off objtool
-  o << "OBJECT_FILES_NON_STANDARD:=y" << endl;
   // Support O= (or KBUILD_OUTPUT) option
   // but flags= filter was removed from kernel scripts/Kbuild.include mid-2019
   o << "_KBUILD_CFLAGS := $(call flags,KBUILD_CFLAGS) $(KBUILD_CFLAGS)" << endl;
