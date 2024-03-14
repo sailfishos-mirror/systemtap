@@ -1,7 +1,7 @@
 // TCP tapset
 // Copyright (C) 2006 IBM Corp.
 // Copyright (C) 2006 Intel Corporation.
-// Copyright (C) 2007, 2010, 2012-2018 Red Hat, Inc.
+// Copyright (C) 2007, 2010, 2012-2024 Red Hat, Inc.
 //
 // This file is part of systemtap, and is free software.  You can
 // redistribute it and/or modify it under the terms of the GNU General
@@ -159,6 +159,21 @@ function __tcp_sock_sport:long (sock:long)
 	    @choose_defined(@inet_sock_cast(sock)->sport, # kernel >= 2.6.11
 		@inet_sock_cast(sock)->inet->sport))
     return ntohs(port)
+}
+
+function __tcp_skb_seq:long (tcphdr:long)
+{
+  return ntohl(@cast(tcphdr, "tcphdr", "kernel<linux/tcp.h>")->seq)
+}
+
+function __tcp_skb_ackseq:long (tcphdr:long)
+{
+  return ntohl(@cast(tcphdr, "tcphdr", "kernel<linux/tcp.h>")->ack_seq)
+}
+
+function __tcp_skb_window:long (tcphdr:long)
+{
+  return ntohs(@cast(tcphdr, "tcphdr", "kernel<linux/tcp.h>")->window)
 }
 
 @__private30 global sockstate[12]
@@ -669,6 +684,9 @@ probe tcp.ipv4.receive = kernel.function("tcp_v4_rcv")
 	  rst = __tcp_skb_rst(tcphdr)
 	  syn = __tcp_skb_syn(tcphdr)
 	  fin = __tcp_skb_fin(tcphdr)
+          seq = __tcp_skb_seq(tcphdr)
+          ackseq = __tcp_skb_ackseq(tcphdr)
+          window = __tcp_skb_window(tcphdr)
 	} catch { }
 }
 
@@ -705,5 +723,10 @@ probe tcp.ipv6.receive = kernel.function("tcp_v6_rcv")!,
 	  rst = __tcp_skb_rst(tcphdr)
 	  syn = __tcp_skb_syn(tcphdr)
 	  fin = __tcp_skb_fin(tcphdr)
+          seq = __tcp_skb_seq(tcphdr)
+          ackseq = __tcp_skb_ackseq(tcphdr)
+          window = __tcp_skb_window(tcphdr)
 	} catch { }
 }
+
+

@@ -49,8 +49,8 @@ probe tcp.ipv4.receive, tcp.ipv6.receive
 {
 	printf("%s %p %d\n", name, iphdr, family)
 	printf("%s %s %d %d\n", saddr, daddr, sport, dport)
-	printf("%d %p %d %d %d %d %d %d\n", protocol, tcphdr, urg,
-	       ack, psh, rst, syn, fin)
+	printf("%d %p %d %d %d %d %d %d %d %d %d\n", protocol, tcphdr, urg,
+	       ack, psh, rst, syn, fin, seq, ackseq, window)
 }
 probe tcp.receive
 {
