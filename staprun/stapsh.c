@@ -124,6 +124,7 @@ struct pollfd pfds[3];
 static unsigned prefix_data = 0;
 static unsigned verbose = 0;
 static unsigned dyninst = 0;
+static unsigned bpf = 0;
 
 struct stapsh_option {
   const char* name;
@@ -134,6 +135,7 @@ static const struct stapsh_option options[] = {
   { "verbose", &verbose },
   { "data", &prefix_data },
   { "dyninst", &dyninst },
+  { "bpf", &bpf },
 };
 static const unsigned noptions = sizeof(options) / sizeof(*options);
 
@@ -430,8 +432,13 @@ do_file()
     {
       if (dyninst && *arg != 's')
         dyninst--;
+      if (bpf && *arg != 'b')
+        bpf--;
       if (*arg == '.')
-        dyninst +=2;
+        {
+          dyninst += 2;
+          bpf += 2;
+        }
       if (!isalnum(*arg) &&
           !(arg > name && (*arg == '.' || *arg == '_')))
         return reply ("ERROR: Bad character '%c' in file name\n", *arg);
@@ -584,6 +591,8 @@ do_run()
   char staprun[] = BINDIR "/staprun";
   if (dyninst)
     strcpy(staprun, BINDIR "/stapdyn");
+  if (bpf)
+    strcpy(staprun, BINDIR "/stapbpf");
   char* args[STAPSH_MAX_ARGS + 1] = { staprun, 0 };
   unsigned nargs = 1;
 
@@ -599,6 +608,8 @@ do_run()
       args[nargs++] = arg;
     }
 
+  dbug(1, "invoking %s\n", args[0]);
+  
   // Explicitly check execute permissions here, because posix_spawn will only
   // report that failure through a process exit code.
   if (access(staprun, X_OK) != 0)
