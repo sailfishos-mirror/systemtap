@@ -99,6 +99,15 @@ for VARIANT in debug kdump PAE xen; do
       UNAME=$TMP; KERNEL="kernel-$VARIANT"
   fi
 done
+# and then we have rhel9 era kernel-rt's:
+# 5.14.0-200.rt14.201.el9 ->
+#      "kernel-rt-debug-5.14.0-200.rt14.201.el9"
+# OR?! "kernel-rt-5.14.0-200.rt14.201.el9"
+if expr "$UNAME" : ".*\.rt.*" >/dev/null;
+then
+    KERNEL=`echo $KERNEL | sed -e s,kernel,kernel-rt,`
+fi
+
 KERN_ARCH=`uname -m`
 KERN_REV=`echo $UNAME | sed s/.$KERN_ARCH//` # strip arch from uname
 if [ -x /usr/bin/dnf4 ]; then
