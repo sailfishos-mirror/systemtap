@@ -61,7 +61,8 @@ stap_set_mnt_ns(int fd)
 		return -EBADF;
 
 	/* unlike the setns() syscall, we don't allow non-proc ns file */
-	if (!(*(proc_ns_file_fn) kallsyms_proc_ns_file)(file))
+	if (!(ibt_wrapper(bool,
+			  (*(proc_ns_file_fn) kallsyms_proc_ns_file)(file))))
 		err = -EINVAL;
 
 	if (unlikely(err))
@@ -77,9 +78,9 @@ stap_set_mnt_ns(int fd)
 	 * but it is an internal symbol declared by 'static'. The
 	 * unshare_nsproxy_namespaces() function is the closest symbol we can
 	 * use; but it allocates a new mnt ns we don't need. */
-	err = (*(unshare_nsproxy_namespaces_fn)
+	err = ibt_wrapper(int, (*(unshare_nsproxy_namespaces_fn)
 		kallsyms_unshare_nsproxy_namespaces)(CLONE_NEWNS, &nsset.nsproxy,
-						     NULL, NULL);
+						     NULL, NULL));
 	if (unlikely(err)) {
 		goto out;
 	}
@@ -101,12 +102,12 @@ stap_set_mnt_ns(int fd)
 	err = ns->ops->install(&nsset, ns);
 	if (unlikely(!err)) {
 		/* transfer ownership */
-		(*(switch_task_namespaces_fn) kallsyms_switch_task_namespaces)(me, nsset.nsproxy);
+		void_ibt_wrapper((*(switch_task_namespaces_fn) kallsyms_switch_task_namespaces)(me, nsset.nsproxy));
 		nsset.nsproxy = NULL;
 	}
 out0:
 	if (nsset.nsproxy)
-		(*(free_nsproxy_fn) kallsyms_free_nsproxy)(nsset.nsproxy);
+		void_ibt_wrapper((*(free_nsproxy_fn) kallsyms_free_nsproxy)(nsset.nsproxy));
 out:
 	fput(file);
 	return err;
