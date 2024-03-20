@@ -1,7 +1,7 @@
 set test "poll_map"
 if {![installtest_p]} { untested $test; return }
 
-spawn stap -g $srcdir/$subdir/poll_map.stp
+spawn stap $srcdir/$subdir/poll_map.stp
 set ok 0
 expect {
     -timeout 400
