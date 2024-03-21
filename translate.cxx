@@ -2158,7 +2158,9 @@ c_unparser::emit_module_init ()
       o->newline() << ": (~(int32_t)0) - (int32_t)cycles_atstart + (int32_t)cycles_atend + 1;";
       o->newline(-2) << "#endif";
       // STP_TIMING requires min, max, avg (and thus count and sum) as well as variance.
-      o->newline(1) << "_stp_stat_add(g_module_init_timing, cycles_elapsed, 1, 1, 1, 1, 1);";
+      o->newline(1) << "preempt_disable();";
+      o->newline() << "_stp_stat_add(g_module_init_timing, cycles_elapsed, 1, 1, 1, 1, 1);";
+      o->newline() << "preempt_enable_no_resched();";
       o->newline(-1) << "}";
       o->newline() << "#endif";
     }
@@ -2269,7 +2271,9 @@ c_unparser::emit_module_refresh ()
       o->newline() << ": (~(int32_t)0) - (int32_t)cycles_atstart + (int32_t)cycles_atend + 1;";
       o->newline(-2) << "#endif";
       // STP_TIMING requires min, max, avg (and thus count and sum) as well as variance.
-      o->newline(1) << "_stp_stat_add(g_refresh_timing, cycles_elapsed, 1, 1, 1, 1, 1);";
+      o->newline(1) << "preempt_disable();";
+      o->newline() << "_stp_stat_add(g_refresh_timing, cycles_elapsed, 1, 1, 1, 1, 1);";
+      o->newline() << "preempt_enable_no_resched();";      
       o->newline(-1) << "}";
       o->newline() << "#endif";
     }
