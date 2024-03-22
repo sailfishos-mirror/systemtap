@@ -4540,7 +4540,10 @@ dwflpp::blocklisted_p(interned_string funcname,
     {
       if (sess.verbose>1)
         clog << _(" - blocklisted");
-      if (sess.guru_mode)
+      // PR31500 never probe kernel __init or __kprobes functions
+      if (sess.guru_mode
+	  && !(module == TOK_KERNEL && blocklisted != dwflpp::blocklisted_section)
+	  && !(module == TOK_KERNEL && blocklisted != dwflpp::blocklisted_kprobes))
         {
           blocklisted = dwflpp::blocklisted_none;
           if (sess.verbose>1)
