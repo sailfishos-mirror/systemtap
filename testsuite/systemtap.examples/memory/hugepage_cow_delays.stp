@@ -2,7 +2,8 @@
 
 global huge_cow
 
-probe kernel.function("copy_user_huge_page").return
+probe kernel.function("copy_user_large_folio").return!,
+      kernel.function("copy_user_huge_page").return
 {
   huge_cow [execname(), pid()]
     <<< (gettimeofday_us() - @entry(gettimeofday_us()))
