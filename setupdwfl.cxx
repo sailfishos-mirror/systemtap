@@ -581,7 +581,9 @@ setup_dwfl_user(std::vector<std::string>::const_iterator &begin,
   DWFL_ASSERT("dwfl_begin", dwfl);
   dwfl_report_begin (dwfl);
 
+#ifdef HAVE_DEBUGINFOD
   setup_debuginfod_progress(dwfl);
+#endif
 
   Dwfl_Module *mod = NULL;
   // XXX: should support buildid-based naming
