@@ -34,8 +34,11 @@ extern "C" {
 #include <limits.h>
 #include <sys/utsname.h>
 #include <unistd.h>
-#include <elfutils/debuginfod.h>
 }
+
+#if defined(HAVE_LIBDEBUGINFOD)
+#include <elfutils/debuginfod.h>
+#endif
 
 // XXX: also consider adding $HOME/.debug/ for perf build-id-cache
 static const char *debuginfo_path_arr = "+:.debug:/usr/lib/debug:/var/cache/abrt-di/usr/lib/debug:build";
