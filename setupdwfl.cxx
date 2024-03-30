@@ -343,6 +343,7 @@ static char * path_insert_sysroot(string sysroot, string path)
   return path_new;
 }
 
+
 void debuginfo_path_insert_sysroot(string sysroot)
 {
   // FIXME: This is a short-term fix, until we expect sysroot paths to
@@ -356,10 +357,12 @@ void debuginfo_path_insert_sysroot(string sysroot)
   debuginfo_usr_path = path_insert_sysroot(sysroot, debuginfo_usr_path);
 }
 
+
+#if defined(HAVE_LIBDEBUGINFOD)
 static
 int
-debufginfod_progress (debuginfod_client *c,
-              long a, long b)
+debuginfod_progressfn (debuginfod_client *c,
+                       long a, long b)
 {
   // PR31368: Cancel the download in case Ctrl-C is hit.
   if (pending_interrupts > 0) {
@@ -408,8 +411,9 @@ setup_debuginfod_progress(Dwfl *dwfl)
 {
   debuginfod_client *c = dwfl_get_debuginfod_client (dwfl);
   if (c != NULL)
-    debuginfod_set_progressfn (c, debufginfod_progress);
+    debuginfod_set_progressfn (c, debuginfod_progressfn);
 }
+#endif
 
 
 static Dwfl *
@@ -419,8 +423,10 @@ setup_dwfl_kernel (unsigned *modules_found, systemtap_session &s)
   DWFL_ASSERT ("dwfl_begin", dwfl);
   dwfl_report_begin (dwfl);
 
+#ifdef HAVE_DEBUGINFOD
   setup_debuginfod_progress(dwfl);
-
+#endif
+  
   // We have a problem with -r REVISION vs -r BUILDDIR here.  If
   // we're running against a fedora/rhel style kernel-debuginfo
   // tree, s.kernel_build_tree is not the place where the unstripped
@@ -545,8 +551,10 @@ setup_dwfl_user(const std::string &name)
   DWFL_ASSERT("dwfl_begin", dwfl);
   dwfl_report_begin (dwfl);
 
+#ifdef HAVE_DEBUGINFOD
   setup_debuginfod_progress(dwfl);
-
+#endif
+  
   // XXX: should support buildid-based naming
   const char *cname = name.c_str();
   Dwfl_Module *mod = dwfl_report_offline (dwfl, cname, cname, -1);
