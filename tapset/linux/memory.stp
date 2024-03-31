@@ -304,6 +304,10 @@ probe vm.oom_kill = kernel.function("oom_kill_process") !,
 #define __GFP_HARDWALL   ((__force gfp_t)0x20000u)
 #endif
 
+#ifndef __GFP_WAIT
+#define __GFP_WAIT __GFP_RECLAIM
+#endif
+
 #ifndef GFP_TEMPORARY
 #define GFP_TEMPORARY  (__GFP_WAIT | __GFP_IO | __GFP_FS | \
                         __GFP_RECLAIMABLE)
@@ -488,8 +492,10 @@ probe __vm.kmem_cache_alloc.tp = kernel.trace("kmem_cache_alloc")
 {
 	call_site = $call_site
 	caller_function = symname(call_site)
-	bytes_req = $bytes_req
-	bytes_alloc = $bytes_alloc
+	bytes_req = @defined($s) ? @cast($s, "kmem_cache", "kernel")->object_size
+		  : $bytes_req
+	bytes_alloc = @defined($s) ? @cast($s, "kmem_cache", "kernel")->size
+		    : $bytes_alloc
 	gfp_flags = $gfp_flags
 	gfp_flag_name = __gfp_flag_str($gfp_flags)
 	ptr = $ptr
