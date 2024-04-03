@@ -1338,8 +1338,8 @@ probe nfsd.return = nfsd.open.return,
  * @access: indicates the type of open (read/write/commit/readdir...) 
  * @type: type of file (regular file or dir)
  */
-probe nfsd.open = kernel.function("nfsd_open") !,
-                  module("nfsd").function("nfsd_open") ?
+probe nfsd.open = kernel.function("nfsd_open@fs/nfsd/vfs.c") !,
+                  module("nfsd").function("nfsd_open@fs/nfsd/vfs.c") ?
 {
 	client_ip = addr_from_rqst_str($rqstp)
 	fh = __svc_fh($fhp)
@@ -1351,8 +1351,8 @@ probe nfsd.open = kernel.function("nfsd_open") !,
 	argstr = sprintf("access: %d type: %s", access, ftype(type))
 }
 
-probe nfsd.open.return = kernel.function("nfsd_open").return !,
-                         module("nfsd").function("nfsd_open").return ?
+probe nfsd.open.return = kernel.function("nfsd_open@fs/nfsd/vfs.c").return !,
+                         module("nfsd").function("nfsd_open@fs/nfsd/vfs.c").return ?
 {
 	client_ip = addr_from_rqst_str(@entry($rqstp))
 	fh = __svc_fh(@entry($fhp))
