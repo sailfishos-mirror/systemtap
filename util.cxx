@@ -224,6 +224,7 @@ create_dir(const char *dir, int mode)
   for (unsigned ix = 0; ix < limit; ++ix)
     {
       path += components[ix] + '/';
+      umask(0); mode=0777;
       if (mkdir(path.c_str (), mode) != 0 && errno != EEXIST)
 	return 1;
     }
@@ -1505,7 +1506,10 @@ is_valid_pid (pid_t pid, string& err_msg)
     }
   else if (kill(pid, 0) == -1)
     {
-      err_msg = _F("cannot probe pid %d: %s", pid, strerror(errno));
+      if (getuid() != 0)
+        err_msg = _F("cannot probe pid %d: %s.  Try re-running with 'stap --privileged'.", pid, strerror(errno));
+      else
+        err_msg = _F("cannot probe pid %d: %s", pid, strerror(errno));
       return false;
     }
   return true;

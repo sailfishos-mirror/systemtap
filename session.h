@@ -492,6 +492,8 @@ public:
   bool language_server_mode;
   language_server* lang_server;
 
+  bool privileged;
+
   // NB: It is very important for all of the above (and below) fields
   // to be cleared in the systemtap_session ctor (session.cxx).
 

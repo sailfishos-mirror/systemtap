@@ -194,6 +194,7 @@ systemtap_session::systemtap_session ():
   symbol_resolver = 0;
   lang_server = 0;
   language_server_mode = false;
+  privileged = false;
 
   // PR12443: put compiled-in / -I paths in front, to be preferred during 
   // tapset duplicate-file elimination
@@ -387,6 +388,7 @@ systemtap_session::systemtap_session (const systemtap_session& other,
   timeout = other.timeout;
   language_server_mode = other.language_server_mode;
   lang_server = other.lang_server;
+  privileged = other.privileged;
   // don't bother copy typequery_memo
 
   include_path = other.include_path;
@@ -757,6 +759,8 @@ systemtap_session::usage (int exitcode)
      "   --language-server\n"
      "              starts a systemtap language server\n"
 #endif
+     "   --privileged\n"
+     "              do not run pass 1-4 under unprivileged user\n"
     , compatible.c_str()) << endl
   ;
 
@@ -1709,6 +1713,10 @@ systemtap_session::parse_cmdline (int argc, char * const argv [])
   case LONG_OPT_LANGUAGE_SERVER:
     language_server_mode = true;
     break;
+
+	case LONG_OPT_PRIVILEGED:
+	  privileged = true;
+	  break;
 
 	case '?':
 	  // Invalid/unrecognized option given or argument required, but
@@ -2714,8 +2722,14 @@ systemtap_session::create_tmp_dir()
       //TRANSLATORS: we can't make the directory due to the error
       throw runtime_error(_F("cannot create temporary directory (\" %s \"): %s", tmpdirt.c_str(), e));
     }
-  else
-    tmpdir = tmpdir_name;
+  //else
+  tmpdir = tmpdir_name;
+  if ((getuid() == 0) || (geteuid() == 0))
+    if(chown(tmpdirt.c_str(), 159, 159) != 0)
+      {
+        cout << "ERROR: Failed to chown.  Terminating." << endl;
+        exit(1);
+      }
 }
 
 void

@@ -60,6 +60,7 @@ extern "C" {
 #include <wordexp.h>
 #include <ftw.h>
 #include <fcntl.h>
+#include <sys/wait.h>
 }
 
 using namespace std;
@@ -1371,6 +1372,10 @@ passes_0_4 (systemtap_session &s)
   return rc;
 }
  
+// Don't use this function, keep it in place as a sub.
+// Prepare pass_5_1() and pass_5_2() below instead.
+// TODO TODO TODO remove me ... TODO TODO TODO
+// This is still required by systemtap/interactive.cxx:805
 int
 pass_5 (systemtap_session &s, vector<remote*> targets)
 {
@@ -1386,6 +1391,60 @@ pass_5 (systemtap_session &s, vector<remote*> targets)
   PROBE1(stap, pass5__start, &s);
   if (s.verbose) clog << _("Pass 5: starting run.") << endl;
   int rc = remote::run(targets);
+  struct tms tms_after;
+  times (& tms_after);
+  unsigned _sc_clk_tck = sysconf (_SC_CLK_TCK);
+  struct timeval tv_after;
+  gettimeofday (&tv_after, NULL);
+  if (s.verbose) clog << _("Pass 5: run completed ")
+                      << TIMESPRINT
+                      << endl;
+
+  if (rc)
+    cerr << _("Pass 5: run failed.  [man error::pass5]") << endl;
+  else
+    // Interrupting pass-5 to quit is normal, so we want an EXIT_SUCCESS below.
+    pending_interrupts = 0;
+
+  PROBE1(stap, pass5__end, &s);
+
+  return rc;
+}
+
+
+// Unprivileged (PR30321) part of pass_5
+int
+pass_5_1 (systemtap_session &s, vector<remote*> targets)
+{
+  // PASS 5: RUN (part 1 - unprivileged)
+  s.verbose = s.perpass_verbose[4];
+  int rc;
+  // Prepare the staprun cmdline, but don't spawn it.
+  // Store staprun cmdline in s->tmpdir + "/staprun_args".
+  // Run under unprivileged user.
+  rc = remote::run1(targets);
+  return rc;
+}
+
+// Privileged (PR30321) part of pass_5
+int
+pass_5_2 (systemtap_session &s, vector<remote*> targets)
+{
+  // PASS 5: RUN (part 2 - privileged)
+  s.verbose = s.perpass_verbose[4];
+  struct tms tms_before;
+  times (& tms_before);
+  struct timeval tv_before;
+  gettimeofday (&tv_before, NULL);
+  // NB: this message is a judgement call.  The other passes don't emit
+  // a "hello, I'm starting" message, but then the others aren't interactive
+  // and don't take an indefinite amount of time.
+  PROBE1(stap, pass5__start, &s);
+  if (s.verbose) clog << _("Pass 5: starting run.") << endl;
+  // Spawn staprun with already prepared commandline.
+  // Retreive staprun cmdline in s->tmpdir + "/staprun_args".
+  // Run under privileged user.
+  int rc = remote::run2(targets);
   struct tms tms_after;
   times (& tms_after);
   unsigned _sc_clk_tck = sysconf (_SC_CLK_TCK);
@@ -1584,6 +1643,39 @@ main (int argc, char * const argv [])
       }
     else
       {
+
+// =============================================================================
+// PR30321: Privilege separation
+// Fork the stap process in two:  An unprivileged child, and a privileged parent
+// Child will run passes 1-4 and part of pass 5 (up to preparing staprun cmdline
+// Parent will wait, spawn staprun (second part of pass 5), and finish.
+// =============================================================================
+pid_t frkrc = fork();
+if (frkrc == -1)
+  {
+    cout << "ERROR: Fork failed.  Terminating..." << endl;
+    return EXIT_FAILURE;
+  }
+else if (frkrc == 0)
+  {
+    // Child process
+    if (s.privileged)
+      {
+        if (s.verbose > 1)
+          clog << "Passes 1-4 running in the privileged mode (--privileged)" << endl;
+      }
+    else
+      {
+        if(setreuid(159, 159) != 0)
+        //if(setreuid(1000, 1000) != 0)
+          {
+             clog << "ERROR: setreuid() failed" << endl;
+             return EXIT_FAILURE;
+          }
+        if (s.verbose > 1)
+          clog << "Passes 1-4 running in secure mode" << endl;
+      }
+
 	for (set<systemtap_session*>::iterator it = sessions.begin();
 	     rc == 0 && !pending_interrupts && it != sessions.end(); ++it)
 	  {
@@ -1627,9 +1719,28 @@ main (int argc, char * const argv [])
 	      }
 	  }
 
-	// Run pass 5, if requested
+	// Run pass 5, if requested (part 1/2 (unprivileged))
 	if (rc == 0 && s.have_script && s.last_pass >= 5 && ! pending_interrupts)
-	  rc = pass_5 (s, targets);
+            rc = pass_5_1 (s, targets);
+
+    // cout << "XXX Child finished running the unprivileged part, tmpdir is " << s.tmpdir << endl;
+    _exit(rc);
+  }
+else
+  {
+    // Parent process
+    // cout << "XXX Parent started waiting for the child ..." << endl;
+    // cout << "XXX parent pid=" << getpid() << ", uid=" << getuid() << ", euid=" << geteuid() << endl;
+    int wstatus;
+    (void)waitpid(frkrc, &wstatus, 0);
+    rc = WEXITSTATUS(wstatus);
+    // cout << "XXX Parent finished waiting for the child." << endl;
+  }
+
+        // Run pass 5, if requested (part 2/2 (privileged))
+        // cout << "XXX Parent about to execute staprun, tmpdir is " << s.tmpdir << endl;
+	if (rc == 0 && s.have_script && s.last_pass >= 5 && ! pending_interrupts)
+            rc = pass_5_2 (s, targets);
       }
 
     // Pass 6. Cleanup

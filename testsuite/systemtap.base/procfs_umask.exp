@@ -65,6 +65,6 @@ set systemtap_script {
 
 # test procfs umask probes
 set output_string "Testing permissions\r\nvalue=\"600\r\n\"\r\n"
-stap_run $test check_perm_val $output_string -e $systemtap_script -m $test 
+stap_run $test check_perm_val $output_string --privileged -e $systemtap_script -m $test 
 
 exec /bin/rm -f ${test}.ko

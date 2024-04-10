@@ -70,7 +70,7 @@ set script " \
 # If we're on a platform with uprobes not built in, we need to ensure first
 # that it is inserted. Let's run the script once and hope the uprobes.ko stays
 # inserted.
-set rc [catch {eval exec stap -m $modpath -e {$script} -c /bin/true} out]
+set rc [catch {eval exec stap --privileged -m $modpath -e {$script} -c /bin/true} out]
 if {$rc == 0 && [file exists "$modpath.ko"]} {
    pass "$test ko compile"
 } else {

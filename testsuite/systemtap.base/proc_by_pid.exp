@@ -30,10 +30,10 @@ foreach runtime [get_runtime_list] {
         set cur_test_name "$test_name ($runtime)"
 
         # Run stap with -x $PID
-        stap_run $cur_test_name no_load $output_string --runtime=$runtime $srcdir/$subdir/$test_name.stp -x [exp_pid -i $exe_id]
+        stap_run $cur_test_name no_load $output_string --privileged --runtime=$runtime $srcdir/$subdir/$test_name.stp -x [exp_pid -i $exe_id]
     } elseif {[uprobes_p]} {
         # Run stap with -x $PID
-        stap_run $test_name no_load $output_string $srcdir/$subdir/$test_name.stp -x [exp_pid -i $exe_id]
+        stap_run $test_name no_load $output_string --privileged $srcdir/$subdir/$test_name.stp -x [exp_pid -i $exe_id]
     } else {
         untested "$test_name (uprobes)"
     }

@@ -877,6 +877,13 @@ variables at the end of a stap session.
 Language server mode. Start a language server which will communicate via
 stdio. The language server will respect stap verbosity.
 
+.TP
+.B \-\-privileged
+Privileged mode.  By default, if stap was spawned by root, passes 1-4 will
+run under an unprivileged user to increase safety.  This approach, however,
+has limitations, such as accessing kallsyms or the /proc.  The privileged
+mode runs passes 1-4 under root, and so doesn't have said limitations.
+
 .SH ARGUMENTS
 
 Any additional arguments on the command line are passed to the script

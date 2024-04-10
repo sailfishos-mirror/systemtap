@@ -9,6 +9,9 @@ set -e
 MYTMPD=$( mktemp -d )
 MYSTPM=$MYTMPD/PR18462.stpm
 
+# Allow stap with privilege separation PR30321 access the tmpdir
+chmod 0777 $MYTMPD
+
 export SYSTEMTAP_TAPSET=$MYTMPD
 
 # basic tests

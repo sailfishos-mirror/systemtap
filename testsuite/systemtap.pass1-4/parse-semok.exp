@@ -19,6 +19,13 @@ if {[catch {exec mktemp -d -t staptestXXXXXX} tmpdir]} {
     return
 }
 
+# Relax the temporary directory acces rights so thet stap with
+# privilege separation PR30321 can access the .pN input files.
+if {[catch {exec chmod 0777 $tmpdir}]} {
+    verbose -log "Failed to chmod $tmpdir"
+    exit 1
+}
+
 # Notice that by default we're just testing the scripts in the
 # 'buildok' (pass 4) directory. If "verbose" is on, we also test the
 # scripts in the 'semok' (pass 2) and 'transok' (pass 3) directories.

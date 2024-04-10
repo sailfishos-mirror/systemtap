@@ -35,9 +35,11 @@ foreach test_script $test_scripts {
             continue
         } else {
             if { [regexp {1} $test_script] } { 
-                spawn stap -p2 -e $test_script $pid
+                # PR30321 requires --privileged below
+                spawn stap --privileged -p2 -e $test_script $pid
             } else {
-                spawn stap -p2 -e $test_script -x $pid
+                # PR30321 requires --privileged below
+                spawn stap --privileged -p2 -e $test_script -x $pid
             }
         }
         set exe_id2 $spawn_id
