@@ -214,12 +214,12 @@ if [ "x$git_repo_dir" != "x" ]; then #
         fi
         # Grab the linear git revision number
         git_build=`$GIT log --oneline | wc -l | $SED 's/^[ \t]*//'`
-        if [ "x$git_shaid" = "x" ]; then
+        if [ "x$git_build" = "x" ]; then
             git_errors="${git_errors+${git_errors}; }error running '$GIT log --oneline'"
         fi
         # Grab the "pretty" revision number
         git_pretty_rev=`$GIT describe --dirty --always --abbrev=8`
-        if [ "x$git_shaid" = "x" ]; then
+        if [ "x$git_pretty_rev" = "x" ]; then
             git_errors="${git_errors+${git_errors}; }error running '$GIT describe'"
         fi
         # Grab the commit timestamp
