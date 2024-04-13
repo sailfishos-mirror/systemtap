@@ -6,27 +6,81 @@ set script { \
   global val; \
   probe oneshot { \
     val[$1, $2] = $3; val[$4,$5] = $6 \
-    print("systemtap starting probe\nsystemtap ending probe\n"); \
+    print("startup ok\n"); \
     foreach (a=[b,c] in val[$7,$8]) {print(a)} \
     print(" end") \
   } \
 }
 
+proc array_slicing_subtest { TEST_NAME OUTPUT_CHECK_STRING args } {
+    if {[info procs installtest_p] != "" && ![installtest_p]} { untested $TEST_NAME; return }
+    set cmd [concat stap -v $args]
+    send_log "executing: $cmd\n"
+    eval spawn $cmd
+    set mypid [exp_pid -i $spawn_id]
+    expect {
+	-timeout 180
+	-re {^Pass\ ([1234]):[^\r]*\ in\ ([0-9]+)usr/([0-9]+)sys/([0-9]+)real\ ms\.\r\n}
+	{set pass$expect_out(1,string) "\t$expect_out(2,string)\t$expect_out(3,string)\t$expect_out(4,string)"; exp_continue}
+	-re {^Pass\ ([34]): using cached [^\r]+\r\n}
+	{set pass$expect_out(1,string) "\t0\t0\t0"; exp_continue}
+	-re {^Passes: via server [^\r]* using [^\r]* in [0-9]+usr/[0-9]+sys/[0-9]+real ms\.\r\n} {exp_continue}
+	-re {^Pass 5: starting run.\r\n} {exp_continue}
+	-re "^startup ok\r\n" {
+	    pass "$TEST_NAME startup"
+	    # check the output to see if it is sane
+	    set output "^$OUTPUT_CHECK_STRING"
+	    expect {
+		-timeout 20
+		-re  $output {
+		    pass "$TEST_NAME shutdown and output"
+		    expect {
+			-timeout -1
+			-re {^Pass\ ([5]):[^\r]*\ in\ ([0-9]+)usr/([0-9]+)sys/([0-9]+)real\ ms\.\r\n}
+			{set pass$expect_out(1,string) "\t$expect_out(2,string)\t$expect_out(3,string)\t$expect_out(4,string)"
+			    verbose -log "metric:\t$TEST_NAME $pass1$pass2$pass3$pass4$pass5"}
+	                -re {^WARNING: Missing unwind data for a module[^\r\n]*\r\n} {exp_continue}
+			default {
+			    fail "$TEST_NAME unexpected output (after passing output)"
+			}
+		    }
+		}
+		default {
+		    fail "$TEST_NAME unexpected output"
+		}
+		timeout {
+                    fail "$TEST_NAME shutdown (timeout)"
+                    kill -INT -$mypid
+                }
+		eof { fail "$TEST_NAME shutdown (eof)" }
+	    }
+	}
+	-re "semantic error:" { fail "$TEST_NAME compilation" }
+	timeout {
+            fail "$TEST_NAME startup (timeout)"
+            kill -INT -$mypid
+        }
+	eof { fail "$TEST_NAME startup (eof)" }
+    }
+  catch close
+  wait
+}
+
 # this is set up to act like a normal for loop
-stap_run "$test_name foreach (... val\[*, *\])" "" "11 end" -e $script 2 {"hello"} 1 1 {"hey"} 1 * *
+array_slicing_subtest "$test_name foreach (... val\[*, *\])" "11 end" -e $script 2 {"hello"} 1 1 {"hey"} 1 * *
 
 # testing foreach( a=[b,c] in val[int, int] )
-stap_run "$test_name foreach (... val\[int, int\])" "" "2 end"  -e $script 2 2 2 3 3 3 2 2
+array_slicing_subtest "$test_name foreach (... val\[int, int\])" "2 end"  -e $script 2 2 2 3 3 3 2 2
 
 # testing foreach( a=[b,c] in val[string, string] ), where there is a match
-stap_run "$test_name foreach (... val\[string, string\])" "" "1 end"  -e $script {"asdf"} {"jkl"} 1 {"fdsa"} {"lkj"} 2 {"asdf"} {"jkl"}
+array_slicing_subtest "$test_name foreach (... val\[string, string\])" "1 end"  -e $script {"asdf"} {"jkl"} 1 {"fdsa"} {"lkj"} 2 {"asdf"} {"jkl"}
 
 # testing foreach( a=[b,c] in val[variable, *] ), where there is a match
-stap_run "$test_name foreach (... val\[variable, *\])" "" "4 end"  -e $script 9 1 4 8 9 9 {val[8,9]} *
+array_slicing_subtest "$test_name foreach (... val\[variable, *\])" "4 end"  -e $script 9 1 4 8 9 9 {val[8,9]} *
 
 # testing foreach( a=[b,c] in val[string, variable/string] ), where
 # there is a match
-stap_run "$test_name foreach (... val\[variable, string\])" "" "asdf end"  -e $script {"hi"} {"hello"} {"asdf"} {"hi"} {"hi"} {"hello"} {"hi"} {val["hi","hi"]}
+array_slicing_subtest "$test_name foreach (... val\[variable, string\])" "asdf end"  -e $script {"hi"} {"hello"} {"asdf"} {"hi"} {"hi"} {"hello"} {"hi"} {val["hi","hi"]}
 
 # testing foreach(... val[c,d]){c++;d++}
 # in this case, expecting the c++ and d++ to not affect the c and d in
@@ -34,23 +88,23 @@ stap_run "$test_name foreach (... val\[variable, string\])" "" "asdf end"  -e $s
 set script { \
   global val, c=1, d=3; \
   probe oneshot { \
-    print("systemtap starting probe\nsystemtap ending probe\n"); \
+    print("startup ok\n"); \
     val[1,3]=5; val[2,3]=6; \
     foreach ([a,b] in val[c,d]){print(val[a,b]);c++;d++} \
   } \
 }
-stap_run "$test_name foreach (... val\[c,d\]) {c++;d++;}" "" "5" -e $script
+array_slicing_subtest "$test_name foreach (... val\[c,d\]) {c++;d++;}" "5" -e $script
 
 # testing foreach(.. val[expression, *])
 set script { \
   global val, c=1, d=2; \
   probe oneshot { \
-    print("systemtap starting probe\nsystemtap ending probe\n"); \
+    print("startup ok\n"); \
     val[1,3]=5; val[2,3]=6; \
     foreach ([a,b] in val[(c==d ? d : c), *]){print(val[a,b])} \
   } \
 }
-stap_run "$test_name foreach (... val\[expression,*\])" "" "5" -e $script
+array_slicing_subtest "$test_name foreach (... val\[expression,*\])" "5" -e $script
 
 # testing sorting in foreach loops
 set script { \
@@ -60,13 +114,13 @@ set script { \
     stats [1, 1] <<< 9; \
     stats [2, 1] <<< 2; stats [2, 1] <<< 6; \
     stats [23, 1] <<< 5; \
-    print("systemtap starting probe\nsystemtap ending probe\n"); \
+    print("startup ok\n"); \
     foreach (c=[a, b] in val[*,*]+) print(c); \
     foreach (c=[a, b] in val[*,*]-) print(c); \
     foreach ([a,b] in stats[*,1] @sum-) print(@sum(stats[a,b])); \
   } \
 }
-stap_run "$test_name foreach sorting" "" "1234554321985" -e $script
+array_slicing_subtest "$test_name foreach sorting" "1234554321985" -e $script
 
 
 # testing array slicing with delete statements
@@ -74,23 +128,23 @@ set script { \
   global val; \
   probe oneshot { \
     val[9, "hello"] = 9; val[300,"there"] = 6; \
-    print("systemtap starting probe\nsystemtap ending probe\n"); \
+    print("startup ok\n"); \
     delete val[$1, $2]; \
     print(val[9, "hello"]);print(val[300, "there"]); exit(); \
   } \
 }
 
 # testing delete val[*,*]
-stap_run "$test_name delete val\[*,*\]" "" "00" -e $script * *
+array_slicing_subtest "$test_name delete val\[*,*\]" "00" -e $script * *
 
 # testing delete val[*, string]
-stap_run "$test_name delete val\[*, string\]" "" "06" -e $script * {"hello"}
+array_slicing_subtest "$test_name delete val\[*, string\]" "06" -e $script * {"hello"}
 
 # testing delete val[int,*]
-stap_run "$test_name delete val\[int, *\]" "" "90" -e $script 300 *
+array_slicing_subtest "$test_name delete val\[int, *\]" "90" -e $script 300 *
 
 # testing delete val[expression,*]
-stap_run "$test_name delete val\[epression, *\]" "" "90" -e $script {(val[9,"hello"] == val[300,"there"] ? 9 : 300)} *
+array_slicing_subtest "$test_name delete val\[epression, *\]" "90" -e $script {(val[9,"hello"] == val[300,"there"] ? 9 : 300)} *
 
 # testing delete statements on pmaps
 set script { \
@@ -99,50 +153,50 @@ set script { \
     stats [1, 1] <<< 9; stats [1, 1] <<< 2; stats [1, 1] <<< 6; \
     stats [2, 2] <<< 1; \
     delete stats [1, *]; \
-    print("systemtap starting probe\nsystemtap ending probe\n"); \
+    print("startup ok\n"); \
     print (@count(stats[1, 1])); print(@count(stats[2,2])); \
   } \
 }
-stap_run "$test_name delete pmaps" "" "01" -e $script
+array_slicing_subtest "$test_name delete pmaps" "01" -e $script
 
 # testing membership, [*, *] in foo
 set script { \
   global val; \
   probe oneshot { \
     val[9,"hello"] = 9; val[300,"there"] = 6; \
-    print("systemtap starting probe\nsystemtap ending probe\n"); \
+    print("startup ok\n"); \
     if ([$1, $2] in val) { print("in");} else {print ("not in");} \
   } \
 }
 # testing membership [*,*]
-stap_run "$test_name membership \[*,*\] in val" "" "in" -e $script * *
+array_slicing_subtest "$test_name membership \[*,*\] in val" "in" -e $script * *
 
 # testing membership [*, string]
-stap_run "$test_name membership \[*, string\] in val" "" "in" -e $script * {"hello"}
+array_slicing_subtest "$test_name membership \[*, string\] in val" "in" -e $script * {"hello"}
 
 # testing membership [int,*]
-stap_run "$test_name membership \[int, *\] in val" "" "not in" -e $script 309 *
+array_slicing_subtest "$test_name membership \[int, *\] in val" "not in" -e $script 309 *
 
 # testing membership [expression,*]
-stap_run "$test_name membership \[expression,*\] in val" "" "not in" -e $script {(val[9, "hello"] == val[300, "there"]? 9 : 900)} *
+array_slicing_subtest "$test_name membership \[expression,*\] in val" "not in" -e $script {(val[9, "hello"] == val[300, "there"]? 9 : 900)} *
 
 # testing membership with pmaps
 set script { global stats \
   probe begin {stats[1,1] <<< 2; exit();} \
   probe end { \
-    print("systemtap starting probe\nsystemtap ending probe\n"); \
+    print("startup ok\n"); \
     print([1, *] in stats); print([2, *] in stats) \
   } \
 }
-stap_run "$test_name membership pmaps" "" "10" -e $script
+array_slicing_subtest "$test_name membership pmaps" "10" -e $script
 
 # testing membership with pmaps, to make sure it doesn't re-aggregate
 # in the loop
 set script { global stats \
   probe begin {stats[1,1] <<< 2; exit();} \
   probe end { \
-    print("systemtap starting probe\nsystemtap ending probe\n"); \
+    print("startup ok\n"); \
     foreach([x,y] in stats) print([1,*] in stats) \
   } \
 }
-stap_run "$test_name membership pmaps (2)" "" "1" -e $script
+array_slicing_subtest "$test_name membership pmaps (2)" "1" -e $script
