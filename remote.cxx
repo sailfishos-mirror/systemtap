@@ -172,11 +172,37 @@ class stapsh : public remote {
     string remote_version;
     size_t data_size;
     string target_stream;
+    vector<string> args;
 
     enum {
       STAPSH_READY, // ready to receive next command
       STAPSH_DATA   // currently printing data from a 'data' command
     } stream_state;
+
+    // Save the staprun commandline to a file, where the privileged
+    // parent process can find it and spawn staprun.
+    void put_args()
+      {
+        ofstream f(s->tmpdir + "/staprun_args");
+        if(f.fail())
+            cerr << "ERROR: Failed writing staprun_args." << endl;
+        for (vector<string>::iterator t=args.begin(); t!=args.end(); ++t)
+            f << *t << endl;
+        f.close();
+      }
+
+    // Retreive saved staprun commandline from the file.
+    // Feed the args vector.
+    void get_args()
+      {
+        ifstream f(s->tmpdir + "/staprun_args");
+        if(f.fail())
+          cerr << "ERROR: Failed reading staprun_args" << endl;
+        string l;
+        while(getline(f, l))
+          args.insert(args.end(), l);
+        f.close();
+      }
 
     virtual void prepare_poll(vector<pollfd>& fds)
       {
@@ -521,6 +547,22 @@ class stapsh : public remote {
               return rc;
           }
 
+        args = make_run_command(*s, ".", remote_version);
+
+        // PR13354: identify our remote index/url
+        if (strverscmp("1.7", remote_version.c_str()) <= 0 && // -r supported?
+            ! staprun_r_arg.empty())
+          {
+             if (s->runtime_mode == systemtap_session::dyninst_runtime)
+	       args.insert(args.end(), { "_stp_dyninst_remote=" +  staprun_r_arg});
+             else if (s->runtime_mode == systemtap_session::kernel_runtime)
+               args.insert(args.end(), { "-r", staprun_r_arg });
+	     // leave args empty for bpf_runtime
+          }
+
+        // Dump args to a file, where parent can read it.
+        put_args();
+
         return rc;
       }
 
@@ -529,21 +571,12 @@ class stapsh : public remote {
         // Send the staprun args
         // NB: The remote is left to decide its own staprun path
         ostringstream run("run", ios::out | ios::ate);
-        vector<string> cmd = make_run_command(*s, ".", remote_version);
 
-        // PR13354: identify our remote index/url
-        if (strverscmp("1.7", remote_version.c_str()) <= 0 && // -r supported?
-            ! staprun_r_arg.empty())
-          {
-             if (s->runtime_mode == systemtap_session::dyninst_runtime)
-	       cmd.insert(cmd.end(), { "_stp_dyninst_remote=" +  staprun_r_arg});
-             else if (s->runtime_mode == systemtap_session::kernel_runtime)
-               cmd.insert(cmd.end(), { "-r", staprun_r_arg });
-	     // leave args empty for bpf_runtime
-          }
+        if (args.size() == 0)
+          get_args();
 
-        for (unsigned i = 1; i < cmd.size(); ++i)
-          run << ' ' << qpencode(cmd[i]);
+        for (unsigned i = 1; i < args.size(); ++i)
+          run << ' ' << qpencode(args[i]);
         run << '\n';
 
         int rc = send_command(run.str());
