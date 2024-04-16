@@ -86,9 +86,9 @@ class direct : public remote {
     // parent process can find it and spawn staprun.
     void put_args()
       {
-        ofstream f(s->tmpdir + "/staprun_args");
+        ofstream f(s->tmpdir + "/staprun_args_direct");
         if(f.fail())
-            cerr << "ERROR: Failed writing staprun_args." << endl;
+            cerr << "ERROR: Failed writing staprun_args_direct." << endl;
         for (vector<string>::iterator t=args.begin(); t!=args.end(); ++t)
             f << *t << endl;
         f.close();
@@ -98,9 +98,9 @@ class direct : public remote {
     // Feed the args vector.
     void get_args()
       {
-        ifstream f(s->tmpdir + "/staprun_args");
+        ifstream f(s->tmpdir + "/staprun_args_direct");
         if(f.fail())
-          cerr << "ERROR: Failed reading staprun_args" << endl;
+          cerr << "ERROR: Failed reading staprun_args_direct" << endl;
         string l;
         while(getline(f, l))
           args.insert(args.end(), l);
@@ -183,9 +183,9 @@ class stapsh : public remote {
     // parent process can find it and spawn staprun.
     void put_args()
       {
-        ofstream f(s->tmpdir + "/staprun_args");
+        ofstream f(s->tmpdir + "/staprun_args_stapsh");
         if(f.fail())
-            cerr << "ERROR: Failed writing staprun_args." << endl;
+            cerr << "ERROR: Failed writing staprun_args_stapsh." << endl;
         for (vector<string>::iterator t=args.begin(); t!=args.end(); ++t)
             f << *t << endl;
         f.close();
@@ -195,9 +195,9 @@ class stapsh : public remote {
     // Feed the args vector.
     void get_args()
       {
-        ifstream f(s->tmpdir + "/staprun_args");
+        ifstream f(s->tmpdir + "/staprun_args_stapsh");
         if(f.fail())
-          cerr << "ERROR: Failed reading staprun_args" << endl;
+          cerr << "ERROR: Failed reading staprun_args_stapsh" << endl;
         string l;
         while(getline(f, l))
           args.insert(args.end(), l);
