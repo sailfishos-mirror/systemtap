@@ -67,11 +67,19 @@
 #elif defined (__s390__) || defined (__s390x__)
 
 #ifndef __s390x__
+#ifndef PSW_ADDR_AMODE
 #define PSW_ADDR_AMODE	0x80000000UL
+#endif
+#ifndef PSW_ADDR_INSN
 #define PSW_ADDR_INSN	0x7FFFFFFFUL
+#endif
 #else /* __s390x__ */
+#ifndef PSW_ADDR_AMODE
 #define PSW_ADDR_AMODE	0x0000000000000000UL
+#endif
+#ifndef PSW_ADDR_INSN
 #define PSW_ADDR_INSN	0xFFFFFFFFFFFFFFFFUL
+#endif
 #endif /* __s390x__ */
 #define REG_IP(regs)	(((regs)->psw.addr) & PSW_ADDR_INSN)
 #define REG_SP(regs)	(regs)->gprs[15]
