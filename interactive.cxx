@@ -33,6 +33,7 @@ extern "C" {
 #include <readline/readline.h>
 #include <readline/history.h>
 #include <ctype.h>
+#include <sys/wait.h>
 
 #if HAVE_LIBSQLITE3
   #include <sqlite3.h>
@@ -42,8 +43,12 @@ extern "C" {
 // FIXME: these declarations don't really belong here.
 extern int
 passes_0_4 (systemtap_session &s);
+// extern int
+// pass_5 (systemtap_session &s, vector<remote*> targets);
 extern int
-pass_5 (systemtap_session &s, vector<remote*> targets);
+pass_5_1 (systemtap_session &s, vector<remote*> targets);
+extern int
+pass_5_2 (systemtap_session &s, vector<remote*> targets);
 
 static int
 forked_passes_0_4 (systemtap_session &s);
@@ -802,7 +807,61 @@ public:
 
     // Run pass 5, if passes 0-4 worked.
     if (rc == 0 && s.last_pass >= 5 && !pending_interrupts)
-      rc = pass_5 (s, *saved_targets);
+    {
+      // =============================================================================
+      // PR30321: Privilege separation
+      // Fork the stap process in two:  An unprivileged child, and a privileged parent
+      // Child will run passes 1-4 and part of pass 5 (up to preparing staprun cmdline
+      // Parent will wait, spawn staprun (second part of pass 5), and finish.
+      // =============================================================================
+      pid_t frkrc = fork();
+      if (frkrc == -1)
+      {
+        clog << "ERROR: Fork failed.  Terminating..." << endl;
+        return EXIT_FAILURE;
+      }
+      else if (frkrc == 0)
+      {
+        // Child process (unprivileged)
+        if (s.privileged)
+        {
+          if (s.verbose > 1)
+            clog << "Passes 1-4 running in the privileged mode (--privileged)" << endl;
+        }
+        else
+        {
+          if(setreuid(159, 159) != 0)
+          {
+             clog << "ERROR: setreuid() failed" << endl;
+             return EXIT_FAILURE;
+          }
+          if (s.verbose > 1)
+            clog << "Passes 1-4 running in secure mode" << endl;
+        }
+        if (s.verbose > 2)
+        {
+          clog << "Child started ..." << endl;
+          clog << "Child pid=" << getpid() << ", uid=" << getuid() << ", euid=" << geteuid() << endl;
+        }
+        rc = pass_5_1 (s, *saved_targets);
+        _exit(rc);
+      }
+      else
+      {
+        // Parent process (privileged)
+        if (s.verbose > 2)
+        {
+          clog << "Parent started waiting for the child ..." << endl;
+          clog << "Parent pid=" << getpid() << ", uid=" << getuid() << ", euid=" << geteuid() << endl;
+        }
+        int wstatus;
+        (void)waitpid(frkrc, &wstatus, 0);
+        rc = WEXITSTATUS(wstatus);
+        if (s.verbose > 2)
+            clog << "Parent finished waiting for the child." << endl;
+      }
+      rc = pass_5_2 (s, *saved_targets);
+    }
     s.reset_tmp_dir();
     return false;
   }

@@ -1372,47 +1372,7 @@ passes_0_4 (systemtap_session &s)
   return rc;
 }
  
-// Don't use this function, keep it in place as a sub.
-// Prepare pass_5_1() and pass_5_2() below instead.
-// TODO TODO TODO remove me ... TODO TODO TODO
-// This is still required by systemtap/interactive.cxx:805
-int
-pass_5 (systemtap_session &s, vector<remote*> targets)
-{
-  // PASS 5: RUN
-  s.verbose = s.perpass_verbose[4];
-  struct tms tms_before;
-  times (& tms_before);
-  struct timeval tv_before;
-  gettimeofday (&tv_before, NULL);
-  // NB: this message is a judgement call.  The other passes don't emit
-  // a "hello, I'm starting" message, but then the others aren't interactive
-  // and don't take an indefinite amount of time.
-  PROBE1(stap, pass5__start, &s);
-  if (s.verbose) clog << _("Pass 5: starting run.") << endl;
-  int rc = remote::run(targets);
-  struct tms tms_after;
-  times (& tms_after);
-  unsigned _sc_clk_tck = sysconf (_SC_CLK_TCK);
-  struct timeval tv_after;
-  gettimeofday (&tv_after, NULL);
-  if (s.verbose) clog << _("Pass 5: run completed ")
-                      << TIMESPRINT
-                      << endl;
-
-  if (rc)
-    cerr << _("Pass 5: run failed.  [man error::pass5]") << endl;
-  else
-    // Interrupting pass-5 to quit is normal, so we want an EXIT_SUCCESS below.
-    pending_interrupts = 0;
-
-  PROBE1(stap, pass5__end, &s);
-
-  return rc;
-}
-
-
-// Unprivileged (PR30321) part of pass_5
+// Unprivileged (PR30321) part of pass 5
 int
 pass_5_1 (systemtap_session &s, vector<remote*> targets)
 {
@@ -1426,7 +1386,7 @@ pass_5_1 (systemtap_session &s, vector<remote*> targets)
   return rc;
 }
 
-// Privileged (PR30321) part of pass_5
+// Privileged (PR30321) part of pass 5
 int
 pass_5_2 (systemtap_session &s, vector<remote*> targets)
 {
@@ -1653,7 +1613,7 @@ main (int argc, char * const argv [])
 pid_t frkrc = fork();
 if (frkrc == -1)
   {
-    cout << "ERROR: Fork failed.  Terminating..." << endl;
+    clog << "ERROR: Fork failed.  Terminating..." << endl;
     return EXIT_FAILURE;
   }
 else if (frkrc == 0)
@@ -1667,7 +1627,6 @@ else if (frkrc == 0)
     else
       {
         if(setreuid(159, 159) != 0)
-        //if(setreuid(1000, 1000) != 0)
           {
              clog << "ERROR: setreuid() failed" << endl;
              return EXIT_FAILURE;
@@ -1720,25 +1679,35 @@ else if (frkrc == 0)
 	  }
 
 	// Run pass 5, if requested (part 1/2 (unprivileged))
+        if (s.verbose > 2)
+        {
+          clog << "Child started ..." << endl;
+          clog << "Child pid=" << getpid() << ", uid=" << getuid() << ", euid=" << geteuid() << endl;
+        }
 	if (rc == 0 && s.have_script && s.last_pass >= 5 && ! pending_interrupts)
             rc = pass_5_1 (s, targets);
-
-    // cout << "XXX Child finished running the unprivileged part, tmpdir is " << s.tmpdir << endl;
+    if (s.verbose > 2)
+      clog << "Child finished running the unprivileged part of pass 5, tmpdir is " << s.tmpdir << endl;
     _exit(rc);
   }
 else
   {
     // Parent process
-    // cout << "XXX Parent started waiting for the child ..." << endl;
-    // cout << "XXX parent pid=" << getpid() << ", uid=" << getuid() << ", euid=" << geteuid() << endl;
+    if (s.verbose > 2)
+    {
+      clog << "Parent started waiting for the child ..." << endl;
+      clog << "Parent pid=" << getpid() << ", uid=" << getuid() << ", euid=" << geteuid() << endl;
+    }
     int wstatus;
     (void)waitpid(frkrc, &wstatus, 0);
     rc = WEXITSTATUS(wstatus);
-    // cout << "XXX Parent finished waiting for the child." << endl;
+    if (s.verbose > 2)
+      clog << "Parent finished waiting for the child." << endl;
   }
 
         // Run pass 5, if requested (part 2/2 (privileged))
-        // cout << "XXX Parent about to execute staprun, tmpdir is " << s.tmpdir << endl;
+        if (s.verbose > 2)
+          clog << "Parent about to execute staprun, tmpdir is " << s.tmpdir << endl;
 	if (rc == 0 && s.have_script && s.last_pass >= 5 && ! pending_interrupts)
             rc = pass_5_2 (s, targets);
       }
