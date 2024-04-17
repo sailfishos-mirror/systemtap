@@ -157,25 +157,48 @@ probe nfs.fop.return
 # nfs.aop.* probes
 #
 
-probe nfs.aop.readpage {
+probe nfs.aop.readpage ? {
 	printf("%s(%s)\n", name, argstr)
 	printf("%d %d %d\n", __page, dev, ino)
 	printf("%d %d\n", i_flag, i_size)
 	printf("%d %d %d\n", sb_flag, file, __inode)
 	printf("%d %s\n", size, units)
 }
-probe nfs.aop.readpage.return {
+probe nfs.aop.readpage.return ? {
 	printf("%s(%s)\n", name, retstr)
 	printf("%d %s\n", size, units)
 }
 
-probe nfs.aop.readpages {
+probe nfs.aop.read_folio ? {
+	printf("%s(%s)\n", name, argstr)
+	printf("%d %d %d\n", __page, dev, ino)
+	printf("%d %d\n", i_flag, i_size)
+	printf("%d %d %d\n", sb_flag, file, __inode)
+	printf("%d %s\n", size, units)
+}
+probe nfs.aop.read_folio.return ? {
+	printf("%s(%s)\n", name, retstr)
+	printf("%d %s\n", size, units)
+}
+
+probe nfs.aop.readpages ? {
 	printf("%s(%s)\n", name, argstr)
 	printf("%d %d\n", dev, ino)
 	printf("%d %d %d\n", file, rpages, rsize)
 	printf("%d %s\n", size, units)
 }
-probe nfs.aop.readpages.return {
+probe nfs.aop.readpages.return ? {
+	printf("%s(%s)\n", name, retstr)
+	printf("%d %s\n", size, units)
+}
+
+probe nfs.aop.readahead ? {
+	printf("%s(%s)\n", name, argstr)
+	printf("%d %d\n", dev, ino)
+	printf("%d %d %d\n", file, rpages, rsize)
+	printf("%d %s\n", size, units)
+}
+probe nfs.aop.readahead.return ? {
 	printf("%s(%s)\n", name, retstr)
 	printf("%d %s\n", size, units)
 }
