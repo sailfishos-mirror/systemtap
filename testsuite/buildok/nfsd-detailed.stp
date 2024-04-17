@@ -18,14 +18,14 @@ probe nfsd.dispatch.return
 # nfsd.proc*.lookup tests
 #
 
-probe nfsd.proc2.lookup, nfsd.proc3.lookup, nfsd.proc4.lookup ?
+probe nfsd.proc2.lookup ?, nfsd.proc3.lookup, nfsd.proc4.lookup ?
 {
 	printf("%s(%s)\n", name, argstr)
 	printf("%s %d %d %d\n", client_ip, proto, version, fh)
 	printf("%d %s\n", filelen, filename)
 	printf("%d %d\n", uid, gid)
 }
-probe nfsd.proc2.lookup.return, nfsd.proc3.lookup.return,
+probe nfsd.proc2.lookup.return ?, nfsd.proc3.lookup.return,
       nfsd.proc4.lookup.return ?
 {
 	printf("%s(%s) %d\n", name, retstr, version)
@@ -44,7 +44,7 @@ probe nfsd.proc.lookup.return
 # nfsd.proc*.read tests
 #
 
-probe nfsd.proc2.read, nfsd.proc3.read, nfsd.proc4.read ?
+probe nfsd.proc2.read ?, nfsd.proc3.read, nfsd.proc4.read ?
 {
 	printf("%s(%s)\n", name, argstr)
 	printf("%s %d %d %d\n", client_ip, proto, version, fh)
@@ -52,7 +52,7 @@ probe nfsd.proc2.read, nfsd.proc3.read, nfsd.proc4.read ?
 	printf("%d %s\n", size, units)
 	printf("%d %d\n", uid, gid)
 }
-probe nfsd.proc2.read.return, nfsd.proc3.read.return,
+probe nfsd.proc2.read.return ?, nfsd.proc3.read.return,
       nfsd.proc4.read.return ?
 {
 	printf("%s(%s) %d\n", name, retstr, version)
@@ -71,7 +71,7 @@ probe nfsd.proc.read.return
 # nfsd.proc*.write tests
 #
 
-probe nfsd.proc2.write, nfsd.proc3.write, nfsd.proc4.write ?
+probe nfsd.proc2.write ?, nfsd.proc3.write, nfsd.proc4.write ?
 {
 	printf("%s(%s)\n", name, argstr)
 	printf("%s %d %d %d\n", client_ip, proto, version, fh)
@@ -79,7 +79,7 @@ probe nfsd.proc2.write, nfsd.proc3.write, nfsd.proc4.write ?
 	printf("%d %s\n", size, units)
 	printf("%d %d\n", uid, gid)
 }
-probe nfsd.proc2.write.return, nfsd.proc3.write.return,
+probe nfsd.proc2.write.return ?, nfsd.proc3.write.return,
       nfsd.proc4.write.return ?
 {
 	printf("%s(%s) %d\n", name, retstr, version)
@@ -124,7 +124,7 @@ probe nfsd.proc.commit.return
 # nfsd.proc*.create tests
 #
 
-probe nfsd.proc2.create, nfsd.proc3.create, nfsd.proc4.create ?
+probe nfsd.proc2.create ?, nfsd.proc3.create, nfsd.proc4.create ?
 {
 	printf("%s(%s)\n", name, argstr)
 	printf("%s %d %d %d\n", client_ip, proto, version, fh)
@@ -150,7 +150,7 @@ probe nfsd.proc.create.return
 # nfsd.proc*.remove tests
 #
 
-probe nfsd.proc2.remove, nfsd.proc3.remove, nfsd.proc4.remove ?
+probe nfsd.proc2.remove ?, nfsd.proc3.remove, nfsd.proc4.remove ?
 {
 	printf("%s(%s)\n", name, argstr)
 	printf("%s %d %d %d\n", client_ip, proto, version, fh)
@@ -175,7 +175,7 @@ probe nfsd.proc.remove.return
 # nfsd.proc*.rename tests
 #
 
-probe nfsd.proc2.rename, nfsd.proc3.rename, nfsd.proc4.rename ?
+probe nfsd.proc2.rename ?, nfsd.proc3.rename, nfsd.proc4.rename ?
 {
 	printf("%s(%s)\n", name, argstr)
 	printf("%s %d %d %d %d\n", client_ip, proto, version, fh, tfh)
@@ -183,7 +183,7 @@ probe nfsd.proc2.rename, nfsd.proc3.rename, nfsd.proc4.rename ?
 	printf("%d %s\n", tlen, tname)
 	printf("%d %d\n", uid, gid)
 }
-probe nfsd.proc3.rename.return, nfsd.proc3.rename.return,
+probe nfsd.proc2.rename.return?, nfsd.proc3.rename.return,
       nfsd.proc4.rename.return ?
 {
 	printf("%s(%s) %d\n", name, retstr, version)
