@@ -830,7 +830,7 @@ public:
         }
         else
         {
-          if(setreuid(159, 159) != 0)
+          if(setreuid(UNPRIVILEGED_USER, UNPRIVILEGED_GROUP) != 0)
           {
              clog << "ERROR: setreuid() failed" << endl;
              return EXIT_FAILURE;

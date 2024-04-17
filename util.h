@@ -68,6 +68,10 @@ extern "C" {
 #define SEMANTIC_ERROR(...) semantic_error(ERR_SRC, __VA_ARGS__)
 #define PARSE_ERROR(...) parse_error(ERR_SRC, __VA_ARGS__)
 
+// PR30321 User and group created within specfile
+#define UNPRIVILEGED_USER 159
+#define UNPRIVILEGED_GROUP 159
+
 const char *get_home_directory(void);
 size_t get_file_size(const std::string &path);
 size_t get_file_size(int fd);
