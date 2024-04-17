@@ -452,7 +452,8 @@ probe nfs.fop.read_iter = kernel.function ("nfs_file_read") !,
 	devname = kernel_string(s_id)
 
 	pos = $to->iov_offset
-	count = __iov_length($to->iov, $to->nr_segs, 0, @const("VERIFY_READ"))
+	count = __iov_length(@choose_defined($to->iov,$to->__iov),
+			     $to->nr_segs, 0, @const("VERIFY_READ"))
 
         parent_name = __file_parentname($iocb->ki_filp)
         file_name = __file_filename($iocb->ki_filp)
@@ -584,7 +585,8 @@ probe nfs.fop.write_iter = kernel.function("nfs_file_write") !,
 	devname = kernel_string(s_id)
 
         pos = $from->iov_offset
-	count = __iov_length($from->iov, $from->nr_segs, 0, @const("VERIFY_READ"))
+	count = __iov_length(@choose_defined($from->iov, $from->__iov),
+			     $from->nr_segs, 0, @const("VERIFY_READ"))
                
         parent_name = __file_parentname($iocb->ki_filp)
         file_name = __file_filename($iocb->ki_filp)
@@ -888,8 +890,18 @@ probe nfs.fop.check_flags.return =
         retstr = sprintf("%d", $return)
 }
 
-probe nfs.aop.entries = nfs.aop.readpage,
-                        nfs.aop.readpages,
+probe nfs.aop.read_page_folio = nfs.aop.readpage !,
+                        nfs.aop.readfolio
+{
+}
+
+probe nfs.aop.read_pages_ahead = nfs.aop.readpages !,
+                        nfs.aop.readahead
+{
+}
+
+probe nfs.aop.entries = nfs.aop.read_page_folio,
+                        nfs.aop.read_pages_ahead,
                         nfs.aop.writepage,
                         nfs.aop.writepages,
                         nfs.aop.release_page ?,
@@ -898,8 +910,18 @@ probe nfs.aop.entries = nfs.aop.readpage,
 {
 }
  
-probe nfs.aop.return = nfs.aop.readpage.return,
-                        nfs.aop.readpages.return,
+probe nfs.aop.read_page_folio.return = nfs.aop.readpage.return !,
+                        nfs.aop.readfolio.return
+{
+}
+
+probe nfs.aop.read_pages_ahead.return = nfs.aop.readpages.return !,
+                        nfs.aop.readahead.return
+{
+}
+
+probe nfs.aop.return = nfs.aop.read_page_folio.return,
+                        nfs.aop.read_pages_ahead.return,
                         nfs.aop.writepage.return,
                         nfs.aop.writepages.return,
                         nfs.aop.release_page.return ?,
@@ -926,7 +948,7 @@ probe nfs.aop.return = nfs.aop.readpage.return,
  * read operation failed
  */
 probe nfs.aop.readpage = kernel.function ("nfs_readpage") !,
-                         module("nfs").function ("nfs_readpage")
+                         module("nfs").function ("nfs_readpage") ?
 {
         __page = $page
         dev = __page_dev(__page)
@@ -951,7 +973,7 @@ probe nfs.aop.readpage = kernel.function ("nfs_readpage") !,
 }
 
 probe nfs.aop.readpage.return = kernel.function ("nfs_readpage").return !,
-                                module("nfs").function ("nfs_readpage").return
+                                module("nfs").function ("nfs_readpage").return ?
 {
         name = "nfs.aop.readpage.return"
         retstr = sprintf("%d", $return)
@@ -964,7 +986,7 @@ probe nfs.aop.readpage.return = kernel.function ("nfs_readpage").return !,
  * probe nfs.aop.readfolio
  */
 probe nfs.aop.readfolio = kernel.function ("nfs_read_folio") !,
-                         module("nfs").function ("nfs_read_folio")
+                         module("nfs").function ("nfs_read_folio") ?
 {
         folio = $folio
         file = $file
@@ -974,7 +996,7 @@ probe nfs.aop.readfolio = kernel.function ("nfs_read_folio") !,
 }
 
 probe nfs.aop.readfolio.return = kernel.function ("nfs_read_folio").return !,
-                                 module("nfs").function ("nfs_read_folio").return
+                                 module("nfs").function ("nfs_read_folio").return ?
 {
         name = "nfs.aop.readfolio.return"
         retstr = sprintf("%d", $return)
@@ -994,7 +1016,7 @@ probe nfs.aop.readfolio.return = kernel.function ("nfs_read_folio").return !,
  * Fires when in readahead way, read several pages once
  */
 probe nfs.aop.readpages = kernel.function ("nfs_readpages") !,
-                          module("nfs").function ("nfs_readpages")
+                          module("nfs").function ("nfs_readpages") ?
 {
         dev = $mapping->host->i_sb->s_dev
         ino = $mapping->host->i_ino
@@ -1013,7 +1035,7 @@ probe nfs.aop.readpages = kernel.function ("nfs_readpages") !,
 }
 
 probe nfs.aop.readpages.return = kernel.function ("nfs_readpages").return !,
-                                 module("nfs").function ("nfs_readpages").return
+                                 module("nfs").function ("nfs_readpages").return ?
 {
         name = "nfs.aop.readpages.return"
         retstr = sprintf("%d", $return)
@@ -1022,6 +1044,48 @@ probe nfs.aop.readpages.return = kernel.function ("nfs_readpages").return !,
             size = $return
         }
         units = "pages"
+}
+
+/**
+ * probe nfs.aop.readahead - NFS client reading multiple pages
+ * @dev: device identifier
+ * @ino: inode number
+ * @nr_pages: number of pages attempted to read in this execution
+ * @file: filp argument
+ * @rpages: read size (in pages)
+ * @rsize: read size (in bytes)
+ * @size: number of pages attempted to read in this execution
+ *
+ * Fires when in readahead way, read several pages once
+ */
+probe nfs.aop.readahead = kernel.function ("nfs_readahead") !,
+                          module("nfs").function ("nfs_readahead") ?
+{
+        dev = $ractl->mapping->host->i_sb->s_dev
+        ino = $ractl->mapping->host->i_ino
+
+        nr_pages = $ractl->mapping->nrpages
+        file = $ractl->file;
+
+        rpages = __nfs_rpages($ractl->mapping->host)
+        rsize  = __nfs_server_rsize($ractl->mapping->host)
+
+        name = "nfs.aop.readahead"
+        argstr = sprintf("%d", nr_pages)
+
+        size = nr_pages
+        units = "pages"
+}
+
+probe nfs.aop.readahead.return = kernel.function ("nfs_readahead").return !,
+                                 module("nfs").function ("nfs_readahead").return ?
+{
+        name = "nfs.aop.readahead.return"
+	retstr = "N/A"
+	// This is attempted size rather and does not filter out
+	// the cases where an error occurred.
+        size = @entry($ractl->mapping->nrpages)
+	units = "pages"
 }
 
 /**
