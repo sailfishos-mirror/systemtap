@@ -139,6 +139,7 @@ std::string autosprintf(const char* format, ...) __attribute__ ((format (printf,
 const std::set<std::string>& localization_variables();
 std::string get_self_path();
 bool is_valid_pid (pid_t pid, std::string& err_msg);
+int run_unprivileged();
 
 // stringification generics
 

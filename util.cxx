@@ -1901,4 +1901,29 @@ get_distro_info(vector<string> &info)
     return false;
 }
 
+// PR30321: Privilege separation
+int
+run_unprivileged()
+{
+    int ret;
+    // Do nothing for user other than root.
+    if (getuid() != 0)
+        return EXIT_SUCCESS;
+
+    ret = setregid(UNPRIVILEGED_GROUP, UNPRIVILEGED_GROUP);
+    if (ret != 0) {
+        clog << "ERROR: setregid() failed" << endl;
+        clog << strerror (errno) << endl;
+        return EXIT_FAILURE;
+    }
+    ret = setreuid(UNPRIVILEGED_USER, UNPRIVILEGED_USER);
+    if (ret != 0) {
+        clog << "ERROR: setreuid() failed" << endl;
+        clog << strerror (errno) << endl;
+        return EXIT_FAILURE;
+    }
+    return EXIT_SUCCESS;
+}
+
+
 /* vim: set sw=2 ts=8 cino=>4,n-2,{2,^-2,t0,(0,u0,w1,M1 : */

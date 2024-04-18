@@ -830,18 +830,20 @@ public:
         }
         else
         {
-          if(setreuid(UNPRIVILEGED_USER, UNPRIVILEGED_GROUP) != 0)
-          {
-             clog << "ERROR: setreuid() failed" << endl;
-             return EXIT_FAILURE;
-          }
+          // Start running under an unprivileged user
+          rc = run_unprivileged();
+          if (rc != EXIT_SUCCESS)
+            return rc;
+
           if (s.verbose > 1)
             clog << "Passes 1-4 running in secure mode" << endl;
         }
         if (s.verbose > 2)
         {
           clog << "Child started ..." << endl;
-          clog << "Child pid=" << getpid() << ", uid=" << getuid() << ", euid=" << geteuid() << endl;
+          clog << "Child pid=" << getpid() <<
+                      ", uid=" << getuid() << ", euid=" << geteuid() <<
+                      ", gid=" << getgid() << ", egid=" << getegid() <<endl;
         }
         rc = pass_5_1 (s, *saved_targets);
         _exit(rc);
