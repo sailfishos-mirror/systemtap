@@ -435,9 +435,26 @@ location_context::translate (const Dwarf_Op *expr, const size_t len,
 	    }
 	    break;
 
-	    /* Control flow operations.  */
+	  /* Control flow operations.  */
+	  case DW_OP_bra:
+	    {
+	      POP(taken)
+	      if (taken == 0)
+	        break;
+	    }
+	    /* FALLTHROUGH */
+
 	  case DW_OP_skip:
 	    {
+	      /* A backward branch could lead to an infinite loop.  So
+		 punt it until we find we actually need it.
+
+		 To support backward branches, we could copy the stack,
+		 recurse, and place both traces in arms of a
+		 ternary_expression.  */
+	      if ((Dwarf_Sword) expr[i].number < 0)
+		DIE("backward branch in DW_OP operation not supported");
+
 	      Dwarf_Off target = expr[i].offset + 3 + expr[i].number;
 	      while (i + 1 < len && expr[i + 1].offset < target)
 		++i;
@@ -445,13 +462,6 @@ location_context::translate (const Dwarf_Op *expr, const size_t len,
 		DIE ("invalid skip target");
 	      break;
 	    }
-
-	  case DW_OP_bra:
-	    // ??? Could copy the stack, recurse, and place both
-	    // traces in arms of a ternary_expression.  No point
-	    // in doing that if this is never used, however.
-	    DIE ("conditional branches not supported");
-	    break;
 
 	    /* Memory access.  */
 	  case DW_OP_deref:
