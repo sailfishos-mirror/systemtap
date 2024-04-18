@@ -191,7 +191,9 @@ copy_file(const string& src, const string& dest, bool verbose)
 
 error:
   cerr << _F("Copy failed (\"%s\" to \"%s\"): %s", src.c_str(),
-             dest.c_str(), strerror(errno)) << endl;
+             dest.c_str(), strerror(errno))
+       << ((getuid() == UNPRIVILEGED_USER) ?
+           _(". Try running stap --privileged") : "") << endl;
   return false;
 }
 
