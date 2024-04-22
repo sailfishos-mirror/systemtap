@@ -51,7 +51,7 @@ proc stap_list {pp {exp ""} {nlines_exp 1} {arguments ""}} {
    }
 
    verbose -log "executing: stap -l $pp $arguments"
-   catch {eval exec stap -l $pp $arguments} out
+   catch {eval exec stap --privileged -l $pp $arguments} out
    set n 0
    foreach line [split $out "\n"] {
       if {$is_regex} {
