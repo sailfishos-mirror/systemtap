@@ -3,7 +3,7 @@ set test "sysroot_sysenv"
 if {![installtest_p]} { untested "$test"; return }
 
 if {[utrace_p] && [uprobes_p]} {
-  spawn stap --sysroot=/ --sysenv=PATH=$env(PATH) $srcdir/$subdir/$test.stp ls -c "ls > /dev/null"
+  spawn stap --privileged --sysroot=/ --sysenv=PATH=$env(PATH) $srcdir/$subdir/$test.stp ls -c "ls > /dev/null"
   expect {
     -timeout 180
     -re {^process begin\r\n} { pass "$test" }
@@ -131,9 +131,9 @@ if {[sysroot_sysenv_ns_setup]} { fail "$test - namespace setup" }
 
 # Make sure a basic kernel function probe works with our "sysroot".
 set subtest "kernel function probe"
-set script "probe kernel.function(\"sys_read\") { println(\"called\") }"
+set script "probe kernel.function(\"*sys_read\") { println(\"called\") }"
 set stap_path $env(SYSTEMTAP_PATH)/stap
-lassign [sysroot_sysenv_ns_run "${stap_path} -p4 --sysroot=${sysroot_base_dir} -e '$script'"] rc output
+lassign [sysroot_sysenv_ns_run "${stap_path} -p4 --privileged --sysroot=${sysroot_base_dir} -e '$script'"] rc output
 if {$rc == 0} {
     pass "$test - $subtest"
 } else {
@@ -155,7 +155,7 @@ if { $res != "" } {
 # sysroot).
 set subtest "process function list"
 set script "probe process(\"/home/towers.x\").function(\"*\") { println(ppfunc()) }"
-lassign [sysroot_sysenv_ns_run "${stap_path} --sysroot=${sysroot_base_dir} -p4 -e '$script'"] rc output
+lassign [sysroot_sysenv_ns_run "${stap_path} --privileged --sysroot=${sysroot_base_dir} -p4 -e '$script'"] rc output
 if {$rc == 0} {
     pass "$test - $subtest"
 } else {
@@ -166,7 +166,7 @@ if {$rc == 0} {
 # the sysroot).
 set subtest "process wildcard function"
 set script "probe process(\"/home/tow*\").function(\"*\") {println(ppfunc()) }"
-lassign [sysroot_sysenv_ns_run "${stap_path} --sysroot=${sysroot_base_dir}\
+lassign [sysroot_sysenv_ns_run "${stap_path} --privileged --sysroot=${sysroot_base_dir}\
  -p4 -e '$script'"] rc output
 if {$rc == 0} {
     pass "$test - $subtest"
@@ -179,7 +179,7 @@ if {$rc == 0} {
 # directory in PATH.
 set subtest "process path search"
 set script "probe process(\"towers.x\").function(\"*\") { println(ppfunc()) }"
-lassign [sysroot_sysenv_ns_run "${stap_path} --sysroot=${sysroot_base_dir}\
+lassign [sysroot_sysenv_ns_run "${stap_path} --privileged --sysroot=${sysroot_base_dir}\
  --sysenv=PATH=/usr/bin:/bin:/usr/sbin:/sbin:/home -p4\
  -e '$script'"] rc output
 if {$rc == 0} {
@@ -193,7 +193,7 @@ if {$rc == 0} {
 # present.
 set subtest "process host path"
 set script "probe process(\"/home/towers.x\").function(\"push\").call { printf(\"%s: %d %d\\n\", ppfunc(), \$i, \$s) }"
-lassign [sysroot_sysenv_ns_run "${stap_path} --sysroot=${sysroot_base_dir} -p3 -e '$script' | grep '/home/towers.x'"] rc output
+lassign [sysroot_sysenv_ns_run "${stap_path} --privileged --sysroot=${sysroot_base_dir} -p3 -e '$script' | grep '/home/towers.x'"] rc output
 if {$rc == 0} {
     pass "$test - $subtest - output"
     # We've got any mention of the target exe from the stap module C
@@ -235,7 +235,7 @@ if {$rc == 0} {
 # Make sure we can handle the symbolic link relative to the sysroot.
 set subtest "symbolic link process function list"
 set script "probe process(\"/home/towers.lnk\").function(\"*\") { println(ppfunc()) }"
-lassign [sysroot_sysenv_ns_run "${stap_path} --sysroot=${sysroot_base_dir} -p4 -e '$script'"] rc output
+lassign [sysroot_sysenv_ns_run "${stap_path} --privileged --sysroot=${sysroot_base_dir} -p4 -e '$script'"] rc output
 if {$rc == 0} {
     pass "$test - $subtest"
 } else {
@@ -246,7 +246,7 @@ if {$rc == 0} {
 # sysroot.
 set subtest "double symbolic link process function list"
 set script "probe process(\"/home/towers.lnk2\").function(\"*\") { println(ppfunc()) }"
-lassign [sysroot_sysenv_ns_run "${stap_path} --sysroot=${sysroot_base_dir} -p4 -e '$script'"] rc output
+lassign [sysroot_sysenv_ns_run "${stap_path} --privileged --sysroot=${sysroot_base_dir} -p4 -e '$script'"] rc output
 if {$rc == 0} {
     pass "$test - $subtest"
 } else {
