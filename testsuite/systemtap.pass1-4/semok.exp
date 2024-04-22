@@ -100,7 +100,7 @@ foreach runtime [get_runtime_list] {
 	set test $self/[file tail $file]
 	if {$runtime != ""} {
 	    verbose -log "Running $file ($runtime)"
-	    set rc [stap_run_batch $file --runtime=$runtime]
+	    set rc [stap_run_batch $file --runtime=$runtime --privileged]
 	    if {$rc != 0} { ${runtime}_kfails $test }
 	    lappend test "($runtime)"
 	} else {
@@ -129,7 +129,7 @@ foreach runtime [get_runtime_list] {
 		    if {$effective_uid != 0} { setup_kfail ROOT_ONLY *-*-* } }
 	    }
 	    verbose -log "Running $file"
-	    set rc [stap_run_batch $file]
+	    set rc [stap_run_batch $file --privileged]
 	}
 	if {$rc == 0} { pass $test } else { fail $test }
     }
