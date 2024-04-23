@@ -75,19 +75,19 @@ function print_header()
 {
   if (kvm=="amd") {
     printf ("\n# AMD reasons are SVM_EXIT_* in %s\n",
-            "linux/arch/x86/include/asm/svm.h")
+            "linux/arch/x86/include/uapi/asm/svm.h")
     printf ("# %s: %s %s %s %s %s\n",
     	   "reason(hex)", "count", "sum(us)", "min(us)", "avg(us)", "max(us)")
   } else if (kvm=="intel") {
     printf("\n# Intel exit reasons are EXIT_REASON_* in %s\n",
-           "linux/arch/x86/include/asm/vmx.h")
+           "linux/arch/x86/include/uapi/asm/vmx.h")
     printf ("# %s: %s %s %s %s %s\n",
            "reason", "count", "sum(us)", "min(us)", "avg(us)", "max(us)")
   } else {
     printf ("\n# Intel exit reasons are EXIT_REASON_* in %s\n",
-            "linux/arch/x86/include/asm/vmx.h")
+            "linux/arch/x86/include/uapi/asm/vmx.h")
     printf ("# AMD reasons are SVM_EXIT_* in %s\n",
-            "linux/arch/x86/include/asm/svm.h")
+            "linux/arch/x86/include/uapi/asm/svm.h")
     printf ("# %s %s: %s %s %s %s %s\n", "reason", "reason(hex)",
            "count", "sum(us)", "min(us)", "avg(us)", "max(us)")
   }
