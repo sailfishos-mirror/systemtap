@@ -29,7 +29,7 @@ DIR=`mktemp -d stapdocsXXX -p /tmp/`; cd $DIR
 # TODO Could set BRANCH from cmdline arg
 #BRANCH=master
 # PRERELEASE
-BRANCH=release-5.0
+BRANCH=release-5.1
 git clone --branch $BRANCH --depth 1 git://sourceware.org/git/systemtap.git
 
 # Checkout the htdocs CVS^H^H^Hgit
