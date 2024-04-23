@@ -6150,7 +6150,7 @@ c_unparser::visit_functioncall (functioncall* e)
 
   stmt_expr block(*this);
 
-  vector<bool> cp_arg(e->referents.size(), true);
+  vector<bool> cp_arg(e->args.size(), true);
   for (unsigned fd = 0; fd < e->referents.size(); fd++)
     {
       functiondecl* r = e->referents[fd];
