@@ -1,4 +1,4 @@
-* What's new in version 5.1, PRERELEASE
+* What's new in version 5.1, 2024-04-26
 
 - Add new probe-points for userland hardware breakpoints/watchpoints
   targeting processes (PR31180):
