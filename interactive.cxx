@@ -831,7 +831,7 @@ public:
         else
         {
           // Start running under an unprivileged user
-          rc = run_unprivileged();
+          rc = run_unprivileged(s.build_as, s.verbose);
           if (rc != EXIT_SUCCESS)
             return rc;
 
