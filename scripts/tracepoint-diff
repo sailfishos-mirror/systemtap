@@ -24,8 +24,8 @@ trap 'rm -fr $tmp' 0 1 2 3 5 9 15
 #    blocklist
 #  ftrace:function: "virtual" tracepoint unusable by stap
 echo gathering perf tracepoint list
-${PERF-perf} list tracepoint | grep Tracepoint | egrep -v 'sys_(enter|exit)_' \
-    | egrep -v 'hcall_(entry|exit)'| egrep -v 'ftrace:function' \
+${PERF-perf} list tracepoint | grep Tracepoint | grep -E -v 'sys_(enter|exit)_' \
+    | grep -E -v 'hcall_(entry|exit)'| grep -E -v 'ftrace:function' \
     | awk '{print $1}' | sort > $tmp/perf
 perf_tracepoints=`wc -l $tmp/perf | cut -f1 -d' '`
 echo "  perf found $perf_tracepoints tracepoints"

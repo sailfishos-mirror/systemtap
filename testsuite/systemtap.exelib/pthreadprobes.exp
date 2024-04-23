@@ -8,7 +8,7 @@ if {$err != "" && [file exists $test]} then {
      fail "$test compile $err"
   } else {
    # find the location of the pthread library
-   catch {exec /usr/bin/ldd $test | egrep {^\s*libpthread.so} | awk {{print $3}} } pthread
+   catch {exec /usr/bin/ldd $test | grep -E {^\s*libpthread.so} | awk {{print $3}} } pthread
 }
 
 # First thing, do we have a version of glibc with the probes??
