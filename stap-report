@@ -82,28 +82,28 @@ run "which stap"
 run "cat $HOME/.systemtap/rc"
 run "which stap-server"
 run "locate --regex '/stap(run|io|dyn)?$' | xargs ls -ald"
-run "printenv | egrep '^PATH=|^LD_LIBRARY_PATH=|^SYSTEMTAP_.*=|^XDG_DATA.*=|^NSS.*='"
+run "printenv | grep -E '^PATH=|^LD_LIBRARY_PATH=|^SYSTEMTAP_.*=|^XDG_DATA.*=|^NSS.*='"
 run "stap -vv --vp 0002 --poison-cache -p4 -e 'probe begin {exit()}'"
 run "gcc -v"
 run "java -version"
 run "uname -a"
 run "dmesg | fgrep 'Linux version'"
-run "dmesg | egrep 'stap|systemtap' | tail -n 10"
+run "dmesg | grep -E 'stap|systemtap' | tail -n 10"
 run "hostname"
 run "nslookup `hostname`"
 run "cat /etc/hosts"
 run "cat /var/log/stap-server/log"
-run "cat /proc/cpuinfo | egrep 'processor|vendor_id|model name|flags|bugs'"
+run "cat /proc/cpuinfo | grep -E 'processor|vendor_id|model name|flags|bugs'"
 run "cat /sys/kernel/security/lockdown"
 if [ -x /usr/bin/dpkg ]; then
   # debian/ubuntu
-  run "dpkg --list | egrep 'systemtap|elfutils|kernel|linux|gcc|dyninst|java|byteman|avahi|nss|nspr|dejagnu|libdw' | awk '{print \$2,\$3}' | sort"
+  run "dpkg --list | grep -E 'systemtap|elfutils|kernel|linux|gcc|dyninst|java|byteman|avahi|nss|nspr|dejagnu|libdw' | awk '{print \$2,\$3}' | sort"
 elif [ -x /usr/bin/rpm -o -x /bin/rpm ]; then
   # fedora/rhel/suse/...
-  run "rpm -qa --qf '%{name}-%{version} %{release}.%{arch}\\t%{buildtime:date}@%{buildhost}\\n' | egrep 'systemtap|elfutils|kernel|gcc|dyninst|java|byteman|avahi|nss|nspr|dejagnu|libdw' | sort"
+  run "rpm -qa --qf '%{name}-%{version} %{release}.%{arch}\\t%{buildtime:date}@%{buildhost}\\n' | grep -E 'systemtap|elfutils|kernel|gcc|dyninst|java|byteman|avahi|nss|nspr|dejagnu|libdw' | sort"
 elif [ -f /var/log/packages ]; then
   # slackware
-  run "cat /var/log/packages | egrep 'systemtap|elfutils|kernel|gcc|dyninst|java|byteman|avahi|nss|nspr|dejagnu' | sort -k9"
+  run "cat /var/log/packages | grep -E 'systemtap|elfutils|kernel|gcc|dyninst|java|byteman|avahi|nss|nspr|dejagnu' | sort -k9"
 fi
 run "egrep 'PROBE|RANDOMIZE|RELOC|TRACE|MARKER|KALLSYM|_DEBUG_|LOCKDEP|LOCKING|MODULE|FENTRY|_SIG|BPF' /lib/modules/`uname -r`/build/.config | grep -v not.set | sort | fmt -w 80"
 run "find /debugfs /proc/sys /sys/kernel /dev -type f -path '*kprobe*' -o -path '*yama*' 2>/dev/null | xargs grep -H ."

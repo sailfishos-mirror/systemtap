@@ -1347,7 +1347,7 @@ valid regular expression.)
 .PP
 The regular expression syntax supports POSIX
 Extended Regular Expression features as documented in
-.IR egrep (1)
+.IR grep (1)
 except for subexpression reuse ("\\1")
 functionality.
 .PP

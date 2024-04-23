@@ -7,7 +7,7 @@ set never_found 0
 set kernel_function_found 0
 set timer_found 0
 
-set cmd "bash -c {stap -p2 -I $srcdir/$subdir/${test} $srcdir/$subdir/${test}.stp | egrep '^kprobe|^kernel|^never|^timer'}"
+set cmd "bash -c {stap -p2 -I $srcdir/$subdir/${test} $srcdir/$subdir/${test}.stp | grep -E '^kprobe|^kernel|^never|^timer'}"
 verbose -log "running $cmd"
 eval spawn $cmd
 expect {

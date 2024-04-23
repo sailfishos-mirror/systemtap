@@ -41,7 +41,7 @@ for {set i 0} {$i < [all_compile_flags]} {incr i} {
 	# DW_OP_stack_value for us.
 	set regexp {[stack|implicit]_value}
 	if {![catch {exec readelf --debug-dump=loc $test-$extra_name.exe \
-			 | egrep "$regexp"}]} {
+			 | grep -E "$regexp"}]} {
 	    foreach runtime [get_runtime_list] {
 		if {$runtime != ""} {
 		    if { [info procs ${runtime}_kfails] ne "" } {

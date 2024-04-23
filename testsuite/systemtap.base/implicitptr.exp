@@ -13,7 +13,7 @@ set listspec "process(\"$test.exe\").statement(\"foo@*:17\")"
 
 proc exe_uses_implicit_ptr {exe} {
   if {[catch {exec readelf --debug-dump=info,loc $exe | \
-		  egrep -q {implicit_pointer| f2 .*User defined location op}} \
+		  grep -E -q {implicit_pointer| f2 .*User defined location op}} \
 	   results]} {
     verbose -log "exe_uses_implicit_ptr caught: $results"
     return 0

@@ -2672,7 +2672,7 @@ install-data-local:
 	(cd $(srcdir)/tapset; find . \( -name '*.stp' -o -name '*.stpm' -o -name README \) -print \
 		| while read f; do $(INSTALL_DATA) -D $$f $(DESTDIR)$(pkgdatadir)/tapset/$$f; done)
 	(cd $(srcdir)/testsuite/systemtap.examples; find . -type f -print \
-		| egrep -v 'check.exp|ChangeLog|examples-index-gen.pl|html/.*\.tmpl|metadatabase.dbq$$' \
+		| grep -E -v 'check.exp|ChangeLog|examples-index-gen.pl|html/.*\.tmpl|metadatabase.dbq$$' \
 		| while read f; do if test -x $$f; then \
 			i_cmd="$(INSTALL_PROGRAM)"; else \
 			i_cmd="$(INSTALL_DATA)"; fi; \
@@ -2806,7 +2806,7 @@ install-uprobes:
 .PHONY: $(PHONIES)
 
 dist-gzip:
-	cd $(srcdir); git status | egrep 'working.(tree|directory).clean' || (echo "You should commit your changes before 'make rpm'.")
+	cd $(srcdir); git status | grep -E 'working.(tree|directory).clean' || (echo "You should commit your changes before 'make rpm'.")
 	(cd $(srcdir); git archive --prefix=systemtap-$(VERSION)/ --format=tar HEAD) | gzip > systemtap-$(VERSION).tar.gz
 
 rpm: dist-gzip
