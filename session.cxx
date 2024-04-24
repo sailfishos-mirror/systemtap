@@ -42,6 +42,7 @@ extern "C" {
 #include <unistd.h>
 #include <sys/wait.h>
 #include <wordexp.h>
+#include <pwd.h>
 }
 
 #if HAVE_NSS
@@ -195,6 +196,8 @@ systemtap_session::systemtap_session ():
   lang_server = 0;
   language_server_mode = false;
   build_as = "";
+  build_as_uid = 0;
+  build_as_gid = 0;
 
   // PR12443: put compiled-in / -I paths in front, to be preferred during 
   // tapset duplicate-file elimination
@@ -1716,7 +1719,17 @@ systemtap_session::parse_cmdline (int argc, char * const argv [])
 
 	case LONG_OPT_BUILD_AS:
 	  if (optarg)
+          {
 	    build_as = optarg;
+            struct passwd *pwd;
+            if ((pwd = getpwnam(build_as.c_str())) == NULL)
+            {
+                cerr << _F("ERROR: Failed converting userid \"%s\" to userid. Terminating.", build_as.c_str()) << endl;
+                return 1;
+            }
+            build_as_uid = pwd->pw_uid;
+            build_as_gid = pwd->pw_gid;
+          }
 	  else
 	    build_as = "";
 	  break;
@@ -2727,8 +2740,8 @@ systemtap_session::create_tmp_dir()
     }
   //else
   tmpdir = tmpdir_name;
-  if ((getuid() == 0) || (geteuid() == 0))
-    if(chown(tmpdirt.c_str(), 159, 159) != 0)
+  if ((getuid() == 0) && (build_as != ""))
+    if(chown(tmpdirt.c_str(), build_as_uid, build_as_gid) != 0)
       {
         cout << "ERROR: Failed to chown.  Terminating." << endl;
         exit(1);

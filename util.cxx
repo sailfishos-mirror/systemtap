@@ -1904,59 +1904,27 @@ get_distro_info(vector<string> &info)
 
 // PR30321: Privilege separation
 int
-run_unprivileged(const std::string& build_as, int verbosity)
+run_unprivileged(const std::string& build_as, uid_t build_as_uid, gid_t build_as_gid, int verbosity)
 {
-    uid_t unpriv_user;
-    gid_t unpriv_group;
-    // TODO once PR30321 implementation is considered safe
-    // use UNPRIVILEGED_USER and UNPRIVILEGED_GROUP instead
-    // of root.  To test PR30321, run
-    // echo "--build-as=stapunpriv" >> ~/.systemtap/rc
-    unpriv_user = 0;
-    unpriv_group = 0;
-    // uid_t unpriv_user = UNPRIVILEGED_USER;
-    // gid_t unpriv_group = UNPRIVILEGED_GROUP;
+    if (build_as == "")
+      return EXIT_SUCCESS;
 
-    if (build_as != "")
-    {
-      struct passwd *pwd;
-      if ((pwd = getpwnam(build_as.c_str())) == NULL)
-      {
-        cerr << _F("ERROR: Failed converting userid \"%s\" to userid. Terminating.", build_as.c_str()) << endl;
-        return EXIT_FAILURE;
-      } 
-      else
-      {
-        unpriv_user = pwd->pw_uid;
-        unpriv_group = pwd->pw_gid;
-        if (verbosity > 2)
-        {
-          cout << _F("Running passes 1-4 using user \"%s\" userid \"%d\" group id \"%d\"",
-                      build_as.c_str(), pwd->pw_uid, pwd->pw_gid) << "<<<" << endl;
-        }
-      }
-    }
     int ret;
-    // Do nothing for user other than root.
-    if (getuid() != 0)
-        return EXIT_SUCCESS;
-
-    // Do nothing if unpriv_user is root.
-    if (unpriv_user == 0)
-        return EXIT_SUCCESS;
-
-    ret = setregid(unpriv_group, unpriv_group);
+    ret = setregid(build_as_gid, build_as_gid);
     if (ret != 0) {
         clog << "ERROR: setregid() failed" << endl;
         clog << strerror (errno) << endl;
         return EXIT_FAILURE;
     }
-    ret = setreuid(unpriv_user, unpriv_user);
+    ret = setreuid(build_as_uid, build_as_uid);
     if (ret != 0) {
         clog << "ERROR: setreuid() failed" << endl;
         clog << strerror (errno) << endl;
         return EXIT_FAILURE;
     }
+    if (verbosity > 2)
+      cout << _F("Running passes 1-4 using user \"%s\" userid \"%d\" group id \"%d\"",
+                  build_as.c_str(), build_as_uid, build_as_gid) << "<<<" << endl;
     return EXIT_SUCCESS;
 }
 

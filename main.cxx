@@ -1622,7 +1622,7 @@ else if (frkrc == 0)
     if (s.build_as != "")
       {
         // Start running under an unprivileged user
-        rc = run_unprivileged(s.build_as, s.verbose);
+        rc = run_unprivileged(s.build_as, s.build_as_uid, s.build_as_gid, s.verbose);
         if (rc != EXIT_SUCCESS)
             return rc;
 
