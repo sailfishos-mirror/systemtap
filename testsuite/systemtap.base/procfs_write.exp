@@ -131,5 +131,5 @@ set systemtap_write_script {
 # We're forcing the MAXSTRINGLEN to be 512 chars to make sure we know
 # what we're testing.
 stap_run $test proc_write_test $test_string2 -DMAXSTRINGLEN=512 \
-    --privileged -e $systemtap_write_script -m $test
+    -e $systemtap_write_script -m $test
 exec /bin/rm -f ${test}.ko

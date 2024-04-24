@@ -92,6 +92,6 @@ set systemtap_script {
 
 # test procfs probes
 set output_string "\\mfinal value = goodbye\\M\r\n"
-stap_run $test proc_read_write $output_string --privileged --bpf $srcdir/$subdir/procfs_bpf.stp -m $test
+stap_run $test proc_read_write $output_string --bpf $srcdir/$subdir/procfs_bpf.stp -m $test
 
 exec /bin/rm -f ${test}.bo

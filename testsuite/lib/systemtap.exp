@@ -304,7 +304,6 @@ proc setup_systemtap_environment {} {
     # two independent timeout mechanisms do not coincide.
     puts $chan "--rlimit-cpu=850"
     puts $chan "-E 'probe timer.s(900){error(\"probe timeout after 15 minutes\")}'"
-    # puts $chan "--privileged"
     close $chan
 
     # Zap any previous uprobes, if any

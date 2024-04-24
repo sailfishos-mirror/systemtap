@@ -104,12 +104,12 @@ set output_string_80 "value0=1bcdefghijklmno2BCDEFGHIJKLMNO3qrstuvwxyz12344QRSTU
 # By default, setting MAXSTRINGLEN should set the size of
 # procfs read and write buffers.
 set test "PROCFS_BUFFER1"
-stap_run $test proc_read_write_80 $output_string_80 --privileged -DMAXSTRINGLEN=80 -e $script1 -m $test
+stap_run $test proc_read_write_80 $output_string_80 -DMAXSTRINGLEN=80 -e $script1 -m $test
 exec /bin/rm -f ${test}.ko
 
 # Try with MAXSTRINGLEN=80 and STP_PROCFS_BUFSIZE=64
 set test "PROCFS_BUFFER2"
-stap_run $test proc_read_write_64 $output_string_64 --privileged -DMAXSTRINGLEN=80 -DSTP_PROCFS_BUFSIZE=64 -e $script1 -m $test
+stap_run $test proc_read_write_64 $output_string_64 -DMAXSTRINGLEN=80 -DSTP_PROCFS_BUFSIZE=64 -e $script1 -m $test
 exec /bin/rm -f ${test}.ko
 
 # Try with MAXSTRINGLEN=64 and STP_PROCFS_BUFSIZE=80.  Note that in
@@ -117,7 +117,7 @@ exec /bin/rm -f ${test}.ko
 # strings can only hold 64 bytes, the expected output is the same as
 # in the previous test.
 set test "PROCFS_BUFFER3"
-stap_run $test proc_read_write_80 $output_string_64 --privileged -DMAXSTRINGLEN=64 -DSTP_PROCFS_BUFSIZE=80 -e $script1 -m $test
+stap_run $test proc_read_write_80 $output_string_64 -DMAXSTRINGLEN=64 -DSTP_PROCFS_BUFSIZE=80 -e $script1 -m $test
 exec /bin/rm -f ${test}.ko
 
 # script2 has a '.maxsize(80). override
@@ -162,13 +162,13 @@ set script2 {
 # procfs read and write buffers.  But script2 has a '.maxsize(80)'
 # override.
 set test "PROCFS_BUFFER4"
-stap_run $test proc_read_write_80 $output_string_64 --privileged -DMAXSTRINGLEN=64 -e $script2 -m $test
+stap_run $test proc_read_write_80 $output_string_64 -DMAXSTRINGLEN=64 -e $script2 -m $test
 exec /bin/rm -f ${test}.ko
 
 # The script2 '.maxsize(80)' override should override even setting
 # STP_PROCFS_BUFSIZE.
 set test "PROCFS_BUFFER5"
-stap_run $test proc_read_write_80 $output_string_64 --privileged -DMAXSTRINGLEN=64 -DSTP_PROCFS_BUFSIZE=80 -e $script2 -m $test
+stap_run $test proc_read_write_80 $output_string_64 -DMAXSTRINGLEN=64 -DSTP_PROCFS_BUFSIZE=80 -e $script2 -m $test
 exec /bin/rm -f ${test}.ko
 
 # script3 has a maxsize override and a default size file
@@ -245,7 +245,7 @@ proc proc_read_write_default_80 {} {
 }
 
 set test "PROCFS_BUFFER6"
-stap_run $test proc_read_write_default_80 $output_string_64 --privileged -DMAXSTRINGLEN=64 -e $script3 -m $test
+stap_run $test proc_read_write_default_80 $output_string_64 -DMAXSTRINGLEN=64 -e $script3 -m $test
 exec /bin/rm -f ${test}.ko
 
 set script4 {
@@ -339,7 +339,7 @@ set test_string \
 
 # Test outputting 2K worth of data in one shot.
 set test "PROCFS_BUFFER7"
-stap_run $test proc_read_big "" --privileged -DMAXSTRINGLEN=512 -e $script4 -m $test
+stap_run $test proc_read_big "" -DMAXSTRINGLEN=512 -e $script4 -m $test
 exec /bin/rm -f ${test}.ko
 
 # Expect 72 byte return from reading procfs file.
@@ -379,10 +379,10 @@ set overflow_string "buffer size exceeded, consider .maxsize\\(72\\).\r\n"
 
 # Buffer too small
 set test "PROCFS_BUFFER8"
-stap_run $test proc_read_write_64 $overflow_string --privileged -DSTP_PROCFS_BUFSIZE=64 -e $script5 -m $test
+stap_run $test proc_read_write_64 $overflow_string -DSTP_PROCFS_BUFSIZE=64 -e $script5 -m $test
 exec /bin/rm -f ${test}.ko
 
 # Buffer is exactly large enough to hold contents
 set test "PROCFS_BUFFER9"
-stap_run $test proc_read_write_72 "\r\n" --privileged -DSTP_PROCFS_BUFSIZE=72 -e $script5 -m $test
+stap_run $test proc_read_write_72 "\r\n" -DSTP_PROCFS_BUFSIZE=72 -e $script5 -m $test
 exec /bin/rm -f ${test}.ko

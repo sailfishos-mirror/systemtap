@@ -96,6 +96,6 @@ set systemtap_script {
     }
 }
 
-stap_run $test proc_read_write "" --privileged -e $systemtap_script -m $test
+stap_run $test proc_read_write "" -e $systemtap_script -m $test
 
 exec /bin/rm -f ${test}.ko
