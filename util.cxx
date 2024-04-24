@@ -1927,12 +1927,12 @@ run_unprivileged(const std::string& build_as, int verbosity)
       } 
       else
       {
+        unpriv_user = pwd->pw_uid;
+        unpriv_group = pwd->pw_gid;
         if (verbosity > 2)
         {
           cout << _F("Running passes 1-4 using user \"%s\" userid \"%d\" group id \"%d\"",
                       build_as.c_str(), pwd->pw_uid, pwd->pw_gid) << "<<<" << endl;
-          unpriv_user = pwd->pw_uid;
-          unpriv_group = pwd->pw_gid;
         }
       }
     }
