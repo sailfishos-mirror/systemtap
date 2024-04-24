@@ -492,7 +492,6 @@ public:
   bool language_server_mode;
   language_server* lang_server;
 
-  bool privileged;
   std::string build_as;
 
   // NB: It is very important for all of the above (and below) fields

@@ -878,11 +878,10 @@ Language server mode. Start a language server which will communicate via
 stdio. The language server will respect stap verbosity.
 
 .TP
-.B \-\-privileged
-Privileged mode.  By default, if stap was spawned by root, passes 1-4 will
-run under an unprivileged user to increase safety.  This approach, however,
-has limitations, such as accessing kallsyms or the /proc.  The privileged
-mode runs passes 1-4 under root, and so doesn't have said limitations.
+.B \-\-build\-as
+Execute passes 1-4 under specified user to increase safety.  This approach
+may have limitations.  Unprivileged users might not have access to kallsyms
+or /proc.
 
 .SH ARGUMENTS
 

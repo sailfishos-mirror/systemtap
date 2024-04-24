@@ -823,12 +823,7 @@ public:
       else if (frkrc == 0)
       {
         // Child process (unprivileged)
-        if (s.privileged)
-        {
-          if (s.verbose > 1)
-            clog << "Passes 1-4 running in the privileged mode (--privileged)" << endl;
-        }
-        else
+        if (s.build_as != "")
         {
           // Start running under an unprivileged user
           rc = run_unprivileged(s.build_as, s.verbose);
@@ -860,7 +855,7 @@ public:
         (void)waitpid(frkrc, &wstatus, 0);
         rc = WEXITSTATUS(wstatus);
         if (s.verbose > 2)
-            clog << "Parent finished waiting for the child." << endl;
+            clog << "Child finished." << endl;
       }
       rc = pass_5_2 (s, *saved_targets);
     }

@@ -194,7 +194,6 @@ systemtap_session::systemtap_session ():
   symbol_resolver = 0;
   lang_server = 0;
   language_server_mode = false;
-  privileged = false;
   build_as = "";
 
   // PR12443: put compiled-in / -I paths in front, to be preferred during 
@@ -389,7 +388,6 @@ systemtap_session::systemtap_session (const systemtap_session& other,
   timeout = other.timeout;
   language_server_mode = other.language_server_mode;
   lang_server = other.lang_server;
-  privileged = other.privileged;
   build_as = other.build_as;
   // don't bother copy typequery_memo
 
@@ -761,8 +759,6 @@ systemtap_session::usage (int exitcode)
      "   --language-server\n"
      "              starts a systemtap language server\n"
 #endif
-     "   --privileged\n"
-     "              do not run pass 1-4 under unprivileged user\n"
     "   --build-as=VALUE\n"
     "              Set user running passes 1-4\n"
     , compatible.c_str()) << endl
@@ -1717,10 +1713,6 @@ systemtap_session::parse_cmdline (int argc, char * const argv [])
   case LONG_OPT_LANGUAGE_SERVER:
     language_server_mode = true;
     break;
-
-	case LONG_OPT_PRIVILEGED:
-	  privileged = true;
-	  break;
 
 	case LONG_OPT_BUILD_AS:
 	  if (optarg)
