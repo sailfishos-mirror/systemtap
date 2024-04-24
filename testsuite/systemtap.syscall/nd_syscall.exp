@@ -8,22 +8,6 @@
 #
 #    make installcheck RUNTESTFLAGS=nd_syscall.exp CHECK_ONLY="readwrite accept"
 
-############## Run the testcase in a temporary directory ##############
-# Run in temporary directory with permissions allowing for unprivileged
-# writes required by the privilege separation feature PR30321
-if {[catch {exec mktemp -d -t staptestXXXXXX-sanity-test} tmpdir]} {
-    verbose -log "Failed to create temporary directory: $tmpdir"
-    exit 1
-}
-
-if {[catch {exec chmod 0777 $tmpdir}]} {
-    verbose -log "Failed to chmod $tmpdir"
-    exit 1
-}
-
-set curdir [pwd]
-cd ${tmpdir}
-
 set test_script "nd_sys.stp"
 set test_module_name "nd_syscall_longlonglong"
 set wd [pwd]
@@ -125,7 +109,3 @@ proc test_procedure {} {
 }
 
 test_procedure
-
-# Return back from the temporary test directory
-cd ${curdir}
-catch {exec rm -rf $tmpdir}

@@ -79,9 +79,9 @@ if {![utrace_p]} {
 	if {$runtime != ""} {
 	    lappend test "($runtime)"
 	    ${runtime}_xfails $test
-	    stap_compile $test 1 $pid_begin_script --runtime=$runtime --privileged
+	    stap_compile $test 1 $pid_begin_script --runtime=$runtime
 	} else {
-	    stap_compile $test 1 $pid_begin_script --privileged
+	    stap_compile $test 1 $pid_begin_script
 	}
     }
 }
@@ -113,9 +113,9 @@ if {![utrace_p]} {
 	if {$runtime != ""} {
 	    lappend test "($runtime)"
 	    ${runtime}_xfails $test
-	    stap_compile $test 1 $pid_end_script --runtime=$runtime --privileged
+	    stap_compile $test 1 $pid_end_script --runtime=$runtime
 	} else {
-	    stap_compile $test 1 $pid_end_script --privileged
+	    stap_compile $test 1 $pid_end_script
 	}
     }
 }
@@ -148,9 +148,9 @@ if {![utrace_p]} {
 	if {$runtime != ""} {
 	    lappend test "($runtime)"
 	    ${runtime}_xfails $test
-	    stap_compile $test 1 $pid_syscall_script --runtime=$runtime --privileged
+	    stap_compile $test 1 $pid_syscall_script --runtime=$runtime
 	} else {
-	    stap_compile $test 1 $pid_syscall_script --privileged
+	    stap_compile $test 1 $pid_syscall_script
 	}
     }
 }
@@ -182,9 +182,9 @@ if {![utrace_p]} {
 	if {$runtime != ""} {
 	    lappend test "($runtime)"
 	    ${runtime}_xfails $test
-	    stap_compile $test 1 $pid_syscall_return_script --runtime=$runtime --privileged
+	    stap_compile $test 1 $pid_syscall_return_script --runtime=$runtime
 	} else {
-	    stap_compile $test 1 $pid_syscall_return_script --privileged
+	    stap_compile $test 1 $pid_syscall_return_script
 	}
     }
 }
@@ -216,9 +216,9 @@ if {![utrace_p]} {
 	if {$runtime != ""} {
 	    lappend test "($runtime)"
 	    ${runtime}_xfails $test
-	    stap_compile $test 1 $pid_thread_begin_script --runtime=$runtime --privileged
+	    stap_compile $test 1 $pid_thread_begin_script --runtime=$runtime
 	} else {
-	    stap_compile $test 1 $pid_thread_begin_script --privileged
+	    stap_compile $test 1 $pid_thread_begin_script
 	}
     }
 }
@@ -250,9 +250,9 @@ if {![utrace_p]} {
 	if {$runtime != ""} {
 	    lappend test "($runtime)"
 	    ${runtime}_xfails $test
-	    stap_compile $test 1 $pid_thread_end_script --runtime=$runtime --privileged
+	    stap_compile $test 1 $pid_thread_end_script --runtime=$runtime
 	} else {
-	    stap_compile $test 1 $pid_thread_end_script --privileged
+	    stap_compile $test 1 $pid_thread_end_script
 	}
     }
 }
