@@ -193,8 +193,8 @@ copy_file(const string& src, const string& dest, bool verbose)
 error:
   cerr << _F("Copy failed (\"%s\" to \"%s\"): %s", src.c_str(),
              dest.c_str(), strerror(errno))
-       << ((getuid() == UNPRIVILEGED_USER) ?
-           _(". Try running stap --privileged") : "") << endl;
+       << ((getuid() != 0) ?
+           _F(". Your uid=%d.", getuid()) : "") << endl;
   return false;
 }
 
@@ -1510,7 +1510,7 @@ is_valid_pid (pid_t pid, string& err_msg)
   else if (kill(pid, 0) == -1)
     {
       if (getuid() != 0)
-        err_msg = _F("cannot probe pid %d: %s.  Try re-running with 'stap --privileged'.", pid, strerror(errno));
+        err_msg = _F("cannot probe pid %d: %s.  Your uid=%d.", pid, strerror(errno), getuid());
       else
         err_msg = _F("cannot probe pid %d: %s", pid, strerror(errno));
       return false;

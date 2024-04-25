@@ -7948,7 +7948,7 @@ static void dump_kallsyms(unwindsym_dump_context *c)
 
   // PR30321 apply privilege separation for passes 2/3/4, esp. if invoked as root
   if ((getuid() != 0) && (size == 0))
-    c->session.print_warning ("No kallsyms found.  Try re-running with 'stap --privileged'.");
+    c->session.print_warning (_F("No kallsyms found.  Your uid=%d.", getuid()));
 
   c->output << "};\n";
   c->output << "static struct _stp_section _stp_module_" << stpmod_idx << "_sections[] = {\n";
