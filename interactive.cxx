@@ -43,8 +43,6 @@ extern "C" {
 // FIXME: these declarations don't really belong here.
 extern int
 passes_0_4 (systemtap_session &s);
-// extern int
-// pass_5 (systemtap_session &s, vector<remote*> targets);
 extern int
 pass_5_1 (systemtap_session &s, vector<remote*> targets);
 extern int
