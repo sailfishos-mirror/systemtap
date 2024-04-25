@@ -881,7 +881,8 @@ stdio. The language server will respect stap verbosity.
 .B \-\-build\-as
 Execute passes 1-4 under specified user to increase safety.  This approach
 may have limitations.  Unprivileged users might not have access to kallsyms
-or /proc.
+or /proc.  At the RPM install time, the stapunpriv user is created, so stap
+can be invoked with --build-as=stapunpriv.
 
 .SH ARGUMENTS
 

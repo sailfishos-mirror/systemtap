@@ -1552,7 +1552,7 @@ passes_1_5_build_as (systemtap_session &s, vector<remote*> targets)
   pid_t frkrc = fork();
   if (frkrc == -1)
     {
-      clog << "ERROR: Fork failed.  Terminating..." << endl;
+      clog << _("ERROR: Fork failed.  Terminating...") << endl;
       return EXIT_FAILURE;
     }
   else if (frkrc == 0)
@@ -1566,14 +1566,8 @@ passes_1_5_build_as (systemtap_session &s, vector<remote*> targets)
               return rc;
 
           if (s.verbose >= vt)
-            clog << "Passes 1-4 running in secure mode" << endl;
-          if (s.verbose >= vt)
-          {
-            clog << "Child started ..." << endl;
-            clog << "Child pid=" << getpid()
-                 << ", uid=" << getuid() << ", euid=" << geteuid()
-                 << ", gid=" << getgid() << ", egid=" << getegid() << endl;
-          }
+            clog << _F("Child pid=%d, uid=%d, euid=%d, gid=%d, egid=%d\n",
+                       getpid(), getuid(), geteuid(), getgid(), getegid());
         }
 
       for (set<systemtap_session*>::iterator it = sessions.begin();
@@ -1619,35 +1613,28 @@ passes_1_5_build_as (systemtap_session &s, vector<remote*> targets)
         }
 
       // Run pass 5, if requested (part 1/2 (unprivileged))
-          if (s.verbose >= vt)
-          {
-            clog << "Child started ..." << endl;
-            clog << "Child pid=" << getpid() << ", uid=" << getuid() << ", euid=" << geteuid() << endl;
-          }
       if (rc == 0 && s.have_script && s.last_pass >= 5 && ! pending_interrupts)
         rc = pass_5_1 (s, targets);
       if (s.verbose >= vt)
-        clog << "Child finished running the unprivileged part of pass 5, tmpdir is " << s.tmpdir << endl;
+        clog << _F("Child finished running, tmpdir is %s", s.tmpdir.c_str())
+             << endl;
       _exit(rc);
     }
   else
     {
       // Parent process
       if (s.verbose >= vt)
-      {
-        clog << "Parent started waiting for the child ..." << endl;
-        clog << "Parent pid=" << getpid() << ", uid=" << getuid() << ", euid=" << geteuid() << endl;
-      }
+        clog << _F("Parent pid=%d, uid=%d, euid=%d, gid=%d, egid=%d\n",
+                   getpid(), getuid(), geteuid(), getgid(), getegid());
       int wstatus;
       (void)waitpid(frkrc, &wstatus, 0);
       rc = WEXITSTATUS(wstatus);
-      if (s.verbose > 2)
-        clog << "Child finished." << endl;
     }
 
   // Run pass 5, if requested (part 2/2 (privileged))
   if (s.verbose >= vt)
-    clog << "Parent about to execute staprun, tmpdir is " << s.tmpdir << endl;
+    clog << _F("Parent about to execute staprun, tmpdir is %s", s.tmpdir.c_str())
+         << endl;
   if (rc == 0 && s.have_script && s.last_pass >= 5 && ! pending_interrupts)
     rc = pass_5_2 (s, targets);
   return rc;
