@@ -1480,55 +1480,55 @@ passes_1_5 (systemtap_session &s, vector<remote*> targets)
   for (unsigned i = 0; i < targets.size(); ++i)
     sessions.insert(targets[i]->get_session());
 
-  	for (set<systemtap_session*>::iterator it = sessions.begin();
-  	     rc == 0 && !pending_interrupts && it != sessions.end(); ++it)
-  	  {
-  	    systemtap_session& ss = **it;
-              if (ss.verbose > 1)
-  	      clog << _F("Session arch: %s release: %s",
-  			 ss.architecture.c_str(), ss.kernel_release.c_str())
-  		   << endl
-                     << _F("Build tree: \"%s\"",
-  			 ss.kernel_build_tree.c_str())
-  		   << endl;
-  
+  for (set<systemtap_session*>::iterator it = sessions.begin();
+       rc == 0 && !pending_interrupts && it != sessions.end(); ++it)
+    {
+      systemtap_session& ss = **it;
+      if (ss.verbose > 1)
+        clog << _F("Session arch: %s release: %s",
+                   ss.architecture.c_str(), ss.kernel_release.c_str())
+             << endl
+             << _F("Build tree: \"%s\"",
+                   ss.kernel_build_tree.c_str())
+             << endl;
+
 #if HAVE_NSS
-  	    // If requested, query server status. This is independent
-  	    // of other tasks.
-  	    nss_client_query_server_status (ss);
-  
-  	    // If requested, manage trust of servers. This is
-  	    // independent of other tasks.
-  	    nss_client_manage_server_trust (ss);
+      // If requested, query server status. This is independent
+      // of other tasks.
+      nss_client_query_server_status (ss);
+
+      // If requested, manage trust of servers. This is
+      // independent of other tasks.
+      nss_client_manage_server_trust (ss);
 #endif
   
-  	    // Run the passes only if a script has been specified or
-  	    // if we're dumping something. The requirement for a
-  	    // script has already been checked in
-  	    // systemtap_session::check_options.
-  	    if (ss.have_script || ss.dump_mode)
-  	      {
-  		// Run passes 0-4 for each unique session, either
-  		// locally or using a compile-server.
-  		ss.init_try_server ();
-  		if ((rc = passes_0_4 (ss)))
-  		  {
-  		    // Compilation failed.
-  		    // Try again using a server if appropriate.
-  		    if (ss.try_server ())
-  		      rc = passes_0_4_again_with_server (ss);
-  		  }
-  		if (rc || s.perpass_verbose[0] >= 1)
-  		  s.explain_auto_options ();
-  	      }
-  	  }
+      // Run the passes only if a script has been specified or
+      // if we're dumping something. The requirement for a
+      // script has already been checked in
+      // systemtap_session::check_options.
+      if (ss.have_script || ss.dump_mode)
+        {
+          // Run passes 0-4 for each unique session, either
+          // locally or using a compile-server.
+          ss.init_try_server ();
+          if ((rc = passes_0_4 (ss)))
+            {
+              // Compilation failed.
+              // Try again using a server if appropriate.
+              if (ss.try_server ())
+                rc = passes_0_4_again_with_server (ss);
+            }
+          if (rc || s.perpass_verbose[0] >= 1)
+            s.explain_auto_options ();
+        }
+    }
   
-  	if (rc == 0 && s.have_script && s.last_pass >= 5 && ! pending_interrupts)
-          {
-              rc = pass_5_1 (s, targets);
-              rc = pass_5_2 (s, targets);
-          }
-    return rc;
+  if (rc == 0 && s.have_script && s.last_pass >= 5 && ! pending_interrupts)
+    {
+      rc = pass_5_1 (s, targets);
+      rc = pass_5_2 (s, targets);
+    }
+  return rc;
 }
 
 
@@ -1564,69 +1564,68 @@ passes_1_5_build_as (systemtap_session &s, vector<remote*> targets)
           rc = run_unprivileged(s.build_as, s.build_as_uid, s.build_as_gid, s.verbose);
           if (rc != EXIT_SUCCESS)
               return rc;
-  
+
           if (s.verbose >= vt)
             clog << "Passes 1-4 running in secure mode" << endl;
           if (s.verbose >= vt)
           {
             clog << "Child started ..." << endl;
-            clog << "Child pid=" << getpid() <<
-                        ", uid=" << getuid() << ", euid=" << geteuid() <<
-                        ", gid=" << getgid() << ", egid=" << getegid() << endl;
+            clog << "Child pid=" << getpid()
+                 << ", uid=" << getuid() << ", euid=" << geteuid()
+                 << ", gid=" << getgid() << ", egid=" << getegid() << endl;
           }
         }
-  
-  	for (set<systemtap_session*>::iterator it = sessions.begin();
-  	     rc == 0 && !pending_interrupts && it != sessions.end(); ++it)
-  	  {
-  	    systemtap_session& ss = **it;
-              if (ss.verbose > 1)
-  	      clog << _F("Session arch: %s release: %s",
-  			 ss.architecture.c_str(), ss.kernel_release.c_str())
-  		   << endl
-                     << _F("Build tree: \"%s\"",
-  			 ss.kernel_build_tree.c_str())
-  		   << endl;
-  
+
+      for (set<systemtap_session*>::iterator it = sessions.begin();
+           rc == 0 && !pending_interrupts && it != sessions.end(); ++it)
+        {
+          systemtap_session& ss = **it;
+          if (ss.verbose > 1)
+            clog << _F("Session arch: %s release: %s",
+                       ss.architecture.c_str(), ss.kernel_release.c_str())
+                 << endl
+                 << _F("Build tree: \"%s\"", ss.kernel_build_tree.c_str())
+                 << endl;
+
 #if HAVE_NSS
-  	    // If requested, query server status. This is independent
-  	    // of other tasks.
-  	    nss_client_query_server_status (ss);
-  
-  	    // If requested, manage trust of servers. This is
-  	    // independent of other tasks.
-  	    nss_client_manage_server_trust (ss);
+          // If requested, query server status. This is independent
+          // of other tasks.
+          nss_client_query_server_status (ss);
+
+          // If requested, manage trust of servers. This is
+          // independent of other tasks.
+          nss_client_manage_server_trust (ss);
 #endif
-  
-  	    // Run the passes only if a script has been specified or
-  	    // if we're dumping something. The requirement for a
-  	    // script has already been checked in
-  	    // systemtap_session::check_options.
-  	    if (ss.have_script || ss.dump_mode)
-  	      {
-  		// Run passes 0-4 for each unique session, either
-  		// locally or using a compile-server.
-  		ss.init_try_server ();
-  		if ((rc = passes_0_4 (ss)))
-  		  {
-  		    // Compilation failed.
-  		    // Try again using a server if appropriate.
-  		    if (ss.try_server ())
-  		      rc = passes_0_4_again_with_server (ss);
-  		  }
-  		if (rc || s.perpass_verbose[0] >= 1)
-  		  s.explain_auto_options ();
-  	      }
-  	  }
-  
-  	// Run pass 5, if requested (part 1/2 (unprivileged))
+
+          // Run the passes only if a script has been specified or
+          // if we're dumping something. The requirement for a
+          // script has already been checked in
+          // systemtap_session::check_options.
+          if (ss.have_script || ss.dump_mode)
+            {
+              // Run passes 0-4 for each unique session, either
+              // locally or using a compile-server.
+              ss.init_try_server ();
+              if ((rc = passes_0_4 (ss)))
+                {
+                  // Compilation failed.
+                  // Try again using a server if appropriate.
+                  if (ss.try_server ())
+                    rc = passes_0_4_again_with_server (ss);
+                }
+              if (rc || s.perpass_verbose[0] >= 1)
+                s.explain_auto_options ();
+            }
+        }
+
+      // Run pass 5, if requested (part 1/2 (unprivileged))
           if (s.verbose >= vt)
           {
             clog << "Child started ..." << endl;
             clog << "Child pid=" << getpid() << ", uid=" << getuid() << ", euid=" << geteuid() << endl;
           }
-  	if (rc == 0 && s.have_script && s.last_pass >= 5 && ! pending_interrupts)
-              rc = pass_5_1 (s, targets);
+      if (rc == 0 && s.have_script && s.last_pass >= 5 && ! pending_interrupts)
+        rc = pass_5_1 (s, targets);
       if (s.verbose >= vt)
         clog << "Child finished running the unprivileged part of pass 5, tmpdir is " << s.tmpdir << endl;
       _exit(rc);
@@ -1645,13 +1644,13 @@ passes_1_5_build_as (systemtap_session &s, vector<remote*> targets)
       if (s.verbose > 2)
         clog << "Child finished." << endl;
     }
-  
-          // Run pass 5, if requested (part 2/2 (privileged))
-          if (s.verbose >= vt)
-            clog << "Parent about to execute staprun, tmpdir is " << s.tmpdir << endl;
-  	if (rc == 0 && s.have_script && s.last_pass >= 5 && ! pending_interrupts)
-              rc = pass_5_2 (s, targets);
-    return rc;
+
+  // Run pass 5, if requested (part 2/2 (privileged))
+  if (s.verbose >= vt)
+    clog << "Parent about to execute staprun, tmpdir is " << s.tmpdir << endl;
+  if (rc == 0 && s.have_script && s.last_pass >= 5 && ! pending_interrupts)
+    rc = pass_5_2 (s, targets);
+  return rc;
 }
 
 int
