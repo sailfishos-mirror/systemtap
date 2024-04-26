@@ -816,6 +816,7 @@ int init_relayfs(void)
 void close_relayfs(void)
 {
 	int i;
+	usleep(reader_timeout_ms*2*1000); /* PR31597, delay to drain buffers */
 	stop_threads = 1;
 	dbug(2, "closing\n");
 
