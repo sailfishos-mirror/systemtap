@@ -1,12 +1,27 @@
 * What's new in version 5.1, 2024-04-26
 
-- Add new probe-points for userland hardware breakpoints/watchpoints
+- An experimental "--build-as=USER" flag to reduce privilege during
+  script compilation.
+
+- Support DWARF "DW_OP_bra" location construct.
+
+- Dynamic namespace switching for processes targeted via "-x PID".
+
+- New probe-points for userland hardware breakpoints/watchpoints
   targeting processes (PR31180):
 
     probe process.data(ADDRESS).write
     probe process.data(ADDRESS).rw
     probe process.data(ADDRESS).length(LEN).write
     probe process.data(ADDRESS).length(LEN).rw
+
+- Support for stap --remote=bpf.
+
+- Improved searching heuristics for probing symbol names with/without
+  symbol-version suffixes.
+
+- Improved message transport robustness for heavy traffic and for
+  short runs.
 
 * What's new in version 5.0, 2023-11-04
 
