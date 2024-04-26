@@ -2,7 +2,7 @@ SYSTEMTAP EXAMPLES INDEX BY KEYWORD
 (see also index.txt)
 
 
-For systemtap version 5.0.
+For systemtap version 5.1.
 
 = _BEST =
 
@@ -741,7 +741,7 @@ keywords: profiling function
   will print a sorted list from most frequently to least frequently
   called function.
 
-  # stap -w functioncallcount.stp "*@mm/*.c" -T 1
+  # stap -w functioncallcount.stp "*@fs/*.c" -T 1
 
 
 profiling/sched_switch.stp - Display the Task Switches Happening in the Scheduler
@@ -2685,7 +2685,7 @@ keywords: profiling function
   will print a sorted list from most frequently to least frequently
   called function.
 
-  # stap -w functioncallcount.stp "*@mm/*.c" -T 1
+  # stap -w functioncallcount.stp "*@fs/*.c" -T 1
 
 
 profiling/ioctl_handler.stp - Monitor which executables use ioctl syscalls and what kernel code is handling the ioctl
