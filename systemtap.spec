@@ -92,7 +92,10 @@
 \
 g     stapusr  156\
 g     stapsys  157\
-g     stapdev  158
+g     stapdev  158\
+g     stapunpriv 159\
+u     stapunpriv 159      "systemtap unprivileged user"   /var/lib/stapunpriv   /sbin/nologin\
+m     stapunpriv stapunpriv
 
 %define _systemtap_server_preinstall \
 # See systemd-sysusers(8) sysusers.d(5)\
@@ -842,6 +845,9 @@ echo '%_systemtap_runtime_preinstall' | systemd-sysusers --replace=%{_sysusersdi
 getent group stapusr >/dev/null || groupadd -f -g 156 -r stapusr
 getent group stapsys >/dev/null || groupadd -f -g 157 -r stapsys
 getent group stapdev >/dev/null || groupadd -f -g 158 -r stapdev
+getent passwd stapunpriv >/dev/null || \
+  useradd -c "Systemtap Unprivileged User" -u 159 -g stapunpriv -d %{_localstatedir}/lib/stapunpriv -r -s /sbin/nologin stapunpriv 2>/dev/null || \
+  useradd -c "Systemtap Unprivileged User" -g stapunpriv -d %{_localstatedir}/lib/stapunpriv -r -s /sbin/nologin stapunpriv
 %endif
 exit 0
 

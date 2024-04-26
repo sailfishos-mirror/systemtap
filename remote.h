@@ -37,6 +37,8 @@ class remote {
   public:
     static remote* create(systemtap_session& s, const std::string& uri, int idx);
     static int run(const std::vector<remote*>& remotes);
+    static int run1(const std::vector<remote*>& remotes);
+    static int run2(const std::vector<remote*>& remotes);
 
     systemtap_session* get_session() { return s; }
 

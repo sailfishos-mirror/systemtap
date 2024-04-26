@@ -46,6 +46,7 @@ extern "C" {
 #include <regex.h>
 #include <stdarg.h>
 #include <libgen.h>
+#include <pwd.h>
 
 #ifdef HAVE_LIBDEBUGINFOD
 #include <elfutils/debuginfod.h>
@@ -191,7 +192,9 @@ copy_file(const string& src, const string& dest, bool verbose)
 
 error:
   cerr << _F("Copy failed (\"%s\" to \"%s\"): %s", src.c_str(),
-             dest.c_str(), strerror(errno)) << endl;
+             dest.c_str(), strerror(errno))
+       << ((getuid() != 0) ?
+           _F(". Your uid=%d.", getuid()) : "") << endl;
   return false;
 }
 
@@ -224,6 +227,7 @@ create_dir(const char *dir, int mode)
   for (unsigned ix = 0; ix < limit; ++ix)
     {
       path += components[ix] + '/';
+      umask(0); mode=0777;
       if (mkdir(path.c_str (), mode) != 0 && errno != EEXIST)
 	return 1;
     }
@@ -1505,7 +1509,10 @@ is_valid_pid (pid_t pid, string& err_msg)
     }
   else if (kill(pid, 0) == -1)
     {
-      err_msg = _F("cannot probe pid %d: %s", pid, strerror(errno));
+      if (getuid() != 0)
+        err_msg = _F("cannot probe pid %d: %s.  Your uid=%d.", pid, strerror(errno), getuid());
+      else
+        err_msg = _F("cannot probe pid %d: %s", pid, strerror(errno));
       return false;
     }
   return true;
@@ -1894,5 +1901,32 @@ get_distro_info(vector<string> &info)
     }
     return false;
 }
+
+// PR30321: Privilege separation
+int
+run_unprivileged(const std::string& build_as, uid_t build_as_uid, gid_t build_as_gid, int verbosity)
+{
+    if (build_as == "")
+      return EXIT_SUCCESS;
+
+    int ret;
+    ret = setregid(build_as_gid, build_as_gid);
+    if (ret != 0) {
+        clog << "ERROR: setregid() failed" << endl;
+        clog << strerror (errno) << endl;
+        return EXIT_FAILURE;
+    }
+    ret = setreuid(build_as_uid, build_as_uid);
+    if (ret != 0) {
+        clog << "ERROR: setreuid() failed" << endl;
+        clog << strerror (errno) << endl;
+        return EXIT_FAILURE;
+    }
+    if (verbosity > 2)
+      cout << _F("Running passes 1-4 using user \"%s\" userid \"%d\" group id \"%d\"",
+                  build_as.c_str(), build_as_uid, build_as_gid) << "<<<" << endl;
+    return EXIT_SUCCESS;
+}
+
 
 /* vim: set sw=2 ts=8 cino=>4,n-2,{2,^-2,t0,(0,u0,w1,M1 : */

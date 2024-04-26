@@ -25,6 +25,7 @@ extern "C" {
 #include <sstream>
 #include <string>
 #include <vector>
+#include <fstream>
 
 #include "buildrun.h"
 #include "remote.h"
@@ -81,7 +82,35 @@ class direct : public remote {
     vector<string> args;
     direct(systemtap_session& s): remote(s), child(0) {}
 
-    int start()
+    // Save the staprun commandline to a file, where the privileged
+    // parent process can find it and spawn staprun.
+    void put_args()
+      {
+        ofstream f(s->tmpdir + "/staprun_args_direct");
+        if(f.fail())
+            cerr << "ERROR: Failed writing staprun_args_direct." << endl;
+        for (vector<string>::iterator t=args.begin(); t!=args.end(); ++t)
+            f << *t << endl;
+        f.close();
+      }
+
+    // Retreive saved staprun commandline from the file.
+    // Feed the args vector.
+    void get_args()
+      {
+        ifstream f(s->tmpdir + "/staprun_args_direct");
+        if(f.fail())
+          cerr << "ERROR: Failed reading staprun_args_direct" << endl;
+        string l;
+        while(getline(f, l))
+          args.insert(args.end(), l);
+        f.close();
+      }
+
+    // Define prepare() and move the initial part of pass_5 (i.e. the
+    // preparation of the staprun commandline) into it.  The staprun
+    // invocation stays in start() below.
+    int prepare()
       {
         args = make_run_command(*s);
         if (! staprun_r_arg.empty()) // PR13354
@@ -92,6 +121,17 @@ class direct : public remote {
               args.insert(args.end(), { "-r", staprun_r_arg });
 	    // leave args empty for bpf_runtime
           }
+
+        // Dump args to a file, where parent can read it.
+        put_args();
+        return 0;
+      }
+
+    int start()
+      {
+        // If args is an empty vector, read it from file.
+        if (args.size() == 0)
+          get_args();
 
         pid_t pid = stap_spawn (s->verbose, args);
         if (pid <= 0)
@@ -132,11 +172,37 @@ class stapsh : public remote {
     string remote_version;
     size_t data_size;
     string target_stream;
+    vector<string> args;
 
     enum {
       STAPSH_READY, // ready to receive next command
       STAPSH_DATA   // currently printing data from a 'data' command
     } stream_state;
+
+    // Save the staprun commandline to a file, where the privileged
+    // parent process can find it and spawn staprun.
+    void put_args()
+      {
+        ofstream f(s->tmpdir + "/staprun_args_stapsh");
+        if(f.fail())
+            cerr << "ERROR: Failed writing staprun_args_stapsh." << endl;
+        for (vector<string>::iterator t=args.begin(); t!=args.end(); ++t)
+            f << *t << endl;
+        f.close();
+      }
+
+    // Retreive saved staprun commandline from the file.
+    // Feed the args vector.
+    void get_args()
+      {
+        ifstream f(s->tmpdir + "/staprun_args_stapsh");
+        if(f.fail())
+          cerr << "ERROR: Failed reading staprun_args_stapsh" << endl;
+        string l;
+        while(getline(f, l))
+          args.insert(args.end(), l);
+        f.close();
+      }
 
     virtual void prepare_poll(vector<pollfd>& fds)
       {
@@ -481,6 +547,22 @@ class stapsh : public remote {
               return rc;
           }
 
+        args = make_run_command(*s, ".", remote_version);
+
+        // PR13354: identify our remote index/url
+        if (strverscmp("1.7", remote_version.c_str()) <= 0 && // -r supported?
+            ! staprun_r_arg.empty())
+          {
+             if (s->runtime_mode == systemtap_session::dyninst_runtime)
+	       args.insert(args.end(), { "_stp_dyninst_remote=" +  staprun_r_arg});
+             else if (s->runtime_mode == systemtap_session::kernel_runtime)
+               args.insert(args.end(), { "-r", staprun_r_arg });
+	     // leave args empty for bpf_runtime
+          }
+
+        // Dump args to a file, where parent can read it.
+        put_args();
+
         return rc;
       }
 
@@ -489,21 +571,12 @@ class stapsh : public remote {
         // Send the staprun args
         // NB: The remote is left to decide its own staprun path
         ostringstream run("run", ios::out | ios::ate);
-        vector<string> cmd = make_run_command(*s, ".", remote_version);
 
-        // PR13354: identify our remote index/url
-        if (strverscmp("1.7", remote_version.c_str()) <= 0 && // -r supported?
-            ! staprun_r_arg.empty())
-          {
-             if (s->runtime_mode == systemtap_session::dyninst_runtime)
-	       cmd.insert(cmd.end(), { "_stp_dyninst_remote=" +  staprun_r_arg});
-             else if (s->runtime_mode == systemtap_session::kernel_runtime)
-               cmd.insert(cmd.end(), { "-r", staprun_r_arg });
-	     // leave args empty for bpf_runtime
-          }
+        if (args.size() == 0)
+          get_args();
 
-        for (unsigned i = 1; i < cmd.size(); ++i)
-          run << ' ' << qpencode(cmd[i]);
+        for (unsigned i = 1; i < args.size(); ++i)
+          run << ' ' << qpencode(args[i]);
         run << '\n';
 
         int rc = send_command(run.str());
@@ -1296,6 +1369,80 @@ remote::run(const vector<remote*>& remotes)
 
   return ret;
 }
+
+int
+remote::run1(const vector<remote*>& remotes)
+{
+  // NB: the first failure "wins"
+  int ret = 0, rc = 0;
+
+  // Only prepare the staprun commandline, don't spawn staprun.
+  // Run under unprivileged user.
+
+  for (unsigned i = 0; i < remotes.size() && !pending_interrupts; ++i)
+    {
+      remote *r = remotes[i];
+      r->s->verbose = r->s->perpass_verbose[4];
+      if (r->s->use_remote_prefix)
+        r->prefix = lex_cast(i) + ": ";
+      rc = r->prepare();
+      if (rc)
+        return rc;
+    }
+  return ret;
+}
+
+int
+remote::run2(const vector<remote*>& remotes)
+{
+  // NB: the first failure "wins"
+  int ret = 0, rc = 0;
+
+
+  // The staprun commandline is already prepared.
+  // Spawn staprun using it.
+  // Run under privileged user.
+
+
+  for (unsigned i = 0; i < remotes.size() && !pending_interrupts; ++i)
+    {
+      rc = remotes[i]->start();
+      if (!ret)
+        ret = rc;
+    }
+
+  // mask signals while we're preparing to poll
+  {
+    stap_sigmasker masked;
+
+    // polling loop for remotes that have fds to watch
+    for (;;)
+      {
+        vector<pollfd> fds;
+        for (unsigned i = 0; i < remotes.size(); ++i)
+          remotes[i]->prepare_poll (fds);
+        if (fds.empty())
+          break;
+
+        rc = ppoll (&fds[0], fds.size(), NULL, &masked.old);
+        if (rc < 0 && errno != EINTR)
+          break;
+
+        for (unsigned i = 0; i < remotes.size(); ++i)
+          remotes[i]->handle_poll (fds);
+      }
+  }
+
+  for (unsigned i = 0; i < remotes.size(); ++i)
+    {
+      rc = remotes[i]->finish();
+      if (!ret)
+        ret = rc;
+    }
+
+  return ret;
+}
+
 
 
 /* vim: set sw=2 ts=8 cino=>4,n-2,{2,^-2,t0,(0,u0,w1,M1 : */

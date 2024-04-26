@@ -33,6 +33,7 @@ extern "C" {
 #include <readline/readline.h>
 #include <readline/history.h>
 #include <ctype.h>
+#include <sys/wait.h>
 
 #if HAVE_LIBSQLITE3
   #include <sqlite3.h>
@@ -43,7 +44,9 @@ extern "C" {
 extern int
 passes_0_4 (systemtap_session &s);
 extern int
-pass_5 (systemtap_session &s, vector<remote*> targets);
+pass_5_1 (systemtap_session &s, vector<remote*> targets);
+extern int
+pass_5_2 (systemtap_session &s, vector<remote*> targets);
 
 static int
 forked_passes_0_4 (systemtap_session &s);
@@ -775,6 +778,9 @@ public:
 	       vector<string> &tokens __attribute ((unused)),
 	       string &input __attribute ((unused)))
   {
+    int rc = 0;
+    // logging treshold
+    unsigned int lt = 2;
     if (script_vec.empty())
       {
 	clog << "No script specified." << endl;
@@ -787,22 +793,83 @@ public:
     // just use the current session.
     s.cmdline_script = join(script_vec, "\n");
     s.have_script = true;
-    int rc = forked_passes_0_4(s);
-#if 0
-    if (rc)
-    {
-	// Compilation failed.
-	// Try again using a server if appropriate.
-	if (s.try_server ())
-	    rc = passes_0_4_again_with_server (s);
-    }
-#endif
-    if (rc || s.perpass_verbose[0] >= 1)
-	s.explain_auto_options ();
+    if (s.build_as != "")
+      {
+        // PR30321: Privilege separation
+        // Fork the stap process in two:  An unprivileged child, and a privileged parent
+        // Child will run passes 1-4 and part of pass 5 (up to preparing staprun cmdline
+        // Parent will wait, spawn staprun (second part of pass 5), and finish.
+        pid_t frkrc = fork();
+        if (frkrc == -1)
+        {
+          clog << _("ERROR: Fork failed.  Terminating...") << endl;
+          return EXIT_FAILURE;
+        }
+        else if (frkrc == 0)
+        {
+          // Child process (unprivileged)
+          rc = run_unprivileged(s.build_as, s.build_as_uid, s.build_as_gid, s.verbose);
+          if (rc != EXIT_SUCCESS)
+            return rc;
+          if (s.verbose >= lt)
+            clog << _F("Child pid=%d, uid=%d, euid=%d, gid=%d, egid=%d\n",
+                       getpid(), getuid(), geteuid(), getgid(), getegid());
 
-    // Run pass 5, if passes 0-4 worked.
-    if (rc == 0 && s.last_pass >= 5 && !pending_interrupts)
-      rc = pass_5 (s, *saved_targets);
+          rc = forked_passes_0_4(s);
+// #if 0
+//     if (rc)
+//     {
+// 	// Compilation failed.
+// 	// Try again using a server if appropriate.
+// 	if (s.try_server ())
+// 	    rc = passes_0_4_again_with_server (s);
+//     }
+// #endif
+          if (rc || s.perpass_verbose[0] >= 1)
+            s.explain_auto_options ();
+
+          // Run pass 5, if passes 0-4 worked.
+          if (rc == 0 && s.last_pass >= 5 && !pending_interrupts)
+              rc = pass_5_1 (s, *saved_targets);
+          _exit(rc);
+        }
+        else
+        {
+          // Parent process (privileged)
+          if (s.verbose >= lt)
+            clog << _F("Parent pid=%d, uid=%d, euid=%d, gid=%d, egid=%d\n",
+                       getpid(), getuid(), geteuid(), getgid(), getegid());
+          int wstatus;
+          (void)waitpid(frkrc, &wstatus, 0);
+          rc = WEXITSTATUS(wstatus);
+          if (s.verbose >= lt)
+              clog << _("Child finished.") << endl;
+        }
+        rc = pass_5_2 (s, *saved_targets);
+      }
+    else
+      {
+        // --build-as wasn't specified, no need to fork
+        rc = forked_passes_0_4(s);
+// #if 0
+//     if (rc)
+//     {
+// 	// Compilation failed.
+// 	// Try again using a server if appropriate.
+// 	if (s.try_server ())
+// 	    rc = passes_0_4_again_with_server (s);
+//     }
+// #endif
+        if (rc || s.perpass_verbose[0] >= 1)
+          s.explain_auto_options ();
+
+        // Run pass 5, if passes 0-4 worked.
+        if (rc == 0 && s.last_pass >= 5 && !pending_interrupts)
+          {
+            rc = pass_5_1 (s, *saved_targets);
+            rc = pass_5_2 (s, *saved_targets);
+          }
+      }
     s.reset_tmp_dir();
     return false;
   }

@@ -27,6 +27,7 @@
 extern "C" {
 #include <signal.h>
 #include <elfutils/libdw.h>
+#include <pwd.h>
 }
 
 #include "privilege.h"
@@ -491,6 +492,10 @@ public:
   
   bool language_server_mode;
   language_server* lang_server;
+
+  std::string build_as;
+  uid_t build_as_uid;
+  gid_t build_as_gid;
 
   // NB: It is very important for all of the above (and below) fields
   // to be cleared in the systemtap_session ctor (session.cxx).

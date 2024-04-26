@@ -877,6 +877,13 @@ variables at the end of a stap session.
 Language server mode. Start a language server which will communicate via
 stdio. The language server will respect stap verbosity.
 
+.TP
+.B \-\-build\-as
+Execute passes 1-4 under specified user to increase safety.  This approach
+may have limitations.  Unprivileged users might not have access to kallsyms
+or /proc.  At the RPM install time, the stapunpriv user is created, so stap
+can be invoked with --build-as=stapunpriv.
+
 .SH ARGUMENTS
 
 Any additional arguments on the command line are passed to the script

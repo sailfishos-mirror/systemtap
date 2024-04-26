@@ -15,6 +15,7 @@ struct option stap_long_options[] = {
   { "skip-badvars",                no_argument,       NULL, LONG_OPT_SKIP_BADVARS },
   { "vp",                          required_argument, NULL, LONG_OPT_VERBOSE_PASS },
   { "unprivileged",                no_argument,       NULL, LONG_OPT_UNPRIVILEGED },
+  { "build-as",                    optional_argument, NULL, LONG_OPT_BUILD_AS },
   { "client-options",              no_argument,       NULL, LONG_OPT_CLIENT_OPTIONS },
   { "help",                        no_argument,       NULL, LONG_OPT_HELP },
   { "disable-cache",               no_argument,       NULL, LONG_OPT_DISABLE_CACHE },

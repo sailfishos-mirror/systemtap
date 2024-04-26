@@ -42,6 +42,7 @@ extern "C" {
 #include <unistd.h>
 #include <sys/wait.h>
 #include <wordexp.h>
+#include <pwd.h>
 }
 
 #if HAVE_NSS
@@ -194,6 +195,9 @@ systemtap_session::systemtap_session ():
   symbol_resolver = 0;
   lang_server = 0;
   language_server_mode = false;
+  build_as = "";
+  build_as_uid = 0;
+  build_as_gid = 0;
 
   // PR12443: put compiled-in / -I paths in front, to be preferred during 
   // tapset duplicate-file elimination
@@ -387,6 +391,7 @@ systemtap_session::systemtap_session (const systemtap_session& other,
   timeout = other.timeout;
   language_server_mode = other.language_server_mode;
   lang_server = other.lang_server;
+  build_as = other.build_as;
   // don't bother copy typequery_memo
 
   include_path = other.include_path;
@@ -757,6 +762,8 @@ systemtap_session::usage (int exitcode)
      "   --language-server\n"
      "              starts a systemtap language server\n"
 #endif
+    "   --build-as=VALUE\n"
+    "              Set user running passes 1-4\n"
     , compatible.c_str()) << endl
   ;
 
@@ -1709,6 +1716,23 @@ systemtap_session::parse_cmdline (int argc, char * const argv [])
   case LONG_OPT_LANGUAGE_SERVER:
     language_server_mode = true;
     break;
+
+	case LONG_OPT_BUILD_AS:
+	  if (optarg)
+          {
+	    build_as = optarg;
+            struct passwd *pwd;
+            if ((pwd = getpwnam(build_as.c_str())) == NULL)
+            {
+                cerr << _F("ERROR: Failed converting userid \"%s\" to userid. Terminating.", build_as.c_str()) << endl;
+                return 1;
+            }
+            build_as_uid = pwd->pw_uid;
+            build_as_gid = pwd->pw_gid;
+          }
+	  else
+	    build_as = "";
+	  break;
 
 	case '?':
 	  // Invalid/unrecognized option given or argument required, but
@@ -2714,8 +2738,14 @@ systemtap_session::create_tmp_dir()
       //TRANSLATORS: we can't make the directory due to the error
       throw runtime_error(_F("cannot create temporary directory (\" %s \"): %s", tmpdirt.c_str(), e));
     }
-  else
-    tmpdir = tmpdir_name;
+  //else
+  tmpdir = tmpdir_name;
+  if ((getuid() == 0) && (build_as != ""))
+    if(chown(tmpdirt.c_str(), build_as_uid, build_as_gid) != 0)
+      {
+        cout << "ERROR: Failed to chown.  Terminating." << endl;
+        exit(1);
+      }
 }
 
 void
