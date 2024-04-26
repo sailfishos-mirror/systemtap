@@ -1,5 +1,5 @@
 .\" -*- nroff -*-
-.TH TAPSET::MEMORY 3stap "November 2023" "SystemTap Tapset Reference"
+.TH TAPSET::MEMORY 3stap "April 2024" "SystemTap Tapset Reference"
 .SH NAME
 tapset::memory \- systemtap memory tapset
  

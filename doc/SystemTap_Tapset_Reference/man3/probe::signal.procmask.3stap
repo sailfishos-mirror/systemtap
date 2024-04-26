@@ -2,12 +2,12 @@
 .\"     Title: probe::signal.procmask
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: November 2023
+.\"      Date: April 2024
 .\"    Manual: Signal Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "PROBE::SIGNAL\&.PROC" "3stap" "November 2023" "SystemTap Tapset Reference" "Signal Tapset"
+.TH "PROBE::SIGNAL\&.PROC" "3stap" "April 2024" "SystemTap Tapset Reference" "Signal Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -36,6 +36,11 @@ signal\&.procmask
 .fi
 .SH "VALUES"
 .PP
+\fIhow\fR
+.RS 4
+Indicates how to change the blocked signals; possible values are SIG_BLOCK=0 (for blocking signals), SIG_UNBLOCK=1 (for unblocking signals), and SIG_SETMASK=2 for setting the signal mask\&.
+.RE
+.PP
 \fIsigset\fR
 .RS 4
 The actual value to be set for sigset_t (correct?)
@@ -44,11 +49,6 @@ The actual value to be set for sigset_t (correct?)
 \fIoldsigset_addr\fR
 .RS 4
 The old address of the signal set (sigset_t)
-.RE
-.PP
-\fIhow\fR
-.RS 4
-Indicates how to change the blocked signals; possible values are SIG_BLOCK=0 (for blocking signals), SIG_UNBLOCK=1 (for unblocking signals), and SIG_SETMASK=2 for setting the signal mask\&.
 .RE
 .PP
 \fIname\fR

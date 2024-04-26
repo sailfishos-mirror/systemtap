@@ -2,12 +2,12 @@
 .\"     Title: function::returnval
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: November 2023
+.\"      Date: April 2024
 .\"    Manual: Errno Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "FUNCTION::RETURNVAL" "3stap" "November 2023" "SystemTap Tapset Reference" "Errno Tapset"
+.TH "FUNCTION::RETURNVAL" "3stap" "April 2024" "SystemTap Tapset Reference" "Errno Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------

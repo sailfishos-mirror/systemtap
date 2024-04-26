@@ -2,12 +2,12 @@
 .\"     Title: probe::nfs.fop.mmap
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: November 2023
+.\"      Date: April 2024
 .\"    Manual: Network File Storage Tapsets
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "PROBE::NFS\&.FOP\&.M" "3stap" "November 2023" "SystemTap Tapset Reference" "Network File Storage Tapsets"
+.TH "PROBE::NFS\&.FOP\&.M" "3stap" "April 2024" "SystemTap Tapset Reference" "Network File Storage Tapsets"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -36,44 +36,14 @@ nfs\&.fop\&.mmap
 .fi
 .SH "VALUES"
 .PP
-\fIvm_flag\fR
-.RS 4
-vm flags
-.RE
-.PP
-\fIbuf\fR
-.RS 4
-the address of buf in user space
-.RE
-.PP
-\fIdev\fR
-.RS 4
-device identifier
-.RE
-.PP
-\fIparent_name\fR
-.RS 4
-parent dir name
-.RE
-.PP
 \fIcache_time\fR
 .RS 4
 when we started read\-caching this inode
 .RE
 .PP
-\fIattrtimeo\fR
+\fIvm_start\fR
 .RS 4
-how long the cached information is assumed to be valid\&. We need to revalidate the cached attrs for this inode if jiffies \- read_cache_jiffies > attrtimeo\&.
-.RE
-.PP
-\fIino\fR
-.RS 4
-inode number
-.RE
-.PP
-\fIvm_end\fR
-.RS 4
-the first byte after end address within vm_mm
+start address within vm_mm
 .RE
 .PP
 \fIfile_name\fR
@@ -86,9 +56,39 @@ file name
 cache related bit mask flag
 .RE
 .PP
-\fIvm_start\fR
+\fIdev\fR
 .RS 4
-start address within vm_mm
+device identifier
+.RE
+.PP
+\fIvm_flag\fR
+.RS 4
+vm flags
+.RE
+.PP
+\fIparent_name\fR
+.RS 4
+parent dir name
+.RE
+.PP
+\fIino\fR
+.RS 4
+inode number
+.RE
+.PP
+\fIbuf\fR
+.RS 4
+the address of buf in user space
+.RE
+.PP
+\fIattrtimeo\fR
+.RS 4
+how long the cached information is assumed to be valid\&. We need to revalidate the cached attrs for this inode if jiffies \- read_cache_jiffies > attrtimeo\&.
+.RE
+.PP
+\fIvm_end\fR
+.RS 4
+the first byte after end address within vm_mm
 .RE
 .SH SEE ALSO\n 
 .IR tapset::nfs (3stap)

@@ -2,12 +2,12 @@
 .\"     Title: function::fp32_to_fp64
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: November 2023
+.\"      Date: April 2024
 .\"    Manual: Floating point processing Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "FUNCTION::FP32_TO_FP" "3stap" "November 2023" "SystemTap Tapset Reference" "Floating point processing Taps"
+.TH "FUNCTION::FP32_TO_FP" "3stap" "April 2024" "SystemTap Tapset Reference" "Floating point processing Taps"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------

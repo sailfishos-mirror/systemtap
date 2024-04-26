@@ -2,12 +2,12 @@
 .\"     Title: probe::socket.aio_write
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: November 2023
+.\"      Date: April 2024
 .\"    Manual: Socket Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "PROBE::SOCKET\&.AIO_" "3stap" "November 2023" "SystemTap Tapset Reference" "Socket Tapset"
+.TH "PROBE::SOCKET\&.AIO_" "3stap" "April 2024" "SystemTap Tapset Reference" "Socket Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -36,14 +36,14 @@ socket\&.aio_write
 .fi
 .SH "VALUES"
 .PP
-\fIstate\fR
-.RS 4
-Socket state value
-.RE
-.PP
 \fIflags\fR
 .RS 4
 Socket flags value
+.RE
+.PP
+\fIprotocol\fR
+.RS 4
+Protocol value
 .RE
 .PP
 \fIname\fR
@@ -51,9 +51,9 @@ Socket flags value
 Name of this probe
 .RE
 .PP
-\fIsize\fR
+\fIfamily\fR
 .RS 4
-Message size in bytes
+Protocol family value
 .RE
 .PP
 \fItype\fR
@@ -61,14 +61,14 @@ Message size in bytes
 Socket type value
 .RE
 .PP
-\fIfamily\fR
+\fIstate\fR
 .RS 4
-Protocol family value
+Socket state value
 .RE
 .PP
-\fIprotocol\fR
+\fIsize\fR
 .RS 4
-Protocol value
+Message size in bytes
 .RE
 .SH "CONTEXT"
 .PP

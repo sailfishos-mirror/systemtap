@@ -1,5 +1,5 @@
 .\" -*- nroff -*-
-.TH TAPSET::NFS 3stap "November 2023" "SystemTap Tapset Reference"
+.TH TAPSET::NFS 3stap "April 2024" "SystemTap Tapset Reference"
 .SH NAME
 tapset::nfs \- systemtap nfs tapset
  
@@ -143,6 +143,14 @@ NFS client reading multiple pages
  for details.
 .P
 .TP
+.B nfs.aop.readahead 
+NFS client reading multiple pages
+.IP
+ See 
+.IR probe::nfs.aop.readahead (3stap)
+ for details.
+.P
+.TP
 .B nfs.aop.set_page_dirty 
 NFS client marking page as dirty
 .IP
@@ -225,6 +233,8 @@ NFS client releasing page
 .IR \%probe::nfs.aop.readpage (3stap),
 .BR
 .IR \%probe::nfs.aop.readpages (3stap),
+.BR
+.IR \%probe::nfs.aop.readahead (3stap),
 .BR
 .IR \%probe::nfs.aop.set_page_dirty (3stap),
 .BR

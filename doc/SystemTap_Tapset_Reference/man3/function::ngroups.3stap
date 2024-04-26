@@ -2,12 +2,12 @@
 .\"     Title: function::ngroups
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: November 2023
+.\"      Date: April 2024
 .\"    Manual: A collection of standard string functions
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "FUNCTION::NGROUPS" "3stap" "November 2023" "SystemTap Tapset Reference" "A collection of standard strin"
+.TH "FUNCTION::NGROUPS" "3stap" "April 2024" "SystemTap Tapset Reference" "A collection of standard strin"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------

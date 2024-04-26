@@ -2,12 +2,12 @@
 .\"     Title: probe::netdev.hard_transmit
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: November 2023
+.\"      Date: April 2024
 .\"    Manual: Networking Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "PROBE::NETDEV\&.HARD" "3stap" "November 2023" "SystemTap Tapset Reference" "Networking Tapset"
+.TH "PROBE::NETDEV\&.HARD" "3stap" "April 2024" "SystemTap Tapset Reference" "Networking Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -36,9 +36,9 @@ netdev\&.hard_transmit
 .fi
 .SH "VALUES"
 .PP
-\fItruesize\fR
+\fIprotocol\fR
 .RS 4
-The size of the data to be transmitted\&.
+The protocol used in the transmission
 .RE
 .PP
 \fIdev_name\fR
@@ -51,9 +51,9 @@ The device scheduled to transmit
 The length of the transmit buffer\&.
 .RE
 .PP
-\fIprotocol\fR
+\fItruesize\fR
 .RS 4
-The protocol used in the transmission
+The size of the data to be transmitted\&.
 .RE
 .SH SEE ALSO\n 
 .IR tapset::networking (3stap)
