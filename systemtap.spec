@@ -399,7 +399,7 @@ with the optional dtrace-compatibility preprocessor to process related
 
 %package testsuite
 Summary: Instrumentation System Testsuite
-License: GPL-2.0-or-later AND GPL AND GPL-2.0-only AND GPL-3.0-or-later AND MIT
+License: GPL-2.0-or-later AND GPL-2.0-only AND GPL-3.0-or-later AND MIT
 URL: http://sourceware.org/systemtap/
 Requires: systemtap = %{version}-%{release}
 Requires: systemtap-sdt-devel = %{version}-%{release}
@@ -1310,7 +1310,7 @@ exit 0
 
 # PRERELEASE
 %changelog
-* Fru Apr 26 2024 Frank Ch. Eigler <fche@redhat.com> - 5.1-1
+* Fri Apr 26 2024 Frank Ch. Eigler <fche@redhat.com> - 5.1-1
 - Upstream release, see wiki page below for detailed notes.
   https://sourceware.org/systemtap/wiki/SystemTapReleases
 
