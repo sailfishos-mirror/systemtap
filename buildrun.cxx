@@ -506,6 +506,8 @@ compile_pass (systemtap_session& s)
 
   output_autoconf(s, o, cs, "autoconf-pagefault_disable.c", "STAPCONF_PAGEFAULT_DISABLE", NULL);
   output_exportconf(s, o2, "kallsyms_lookup_name", "STAPCONF_KALLSYMS_LOOKUP_NAME_EXPORTED");
+  output_autoconf(s, o, cs, "autoconf-kallsyms_6_3.c", "STAPCONF_KALLSYMS_6_3", NULL);
+  output_autoconf(s, o, cs, "autoconf-kallsyms_6_4.c", "STAPCONF_KALLSYMS_6_4", NULL);
   output_autoconf(s, o, cs, "autoconf-uidgid.c", "STAPCONF_LINUX_UIDGID_H", NULL);
   output_exportconf(s, o2, "sigset_from_compat", "STAPCONF_SIGSET_FROM_COMPAT_EXPORTED");
   output_exportconf(s, o2, "vzalloc", "STAPCONF_VZALLOC");

@@ -737,7 +737,7 @@ __stapkp_symbol_callback(void *data, const char *name,
 }
 
 static int
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,4,0)
+#if defined(STAPCONF_KALLSYMS_6_4)
 stapkp_symbol_callback(void *data, const char *name,
 			unsigned long addr)
 {
@@ -780,7 +780,7 @@ stapkp_init(struct stap_kprobe_probe *probes,
        mutex_lock(&module_mutex);
 #endif
        kallsyms_on_each_symbol(stapkp_symbol_callback, &sd);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,3,0)
+#if defined(STAPCONF_KALLSYMS_6_3) || defined(STAPCONF_KALLSYMS_6_4)
        module_kallsyms_on_each_symbol(sd.modname, stapkp_symbol_callback, &sd);
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(5,12,0)
        module_kallsyms_on_each_symbol(stapkp_symbol_callback, &sd);
@@ -855,7 +855,7 @@ stapkp_refresh(const char *modname,
          mutex_lock(&module_mutex);
 #endif
 	 kallsyms_on_each_symbol(stapkp_symbol_callback, &sd);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,3,0)
+#if defined(STAPCONF_KALLSYMS_6_3)
 	 module_kallsyms_on_each_symbol(sd.modname, stapkp_symbol_callback, &sd);
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(5,12,0)
 	 module_kallsyms_on_each_symbol(stapkp_symbol_callback, &sd);
