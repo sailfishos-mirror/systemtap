@@ -2655,8 +2655,13 @@ semantic_pass (systemtap_session& s)
 symresolution_info::symresolution_info (systemtap_session& s, bool omniscient_unmangled):
   session (s), unmangled_p(omniscient_unmangled), current_function (0), current_probe (0)
 {
+  #pragma GCC diagnostic push
+  // c10s early snapshot GCC complains about this construct, which is
+  // made safe via our dtor usage
+  #pragma GCC diagnostic ignored "-Wdangling-pointer"
   saved_session_symbol_resolver = s.symbol_resolver;
   s.symbol_resolver = this; // save resolver for early PR25841 function resolution
+  #pragma GCC diagnostic pop
 }
 
 
