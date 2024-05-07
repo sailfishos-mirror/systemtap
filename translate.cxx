@@ -1151,7 +1151,11 @@ c_unparser::emit_common_header ()
   o->indent(1);
 
   for (unsigned i=0; i<session->probes.size(); i++)
-    ct.emit_probe (session->probes[i]);
+    {
+      if (session->probes[i]->group == NULL)  /* 'never' probes */
+        continue;
+      ct.emit_probe (session->probes[i]);
+    }
 
   o->newline(-1) << "} probe_locals;";
 
@@ -8764,6 +8768,8 @@ translate_pass (systemtap_session& s)
       for (unsigned i=0; i<s.probes.size(); i++)
         {
           assert_no_interrupts();
+          if (s.probes[i]->group == NULL)  /* 'never' probes */
+            continue;
           s.up->emit_probe (s.probes[i]);
         }
       s.op->assert_0_indent();
@@ -8773,6 +8779,15 @@ translate_pass (systemtap_session& s)
       for (unsigned i=0; i<s.probes.size(); ++i)
         {
           derived_probe* p = s.probes[i];
+          if (p->group == NULL)  /* 'never' probes */
+            {
+              s.op->newline() << "STAP_PROBE_INIT(" << i << ", NULL, "
+                              << lex_cast_qstring (*p->sole_location()) << ", "
+                              << lex_cast_qstring (*p->script_location()) << ", "
+                              << lex_cast_qstring (p->tok->location) << ", "
+                              << lex_cast_qstring (p->derived_locations()) << "),";
+              continue;
+            }
           s.op->newline() << "STAP_PROBE_INIT(" << i << ", &" << p->name() << ", "
                           << lex_cast_qstring (*p->sole_location()) << ", "
                           << lex_cast_qstring (*p->script_location()) << ", "
