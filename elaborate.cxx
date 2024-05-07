@@ -2656,9 +2656,11 @@ symresolution_info::symresolution_info (systemtap_session& s, bool omniscient_un
   session (s), unmangled_p(omniscient_unmangled), current_function (0), current_probe (0)
 {
   #pragma GCC diagnostic push
+  #if __GNUC__ >= 14
   // c10s early snapshot GCC complains about this construct, which is
   // made safe via our dtor usage
   #pragma GCC diagnostic ignored "-Wdangling-pointer"
+  #endif
   saved_session_symbol_resolver = s.symbol_resolver;
   s.symbol_resolver = this; // save resolver for early PR25841 function resolution
   #pragma GCC diagnostic pop
