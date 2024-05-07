@@ -8592,7 +8592,9 @@ translate_pass (systemtap_session& s)
       // Emit embeds ahead of time, in case they affect context layout
       for (unsigned i=0; i<s.embeds.size(); i++)
         {
-          s.op->newline() << s.embeds[i]->code << "\n";
+          embeddedcode *e = s.embeds[i];
+          if (! e->tagged_p ("pragma:suffix"))
+            s.op->newline() << e->code << "\n";
         }
 
       s.up->emit_common_header (); // context etc.
@@ -8813,6 +8815,14 @@ translate_pass (systemtap_session& s)
       s.op->newline();
 
       emit_symbol_data (s);
+
+      // Emit suffix embeds
+      for (unsigned i=0; i<s.embeds.size(); i++)
+        {
+          embeddedcode *e = s.embeds[i];
+          if (e->tagged_p ("pragma:suffix"))
+            s.op->newline() << e->code << "\n";
+        }
 
       s.op->newline() << "MODULE_DESCRIPTION(\"systemtap-generated probe\");";
       s.op->newline() << "MODULE_LICENSE(\"GPL\");";

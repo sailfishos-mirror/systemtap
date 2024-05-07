@@ -2048,6 +2048,10 @@ and
 .I THIS->__retvalue
 respectively inside the function. This is useful for quickly migrating code written for SystemTap version 1.7 and earlier.
 .TP
+.I /* pragma:suffix */
+Emit the file-level containing C code near the end of the resulting kernel
+module C source file.
+.TP
 .I /* unmodified-fnargs */
 in an embedded-C function, means that the function arguments are not modified
 inside the function body.
