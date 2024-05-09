@@ -855,7 +855,7 @@ stapkp_refresh(const char *modname,
          mutex_lock(&module_mutex);
 #endif
 	 kallsyms_on_each_symbol(stapkp_symbol_callback, &sd);
-#if defined(STAPCONF_KALLSYMS_6_3)
+#if defined(STAPCONF_KALLSYMS_6_3) || defined(STAPCONF_KALLSYMS_6_4)
 	 module_kallsyms_on_each_symbol(sd.modname, stapkp_symbol_callback, &sd);
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(5,12,0)
 	 module_kallsyms_on_each_symbol(stapkp_symbol_callback, &sd);
