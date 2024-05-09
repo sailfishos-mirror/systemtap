@@ -31,5 +31,13 @@ static struct context *_stp_runtime_get_context(void);
 
 #endif
 
+/* Define UBSAN related define if not defined by linux headers */
+#ifndef __counted_by
+#if __has_attribute(__counted_by__)
+#define __counted_by(member) __attribute__((__counted_by__(member)))
+#else
+#define __counted_by(member)
+#endif
+#endif
 
 #endif /* _RUNTIME_H_ */

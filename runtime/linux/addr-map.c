@@ -169,7 +169,7 @@ struct addr_map_entry
 struct addr_map
 {
   size_t size;
-  struct addr_map_entry entries[0];
+  struct addr_map_entry entries[]  __counted_by(size);
 };
 
 static STP_DEFINE_RWLOCK(addr_map_lock);
