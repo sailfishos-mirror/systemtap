@@ -207,10 +207,6 @@ KEYSYM(_stp_pmap_new) (int first_arg, ...)
 	case HIST_NONE:
 		pmap = _stp_pmap_new_hstat (max_entries, wrap,
 		                            sizeof(struct KEYSYM(map_node)));
-		if (pmap) {
-			pmap->bit_shift = bit_shift;
-			pmap->stat_ops = stat_ops;
-		}
 		break;
 	case HIST_LOG:
 		pmap = _stp_pmap_new_hstat_log (max_entries, wrap,
@@ -226,6 +222,10 @@ KEYSYM(_stp_pmap_new) (int first_arg, ...)
 		pmap = NULL;
 	}
 
+        if (pmap) {
+		pmap->bit_shift = bit_shift;
+		pmap->stat_ops = stat_ops;
+        }
 
 	return pmap;
 }
