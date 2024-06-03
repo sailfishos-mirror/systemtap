@@ -8748,7 +8748,8 @@ translate_pass (systemtap_session& s)
                       << "STAP_PROBE_INIT_NAME(PN) "
                       << "STAP_PROBE_INIT_TIMING(L, D) "
                       << "}";
-      s.op->newline(-1) << "} static stap_probes[];";
+      s.op->newline(-1) << "};";
+      s.op->newline() << "static struct stap_probe stap_probes[];";
       s.op->assert_0_indent();
 #undef CALCIT
 
