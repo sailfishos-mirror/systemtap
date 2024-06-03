@@ -44,8 +44,8 @@
 		printk(args);						\
 	} while (0)
 #else
-#define dbug_trans(level, args...) ;
-#define dbug_trans2(args...) ;
+#define dbug_trans(level, args...) do { } while (0)
+#define dbug_trans2(args...) do { } while (0)
 #endif
 
 #ifdef DEBUG_STP_ON_THE_FLY
@@ -53,7 +53,7 @@
 		_stp_dbug(__FUNCTION__, __LINE__, args);		\
 	} while (0)
 #else
-#define dbug_otf(args...) ;
+#define dbug_otf(args...) do { } while (0)
 #endif
 
 #ifdef DEBUG_UPROBES
@@ -61,7 +61,7 @@
 		_stp_dbug(__FUNCTION__, __LINE__, args);		\
 	} while (0)
 #else
-#define dbug_uprobes(args...) ;
+#define dbug_uprobes(args...) do { } while (0)
 #endif
 
 #ifdef DEBUG_UNWIND /* stack unwinder */
@@ -70,7 +70,7 @@
 			_stp_dbug(__FUNCTION__, __LINE__, args);	\
 	} while (0)
 #else
-#define dbug_unwind(level, args...) ;
+#define dbug_unwind(level, args...) do { } while (0)
 #endif
 
 
@@ -80,7 +80,7 @@
 			_stp_dbug(__FUNCTION__, __LINE__, args);    \
 	} while (0)
 #else
-#define dbug_task(level, args...) ;
+#define dbug_task(level, args...) do { } while (0)
 #endif
 
 
@@ -90,7 +90,7 @@
                        _stp_dbug(__FUNCTION__, __LINE__, args);        \
        } while (0)
 #else
-#define dbug_task_vma(level, args...) ;
+#define dbug_task_vma(level, args...) do { } while (0)
 #endif
 
 
@@ -100,7 +100,7 @@
 			_stp_dbug(__FUNCTION__, __LINE__, args);	\
 	} while (0)
 #else
-#define dbug_sym(level, args...) ;
+#define dbug_sym(level, args...) do { } while (0)
 #endif
 
 
@@ -110,7 +110,7 @@
 			_stp_dbug(__FUNCTION__, __LINE__, args);	\
 	} while (0)
 #else
-#define dbug_tp(level, args...) ;
+#define dbug_tp(level, args...) do { } while (0)
 #endif
 
 #endif /* _STP_LINUX_DEBUG_H_ */
