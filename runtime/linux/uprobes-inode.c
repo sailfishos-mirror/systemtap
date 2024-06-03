@@ -792,7 +792,7 @@ stapiu_change_semaphore_plus(struct stapiu_consumer* c, struct task_struct *task
   if (! any_found)
     spin_unlock_irqrestore(&c->process_list_lock, flags);
   else
-    ; // already unlocked
+    {}; // already unlocked
 
   return rc;
 }
