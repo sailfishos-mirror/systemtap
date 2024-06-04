@@ -510,9 +510,6 @@ compile_pass (systemtap_session& s)
   output_autoconf(s, o, cs, "autoconf-kallsyms_6_4.c", "STAPCONF_KALLSYMS_6_4", NULL);
   output_autoconf(s, o, cs, "autoconf-uidgid.c", "STAPCONF_LINUX_UIDGID_H", NULL);
   output_exportconf(s, o2, "sigset_from_compat", "STAPCONF_SIGSET_FROM_COMPAT_EXPORTED");
-  output_exportconf(s, o2, "vzalloc", "STAPCONF_VZALLOC");
-  output_exportconf(s, o2, "vzalloc_node", "STAPCONF_VZALLOC_NODE");
-  output_exportconf(s, o2, "vmalloc_node", "STAPCONF_VMALLOC_NODE");
 
   // RHBZ1233912 - s390 temporary workaround for non-atomic udelay()
   output_exportconf(s, o2, "udelay_simple", "STAPCONF_UDELAY_SIMPLE_EXPORTED");
