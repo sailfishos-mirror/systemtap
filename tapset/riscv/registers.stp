@@ -134,7 +134,7 @@ static inline int _stp_regs_within_kernel_stack(struct pt_regs *regs, unsigned l
  * th entry of the kernel stack which is specified by @regs. If the @n
  * th entry is NOT in the kernel stack, this returns 0.
  */
-long *
+static long *
 _stp_regs_get_kernel_stack_nth_addr(struct pt_regs *regs, unsigned int n)
 {
         long *addr = (unsigned long *)_stp_kernel_stack_pointer(regs);
