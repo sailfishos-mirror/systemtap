@@ -4779,7 +4779,8 @@ dwarf_var_expanding_visitor::visit_target_symbol (target_symbol *e)
       // Now that have location information check if change to variable has any effect
       if (lvalue) {
         if (q.has_kernel &&
-            q.sess.kernel_config["CONFIG_RETPOLINE"] == string("y"))
+            (q.sess.kernel_config["CONFIG_RETPOLINE"] == string("y") ||
+             q.sess.kernel_config["CONFIG_MITIGATION_RETPOLINE"] == string("y")))
           q.sess.print_warning(_F("liveness analysis skipped on CONFIG_RETPOLINE kernel %s",
                                   q.dw.mod_info->elf_path.c_str()), e->tok);
         
