@@ -262,7 +262,18 @@ static void _stp_handle_start(struct _stp_msg_start *st)
                 rcu_read_unlock();
 #endif
 
-		st->res = systemtap_module_init();
+#ifdef STAP_MODULE_INIT_HOOK
+		st->res = STAP_MODULE_INIT_HOOK();
+		if (st->res != 0) {
+			_stp_error ("Failed to run STAP_MODULE_INIT_HOOK "
+				    "(%d)\n", st->res);
+		} else {
+#else
+		{
+#endif
+			st->res = systemtap_module_init();
+		}
+
 		if (st->res == 0) {
 			_stp_probes_started = 1;
 
@@ -580,6 +591,9 @@ static void _stp_transport_close(void)
 	_stp_unregister_ctl_channel();
 	_stp_print_cleanup(); /* Requires the transport, so free this first */
 	_stp_transport_fs_close();
+#ifdef STAP_MODULE_EXIT_HOOK
+	STAP_MODULE_EXIT_HOOK();
+#endif
 	_stp_mem_debug_done();
 
 	dbug_trans(1, "---- CLOSED ----\n");
