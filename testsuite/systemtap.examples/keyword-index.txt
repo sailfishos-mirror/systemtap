@@ -1247,6 +1247,15 @@ keywords: io
   # stap traceio2.stp 0x0801 -T 1
 
 
+io/traceio3.stp - Trace VFS writes to files
+keywords: io
+
+  Print a list of files being written to at the kernel VFS layer. 
+  Optionally, accept a regular expression to match file names against.
+
+  # stap traceio3.stp /dev -T 5
+
+
 io/ttyspy.stp - Monitor TTY Typing
 keywords: io tty monitoring guru
 
