@@ -63,9 +63,11 @@ static unsigned long _stp_copy_from_user(char *dst, const char __user *src, unsi
 {
 	if (count) {
 		stp_mm_segment_t oldfs;
-		if (!stp_user_access_begin(VERIFY_READ, src, count, &oldfs, STP_USER_DS))
-			goto done;
                 pagefault_disable();
+		if (!stp_user_access_begin(VERIFY_READ, src, count, &oldfs, STP_USER_DS)) {
+			pagefault_enable();
+			goto done;
+		}
 		if (!lookup_bad_addr(VERIFY_READ, (const unsigned long)src, count, STP_USER_DS))
 			count = __copy_from_user_inatomic(dst, src, count);
 		else
