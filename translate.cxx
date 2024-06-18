@@ -3786,10 +3786,12 @@ c_unparser_assignment::c_assignop(tmpvar & res,
       assert(rval.type() == pe_long);
       assert(res.type() == pe_long);
 
+      o->newline() << "preempt_disable();";
       o->newline() << "_stp_stat_add (" << lval << ", " << rval << ", " <<
                       stat_op_count << ", " <<  stat_op_sum << ", " <<
                       stat_op_min << ", " << stat_op_max << ", " <<
                       stat_op_variance << ");";
+      o->newline() << "preempt_enable_no_resched();";
       res = rval;
     }
   else if (res.type() == pe_long)
