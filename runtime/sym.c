@@ -1180,7 +1180,8 @@ unsigned long kallsyms_lookup_name (const char *name)
 }
 #endif
 
-#if defined(STAPCONF_KALLSYMS_ON_EACH_SYMBOL) && !defined(STAPCONF_KALLSYMS_ON_EACH_SYMBOL_EXPORTED)
+#if defined(STAPCONF_KALLSYMS_ON_EACH_SYMBOL)
+#if !defined(STAPCONF_KALLSYMS_ON_EACH_SYMBOL_EXPORTED)
 #ifndef KALLSYMS_H_INCLUDED
 #include <linux/kallsyms.h>
 #endif
@@ -1209,11 +1210,12 @@ int kallsyms_on_each_symbol(int (*fn)(void *, const char *, struct module *,
         _stp_error("BUG: attempting to use unavailable kallsyms_on_each_symbol!!\n");
         return 0;
 }
+#endif // !defined(STAPCONF_KALLSYMS_ON_EACH_SYMBOL_EXPORTED)
 
+// XXX module_kallsyms_on_each_symbol has never been exported
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,12,0)
 typedef typeof(&module_kallsyms_on_each_symbol) module_kallsyms_on_each_symbol_fn;
 
-// XXX Will be linked in place of the kernel's module_kallsyms_on_each_symbol:
 #if defined(STAPCONF_KALLSYMS_6_4)
 int module_kallsyms_on_each_symbol(const char *modname,
                                    int (*fn)(void *, const char *,
