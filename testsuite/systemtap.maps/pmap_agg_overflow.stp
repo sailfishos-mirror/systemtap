@@ -11,7 +11,8 @@ probe begin {
     max_count = max_map_entries() + 1
 }
 
-probe kernel.function("scheduler_tick") {
+probe kernel.function("sched_tick")!,
+      kernel.function("scheduler_tick") {
     # Be sure not to overflow the percpu array
     if (++pcpu_count[cpu()] > max_map_entries())
         next
