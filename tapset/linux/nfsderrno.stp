@@ -10,6 +10,11 @@
 #include <linux/nfs.h>
 #include <linux/nfs4.h>
 
+/* NFSERR_OPNOTSUPP not an official error and was removed from Linux 6.10 */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,10,0)
+#define NFSERR_OPNOTSUPP 45
+#endif
+
 #define	nfs_ok			__constant_htonl(NFS_OK)
 #define	nfserr_perm		__constant_htonl(NFSERR_PERM)
 #define	nfserr_noent		__constant_htonl(NFSERR_NOENT)
