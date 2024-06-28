@@ -57,7 +57,9 @@ proc dyninst_kfails {test} {
 	semok/umask04.stp -
 	semok/umask05.stp -
 	semok/umask06.stp -
-	semok/umask07.stp {
+	semok/umask07.stp -
+	semok/vfs_add_to_page_cache.stp -
+	semok/xfslines.stp {
 	    # Use setup_kfail DYNINST <target triplet> for known
 	    # failures when running with the dyninst runtime (scripts
 	    # that use kernel features or kernel-only tapset
