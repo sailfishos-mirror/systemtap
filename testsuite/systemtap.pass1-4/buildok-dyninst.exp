@@ -26,6 +26,7 @@ foreach file [lsort [glob -nocomplain $srcdir/$self/*.stp]] {
 	buildok/aux_syscalls-embedded.stp -
 	buildok/context-embedded-ns.stp -
 	buildok/context-embedded.stp -
+	buildok/contextfuns.stp -
 	buildok/context-symbols-embedded.stp -
 	buildok/context-unwind-embedded.stp -
 	buildok/conversions-embedded.stp -
@@ -65,7 +66,9 @@ foreach file [lsort [glob -nocomplain $srcdir/$self/*.stp]] {
 	buildok/kprocess-embedded.stp -
 	buildok/linuxmib-all-probes.stp -
 	buildok/linuxmib-detailed.stp -
+	buildok/loadavg-embedded.stp -
 	buildok/logging-embedded.stp -
+	buildok/logging-embedded2.stp -
 	buildok/maxactive01.stp -
 	buildok/memory-all-probes.stp -
 	buildok/memory-detailed.stp -
@@ -76,6 +79,7 @@ foreach file [lsort [glob -nocomplain $srcdir/$self/*.stp]] {
 	buildok/nd_syscalls-arch-detailed.stp -
 	buildok/nd_syscalls-detailed.stp -
 	buildok/nd_syscalls2-detailed.stp -
+	buildok/nested_vars.stp -
 	buildok/netfilter-glob.stp -
 	buildok/netfilter01.stp -
 	buildok/netfilter02.stp -
@@ -91,6 +95,7 @@ foreach file [lsort [glob -nocomplain $srcdir/$self/*.stp]] {
 	buildok/nfs-fop.check_flags.stp -
 	buildok/nfs_proc-detailed.stp -
 	buildok/nfs_proc-embedded.stp -
+	buildok/nfs_proc-embedded-ver4.3.stp -
 	buildok/nfsd-all-probes.stp -
 	buildok/nfsd-detailed.stp -
 	buildok/nfsd-embedded.stp -
@@ -99,6 +104,7 @@ foreach file [lsort [glob -nocomplain $srcdir/$self/*.stp]] {
 	buildok/pr10678.stp -
 	buildok/pr13284.stp -
 	buildok/pretty.stp -
+	buildok/pretty-print-untimed.stp -
 	buildok/print_histogram_entry.stp -
 	buildok/print_histograms.stp -
 	buildok/proc_mem-embedded.stp -
