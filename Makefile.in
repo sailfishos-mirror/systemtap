@@ -691,8 +691,8 @@ AM_CPPFLAGS = -DBINDIR='"$(bindir)"' \
 AM_CFLAGS = -D_GNU_SOURCE -fexceptions -Wall -Wextra -Wunused \
 	-Wformat=2 -W $(am__append_1)
 AM_CXXFLAGS = -Wall -Wextra $(am__append_2)
-bin_SCRIPTS = stap-report stap-profile-annotate $(am__append_4) \
-	$(am__append_7)
+bin_SCRIPTS = stap-report stap-profile-annotate stap-prep \
+	$(am__append_4) $(am__append_7)
 pkglibexec_SCRIPTS = stap-env $(am__append_8)
 oldinclude_HEADERS = includes/sys/sdt.h includes/sys/sdt-config.h
 @BUILD_TRANSLATOR_TRUE@stap_SOURCES = main.cxx session.cxx parse.cxx \
