@@ -727,9 +727,6 @@ find testsuite -type f -name '.gitignore' -print0 | xargs -0 rm -f
 # permissions back to 04110 in the %files section below.
 chmod 755 $RPM_BUILD_ROOT%{_bindir}/staprun
 
-#install the useful stap-prep script
-install -c -m 755 stap-prep $RPM_BUILD_ROOT%{_bindir}/stap-prep
-
 # Copy over the testsuite
 cp -rp testsuite $RPM_BUILD_ROOT%{_datadir}/systemtap
 

@@ -24,7 +24,7 @@ AM_CFLAGS += -Werror
 AM_CXXFLAGS += -Werror
 endif
 
-bin_SCRIPTS = stap-report stap-profile-annotate
+bin_SCRIPTS = stap-report stap-profile-annotate stap-prep
 pkglibexec_SCRIPTS = stap-env
 oldinclude_HEADERS = includes/sys/sdt.h includes/sys/sdt-config.h
 
