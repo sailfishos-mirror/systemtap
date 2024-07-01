@@ -68,7 +68,8 @@ probe scheduler.cpu_on = kernel.function("finish_task_switch") ?
  *
  * Context: The process whose accounting will be updated.
  */
-probe scheduler.tick = kernel.function("scheduler_tick")
+probe scheduler.tick = kernel.function("sched_tick")!,
+		       kernel.function("scheduler_tick")
 {
     name = "tick"
     idle = __is_idle()
@@ -422,6 +423,7 @@ probe scheduler.process_wait =
  * @child_pid: PID of the child process
  */
 probe __scheduler.process_fork.kp =
+	kernel.function("kernel_clone").return !,
 	kernel.function("_do_fork").return !,
 	kernel.function("do_fork").return
 {
@@ -448,14 +450,21 @@ probe scheduler.process_fork =
  * @signal_number: signal number
  */
 probe __scheduler.signal_send.kp =
+	kernel.function("send_signal_locked")!,
 	kernel.function("__send_signal") !,
 	kernel.function("send_signal")
 {
 	pid = $t->tgid
 }
-probe __scheduler.signal_send.tp = kernel.trace("sched_signal_send")
+probe __scheduler.signal_send.tp =
+	kernel.trace("signal_generate")!,
+	kernel.trace("sched_signal_send")
 {
-	pid = $p->tgid
+	if (@defined($task)) {
+	  pid = $task->tgid
+	} else {
+	  pid = $p->tgid
+	}
 }
 probe scheduler.signal_send =
 	__scheduler.signal_send.tp !,
