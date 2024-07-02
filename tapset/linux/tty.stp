@@ -222,7 +222,8 @@ probe tty.receive = kernel.function("n_tty_receive_buf")
 	name = kernel_string_quoted($tty->driver->name)
 %)
 	index = $tty->index
-	id = $tty->magic
+	/* Use the default value for TTY_MAGIC for backward compatibility */
+	id = @choose_defined($tty->magic, 0x5401)
 }
 
 /**
@@ -262,9 +263,9 @@ probe tty.read = kernel.function("n_tty_read") !,
 		 kernel.function("read_chan")
 {
 %(systemtap_v < "2.8" %?
-	buffer = kernel_string($buf)
+	buffer = kernel_string(@choose_defined($kbuf,$buf))
 %:
-       buffer = kernel_buffer_quoted($buf, $nr, 0)
+	buffer = kernel_buffer_quoted(@choose_defined($kbuf,$buf), $nr, 0)
 %)
 	nr = $nr
 	file_name = d_name(@choose_defined($file->f_path->dentry,
