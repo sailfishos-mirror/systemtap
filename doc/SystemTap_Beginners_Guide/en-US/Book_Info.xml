@@ -6,7 +6,7 @@
 <bookinfo id="SystemTap_Beginners_Guide">
 	<title>SystemTap Beginners Guide</title>
         <subtitle>Introduction to SystemTap</subtitle>
-	<edition>5.1</edition>        <!-- PRERELEASE -->
+	<edition>5.2</edition>        <!-- PRERELEASE -->
 
 	<productname>SystemTap</productname>
 	<productnumber>5.1</productnumber>        <!-- PRERELEASE -->
