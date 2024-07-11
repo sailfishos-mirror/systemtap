@@ -70,8 +70,8 @@ prep_debuginfod() {
             export DEBUGINFOD_TIMEOUT
             echo "Increasing DEBUGINFOD_TIMEOUT to $DEBUGINFOD_TIMEOUT temporarily"
         fi
-        DEBUGINFOD_PROGRESS=1
-        export DEBUGINFOD_PROGRESS
+        # DEBUGINFOD_PROGRESS=1
+        # export DEBUGINFOD_PROGRESS
         if debuginfod-find debuginfo "$vmlinuz" > /dev/null; then
             DEBUGINFOD=1
             ls -ald `debuginfod-find debuginfo "$vmlinuz"`
