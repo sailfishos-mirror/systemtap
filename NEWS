@@ -3,6 +3,9 @@
 - New /* pragma:suffix */ for file-level embedded C code blocks to
   be placed near the end of the emitted kernel module C file.
 
+- The systemtap-sdt-devel subrpm has been split into -dtrace and
+  -devel subpackages.
+
 * What's new in version 5.1, 2024-04-26
 
 - An experimental "--build-as=USER" flag to reduce privilege during
