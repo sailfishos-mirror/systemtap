@@ -133,7 +133,8 @@ Release: 1%{?release_override}%{?dist}
 # systemtap-runtime      /usr/bin/staprun, /usr/bin/stapsh, /usr/bin/stapdyn
 # systemtap-client       /usr/bin/stap, samples, docs, tapset(bonus), req:-runtime
 # systemtap-initscript   /etc/init.d/systemtap, dracut module, req:systemtap
-# systemtap-sdt-devel    /usr/include/sys/sdt.h /usr/bin/dtrace
+# systemtap-sdt-devel    /usr/include/sys/sdt.h
+# systemtap-sdt-dtrace   /usr/bin/dtrace
 # systemtap-testsuite    /usr/share/systemtap/testsuite*, req:systemtap, req:sdt-devel
 # systemtap-runtime-java libHelperSDT.so, HelperSDT.jar, stapbm, req:-runtime
 # systemtap-runtime-virthost  /usr/bin/stapvirt, req:libvirt req:libxml2
@@ -375,9 +376,21 @@ boot-time probing if supported.
 
 
 %package sdt-devel
-Summary: Static probe support tools
+Summary: Static probe support header files
 License: GPL-2.0-or-later AND CC0-1.0
 URL: http://sourceware.org/systemtap/
+Requires: systemtap-sdt-dtrace = %{version}-%{release}
+
+%description sdt-devel
+This package includes the <sys/sdt.h> header file used for static
+instrumentation compiled into userspace programs.
+
+
+%package sdt-dtrace
+Summary: Static probe support dtrace tool
+License: GPL-2.0-or-later AND CC0-1.0
+URL: http://sourceware.org/systemtap/
+Provides: dtrace = %{version}-%{release}
 %if %{with_pyparsing}
 %if %{with_python3}
 Requires: python3-pyparsing
@@ -390,11 +403,9 @@ Requires: python2-pyparsing
 %endif
 %endif
 
-%description sdt-devel
-This package includes the <sys/sdt.h> header file used for static
-instrumentation compiled into userspace programs and libraries, along
-with the optional dtrace-compatibility preprocessor to process related
-.d files into tracing-macro-laden .h headers.
+%description sdt-dtrace
+This package includes the dtrace-compatibility preprocessor
+to process related .d files into tracing-macro-laden .h headers.
 
 
 %package testsuite
@@ -1225,13 +1236,18 @@ exit 0
 
 
 %files sdt-devel
-%{_bindir}/dtrace
 %{_includedir}/sys/sdt.h
 %{_includedir}/sys/sdt-config.h
 %{_mandir}/man1/dtrace.1*
 %{_rpmmacrodir}/macros.systemtap
 %doc README AUTHORS NEWS 
 %{!?_licensedir:%global license %%doc}
+%license COPYING
+
+
+%files sdt-dtrace
+%{_bindir}/dtrace
+%doc README AUTHORS NEWS
 %license COPYING
 
 
@@ -1307,6 +1323,10 @@ exit 0
 
 # PRERELEASE
 %changelog
+* Wed Jul 17 2024 Lumír Balhar <lbalhar@redhat.com> - 5.2~pre17206355g1a07290a-2
+- New sdt-dtrace subpackage for dtrace tool (rhbz#2296275)
+  https://fedoraproject.org/wiki/Changes/Separate_dtrace_package
+
 * Fri Apr 26 2024 Frank Ch. Eigler <fche@redhat.com> - 5.1-1
 - Upstream release, see wiki page below for detailed notes.
   https://sourceware.org/systemtap/wiki/SystemTapReleases
