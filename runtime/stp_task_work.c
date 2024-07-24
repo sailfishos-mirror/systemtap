@@ -3,14 +3,25 @@
 
 #include "linux/task_work_compatibility.h"
 
+// Handle kernel commit 68cbd415dd4b9c5b9df69f0f091879e56bf5907a
+// task_work: s/task_work_cancel()/task_work_cancel_func()/
+#if defined(STAPCONF_TASK_WORK_CANCEL_FUNC)
+#define TASK_WORK_CANCEL_FN task_work_cancel_func
+#else
+#define TASK_WORK_CANCEL_FN task_work_cancel
+#endif
+
+#define STRINGIFY(x) #x
+#define TOSTRING(x) STRINGIFY(x)
+
 #if !defined(STAPCONF_TASK_WORK_ADD_EXPORTED)
 // First typedef from the original decls, then #define as typecasted calls.
 typedef typeof(&task_work_add) task_work_add_fn;
 #define task_work_add(a,b,c) ibt_wrapper(int, (* (task_work_add_fn)kallsyms_task_work_add)((a), (b), (c)))
 #endif
 #if !defined(STAPCONF_TASK_WORK_CANCEL_EXPORTED)
-typedef typeof(&task_work_cancel) task_work_cancel_fn;
-#define task_work_cancel(a,b) ibt_wrapper(struct callback_head *, (* (task_work_cancel_fn)kallsyms_task_work_cancel)((a), (b)))
+typedef typeof(&TASK_WORK_CANCEL_FN) task_work_cancel_fn;
+#define task_work_cancel(a,b) ibt_wrapper(struct callback_head *, (* (task_work_cancel_fn)kallsyms_task_work_cancel_fn)((a), (b)))
 #endif
 
 /* To avoid a crash when a task_work callback gets called after the
@@ -35,9 +46,9 @@ stp_task_work_init(void)
         }
 #endif
 #if !defined(STAPCONF_TASK_WORK_CANCEL_EXPORTED)
-        kallsyms_task_work_cancel = (void *)kallsyms_lookup_name("task_work_cancel");
-        if (kallsyms_task_work_cancel == NULL) {
-		_stp_error("Can't resolve task_work_cancel!");
+        kallsyms_task_work_cancel_fn = (void *)kallsyms_lookup_name(TOSTRING(TASK_WORK_CANCEL_FN));
+        if (kallsyms_task_work_cancel_fn == NULL) {
+                _stp_error("Can't resolve %s!", TOSTRING(TASK_WORK_CANCEL_FN));
 		return -ENOENT;
         }
 #endif

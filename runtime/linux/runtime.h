@@ -265,7 +265,7 @@ static void *kallsyms_uprobe_get_swbp_addr;
 static void *kallsyms_task_work_add;
 #endif
 #if !defined(STAPCONF_TASK_WORK_CANCEL_EXPORTED)
-static void *kallsyms_task_work_cancel;
+static void *kallsyms_task_work_cancel_fn;
 #endif
 
 #if !defined(STAPCONF_TRY_TO_WAKE_UP_EXPORTED) && !defined(STAPCONF_WAKE_UP_STATE_EXPORTED)
