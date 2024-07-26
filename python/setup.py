@@ -48,8 +48,7 @@ setup(
     author = 'Systemtap Development Team',
     author_email = 'systemtap@sourceware.org',
     ext_modules = [
-        Extension("HelperSDT._HelperSDT", ["HelperSDT/_HelperSDT.c"],
-        extra_compile_args=['-g'], extra_link_args=['-g']),
+        Extension("HelperSDT._HelperSDT", ["HelperSDT/_HelperSDT.c"]),
     ],
     packages = ['HelperSDT'],
     cmdclass={

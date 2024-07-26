@@ -29,12 +29,12 @@ pkglibexecpython_DATA += stap-resolve-module-function.py
 
 all-local:
 if HAVE_PYTHON2_PROBES
-	(cd $(srcdir); CFLAGS="$(AM_CPPFLAGS)" $(PYTHON) setup.py build \
+	(cd $(srcdir); CFLAGS="$(CFLAGS) $(AM_CPPFLAGS)" $(PYTHON) setup.py build \
          --build-base $(shell readlink -f $(builddir))/py2build \
          --verbose)
 endif
 if HAVE_PYTHON3_PROBES
-	(cd $(srcdir); CFLAGS="$(AM_CPPFLAGS)" $(PYTHON3) setup.py build \
+	(cd $(srcdir); CFLAGS="$(CFLAGS) $(AM_CPPFLAGS)" $(PYTHON3) setup.py build \
          --build-base $(shell readlink -f $(builddir))/py3build \
          --verbose)
 endif
@@ -45,7 +45,7 @@ endif
 # and we need to keep separate build directories for python 2 and 3.
 install-exec-local:
 if HAVE_PYTHON2_PROBES
-	(cd $(srcdir); CFLAGS="$(AM_CPPFLAGS)" $(PYTHON) setup.py build \
+	(cd $(srcdir); CFLAGS="$(CFLAGS) $(AM_CPPFLAGS)" $(PYTHON) setup.py build \
          --build-base $(shell readlink -f $(builddir))/py2build \
 	 install --prefix $(DESTDIR)$(prefix) \
 	 --single-version-externally-managed \
@@ -53,7 +53,7 @@ if HAVE_PYTHON2_PROBES
          --verbose)
 endif
 if HAVE_PYTHON3_PROBES
-	(cd $(srcdir); CFLAGS="$(AM_CPPFLAGS)" $(PYTHON3) setup.py build \
+	(cd $(srcdir); CFLAGS="$(CFLAGS) $(AM_CPPFLAGS)" $(PYTHON3) setup.py build \
          --build-base $(shell readlink -f $(builddir))/py3build \
 	 install --prefix $(DESTDIR)$(prefix) \
 	 --single-version-externally-managed \
