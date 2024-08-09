@@ -184,6 +184,7 @@ badCertHandler(void *arg, PRFileDesc *sslSocket)
 
       break;
 
+    case SEC_ERROR_UNKNOWN_ISSUER:
     case SEC_ERROR_CA_CERT_INVALID:
       /* The server's certificate is not trusted. Should we trust it? */
       secStatus = SECFailure; /* Do not trust by default. */
