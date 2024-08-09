@@ -842,6 +842,13 @@ add_client_cert (const string &inFileName, const string &db_path, db_init_types 
       // first has already called nssInit; we don't want to call nssInit twice
       // See if the database already exists and can be initialized.
       SECStatus secStatus = SECFailure;
+      // Make sure certificate database directory exists.
+      if (create_client_cert_db (db_path.c_str ()) != 0)
+        {
+          nsscommon_error (_F("Could not make sure the certificate database directory %s exists",
+              db_path.c_str ()));
+          return SECFailure;
+        }
       if (db_init_type == db_nssinitcontext)
         {
           context= nssInitContext (db_path.c_str (), 1/*readwrite*/, 0/*issueMessage*/);
