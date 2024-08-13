@@ -379,7 +379,6 @@ boot-time probing if supported.
 Summary: Static probe support header files
 License: GPL-2.0-or-later AND CC0-1.0
 URL: http://sourceware.org/systemtap/
-Requires: systemtap-sdt-dtrace = %{version}-%{release}
 
 %description sdt-devel
 This package includes the <sys/sdt.h> header file used for static
@@ -1323,8 +1322,8 @@ exit 0
 
 # PRERELEASE
 %changelog
-* Wed Jul 17 2024 Lumír Balhar <lbalhar@redhat.com> - 5.2~pre17206355g1a07290a-2
-- New sdt-dtrace subpackage for dtrace tool (rhbz#2296275)
+* Thu Aug 08 2024 Lumír Balhar <lbalhar@redhat.com> - 5.2-pre
+- Final split of sdt-dtrace and sdt-devel (rhbz#2296275)
   https://fedoraproject.org/wiki/Changes/Separate_dtrace_package
 
 * Fri Apr 26 2024 Frank Ch. Eigler <fche@redhat.com> - 5.1-1
