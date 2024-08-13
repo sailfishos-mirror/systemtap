@@ -156,7 +156,7 @@ Release: 1%{?release_override}%{?dist}
 
 Summary: Programmable system-wide instrumentation system
 License: GPL-2.0-or-later
-URL: http://sourceware.org/systemtap/
+URL: https://sourceware.org/systemtap/
 Source: ftp://sourceware.org/pub/systemtap/releases/systemtap-%{version}.tar.gz
 
 # Build*
@@ -260,7 +260,7 @@ the components needed to locally develop and execute systemtap scripts.
 %package server
 Summary: Instrumentation System Server
 License: GPL-2.0-or-later
-URL: http://sourceware.org/systemtap/
+URL: https://sourceware.org/systemtap/
 Requires: systemtap-devel = %{version}-%{release}
 Conflicts: systemtap-devel < %{version}-%{release}
 Conflicts: systemtap-runtime < %{version}-%{release}
@@ -290,7 +290,7 @@ compiles systemtap scripts to kernel objects on their demand.
 %package devel
 Summary: Programmable system-wide instrumentation system - development headers, tools
 License: GPL-2.0-or-later AND GPL-2.0-only AND BSD-3-Clause AND LGPL-2.1-only AND BSD-2-Clause
-URL: http://sourceware.org/systemtap/
+URL: https://sourceware.org/systemtap/
 
 %if 0%{?rhel} >= 8 || 0%{?fedora} >= 20
 Recommends: (kernel-debug-devel if kernel-debug)
@@ -320,7 +320,7 @@ a copy of the standard tapset library and the runtime library C files.
 %package runtime
 Summary: Programmable system-wide instrumentation system - runtime
 License: GPL-2.0-or-later
-URL: http://sourceware.org/systemtap/
+URL: https://sourceware.org/systemtap/
 Requires(pre): shadow-utils
 Conflicts: systemtap-devel < %{version}-%{release}
 Conflicts: systemtap-server < %{version}-%{release}
@@ -335,7 +335,7 @@ using a local or remote systemtap-devel installation.
 %package client
 Summary: Programmable system-wide instrumentation system - client
 License: GPL-2.0-or-later AND GPL-2.0-only AND BSD-3-Clause AND LGPL-2.1-only AND GFDL-1.2-or-later AND BSD-2-Clause
-URL: http://sourceware.org/systemtap/
+URL: https://sourceware.org/systemtap/
 Requires: zip unzip
 Requires: systemtap-runtime = %{version}-%{release}
 Requires: coreutils grep sed unzip zip
@@ -358,7 +358,7 @@ documentation, and a copy of the tapset library for reference.
 %package initscript
 Summary: Systemtap Initscripts
 License: GPL-2.0-or-later
-URL: http://sourceware.org/systemtap/
+URL: https://sourceware.org/systemtap/
 Requires: systemtap = %{version}-%{release}
 %if %{with_systemd}
 Requires: systemd
@@ -378,7 +378,7 @@ boot-time probing if supported.
 %package sdt-devel
 Summary: Static probe support header files
 License: GPL-2.0-or-later AND CC0-1.0
-URL: http://sourceware.org/systemtap/
+URL: https://sourceware.org/systemtap/
 
 %description sdt-devel
 This package includes the <sys/sdt.h> header file used for static
@@ -388,7 +388,7 @@ instrumentation compiled into userspace programs.
 %package sdt-dtrace
 Summary: Static probe support dtrace tool
 License: GPL-2.0-or-later AND CC0-1.0
-URL: http://sourceware.org/systemtap/
+URL: https://sourceware.org/systemtap/
 Provides: dtrace = %{version}-%{release}
 %if %{with_pyparsing}
 %if %{with_python3}
@@ -410,7 +410,7 @@ to process related .d files into tracing-macro-laden .h headers.
 %package testsuite
 Summary: Instrumentation System Testsuite
 License: GPL-2.0-or-later AND GPL-2.0-only AND GPL-3.0-or-later AND MIT
-URL: http://sourceware.org/systemtap/
+URL: https://sourceware.org/systemtap/
 Requires: systemtap = %{version}-%{release}
 Requires: systemtap-sdt-devel = %{version}-%{release}
 Requires: systemtap-server = %{version}-%{release}
@@ -482,7 +482,7 @@ systemtap on the current system.
 %package runtime-java
 Summary: Systemtap Java Runtime Support
 License: GPL-2.0-or-later
-URL: http://sourceware.org/systemtap/
+URL: https://sourceware.org/systemtap/
 Requires: systemtap-runtime = %{version}-%{release}
 # work around fedora ci gating kvetching about i686<->x86-64 conflicts
 %ifarch x86_64
@@ -504,7 +504,7 @@ that probe Java processes running on the OpenJDK runtimes using Byteman.
 %package runtime-python2
 Summary: Systemtap Python 2 Runtime Support
 License: GPL-2.0-or-later
-URL: http://sourceware.org/systemtap/
+URL: https://sourceware.org/systemtap/
 Requires: systemtap-runtime = %{version}-%{release}
 
 %description runtime-python2
@@ -516,7 +516,7 @@ that probe python 2 processes.
 %package runtime-python3
 Summary: Systemtap Python 3 Runtime Support
 License: GPL-2.0-or-later
-URL: http://sourceware.org/systemtap/
+URL: https://sourceware.org/systemtap/
 Requires: systemtap-runtime = %{version}-%{release}
 
 %if ! (%{with_python2_probes})
@@ -533,7 +533,7 @@ that probe python 3 processes.
 %package exporter
 Summary: Systemtap-prometheus interoperation mechanism
 License: GPL-2.0-or-later
-URL: http://sourceware.org/systemtap/
+URL: https://sourceware.org/systemtap/
 Requires: systemtap-runtime = %{version}-%{release}
 
 %description exporter
@@ -546,7 +546,7 @@ to remote requesters on demand.
 %package runtime-virthost
 Summary: Systemtap Cross-VM Instrumentation - host
 License: GPL-2.0-or-later
-URL: http://sourceware.org/systemtap/
+URL: https://sourceware.org/systemtap/
 # only require libvirt-libs really
 #Requires: libvirt >= 1.0.2
 Requires: libxml2
@@ -561,7 +561,7 @@ connection.
 %package runtime-virtguest
 Summary: Systemtap Cross-VM Instrumentation - guest
 License: GPL-2.0-or-later
-URL: http://sourceware.org/systemtap/
+URL: https://sourceware.org/systemtap/
 Requires: systemtap-runtime = %{version}-%{release}
 %if %{with_systemd}
 Requires(post): findutils coreutils
@@ -581,7 +581,7 @@ systemtap-runtime-virthost machine to execute systemtap scripts.
 %package jupyter
 Summary: ISystemtap jupyter kernel and examples
 License: GPL-2.0-or-later
-URL: http://sourceware.org/systemtap/
+URL: https://sourceware.org/systemtap/
 Requires: systemtap = %{version}-%{release}
 
 %description jupyter
@@ -1318,7 +1318,7 @@ exit 0
 # Future new-release entries should be of the form
 # * DDD MMM DD YYYY YOURNAME <YOUREMAIL> - V-R
 # - Upstream release, see wiki page below for detailed notes.
-#   http://sourceware.org/systemtap/wiki/SystemTapReleases
+#   https://sourceware.org/systemtap/wiki/SystemTapReleases
 
 # PRERELEASE
 %changelog
