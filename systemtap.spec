@@ -1134,7 +1134,7 @@ exit 0
 %if %{with_emacsvim}
 %{_emacs_sitelispdir}/*.el*
 %{_emacs_sitestartdir}/systemtap-init.el
-%{_datadir}/vim/vimfiles/*/*.vim
+%{_datadir}/vim/vimfiles
 %endif
 # Notice that the stap-resolve-module-function.py file is used by
 # *both* the python2 and python3 subrpms.  Both subrpms use that same
