@@ -31,11 +31,6 @@ extern "C" {
 #include <sys/resource.h>
 }
 
-// A bit of obfuscation for Gentoo's sake.
-// We *need* -Werror for stapconf to work correctly.
-// https://bugs.gentoo.org/show_bug.cgi?id=522908
-#define WERROR ("-W" "error")
-
 #define PATH_ALLOWED_CHARS "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+,-./_"
 
 using namespace std;
@@ -244,7 +239,7 @@ compile_dyninst (systemtap_session& s)
     {
       "gcc", "--std=gnu99", s.translated_source, s.symbols_source, "-o", module,
       "-fvisibility=hidden", "-O2", "-I" + s.runtime_path, "-D__DYNINST__",
-      "-Wall", WERROR, "-Wno-unused", "-Wno-strict-aliasing",
+      "-Wall", "-Werror", "-Wno-unused", "-Wno-strict-aliasing",
       "-Wno-pointer-to-int-cast", "-Wno-int-to-pointer-cast",
       "-Wno-pragmas", "-Wno-pointer-sign", "-Wno-format",
       "-pthread", "-lrt", "-ldw", "-fPIC", "-shared",
@@ -316,7 +311,7 @@ compile_pass (systemtap_session& s)
     << "$(LINUXINCLUDE) $(_KBUILD_CFLAGS) $(CFLAGS_KERNEL) $(EXTRA_CFLAGS) "
     << "$(CFLAGS) -DKBUILD_BASENAME=\\\"" << s.module_name << "\\\" "
     << "-Wmissing-prototypes "  // GCC14 prep, PR31288
-    << WERROR << " -S -o /dev/null -xc " << endl;
+    << "-Werror" << " -S -o /dev/null -xc " << endl;
   o << "stap_check_build = $(shell " << superverbose << " if $(CHECK_BUILD) $(1) "
     << redirecterrors << " ; then echo \"$(2)\"; else echo \"$(3)\"; fi)" << endl;
 
@@ -624,7 +619,7 @@ compile_pass (systemtap_session& s)
   o << "EXTRA_CFLAGS += $(call cc-option,-fno-ipa-icf)" << endl;
 
   // Assumes linux 2.6 kbuild
-  o << "EXTRA_CFLAGS += -Wno-unused " << WERROR << endl;
+  o << "EXTRA_CFLAGS += -Wno-unused " << "-Werror" << endl;
   #if CHECK_POINTER_ARITH_PR5947
   o << "EXTRA_CFLAGS += -Wpointer-arith" << endl;
   #endif
@@ -1067,7 +1062,7 @@ make_tracequeries(systemtap_session& s, const map<string,string>& contents)
   string makefile(dir + "/Makefile");
   ofstream omf(makefile.c_str());
   // force debuginfo generation, and relax implicit functions
-  omf << "EXTRA_CFLAGS := -g -Wno-implicit-function-declaration " << WERROR << endl;
+  omf << "EXTRA_CFLAGS := -g -Wno-implicit-function-declaration " << "-Werror" << endl;
   // RHBZ 655231: later rhel6 kernels' module-signing kbuild logic breaks out-of-tree modules
   omf << "CONFIG_MODULE_SIG := n" << endl;
   // PR23488: need to override this kconfig, else we get no useful struct decls
