@@ -1237,7 +1237,6 @@ exit 0
 %files sdt-devel
 %{_includedir}/sys/sdt.h
 %{_includedir}/sys/sdt-config.h
-%{_mandir}/man1/dtrace.1*
 %{_rpmmacrodir}/macros.systemtap
 %doc README AUTHORS NEWS 
 %{!?_licensedir:%global license %%doc}
@@ -1247,7 +1246,9 @@ exit 0
 %files sdt-dtrace
 %{_bindir}/dtrace
 %doc README AUTHORS NEWS
+%{!?_licensedir:%global license %%doc}
 %license COPYING
+%{_mandir}/man1/dtrace.1*
 
 
 %files testsuite
