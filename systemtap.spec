@@ -1141,6 +1141,7 @@ exit 0
 # python script to help list python probes.
 %if %{with_python3_probes} || %{with_python2_probes}
 %{_libexecdir}/systemtap/python/stap-resolve-module-function.py
+%dir %{_libexecdir}/systemtap/python
 %exclude %{_libexecdir}/systemtap/python/stap-resolve-module-function.py?
 %endif
 
