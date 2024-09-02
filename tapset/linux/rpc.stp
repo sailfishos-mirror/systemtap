@@ -699,17 +699,18 @@ probe sunrpc.svc.create.return = kernel.function("svc_create").return !,
 probe sunrpc.svc.destroy = kernel.function("svc_destroy") !,
       	module("sunrpc").function("svc_destroy")
 {
-	sv_name = kernel_string($serv->sv_name) /* service name */
-	sv_progname = kernel_string($serv->sv_program->pg_name)
-	sv_prog = $serv->sv_program->pg_prog
-	sv_nrthreads = $serv->sv_nrthreads
+	serv = (@defined($servp) ? $servp : $serv)
+	sv_name = kernel_string(serv->sv_name) /* service name */
+	sv_progname = kernel_string(serv->sv_program->pg_name)
+	sv_prog = serv->sv_program->pg_prog
+	sv_nrthreads = serv->sv_nrthreads
 
 	/* RPC statistics */
-	netcnt = $serv->sv_stats->netcnt
-	netcpconn = $serv->sv_stats->nettcpconn
-	rpccnt = $serv->sv_stats->rpccnt
-	rpcbadfmt = $serv->sv_stats->rpcbadfmt
-	rpcbadauth = $serv->sv_stats->rpcbadauth
+	netcnt = serv->sv_stats->netcnt
+	netcpconn = serv->sv_stats->nettcpconn
+	rpccnt = serv->sv_stats->rpccnt
+	rpcbadfmt = serv->sv_stats->rpcbadfmt
+	rpcbadauth = serv->sv_stats->rpcbadauth
 	
 	name = "sunrpc.svc.destroy"
 	argstr = sprintf("%s %d %d", sv_name, sv_prog, sv_nrthreads)
@@ -764,7 +765,7 @@ probe sunrpc.svc.process.return = kernel.function("svc_process").return !,
       	module("sunrpc").function("svc_process").return
 {
 	name = "sunrpc.svc.process.return"
-	retstr = return_str(1, $return)
+	retstr = (@defined($return) ? return_str(1, $return) : "<NA>")
 }
 
 /* 
@@ -822,7 +823,7 @@ probe sunrpc.svc.recv = kernel.function("svc_recv") !,
 		sv_prog = $serv->sv_program->pg_prog
 		sv_nrthreads = $serv->sv_nrthreads
 	}
-	timeout = $timeout
+	timeout = @choose_defined($timeout,0)
 
 	name = "sunrpc.svc.recv"
 	argstr = sprintf("%s %d", sv_name, timeout)
@@ -832,7 +833,7 @@ probe sunrpc.svc.recv.return = kernel.function("svc_recv").return !,
       	module("sunrpc").function("svc_recv").return
 {
 	name = "sunrpc.svc.recv.return"
-	retstr = return_str(1, $return)
+	retstr = (@defined($return) ? return_str(1, $return) : "<NA>")
 }
 
 /**
@@ -866,7 +867,7 @@ probe sunrpc.svc.send.return = kernel.function("svc_send").return !,
       	module("sunrpc").function("svc_send").return
 {
 	name = "sunrpc.svc.send.return"
-	retstr = return_str(1, $return)
+	retstr = (@defined($return) ? return_str(1, $return) : "<NA>")
 }
 
 /**
