@@ -348,12 +348,14 @@ Requires: mokutil
 %endif
 
 %description client
-This package contains/requires the components needed to develop
-systemtap scripts, and compile them using a local systemtap-devel
-or a remote systemtap-server installation, then run them using a
-local or remote systemtap-runtime.  It includes script samples and
+This package contains/requires only the components needed to
+use systemtap scripts by compiling them using a local or a remote
+systemtap-server service, then run them using a local or
+remote systemtap-runtime.  It includes script samples and
 documentation, and a copy of the tapset library for reference.
-
+It does NOT include all the components for running a systemtap
+script in a self-contained fashion; for that, use the -devel
+subpackage instead.
 
 %package initscript
 Summary: Systemtap Initscripts
