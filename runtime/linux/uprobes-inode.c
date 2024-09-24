@@ -47,7 +47,11 @@ ibt_wrapper(int, (* (uprobe_register_fn)kallsyms_uprobe_register)((a), (b), (c))
 #if defined(STAPCONF_OLD_INODE_UPROBES)
 typedef typeof(&unregister_uprobe) uprobe_unregister_fn;
 #else
+#if defined(STAPCONF_PR32194_UPROBE_REGISTER_UNREGISTER)
+typedef typeof(&uprobe_unregister_nosync) uprobe_unregister_fn;
+#else
 typedef typeof(&uprobe_unregister) uprobe_unregister_fn;
+#endif
 #endif
 // Then define the typecasted call via function pointer
 #define uprobe_unregister(a,b,c) \
@@ -160,6 +164,9 @@ struct stapiu_consumer {
   void (*perf_read_handler)(long *values);
   
   const struct stap_probe * const probe; // the script-level probe handler metadata: pp(), probe handler function
+#if defined(STAPCONF_PR32194_UPROBE_REGISTER_UNREGISTER)
+  struct uprobe * uprobe;
+#endif
 };
 
 
@@ -287,9 +294,15 @@ stapiu_register (struct stapiu_instance* inst, struct stapiu_consumer* c)
 #endif
   }
   if (ret == 0)
+#if defined(STAPCONF_PR32194_UPROBE_REGISTER_UNREGISTER)
+    c->uprobe = uprobe_register (inst->inode, c->offset, 0, &inst->kconsumer);
+
+  if (c->uprobe == NULL)
+#else
     ret = uprobe_register (inst->inode, c->offset, &inst->kconsumer);
 
   if (ret)
+#endif
     _stp_warn("probe %s at inode-offset %lu:%p "
 	      "registration error [man warning::pass5] (rc %d)",
 	      c->probe->pp,
@@ -312,7 +325,12 @@ stapiu_unregister (struct stapiu_instance* inst, struct stapiu_consumer* c)
       (void*) (uintptr_t) c->offset,
       c->probe->index);
 
+#if defined(STAPCONF_PR32194_UPROBE_REGISTER_UNREGISTER)
+  (void) uprobe_unregister_nosync (c->uprobe, &inst->kconsumer);
+  (void) uprobe_unregister_sync();
+#else
   (void) uprobe_unregister (inst->inode, c->offset, &inst->kconsumer);
+#endif
   inst->registered_p = 0;
 }
 

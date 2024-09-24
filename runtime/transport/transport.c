@@ -383,6 +383,12 @@ NEW_KALLSYMS_SYM(free_nsproxy)
 #if !defined(STAPCONF_UPROBE_UNREGISTER_EXPORTED)
         kallsyms_uprobe_unregister = (void*) kallsyms_lookup_name ("uprobe_unregister");
         cond_resched();  /* kallsyms_lookup_name is expensive; avoid blocking here */
+#if defined(STAPCONF_PR32194_UPROBE_REGISTER_UNREGISTER)
+        if (kallsyms_uprobe_unregister == NULL) {
+                kallsyms_uprobe_unregister = (void*) kallsyms_lookup_name ("uprobe_unregister_nosync");
+                cond_resched();  /* kallsyms_lookup_name is expensive; avoid blocking here */
+        }
+#endif
         if (kallsyms_uprobe_unregister == NULL) {
                 kallsyms_uprobe_unregister = (void*) kallsyms_lookup_name ("unregister_uprobe");
                 cond_resched();  /* kallsyms_lookup_name is expensive; avoid blocking here */
