@@ -12777,8 +12777,10 @@ tracepoint_builder::get_tracequery_modules(systemtap_session& s,
       // of the data struct that describes the raw tracepoint.
       // These macros counts up to 12. Any more, it will return 13th argument.
       // These macros will likely have issues with raw tracepoints with more than 12 arguments.
+      osrc << "#ifndef _LINUX_ARGS_H" << endl;
       osrc << "#define __COUNT_ARGS(_0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _n, X...) _n" << endl;
       osrc << "#define COUNT_ARGS(X...) __COUNT_ARGS(, ##X, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)" << endl;
+      osrc << "#endif" << endl;
       osrc << "#define __CONCAT(a, b) a ## b" << endl;
       osrc << "#define CONCATENATE(a, b) __CONCAT(a, b)" << endl;
       osrc << "#define __FIELD_ENTRY(x) x __attribute__ ((aligned (8)))" << endl;
