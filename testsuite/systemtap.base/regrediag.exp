@@ -1,4 +1,4 @@
-set test "regrewarning"
+set test "regrediag"
 
 spawn stap -p2 $srcdir/$subdir/$test.stp
 set msgs 0
