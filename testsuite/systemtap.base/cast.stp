@@ -33,9 +33,14 @@ probe begin
         printf("execname \"%s\" != \"%s\"\n", name, cast_name)
 
     // Compare usage counter values through a struct address
-    usage = @cast(curr, "task_struct", "kernel")->usage->counter
     pusage = & @cast(curr, "task_struct", "kernel")->usage
-    cast_usage = @cast(pusage, "atomic_t", "kernel")->counter
+    if (@defined(pusage->counter)) {
+	usage = @cast(curr, "task_struct", "kernel")->usage->counter
+	cast_usage = @cast(pusage, "atomic_t", "kernel")->counter
+      } else {
+	usage = @cast(curr, "task_struct", "kernel")->usage->refs->counter
+	cast_usage = @cast(pusage, "refcount_t", "kernel")->refs->counter
+      }
     if (usage == cast_usage)
         println("usage OK")
     else
