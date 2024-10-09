@@ -14,6 +14,7 @@
 #include <linux/compiler.h>
 #include <linux/sched.h>
 #include <linux/uaccess.h>
+#include <linux/version.h>
 
 /* The purpose of this module is to provide a kernel string we can
  * safely read. We use a /proc file to trigger the function call from
@@ -25,12 +26,14 @@
 static struct proc_dir_entry *stm_ctl = NULL;
 static char buffer[100] = "";
 
+void noinline stp_memory1_set_str(const char *string, size_t bytes);
 void noinline stp_memory1_set_str(const char *string, size_t bytes)
 {
         asm ("");
 	memcpy(buffer, string, bytes);
 }
 
+char * noinline stp_memory1_get_str(void);
 char * noinline stp_memory1_get_str(void)
 {
         asm ("");
@@ -72,11 +75,19 @@ static ssize_t stm_read(struct file *file, char __user *buffer,
 	return bytes;
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0)
+static struct proc_ops stm_fops_cmd = {
+	.proc_write = stm_write,
+	.proc_read = stm_read,
+};
+#else
 static struct file_operations stm_fops_cmd = {
 	.owner = THIS_MODULE,
 	.write = stm_write,
 	.read = stm_read,
 };
+#endif
+
 
 int init_module(void)
 {
