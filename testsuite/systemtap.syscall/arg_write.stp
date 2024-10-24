@@ -21,27 +21,6 @@ probe nd2_syscall.* ? {
 	}
 }
 
-probe nd2_syscall.lookup_dcookie, syscall.compat_lookup_dcookie ? {
-	if (pid() == target()) {
-		cookie++
-		len--
-		if (i_dcookie == 0) {
-			buffer_uaddr++
-		} else if (i_dcookie == 1) {
-			buffer_uaddr = 0
-		} else if (i_dcookie == 2) {
-			buffer_uaddr++
-		} else if (i_dcookie == 3) {
-			buffer_uaddr = 0
-		}
-
-		i_dcookie++
-		argstr = sprintf("%#lx, %p, %#x", cookie, buffer_uaddr, len)
-		if (entry_p) printf("\n")
-		printf("%s%s: %s (%s) = ", indent_str[indent - 1], execname(), name, argstr)
-	}
-}
-
 probe nd2_syscall.mkdirat {
 	if (pid() == target()) {
 		dirfd++
