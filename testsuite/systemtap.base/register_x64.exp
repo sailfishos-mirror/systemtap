@@ -3,7 +3,7 @@ set testpath "$srcdir/$subdir"
 
 if {! [installtest_p]} { untested $test; return }
 if {! [uretprobes_p]} { untested $test; return }
-set arch [exec uname -i]
+set arch [exec uname -m]
 if {$arch ne "x86_64"} { untested $test; return }
 
 # --- TEST 1 ---
