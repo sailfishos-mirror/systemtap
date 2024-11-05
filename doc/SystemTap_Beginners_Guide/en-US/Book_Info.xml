@@ -9,7 +9,7 @@
 	<edition>5.2</edition>        <!-- PRERELEASE -->
 
 	<productname>SystemTap</productname>
-	<productnumber>5.1</productnumber>        <!-- PRERELEASE -->
+	<productnumber>5.2</productnumber>        <!-- PRERELEASE -->
 
 	<pubsnumber>2</pubsnumber>
 	<abstract><para>This guide provides basic instructions on how to use SystemTap to monitor different subsystems of a Linux system in finer detail.</para></abstract>
