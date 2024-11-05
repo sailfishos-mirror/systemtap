@@ -2,12 +2,12 @@
 .\"     Title: probe::ioscheduler_trace.elv_issue_request
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: April 2024
+.\"      Date: November 2024
 .\"    Manual: IO Scheduler and block IO Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "PROBE::IOSCHEDULER_T" "3stap" "April 2024" "SystemTap Tapset Reference" "IO Scheduler and block IO Taps"
+.TH "PROBE::IOSCHEDULER_T" "3stap" "November 2024" "SystemTap Tapset Reference" "IO Scheduler and block IO Taps"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -36,9 +36,9 @@ ioscheduler_trace\&.elv_issue_request
 .fi
 .SH "VALUES"
 .PP
-\fIdisk_major\fR
+\fIdisk_minor\fR
 .RS 4
-Disk major no of request\&.
+Disk minor number of request\&.
 .RE
 .PP
 \fIelevator_name\fR
@@ -46,24 +46,24 @@ Disk major no of request\&.
 The type of I/O elevator currently enabled\&.
 .RE
 .PP
-\fIrq_flags\fR
-.RS 4
-Request flags\&.
-.RE
-.PP
-\fIdisk_minor\fR
-.RS 4
-Disk minor number of request\&.
-.RE
-.PP
 \fIrq\fR
 .RS 4
 Address of request\&.
 .RE
 .PP
+\fIrq_flags\fR
+.RS 4
+Request flags\&.
+.RE
+.PP
 \fIname\fR
 .RS 4
 Name of the probe point
+.RE
+.PP
+\fIdisk_major\fR
+.RS 4
+Disk major no of request\&.
 .RE
 .SH "DESCRIPTION"
 .PP

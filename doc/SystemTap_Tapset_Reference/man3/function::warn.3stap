@@ -2,12 +2,12 @@
 .\"     Title: function::warn
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: April 2024
+.\"      Date: November 2024
 .\"    Manual: Logging Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "FUNCTION::WARN" "3stap" "April 2024" "SystemTap Tapset Reference" "Logging Tapset"
+.TH "FUNCTION::WARN" "3stap" "November 2024" "SystemTap Tapset Reference" "Logging Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------

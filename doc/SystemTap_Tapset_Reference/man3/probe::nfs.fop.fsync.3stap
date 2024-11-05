@@ -2,12 +2,12 @@
 .\"     Title: probe::nfs.fop.fsync
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: April 2024
+.\"      Date: November 2024
 .\"    Manual: Network File Storage Tapsets
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "PROBE::NFS\&.FOP\&.F" "3stap" "April 2024" "SystemTap Tapset Reference" "Network File Storage Tapsets"
+.TH "PROBE::NFS\&.FOP\&.F" "3stap" "November 2024" "SystemTap Tapset Reference" "Network File Storage Tapsets"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -41,14 +41,14 @@ nfs\&.fop\&.fsync
 inode number
 .RE
 .PP
-\fIndirty\fR
-.RS 4
-number of dirty pages
-.RE
-.PP
 \fIdev\fR
 .RS 4
 device identifier
+.RE
+.PP
+\fIndirty\fR
+.RS 4
+number of dirty pages
 .RE
 .SH SEE ALSO\n 
 .IR tapset::nfs (3stap)

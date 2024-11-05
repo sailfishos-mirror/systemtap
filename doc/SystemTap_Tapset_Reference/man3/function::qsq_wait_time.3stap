@@ -2,12 +2,12 @@
 .\"     Title: function::qsq_wait_time
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: April 2024
+.\"      Date: November 2024
 .\"    Manual: Queue Statistics Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "FUNCTION::QSQ_WAIT_T" "3stap" "April 2024" "SystemTap Tapset Reference" "Queue Statistics Tapset"
+.TH "FUNCTION::QSQ_WAIT_T" "3stap" "November 2024" "SystemTap Tapset Reference" "Queue Statistics Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------

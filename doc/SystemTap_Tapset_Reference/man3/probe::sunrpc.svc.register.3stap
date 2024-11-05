@@ -2,12 +2,12 @@
 .\"     Title: probe::sunrpc.svc.register
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: April 2024
+.\"      Date: November 2024
 .\"    Manual: Networking Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "PROBE::SUNRPC\&.SVC\" "3stap" "April 2024" "SystemTap Tapset Reference" "Networking Tapset"
+.TH "PROBE::SUNRPC\&.SVC\" "3stap" "November 2024" "SystemTap Tapset Reference" "Networking Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -36,6 +36,11 @@ sunrpc\&.svc\&.register
 .fi
 .SH "VALUES"
 .PP
+\fIport\fR
+.RS 4
+the port number
+.RE
+.PP
 \fIprog\fR
 .RS 4
 the number of the program
@@ -46,19 +51,14 @@ the number of the program
 the IP protocol number
 .RE
 .PP
-\fIprogname\fR
-.RS 4
-the name of the program
-.RE
-.PP
-\fIport\fR
-.RS 4
-the port number
-.RE
-.PP
 \fIsv_name\fR
 .RS 4
 the service name
+.RE
+.PP
+\fIprogname\fR
+.RS 4
+the name of the program
 .RE
 .SH "DESCRIPTION"
 .PP

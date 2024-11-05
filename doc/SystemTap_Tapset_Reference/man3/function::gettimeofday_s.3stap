@@ -2,12 +2,12 @@
 .\"     Title: function::gettimeofday_s
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: April 2024
+.\"      Date: November 2024
 .\"    Manual: Timestamp Functions
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "FUNCTION::GETTIMEOFD" "3stap" "April 2024" "SystemTap Tapset Reference" "Timestamp Functions"
+.TH "FUNCTION::GETTIMEOFD" "3stap" "November 2024" "SystemTap Tapset Reference" "Timestamp Functions"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------

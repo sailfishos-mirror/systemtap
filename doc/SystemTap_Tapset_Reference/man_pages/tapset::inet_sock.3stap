@@ -1,5 +1,5 @@
 .\" -*- nroff -*-
-.TH TAPSET::INET_SOCK 3stap "April 2024" "SystemTap Tapset Reference"
+.TH TAPSET::INET_SOCK 3stap "November 2024" "SystemTap Tapset Reference"
 .SH NAME
 tapset::inet_sock \- systemtap inet_sock tapset
  

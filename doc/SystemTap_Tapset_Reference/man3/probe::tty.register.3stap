@@ -2,12 +2,12 @@
 .\"     Title: probe::tty.register
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: April 2024
+.\"      Date: November 2024
 .\"    Manual: TTY Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "PROBE::TTY\&.REGISTE" "3stap" "April 2024" "SystemTap Tapset Reference" "TTY Tapset"
+.TH "PROBE::TTY\&.REGISTE" "3stap" "November 2024" "SystemTap Tapset Reference" "TTY Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -36,11 +36,6 @@ tty\&.register
 .fi
 .SH "VALUES"
 .PP
-\fIdriver_name\fR
-.RS 4
-the driver name
-.RE
-.PP
 \fImodule\fR
 .RS 4
 the module name
@@ -54,6 +49,11 @@ the tty index requested
 \fIname\fR
 .RS 4
 the driver \&.dev_name name
+.RE
+.PP
+\fIdriver_name\fR
+.RS 4
+the driver name
 .RE
 .SH SEE ALSO\n 
 .IR tapset::tty (3stap)

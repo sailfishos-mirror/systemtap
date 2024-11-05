@@ -2,12 +2,12 @@
 .\"     Title: probe::softirq.entry
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: April 2024
+.\"      Date: November 2024
 .\"    Manual: Interrupt Request (IRQ) Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "PROBE::SOFTIRQ\&.ENT" "3stap" "April 2024" "SystemTap Tapset Reference" "Interrupt Request (IRQ) Tapset"
+.TH "PROBE::SOFTIRQ\&.ENT" "3stap" "November 2024" "SystemTap Tapset Reference" "Interrupt Request (IRQ) Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -41,11 +41,6 @@ softirq\&.entry
 struct softirq_action* for current pending softirq
 .RE
 .PP
-\fIaction\fR
-.RS 4
-pointer to softirq handler just about to execute
-.RE
-.PP
 \fIvec\fR
 .RS 4
 softirq_action vector
@@ -54,6 +49,11 @@ softirq_action vector
 \fIvec_nr\fR
 .RS 4
 softirq vector number
+.RE
+.PP
+\fIaction\fR
+.RS 4
+pointer to softirq handler just about to execute
 .RE
 .SH SEE ALSO\n 
 .IR tapset::irq (3stap)

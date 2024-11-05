@@ -2,12 +2,12 @@
 .\"     Title: probe::signal.flush
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: April 2024
+.\"      Date: November 2024
 .\"    Manual: Signal Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "PROBE::SIGNAL\&.FLUS" "3stap" "April 2024" "SystemTap Tapset Reference" "Signal Tapset"
+.TH "PROBE::SIGNAL\&.FLUS" "3stap" "November 2024" "SystemTap Tapset Reference" "Signal Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -36,6 +36,11 @@ signal\&.flush
 .fi
 .SH "VALUES"
 .PP
+\fItask\fR
+.RS 4
+The task handler of the process performing the flush
+.RE
+.PP
 \fIsig_pid\fR
 .RS 4
 The PID of the process associated with the task performing the flush
@@ -49,11 +54,6 @@ The name of the process associated with the task performing the flush
 \fIname\fR
 .RS 4
 Name of the probe point
-.RE
-.PP
-\fItask\fR
-.RS 4
-The task handler of the process performing the flush
 .RE
 .SH SEE ALSO\n 
 .IR tapset::signal (3stap)

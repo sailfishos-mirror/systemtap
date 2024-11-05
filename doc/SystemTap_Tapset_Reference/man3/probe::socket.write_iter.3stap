@@ -2,12 +2,12 @@
 .\"     Title: probe::socket.write_iter
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: April 2024
+.\"      Date: November 2024
 .\"    Manual: Socket Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "PROBE::SOCKET\&.WRIT" "3stap" "April 2024" "SystemTap Tapset Reference" "Socket Tapset"
+.TH "PROBE::SOCKET\&.WRIT" "3stap" "November 2024" "SystemTap Tapset Reference" "Socket Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -36,9 +36,14 @@ socket\&.write_iter
 .fi
 .SH "VALUES"
 .PP
-\fIname\fR
+\fIfamily\fR
 .RS 4
-Name of this probe
+Protocol family value
+.RE
+.PP
+\fIsize\fR
+.RS 4
+Message size in bytes
 .RE
 .PP
 \fIprotocol\fR
@@ -51,11 +56,6 @@ Protocol value
 Socket flags value
 .RE
 .PP
-\fIsize\fR
-.RS 4
-Message size in bytes
-.RE
-.PP
 \fIstate\fR
 .RS 4
 Socket state value
@@ -66,9 +66,9 @@ Socket state value
 Socket type value
 .RE
 .PP
-\fIfamily\fR
+\fIname\fR
 .RS 4
-Protocol family value
+Name of this probe
 .RE
 .SH "CONTEXT"
 .PP

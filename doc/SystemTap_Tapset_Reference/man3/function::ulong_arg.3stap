@@ -2,12 +2,12 @@
 .\"     Title: function::ulong_arg
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: April 2024
+.\"      Date: November 2024
 .\"    Manual: Context Functions
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "FUNCTION::ULONG_ARG" "3stap" "April 2024" "SystemTap Tapset Reference" "Context Functions"
+.TH "FUNCTION::ULONG_ARG" "3stap" "November 2024" "SystemTap Tapset Reference" "Context Functions"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------

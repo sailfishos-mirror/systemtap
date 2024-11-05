@@ -2,12 +2,12 @@
 .\"     Title: probe::tty.resize
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: April 2024
+.\"      Date: November 2024
 .\"    Manual: TTY Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "PROBE::TTY\&.RESIZE" "3stap" "April 2024" "SystemTap Tapset Reference" "TTY Tapset"
+.TH "PROBE::TTY\&.RESIZE" "3stap" "November 2024" "SystemTap Tapset Reference" "TTY Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -36,14 +36,9 @@ tty\&.resize
 .fi
 .SH "VALUES"
 .PP
-\fInew_row\fR
+\fIold_ypixel\fR
 .RS 4
-the new row value
-.RE
-.PP
-\fIold_row\fR
-.RS 4
-the old row value
+the old ypixel
 .RE
 .PP
 \fIold_col\fR
@@ -51,9 +46,29 @@ the old row value
 the old col value
 .RE
 .PP
+\fInew_row\fR
+.RS 4
+the new row value
+.RE
+.PP
+\fInew_xpixel\fR
+.RS 4
+the new xpixel value
+.RE
+.PP
+\fIold_xpixel\fR
+.RS 4
+the old xpixel
+.RE
+.PP
 \fIname\fR
 .RS 4
 the tty name
+.RE
+.PP
+\fIold_row\fR
+.RS 4
+the old row value
 .RE
 .PP
 \fInew_col\fR
@@ -64,21 +79,6 @@ the new col value
 \fInew_ypixel\fR
 .RS 4
 the new ypixel value
-.RE
-.PP
-\fInew_xpixel\fR
-.RS 4
-the new xpixel value
-.RE
-.PP
-\fIold_ypixel\fR
-.RS 4
-the old ypixel
-.RE
-.PP
-\fIold_xpixel\fR
-.RS 4
-the old xpixel
 .RE
 .SH SEE ALSO\n 
 .IR tapset::tty (3stap)

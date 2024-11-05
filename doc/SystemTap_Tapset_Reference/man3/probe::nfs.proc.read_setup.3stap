@@ -2,12 +2,12 @@
 .\"     Title: probe::nfs.proc.read_setup
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: April 2024
+.\"      Date: November 2024
 .\"    Manual: Network File Storage Tapsets
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "PROBE::NFS\&.PROC\&." "3stap" "April 2024" "SystemTap Tapset Reference" "Network File Storage Tapsets"
+.TH "PROBE::NFS\&.PROC\&." "3stap" "November 2024" "SystemTap Tapset Reference" "Network File Storage Tapsets"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -46,9 +46,9 @@ read bytes in this execution
 read bytes in this execution
 .RE
 .PP
-\fIoffset\fR
+\fIversion\fR
 .RS 4
-the file offset
+NFS version
 .RE
 .PP
 \fIserver_ip\fR
@@ -56,14 +56,14 @@ the file offset
 IP address of server
 .RE
 .PP
-\fIversion\fR
-.RS 4
-NFS version
-.RE
-.PP
 \fIprot\fR
 .RS 4
 transfer protocol
+.RE
+.PP
+\fIoffset\fR
+.RS 4
+the file offset
 .RE
 .SH "DESCRIPTION"
 .PP

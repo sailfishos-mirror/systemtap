@@ -2,12 +2,12 @@
 .\"     Title: probe::socket.create.return
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: April 2024
+.\"      Date: November 2024
 .\"    Manual: Socket Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "PROBE::SOCKET\&.CREA" "3stap" "April 2024" "SystemTap Tapset Reference" "Socket Tapset"
+.TH "PROBE::SOCKET\&.CREA" "3stap" "November 2024" "SystemTap Tapset Reference" "Socket Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -36,29 +36,14 @@ socket\&.create\&.return
 .fi
 .SH "VALUES"
 .PP
+\fIfamily\fR
+.RS 4
+Protocol family value
+.RE
+.PP
 \fIprotocol\fR
 .RS 4
 Protocol value
-.RE
-.PP
-\fIname\fR
-.RS 4
-Name of this probe
-.RE
-.PP
-\fIerr\fR
-.RS 4
-Error code if success == 0
-.RE
-.PP
-\fIsuccess\fR
-.RS 4
-Was socket creation successful? (1 = yes, 0 = no)
-.RE
-.PP
-\fItype\fR
-.RS 4
-Socket type value
 .RE
 .PP
 \fIrequester\fR
@@ -66,9 +51,24 @@ Socket type value
 Requested by user process or the kernel (1 = kernel, 0 = user)
 .RE
 .PP
-\fIfamily\fR
+\fItype\fR
 .RS 4
-Protocol family value
+Socket type value
+.RE
+.PP
+\fIname\fR
+.RS 4
+Name of this probe
+.RE
+.PP
+\fIsuccess\fR
+.RS 4
+Was socket creation successful? (1 = yes, 0 = no)
+.RE
+.PP
+\fIerr\fR
+.RS 4
+Error code if success == 0
 .RE
 .SH "CONTEXT"
 .PP

@@ -2,12 +2,12 @@
 .\"     Title: probe::nfs.fop.lock
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: April 2024
+.\"      Date: November 2024
 .\"    Manual: Network File Storage Tapsets
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "PROBE::NFS\&.FOP\&.L" "3stap" "April 2024" "SystemTap Tapset Reference" "Network File Storage Tapsets"
+.TH "PROBE::NFS\&.FOP\&.L" "3stap" "November 2024" "SystemTap Tapset Reference" "Network File Storage Tapsets"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -36,9 +36,9 @@ nfs\&.fop\&.lock
 .fi
 .SH "VALUES"
 .PP
-\fIfl_start\fR
+\fIfl_end\fR
 .RS 4
-starting offset of locked region
+ending offset of locked region
 .RE
 .PP
 \fIino\fR
@@ -51,6 +51,16 @@ inode number
 cmd arguments
 .RE
 .PP
+\fIfl_start\fR
+.RS 4
+starting offset of locked region
+.RE
+.PP
+\fIfl_flag\fR
+.RS 4
+lock flags
+.RE
+.PP
 \fIfl_type\fR
 .RS 4
 lock type
@@ -61,19 +71,9 @@ lock type
 file type and access rights
 .RE
 .PP
-\fIfl_flag\fR
-.RS 4
-lock flags
-.RE
-.PP
 \fIdev\fR
 .RS 4
 device identifier
-.RE
-.PP
-\fIfl_end\fR
-.RS 4
-ending offset of locked region
 .RE
 .SH SEE ALSO\n 
 .IR tapset::nfs (3stap)

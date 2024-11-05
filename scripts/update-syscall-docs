@@ -17,7 +17,7 @@ def getManContent(body):
     return """.\" -*- nroff -*-
 .TH TAPSET::SYSCALLS 3stap \"""" + datetime.date.today().strftime("%B %Y") + """\" "Systemtap Tapset Reference"
 .SH NAME
-tapset::syscalls \- systemtap syscall tapset
+tapset::syscalls - systemtap syscall tapset
 
 .SH DESCRIPTION
 {0}
@@ -27,8 +27,8 @@ tapset::syscalls \- systemtap syscall tapset
 {1}
 .SH SEE ALSO
 .BR
-.IR \%stap (1),
-.IR \%stapprobes (3stap)
+.IR stap (1),
+.IR stapprobes (3stap)
 """.format(SYSCALLS_DESC, body)
 
 def getXmlContent(body):

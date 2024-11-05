@@ -2,12 +2,12 @@
 .\"     Title: probe::socket.read_iter
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: April 2024
+.\"      Date: November 2024
 .\"    Manual: Socket Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "PROBE::SOCKET\&.READ" "3stap" "April 2024" "SystemTap Tapset Reference" "Socket Tapset"
+.TH "PROBE::SOCKET\&.READ" "3stap" "November 2024" "SystemTap Tapset Reference" "Socket Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -36,19 +36,9 @@ socket\&.read_iter
 .fi
 .SH "VALUES"
 .PP
-\fIsize\fR
+\fIname\fR
 .RS 4
-Message size in bytes
-.RE
-.PP
-\fIstate\fR
-.RS 4
-Socket state value
-.RE
-.PP
-\fIfamily\fR
-.RS 4
-Protocol family value
+Name of this probe
 .RE
 .PP
 \fItype\fR
@@ -56,9 +46,9 @@ Protocol family value
 Socket type value
 .RE
 .PP
-\fIname\fR
+\fIsize\fR
 .RS 4
-Name of this probe
+Message size in bytes
 .RE
 .PP
 \fIprotocol\fR
@@ -69,6 +59,16 @@ Protocol value
 \fIflags\fR
 .RS 4
 Socket flags value
+.RE
+.PP
+\fIfamily\fR
+.RS 4
+Protocol family value
+.RE
+.PP
+\fIstate\fR
+.RS 4
+Socket state value
 .RE
 .SH "CONTEXT"
 .PP

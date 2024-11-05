@@ -2,12 +2,12 @@
 .\"     Title: probe::kprocess.release
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: April 2024
+.\"      Date: November 2024
 .\"    Manual: Kernel Process Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "PROBE::KPROCESS\&.RE" "3stap" "April 2024" "SystemTap Tapset Reference" "Kernel Process Tapset"
+.TH "PROBE::KPROCESS\&.RE" "3stap" "November 2024" "SystemTap Tapset Reference" "Kernel Process Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -41,11 +41,6 @@ kprocess\&.release
 A task handle to the process being released
 .RE
 .PP
-\fIreleased_tid\fR
-.RS 4
-TID of the task being released
-.RE
-.PP
 \fIpid\fR
 .RS 4
 Same as
@@ -56,6 +51,11 @@ for compatibility (deprecated)
 \fIreleased_pid\fR
 .RS 4
 PID of the process being released
+.RE
+.PP
+\fIreleased_tid\fR
+.RS 4
+TID of the task being released
 .RE
 .SH "CONTEXT"
 .PP

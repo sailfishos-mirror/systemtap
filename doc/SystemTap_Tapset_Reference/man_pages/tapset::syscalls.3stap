@@ -1,7 +1,7 @@
 ." -*- nroff -*-
-.TH TAPSET::SYSCALLS 3stap "April 2024" "Systemtap Tapset Reference"
+.TH TAPSET::SYSCALLS 3stap "November 2024" "Systemtap Tapset Reference"
 .SH NAME
-tapset::syscalls \- systemtap syscall tapset
+tapset::syscalls - systemtap syscall tapset
 
 .SH DESCRIPTION
 Following is an overview of available syscall probes and
@@ -1543,5 +1543,5 @@ count, fd, vector_uaddr
 
 .SH SEE ALSO
 .BR
-.IR \%stap (1),
-.IR \%stapprobes (3stap)
+.IR stap (1),
+.IR stapprobes (3stap)

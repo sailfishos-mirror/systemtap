@@ -2,12 +2,12 @@
 .\"     Title: function::cve_record_metric
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: April 2024
+.\"      Date: November 2024
 .\"    Manual: CVE Livepatching Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "FUNCTION::CVE_RECORD" "3stap" "April 2024" "SystemTap Tapset Reference" "CVE Livepatching Tapset"
+.TH "FUNCTION::CVE_RECORD" "3stap" "November 2024" "SystemTap Tapset Reference" "CVE Livepatching Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
