@@ -555,6 +555,9 @@ compile_pass (systemtap_session& s)
   output_autoconf(s, o, cs, "autoconf-files_lookup_fd_raw.c",
                   "STAPCONF_FILES_LOOKUP_FD_RAW", NULL);
   output_autoconf(s, o, cs, "autoconf-task-state.c", "STAPCONF_TASK_STATE", NULL);
+
+  output_autoconf(s, o, cs, "autoconf-linux-unaligned-h.c", "STAPCONF_LINUX_UNALIGNED_H", NULL);
+
   
   // used by runtime/linux/netfilter.c
   output_exportconf(s, o2, "nf_register_hook", "STAPCONF_NF_REGISTER_HOOK");

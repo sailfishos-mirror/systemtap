@@ -18,7 +18,7 @@
 #ifdef STP_NEED_LINE_DATA
 #include "unwind/unwind.h"
 #endif
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,12,0)
+#ifdef STAPCONF_LINUX_UNALIGNED_H
 #include <linux/unaligned.h>
 #else
 #include <asm/unaligned.h>
