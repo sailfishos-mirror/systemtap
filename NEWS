@@ -1,4 +1,4 @@
-* What's new in version 5.2, TBD
+* What's new in version 5.2, 2024-11-08
 
 - New /* pragma:suffix */ for file-level embedded C code blocks to
   be placed near the end of the emitted kernel module C file.
