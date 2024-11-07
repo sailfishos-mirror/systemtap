@@ -12,15 +12,18 @@ probe begin {
   printf("%12s%12s%12s\n", "Hits", "Misses", "% Hits")
 }
 
-probe kernel.function("pagecache_get_page") {
+probe kernel.function("__filemap_get_folio")!,
+      kernel.function("pagecache_get_page") {
   active[tid()] = 1
 }
 
-probe kernel.function("pagecache_get_page").return {
+probe kernel.function("__Filemap_get_folio")!,
+      kernel.function("pagecache_get_page").return {
   active[tid()] = 0
 }
 
-probe kernel.function("find_get_entry").return {
+probe kernel.function("filemap_get_entry").return!,
+      kernel.function("find_get_entry").return {
   if (active[tid()]) {
     if ($return != 0) hits++ else misses++
   }
