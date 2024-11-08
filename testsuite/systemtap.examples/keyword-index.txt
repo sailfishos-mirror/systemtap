@@ -1798,6 +1798,17 @@ keywords: memory
   # stap pfaults.stp -T 1
 
 
+memory/swapmonitor.stp - Summarize swap operations
+keywords: memory swap
+
+  The swapmonitor.stp script is an example to monitor "swap in/out" in
+  RHEL. This stap monitor the call of "swap_readpage" and
+  "swap_writepage", and then printf the timeframe, func, execname, pid
+  and the count with 10 seconds interval.
+
+  # stap swapmonitor.stp -T 5
+
+
 memory/vm.tracepoints.stp - Collect Slab Allocation Statistics
 keywords: memory statistics
 
@@ -3677,6 +3688,19 @@ keywords: network statistics
   sorted and grouped by individual sockets.
 
   # stap tcpipstat.stp timeout=1
+
+
+= SWAP =
+
+memory/swapmonitor.stp - Summarize swap operations
+keywords: memory swap
+
+  The swapmonitor.stp script is an example to monitor "swap in/out" in
+  RHEL. This stap monitor the call of "swap_readpage" and
+  "swap_writepage", and then printf the timeframe, func, execname, pid
+  and the count with 10 seconds interval.
+
+  # stap swapmonitor.stp -T 5
 
 
 = SYSCALL =

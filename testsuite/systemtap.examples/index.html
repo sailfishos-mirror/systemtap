@@ -59,7 +59,7 @@
 <li><a href="#virtualization/kvm_service_time.stp">virtualization/kvm_service_time.stp - Time Statistics on KVM Exit Reasons</a></li>
 </ul>
 
-<h2>All 196 Examples</h2>
+<h2>All 197 Examples</h2>
 <ul>
 <li><a name="apps/gmalloc_watch.stp"></a><a href="#apps/gmalloc_watch.stp">&para;</a> <a href="apps/gmalloc_watch.stp">apps/gmalloc_watch.stp</a> - Tracing glib2 memory allocations<br>
 keywords: <a href="keyword-index.html#TRACE">TRACE</a> <br>
@@ -328,6 +328,9 @@ keywords: <a href="keyword-index.html#MEMORY">MEMORY</a> <a href="keyword-index.
 </li><li><a name="memory/pfaults.stp"></a><a href="#memory/pfaults.stp">&para;</a> <a href="memory/pfaults.stp">memory/pfaults.stp</a> - Generate Log of Major and Minor Page Faults<br>
 keywords: <a href="keyword-index.html#MEMORY">MEMORY</a> <br>
 <p>The pfaults.stp script generates a simple log for each major and minor page fault that occurs on the system. Each line contains a timestamp (in microseconds) when the page fault servicing was completed, the pid of the process, the address of the page fault, the type of access (read or write), the type of fault (major or minor), and the elapsed time for page fault. This log can be examined to determine where the page faults are occurring.</p><p><i><a href="memory/pfaults.txt">sample usage in memory/pfaults.txt</i></font></p>
+</li><li><a name="memory/swapmonitor.stp"></a><a href="#memory/swapmonitor.stp">&para;</a> <a href="memory/swapmonitor.stp">memory/swapmonitor.stp</a> - Summarize swap operations<br>
+keywords: <a href="keyword-index.html#MEMORY">MEMORY</a> <a href="keyword-index.html#SWAP">SWAP</a> <br>
+<p>The swapmonitor.stp script is an example to monitor &quot;swap in/out&quot; in RHEL. This stap monitor the call of &quot;swap_readpage&quot; and &quot;swap_writepage&quot;, and then printf the timeframe, func, execname, pid and the count with 10 seconds interval.</p><p><font size="-2"><pre># stap swapmonitor.stp -T 5</pre></font></p>
 </li><li><a name="memory/vm.tracepoints.stp"></a><a href="#memory/vm.tracepoints.stp">&para;</a> <a href="memory/vm.tracepoints.stp">memory/vm.tracepoints.stp</a> - Collect Slab Allocation Statistics<br>
 keywords: <a href="keyword-index.html#MEMORY">MEMORY</a> <a href="keyword-index.html#STATISTICS">STATISTICS</a> <br>
 <p>The script will probe all memory slab/slub allocations and collects information about the size of the object (bytes requested) and user-space process in execution. When run over a period of time, it helps to correlate kernel-space memory consumption owing to user-space processes.</p><p><i><a href="memory/vm.tracepoints.txt">sample usage in memory/vm.tracepoints.txt</i></font></p>
