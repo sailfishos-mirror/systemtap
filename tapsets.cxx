@@ -11729,6 +11729,89 @@ static bool header_exists(systemtap_session& s, const string& header)
   return false;
 }
 
+static vector<string> tracepoint_forward_decls ()
+{
+    vector<string> retval;
+    // Kernel 6.12
+    retval.push_back("enum cachefiles_content;");
+    retval.push_back("enum extent_type;");
+    retval.push_back("struct bch_fs;");
+    retval.push_back("struct bch_move_stats;");
+    retval.push_back("struct bpos;");
+    retval.push_back("struct btree_bkey_cached_common;");
+    retval.push_back("struct btree_insert_entry;");
+    retval.push_back("struct btree_path;");
+    retval.push_back("struct btree_trans;");
+    retval.push_back("struct cachefiles_msg;");
+    retval.push_back("struct cachefiles_open;");
+    retval.push_back("struct cachefiles_read;");
+    retval.push_back("struct cachefiles_volume;");
+    retval.push_back("struct clk_rate_request;");
+    retval.push_back("struct compact_control;");
+    retval.push_back("struct fsi_device;");
+    retval.push_back("struct fsi_msg;");
+    retval.push_back("struct fsi_slave;");
+    retval.push_back("struct fuse_req;");
+    retval.push_back("struct get_locks_fail;");
+    retval.push_back("struct gss_cred;");
+    retval.push_back("struct handshake_req;");
+    retval.push_back("struct i2c_client;");
+    retval.push_back("struct ib_mad_agent_private;");
+    retval.push_back("struct ib_mad_qp_info;");
+    retval.push_back("struct ib_mad_send_wr_private;");
+    retval.push_back("struct ib_smp;");
+    retval.push_back("struct iomap;");
+    retval.push_back("struct iomap_iter;");
+    retval.push_back("struct mctp_sk_key;");
+    retval.push_back("struct mptcp_ext;");
+    retval.push_back("struct mptcp_subflow_context;");
+    retval.push_back("struct nbd_request;");
+    retval.push_back("struct netfs_io_request;");
+    retval.push_back("struct netfs_io_stream;");
+    retval.push_back("struct netfs_io_subrequest;");
+    retval.push_back("struct nfs42_clone_args;");
+    retval.push_back("struct nfs42_copy_args;");
+    retval.push_back("struct nfs42_copy_notify_args;");
+    retval.push_back("struct nfs42_copy_notify_res;");
+    retval.push_back("struct nfs42_copy_res;");
+    retval.push_back("struct nfs42_falloc_args;");
+    retval.push_back("struct nfs42_offload_status_args;");
+    retval.push_back("struct nfs42_seek_args;");
+    retval.push_back("struct nfs42_seek_res;");
+    retval.push_back("struct nfs_direct_req;");
+    retval.push_back("struct nfs_page;");
+    retval.push_back("struct opa_smp;");
+    retval.push_back("struct p9_fid;");
+    retval.push_back("struct pwc_device;");
+    retval.push_back("struct request;");
+    retval.push_back("struct rpc_auth;");
+    retval.push_back("struct rpc_gss_wire_cred;");
+    retval.push_back("struct rpcrdma_ep;");
+    retval.push_back("struct rpcrdma_mr;");
+    retval.push_back("struct rpcrdma_notification;");
+    retval.push_back("struct rpcrdma_rep;");
+    retval.push_back("struct rpcrdma_req;");
+    retval.push_back("struct rpcrdma_xprt;");
+    retval.push_back("struct rpc_rqst;");
+    retval.push_back("struct rpc_task;");
+    retval.push_back("struct selinux_audit_data;");
+    retval.push_back("struct spi_device;");
+    retval.push_back("struct svc_rdma_chunk;");
+    retval.push_back("struct svc_rdma_recv_ctxt;");
+    retval.push_back("struct svc_rdma_segment;");
+    retval.push_back("struct svc_rdma_send_ctxt;");
+    retval.push_back("struct svc_rqst;");
+    retval.push_back("struct svcxprt_rdma;");
+    retval.push_back("struct tmigr_cpu;");
+    retval.push_back("struct tmigr_group;");
+    retval.push_back("struct virtio_gpu_ctrl_hdr;");
+    retval.push_back("struct virtqueue;");
+    retval.push_back("struct somenonexistentstruct_123;");
+    retval.push_back("union ifs_sbaf;");
+    retval.push_back("union ifs_sbaf_status;");
+    retval.push_back("union tmigr_state;");
+    return retval;
+}
 
 static vector<string> tracepoint_extra_decls (systemtap_session& s,
 					      const string& header,
@@ -12187,6 +12270,8 @@ tracepoint_derived_probe_group::emit_module_decls (systemtap_session& s)
   s.op->newline();
 
 
+
+
   // We create a MODULE_aux_N.c file for each tracepoint header, to allow them
   // to be separately compiled.  That's because kernel tracepoint headers sometimes
   // conflict.  PR13155.
@@ -12206,6 +12291,11 @@ tracepoint_derived_probe_group::emit_module_decls (systemtap_session& s)
         {
           tpop = s.op_create_auxiliary();
           per_header_aux[header] = tpop;
+
+          // add needed forward decls/#includes
+          static vector<string> forward_decls = tracepoint_forward_decls();
+          for (unsigned z=0; z<forward_decls.size(); z++)
+             tpop->newline()<< forward_decls[z] << "\n";
 
           // PR9993: Add extra headers to work around undeclared types in individual
           // include/trace/foo.h files
@@ -12773,83 +12863,10 @@ tracepoint_builder::get_tracequery_modules(systemtap_session& s,
       osrc << "#ifdef CONFIG_TRACEPOINTS" << endl;
       osrc << "#include <linux/tracepoint.h>" << endl;
 
-      osrc << "enum cachefiles_content;" << endl;
-      osrc << "enum extent_type;" << endl;
-      osrc << "struct bch_fs;" << endl;
-      osrc << "struct bch_move_stats;" << endl;
-      osrc << "struct bpos;" << endl;
-      osrc << "struct btree_bkey_cached_common;" << endl;
-      osrc << "struct btree_insert_entry;" << endl;
-      osrc << "struct btree_path;" << endl;
-      osrc << "struct btree_trans;" << endl;
-      osrc << "struct cachefiles_msg;" << endl;
-      osrc << "struct cachefiles_open;" << endl;
-      osrc << "struct cachefiles_read;" << endl;
-      osrc << "struct cachefiles_volume;" << endl;
-      osrc << "struct clk_rate_request;" << endl;
-      osrc << "struct compact_control;" << endl;
-      osrc << "struct fsi_device;" << endl;
-      osrc << "struct fsi_msg;" << endl;
-      osrc << "struct fsi_slave;" << endl;
-      osrc << "struct fuse_req;" << endl;
-      osrc << "struct get_locks_fail;" << endl;
-      osrc << "struct gss_cred;" << endl;
-      osrc << "struct handshake_req;" << endl;
-      osrc << "struct i2c_client;" << endl;
-      osrc << "struct ib_mad_agent_private;" << endl;
-      osrc << "struct ib_mad_qp_info;" << endl;
-      osrc << "struct ib_mad_send_wr_private;" << endl;
-      osrc << "struct ib_smp;" << endl;
-      osrc << "struct iomap;" << endl;
-      osrc << "struct iomap_iter;" << endl;
-      osrc << "struct mctp_sk_key;" << endl;
-      osrc << "struct mptcp_ext;" << endl;
-      osrc << "struct mptcp_subflow_context;" << endl;
-      osrc << "struct nbd_request;" << endl;
-      osrc << "struct netfs_io_request;" << endl;
-      osrc << "struct netfs_io_stream;" << endl;
-      osrc << "struct netfs_io_subrequest;" << endl;
-      osrc << "struct nfs42_clone_args;" << endl;
-      osrc << "struct nfs42_copy_args;" << endl;
-      osrc << "struct nfs42_copy_notify_args;" << endl;
-      osrc << "struct nfs42_copy_notify_res;" << endl;
-      osrc << "struct nfs42_copy_res;" << endl;
-      osrc << "struct nfs42_falloc_args;" << endl;
-      osrc << "struct nfs42_offload_status_args;" << endl;
-      osrc << "struct nfs42_seek_args;" << endl;
-      osrc << "struct nfs42_seek_res;" << endl;
-      osrc << "struct nfs_direct_req;" << endl;
-      osrc << "struct nfs_page;" << endl;
-      osrc << "struct opa_smp;" << endl;
-      osrc << "struct p9_fid;" << endl;
-      osrc << "struct pwc_device;" << endl;
-      osrc << "struct request;" << endl;
-      osrc << "struct rpc_auth;" << endl;
-      osrc << "struct rpc_gss_wire_cred;" << endl;
-      osrc << "struct rpcrdma_ep;" << endl;
-      osrc << "struct rpcrdma_mr;" << endl;
-      osrc << "struct rpcrdma_notification;" << endl;
-      osrc << "struct rpcrdma_rep;" << endl;
-      osrc << "struct rpcrdma_req;" << endl;
-      osrc << "struct rpcrdma_xprt;" << endl;
-      osrc << "struct rpc_rqst;" << endl;
-      osrc << "struct rpc_task;" << endl;
-      osrc << "struct selinux_audit_data;" << endl;
-      osrc << "struct spi_device;" << endl;
-      osrc << "struct svc_rdma_chunk;" << endl;
-      osrc << "struct svc_rdma_recv_ctxt;" << endl;
-      osrc << "struct svc_rdma_segment;" << endl;
-      osrc << "struct svc_rdma_send_ctxt;" << endl;
-      osrc << "struct svc_rqst;" << endl;
-      osrc << "struct svcxprt_rdma;" << endl;
-      osrc << "struct tmigr_cpu;" << endl;
-      osrc << "struct tmigr_group;" << endl;
-      osrc << "struct virtio_gpu_ctrl_hdr;" << endl;
-      osrc << "struct virtqueue;" << endl;
-      osrc << "struct somenonexistentstruct_123;" << endl;
-      osrc << "union ifs_sbaf;" << endl;
-      osrc << "union ifs_sbaf_status;" << endl;
-      osrc << "union tmigr_state;" << endl;
+      // add needed forward decls/#includes
+      static vector<string> forward_decls = tracepoint_forward_decls();
+      for (unsigned z=0; z<forward_decls.size(); z++)
+        osrc << forward_decls[z] << "\n";
 
       // BPF raw tracepoint macros for creating the multiple fields
       // of the data struct that describes the raw tracepoint.
