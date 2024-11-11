@@ -209,7 +209,7 @@ BuildRequires: xmlto /usr/share/xmlto/format/fo/pdf
 %endif
 %if %{with_emacsvim}
 # for _emacs_sitelispdir macros etc.
-BuildRequires: emacs
+BuildRequires: emacs-common
 %endif
 %if %{with_java}
 BuildRequires: java-devel
