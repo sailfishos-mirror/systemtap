@@ -11729,95 +11729,95 @@ static bool header_exists(systemtap_session& s, const string& header)
   return false;
 }
 
-static vector<string> tracepoint_forward_decls ()
-{
-    vector<string> retval;
-    // Kernel 6.12
-    retval.push_back("enum cachefiles_content;");
-    retval.push_back("enum extent_type;");
-    retval.push_back("struct bch_fs;");
-    retval.push_back("struct bch_move_stats;");
-    retval.push_back("struct bpos;");
-    retval.push_back("struct btree_bkey_cached_common;");
-    retval.push_back("struct btree_insert_entry;");
-    retval.push_back("struct btree_path;");
-    retval.push_back("struct btree_trans;");
-    retval.push_back("struct cachefiles_msg;");
-    retval.push_back("struct cachefiles_open;");
-    retval.push_back("struct cachefiles_read;");
-    retval.push_back("struct cachefiles_volume;");
-    retval.push_back("struct clk_rate_request;");
-    retval.push_back("struct compact_control;");
-    retval.push_back("struct fsi_device;");
-    retval.push_back("struct fsi_msg;");
-    retval.push_back("struct fsi_slave;");
-    retval.push_back("struct fuse_req;");
-    retval.push_back("struct get_locks_fail;");
-    retval.push_back("struct gss_cred;");
-    retval.push_back("struct handshake_req;");
-    retval.push_back("struct i2c_client;");
-    retval.push_back("struct ib_mad_agent_private;");
-    retval.push_back("struct ib_mad_qp_info;");
-    retval.push_back("struct ib_mad_send_wr_private;");
-    retval.push_back("struct ib_smp;");
-    retval.push_back("struct iomap;");
-    retval.push_back("struct iomap_iter;");
-    retval.push_back("struct mctp_sk_key;");
-    retval.push_back("struct mptcp_ext;");
-    retval.push_back("struct mptcp_subflow_context;");
-    retval.push_back("struct nbd_request;");
-    retval.push_back("struct netfs_io_request;");
-    retval.push_back("struct netfs_io_stream;");
-    retval.push_back("struct netfs_io_subrequest;");
-    retval.push_back("struct nfs42_clone_args;");
-    retval.push_back("struct nfs42_copy_args;");
-    retval.push_back("struct nfs42_copy_notify_args;");
-    retval.push_back("struct nfs42_copy_notify_res;");
-    retval.push_back("struct nfs42_copy_res;");
-    retval.push_back("struct nfs42_falloc_args;");
-    retval.push_back("struct nfs42_offload_status_args;");
-    retval.push_back("struct nfs42_seek_args;");
-    retval.push_back("struct nfs42_seek_res;");
-    retval.push_back("struct nfs_direct_req;");
-    retval.push_back("struct nfs_page;");
-    retval.push_back("struct opa_smp;");
-    retval.push_back("struct p9_fid;");
-    retval.push_back("struct pwc_device;");
-    retval.push_back("struct request;");
-    retval.push_back("struct rpc_auth;");
-    retval.push_back("struct rpc_gss_wire_cred;");
-    retval.push_back("struct rpcrdma_ep;");
-    retval.push_back("struct rpcrdma_mr;");
-    retval.push_back("struct rpcrdma_notification;");
-    retval.push_back("struct rpcrdma_rep;");
-    retval.push_back("struct rpcrdma_req;");
-    retval.push_back("struct rpcrdma_xprt;");
-    retval.push_back("struct rpc_rqst;");
-    retval.push_back("struct rpc_task;");
-    retval.push_back("struct selinux_audit_data;");
-    retval.push_back("struct spi_device;");
-    retval.push_back("struct svc_rdma_chunk;");
-    retval.push_back("struct svc_rdma_recv_ctxt;");
-    retval.push_back("struct svc_rdma_segment;");
-    retval.push_back("struct svc_rdma_send_ctxt;");
-    retval.push_back("struct svc_rqst;");
-    retval.push_back("struct svcxprt_rdma;");
-    retval.push_back("struct tmigr_cpu;");
-    retval.push_back("struct tmigr_group;");
-    retval.push_back("struct virtio_gpu_ctrl_hdr;");
-    retval.push_back("struct virtqueue;");
-    retval.push_back("struct somenonexistentstruct_123;");
-    retval.push_back("union ifs_sbaf;");
-    retval.push_back("union ifs_sbaf_status;");
-    retval.push_back("union tmigr_state;");
-    return retval;
-}
 
 static vector<string> tracepoint_extra_decls (systemtap_session& s,
 					      const string& header,
 					      const bool tracequery)
 {
   vector<string> they_live;
+
+  // Kernel 6.12 (6.12.0-0.rc7.59.fc42) add needed forward decls
+  if (header.find("avc") != string::npos) // trace/events/avc.h
+    they_live.push_back ("struct selinux_audit_data;");
+  if (header.find("bcachefs") != string::npos) // fs/bcachefs/trace.h
+    {
+      they_live.push_back ("struct bch_fs;");
+      they_live.push_back ("struct bch_move_stats;");
+      they_live.push_back ("struct bpos;");
+      they_live.push_back ("struct btree_bkey_cached_common;");
+      they_live.push_back ("struct btree_insert_entry;");
+      they_live.push_back ("struct btree_path;");
+      they_live.push_back ("struct btree_trans;");
+      they_live.push_back ("struct get_locks_fail;");
+    }
+  if (header.find("compaction") != string::npos) // trace/events/compaction.h
+    they_live.push_back ("struct compact_control;");
+  if (header.find("f2fs") != string::npos) // trace/events/f2fs.h
+    they_live.push_back ("enum extent_type;");
+  if (header.find("fuse") != string::npos) // fs/fuse/fuse_trace.h
+    they_live.push_back ("struct fuse_req;");
+  if (header.find("handshake") != string::npos) // trace/events/handshake.h
+    they_live.push_back ("struct handshake_req;");
+  if (header.find("i2c") != string::npos) // trace/events/fsi_master_i2cr.h
+    they_live.push_back ("struct i2c_client;");
+  if (header.find("ib_mad") != string::npos) // trace/events/ib_mad.h
+    they_live.push_back ("struct opa_smp;");
+  if (header.find("ifs") != string::npos) // trace/events/intel_ifs.h
+    {
+      they_live.push_back ("union ifs_sbaf;");
+      they_live.push_back ("union ifs_sbaf_status;");
+    }
+  if ((header.find("iomap") != string::npos) || // fs/iomap/trace.h
+      (header.find("zonefs") != string::npos))  // fs/zonefs/trace.h
+    {
+      they_live.push_back ("struct iomap;");
+      they_live.push_back ("struct iomap_iter;");
+    }
+  if (header.find("kvm") != string::npos) // include/trace/events/kvm.h (ppc64le)
+    {
+      they_live.push_back ("struct kvm_dirty_ring;");
+      they_live.push_back ("struct kvm_vcpu;");
+    }
+  if (header.find("mce") != string::npos) // include/trace/events/mce.h (ppc64le)
+    they_live.push_back ("struct mce;");
+  if (header.find("mctp") != string::npos) // trace/events/mctp.h
+    they_live.push_back ("struct mctp_sk_key;");
+  if (header.find("mptcp") != string::npos) // trace/events/mptcp.h
+    {
+      they_live.push_back ("struct mptcp_ext;");
+      they_live.push_back ("struct mptcp_subflow_context;");
+    }
+  if (header.find("nbd") != string::npos) // trace/events/nbd.h
+    {
+      they_live.push_back ("struct nbd_request;");
+      they_live.push_back ("struct request;");
+    }
+  if (header.find("netfs") != string::npos) // trace/events/netfs.h
+    {
+      they_live.push_back ("struct netfs_io_request;");
+      they_live.push_back ("struct netfs_io_stream;");
+      they_live.push_back ("struct netfs_io_subrequest;");
+    }
+  if (header.find("pwc") != string::npos) // trace/events/pwc.h
+    they_live.push_back ("struct pwc_device;");
+  if (header.find("spi") != string::npos) // trace/events/spi.h
+    they_live.push_back ("struct spi_device;");
+  if (header.find("timer_migration") != string::npos) // trace/events/timer_migration.h
+    {
+      they_live.push_back ("struct tmigr_cpu;");
+      they_live.push_back ("struct tmigr_group;");
+      they_live.push_back ("union tmigr_state;");
+    }
+  if (header.find("ufs") != string::npos) // include/trace/events/ufs.h (aarch64, s390x)
+    {
+      they_live.push_back ("enum ufs_trace_str_t;");
+      they_live.push_back ("enum ufs_trace_tsf_t;");
+    }
+  if (header.find("virtio") != string::npos) // drivers/gpu/drm/virtio/virtgpu_trace.h
+    {
+      they_live.push_back ("struct virtio_gpu_ctrl_hdr;");
+      they_live.push_back ("struct virtqueue;");
+    }
 
   // Several headers end up including events/irq.h, events/kmem.h, and
   // events/module.h on RHEL6 (since they include headers that include
@@ -11898,38 +11898,49 @@ static vector<string> tracepoint_extra_decls (systemtap_session& s,
       s.kernel_extra_cflags.push_back ("-I" + s.kernel_source_tree
 				       + "/fs/xfs/libxfs");
 
-    they_live.push_back ("struct xfs_mount;");
-    they_live.push_back ("struct xfs_inode;");
-    they_live.push_back ("struct xfs_buf;");
     they_live.push_back ("struct xfs_bmbt_irec;");
-    they_live.push_back ("struct xfs_trans;");
-    they_live.push_back ("struct xfs_name;");
+    they_live.push_back ("struct xfs_buf;");
     they_live.push_back ("struct xfs_icreate_log;");
+    they_live.push_back ("struct xfs_inode;");
+    they_live.push_back ("struct xfs_mount;");
+    they_live.push_back ("struct xfs_name;");
+    they_live.push_back ("struct xfs_trans;");
   }
 
   if (header.find("nfs") != string::npos
       && s.kernel_config["CONFIG_NFSD"] != string("")) {
-    they_live.push_back ("struct rpc_task;");
-    they_live.push_back ("struct nfs_open_context;");
-    they_live.push_back ("struct nfs_client;");
-    they_live.push_back ("struct nfs_fattr;");
-    they_live.push_back ("struct nfs_fh;");
-    they_live.push_back ("struct nfs_server;");
-    they_live.push_back ("struct nfs_pgio_header;");
-    they_live.push_back ("struct nfs_commit_data;");
-    they_live.push_back ("struct nfs_closeres;");
-    they_live.push_back ("struct nfs_closeargs;");
-    they_live.push_back ("struct nfs_unlinkdata;");
-    they_live.push_back ("struct nfs_writeverf;");
+    they_live.push_back ("struct nfs42_clone_args;");
+    they_live.push_back ("struct nfs42_copy_args;");
+    they_live.push_back ("struct nfs42_copy_notify_args;");
+    they_live.push_back ("struct nfs42_copy_notify_res;");
+    they_live.push_back ("struct nfs42_copy_res;");
+    they_live.push_back ("struct nfs42_falloc_args;");
+    they_live.push_back ("struct nfs42_offload_status_args;");
+    they_live.push_back ("struct nfs42_seek_args;");
+    they_live.push_back ("struct nfs42_seek_res;");
+    they_live.push_back ("struct nfs4_delegreturnargs;");
+    they_live.push_back ("struct nfs4_delegreturnres;");
     they_live.push_back ("struct nfs4_sequence_args;");
     they_live.push_back ("struct nfs4_sequence_res;");
     they_live.push_back ("struct nfs4_session;");
     they_live.push_back ("struct nfs4_state;");
-    they_live.push_back ("struct nfs4_delegreturnres;");
-    they_live.push_back ("struct nfs4_delegreturnargs;");
+    they_live.push_back ("struct nfs_client;");
+    they_live.push_back ("struct nfs_closeargs;");
+    they_live.push_back ("struct nfs_closeres;");
+    they_live.push_back ("struct nfs_commit_data;");
+    they_live.push_back ("struct nfs_direct_req;");
+    they_live.push_back ("struct nfs_fattr;");
+    they_live.push_back ("struct nfs_fh;");
+    they_live.push_back ("struct nfs_open_context;");
+    they_live.push_back ("struct nfs_page;");
+    they_live.push_back ("struct nfs_pgio_header;");
+    they_live.push_back ("struct nfs_server;");
+    they_live.push_back ("struct nfs_unlinkdata;");
+    they_live.push_back ("struct nfs_writeverf;");
     they_live.push_back ("struct pnfs_layout_hdr;");
     they_live.push_back ("struct pnfs_layout_range;");
     they_live.push_back ("struct pnfs_layout_segment;");
+    they_live.push_back ("struct rpc_task;");
 
     // We need a definition of a 'stateid_t', which is a typedef of an
     // anonymous struct. So, we'll have to include the right kernel
@@ -11946,8 +11957,25 @@ static vector<string> tracepoint_extra_decls (systemtap_session& s,
 
   // RHEL6.3
   if (header.find("rpc") != string::npos && s.kernel_config["CONFIG_NFSD"] != string("")) {
+    they_live.push_back ("struct gss_cred;");
+    they_live.push_back ("struct rpc_auth;");
     they_live.push_back ("struct rpc_clnt;");
+    they_live.push_back ("struct rpc_gss_wire_cred;");
+    they_live.push_back ("struct rpc_rqst;");
+    they_live.push_back ("struct rpc_task;");
     they_live.push_back ("struct rpc_wait_queue;");
+    they_live.push_back ("struct rpcrdma_ep;");
+    they_live.push_back ("struct rpcrdma_mr;");
+    they_live.push_back ("struct rpcrdma_notification;");
+    they_live.push_back ("struct rpcrdma_rep;");
+    they_live.push_back ("struct rpcrdma_req;");
+    they_live.push_back ("struct rpcrdma_xprt;");
+    they_live.push_back ("struct svc_rdma_chunk;");
+    they_live.push_back ("struct svc_rdma_recv_ctxt;");
+    they_live.push_back ("struct svc_rdma_segment;");
+    they_live.push_back ("struct svc_rdma_send_ctxt;");
+    they_live.push_back ("struct svc_rqst;");
+    they_live.push_back ("struct svcxprt_rdma;");
   }
 
   if (header.find("timer") != string::npos)
@@ -11970,14 +11998,24 @@ static vector<string> tracepoint_extra_decls (systemtap_session& s,
   // linux 3.0
   they_live.push_back ("struct cpu_workqueue_struct;");
 
-  if (header.find("clk") != string::npos)
+  if (header.find("clk") != string::npos) {
       they_live.push_back ("struct clk_duty;");
+      they_live.push_back ("struct clk_rate_request;");
+  }
   
-  if (header.find("fsi") != string::npos)
+  if (header.find("fsi") != string::npos) {
+      they_live.push_back ("struct fsi_device;");
       they_live.push_back ("struct fsi_master_acf;");
+      they_live.push_back ("struct fsi_msg;");
+      they_live.push_back ("struct fsi_slave;");
+  }
   
   if (header.find("ib_") != string::npos) {
+      they_live.push_back ("struct ib_mad_agent_private;");
       they_live.push_back ("struct ib_mad_hdr;");
+      they_live.push_back ("struct ib_mad_qp_info;");
+      they_live.push_back ("struct ib_mad_send_wr_private;");
+      they_live.push_back ("struct ib_smp;");
       they_live.push_back ("struct ib_user_mad_hdr;");
       they_live.push_back ("struct ib_umad_file;");
       if (header_exists(s, "/include/rdma/id_mad.h"))
@@ -12014,15 +12052,21 @@ static vector<string> tracepoint_extra_decls (systemtap_session& s,
     {
       they_live.push_back ("struct p9_client;");
       they_live.push_back ("struct p9_fcall;");
+      they_live.push_back ("struct p9_fid;");
+    }
+
+  if (header.find("cachefiles") != string::npos)
+    {
+      they_live.push_back ("enum cachefiles_content;");
     }
 
   if (header.find("bcache") != string::npos)
     {
+      they_live.push_back ("struct bcache_device;");
       they_live.push_back ("struct bkey;");
       they_live.push_back ("struct btree;");
-      they_live.push_back ("struct cache_set;");
       they_live.push_back ("struct cache;");
-      they_live.push_back ("struct bcache_device;");
+      they_live.push_back ("struct cache_set;");
     }
 
   if (header.find("f2fs") != string::npos)
@@ -12072,7 +12116,10 @@ static vector<string> tracepoint_extra_decls (systemtap_session& s,
     they_live.push_back ("struct ath5k_hw;");
 
   if (header.find("nilfs2") != string::npos)
-    they_live.push_back ("struct nilfs_transaction_info;");
+    {
+      they_live.push_back ("enum req_op;");
+      they_live.push_back ("struct nilfs_transaction_info;");
+    }
 
   if (header.find("spi") != string::npos)
     {
@@ -12231,6 +12278,10 @@ static vector<string> tracepoint_extra_decls (systemtap_session& s,
   if (header.find("cachefiles") != string::npos ||
       header.find("fscache") != string::npos)
     {
+      they_live.push_back ("struct cachefiles_msg;");
+      they_live.push_back ("struct cachefiles_open;");
+      they_live.push_back ("struct cachefiles_read;");
+      they_live.push_back ("struct cachefiles_volume;");
       they_live.push_back ("#include <linux/fscache.h>");
       they_live.push_back ("#include <linux/fscache-cache.h>");
       they_live.push_back ("struct cachefiles_object;"); // fs/cachefiles/internal.h
@@ -12271,7 +12322,6 @@ tracepoint_derived_probe_group::emit_module_decls (systemtap_session& s)
 
 
 
-
   // We create a MODULE_aux_N.c file for each tracepoint header, to allow them
   // to be separately compiled.  That's because kernel tracepoint headers sometimes
   // conflict.  PR13155.
@@ -12291,11 +12341,6 @@ tracepoint_derived_probe_group::emit_module_decls (systemtap_session& s)
         {
           tpop = s.op_create_auxiliary();
           per_header_aux[header] = tpop;
-
-          // add needed forward decls/#includes
-          static vector<string> forward_decls = tracepoint_forward_decls();
-          for (unsigned z=0; z<forward_decls.size(); z++)
-             tpop->newline()<< forward_decls[z] << "\n";
 
           // PR9993: Add extra headers to work around undeclared types in individual
           // include/trace/foo.h files
@@ -12862,11 +12907,6 @@ tracepoint_builder::get_tracequery_modules(systemtap_session& s,
 
       osrc << "#ifdef CONFIG_TRACEPOINTS" << endl;
       osrc << "#include <linux/tracepoint.h>" << endl;
-
-      // add needed forward decls/#includes
-      static vector<string> forward_decls = tracepoint_forward_decls();
-      for (unsigned z=0; z<forward_decls.size(); z++)
-        osrc << forward_decls[z] << "\n";
 
       // BPF raw tracepoint macros for creating the multiple fields
       // of the data struct that describes the raw tracepoint.
