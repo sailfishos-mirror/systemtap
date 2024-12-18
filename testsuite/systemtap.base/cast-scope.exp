@@ -25,38 +25,44 @@ proc dyninst_kfails {index} {
     }
 }
 
-for {set i 0} {$i < [all_compile_flags]} {incr i} {
-    set extra_flag [all_compile_flag $i]
-    set extra_name [all_compile_flag_name $i]
-    set test_flags "compiler=g++ additional_flags=-g [sdt_includes] $extra_flag"
-    set res [target_compile "$srcfile" $test-$extra_name.exe \
-		 executable "$test_flags"]
-    if { $res != "" } {
-	verbose "target_compile failed: $res" 2
-	fail "$test-$extra_name compile"
-	untested "$test-$extra_name"
-	continue
-    } else {
-	pass "$test-$extra_name compile"
-    }
+foreach dialect {"" "-std=c++98" "-std=c++03" "-std=c++11" "-std=c++14" "-std=c++17" "-std=c++20" "-std=c++23"} {
+    for {set i 0} {$i < [all_compile_flags]} {incr i} {
+        set extra_flag "[all_compile_flag $i] additional_flags=$dialect"
+        set extra_name "[all_compile_flag_name $i]-$dialect"
+        set test_flags "compiler=g++ additional_flags=-g [sdt_includes] $extra_flag"
+        verbose -log "using $test_flags"
+        set res [target_compile "$srcfile" $test-$extra_name.exe \
+                     executable "$test_flags"]
+        if { $res != "" } {
+            verbose "target_compile failed: $res" 2
+            fail "$test-$extra_name compile"
+            untested "$test-$extra_name"
+            continue
+        } else {
+            pass "$test-$extra_name compile"
+        }
 
-    if {[installtest_p]} {
-	foreach runtime [get_runtime_list] {
-	    if {$runtime != ""} {
-		if {[info procs ${runtime}_kfails] ne ""} {
-		    ${runtime}_kfails $i
-		}
-		stap_run3 "$test-$extra_name-$runtime" "$stpfile" \
-		    -c ./$test-$extra_name.exe --runtime=$runtime
-	    } elseif {[uprobes_p]} {
-		stap_run3 "$test-$extra_name" "$stpfile" \
-		    -c ./$test-$extra_name.exe
-	    } else {
-		untested "$test-$extra_name"
-	    }
-	}	    
-    } else {
-	untested "$test-$extra_name"
+        catch {exec readelf -w $test-$extra_name.exe | grep "DW_AT_language.*:"} output
+        verbose -log "$output"
+        
+        if {[installtest_p]} {
+            foreach runtime [get_runtime_list] {
+                if {$runtime != ""} {
+                    if {[info procs ${runtime}_kfails] ne ""} {
+                        ${runtime}_kfails $i
+                    }
+                    stap_run3 "$test-$extra_name-$runtime" "$stpfile" \
+                        -c "./$test-$extra_name.exe 'Hello World!'" --runtime=$runtime
+                } elseif {[uprobes_p]} {
+                    stap_run3 "$test-$extra_name" "$stpfile" \
+                        -c "./$test-$extra_name.exe 'Hello World!'"
+                } else {
+                    untested "$test-$extra_name"
+                }
+            }	    
+        } else {
+            untested "$test-$extra_name"
+        }
+        catch {exec rm -f $test-$extra_name.exe}
     }
-    catch {exec rm -f $test-$extra_name.exe}
 }

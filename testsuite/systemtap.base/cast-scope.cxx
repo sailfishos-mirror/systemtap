@@ -2,6 +2,7 @@
 
 extern "C" {
 #include <string.h>
+#include <stdlib.h>
 }
 
 class sClass
@@ -40,8 +41,9 @@ length(const sClass& str)
 }
 
 int
-main()
+main(int argc, char **argv)
 {
-    sClass hello = sClass("Hello World!");
+    if (argc != 2) exit(1);
+    sClass hello = sClass(argv[1]);
     return 12 != length(hello);
 }
