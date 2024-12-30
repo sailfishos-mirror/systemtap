@@ -13,10 +13,11 @@
 
 #include <cstring>
 #include <string>
-#include <ext/stdio_filebuf.h>
+
+#include <boost/iostreams/device/file_descriptor.hpp>
+#include <boost/iostreams/stream.hpp>
 
 using namespace std;
-using namespace __gnu_cxx;
 
 static const string TOK_PYTHON2("python2");
 static const string TOK_PYTHON3("python3");
@@ -433,15 +434,18 @@ python_builder::resolve(systemtap_session& s,
   // Read stderr from the child.
   if (s.verbose > 2)
     {
-      stdio_filebuf<char> in(child_err, ios_base::in);
-      clog << &in;
+      boost::iostreams::stream<boost::iostreams::file_descriptor_source> in(
+        child_err, boost::iostreams::file_descriptor_flags::close_handle
+      );
+      std::copy(std::istream_iterator<char>(in), std::istream_iterator<char>(), std::ostream_iterator<char>(clog));
       in.close();
     }
 
   // Read stdout from the child. Each line should contain 'MODULE
   // FUNCTION [FLAG]'
-  stdio_filebuf<char> buf(child_out, ios_base::in);
-  istream in(&buf);
+  boost::iostreams::stream<boost::iostreams::file_descriptor_source> in(
+    child_err, boost::iostreams::file_descriptor_flags::close_handle
+  );
   string line;
   while (getline(in, line))
     {
@@ -458,7 +462,7 @@ python_builder::resolve(systemtap_session& s,
       else
 	throw SEMANTIC_ERROR(_F("Unknown output from stap-resolve-module-function.py: %s", line.c_str()));
     }
-  buf.close();
+  in.close();
 
   return stap_waitpid(s.verbose, child);
 }

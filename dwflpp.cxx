@@ -66,7 +66,6 @@ extern "C" {
 
 
 using namespace std;
-using namespace __gnu_cxx;
 
 
 static string TOK_KERNEL("kernel");

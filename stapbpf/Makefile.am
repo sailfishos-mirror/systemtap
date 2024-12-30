@@ -28,7 +28,7 @@ stapbpf_CPPFLAGS = $(AM_CPPFLAGS)
 stapbpf_CFLAGS = $(AM_CFLAGS) $(debuginfod_CFLAGS)
 stapbpf_CXXFLAGS = $(AM_CXXFLAGS) $(debuginfod_CFLAGS)
 stapbpf_LDFLAGS = $(AM_LDFLAGS) $(debuginfod_LDFLAGS)
-stapbpf_LDADD = $(stapbpf_LIBS) -lpthread $(debuginfod_LIBS)
+stapbpf_LDADD = $(stapbpf_LIBS) -lpthread $(debuginfod_LIBS) @BOOST_IOSTREAMS_LIB@
 
 BUILT_SOURCES =
 CLEANFILES =
