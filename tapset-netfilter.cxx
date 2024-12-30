@@ -16,7 +16,6 @@
 #include <limits.h>
 
 using namespace std;
-using namespace __gnu_cxx;
 
 static const string TOK_NETFILTER("netfilter");
 static const string TOK_HOOK("hook");

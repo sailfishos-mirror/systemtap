@@ -12,7 +12,6 @@
 #include "session.h"
 #include "tapsets.h"
 #include "util.h"
-#include <ext/stdio_filebuf.h>
 
 using namespace std;
 

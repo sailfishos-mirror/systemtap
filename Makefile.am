@@ -143,7 +143,7 @@ if BUILD_TRANSLATOR
 stap_CFLAGS = $(AM_CFLAGS) @PIECFLAGS@
 stap_CXXFLAGS = $(AM_CXXFLAGS) @PIECXXFLAGS@ @ALIGNEDNEW@ @debuginfod_CFLAGS@
 stap_CPPFLAGS = $(AM_CPPFLAGS) -DSTAP_SDT_V2
-stap_LDFLAGS = $(AM_LDFLAGS) @PIELDFLAGS@ @BOOST_SYSTEM_LIB@
+stap_LDFLAGS = $(AM_LDFLAGS) @PIELDFLAGS@ @BOOST_SYSTEM_LIB@ @BOOST_IOSTREAMS_LIB@
 
 if HAVE_DYNINST
 stap_CXXFLAGS += $(DYNINST_CXXFLAGS)
@@ -195,7 +195,7 @@ stap_sign_module_CPPFLAGS = $(AM_CPPFLAGS)
 stap_sign_module_CXXFLAGS = $(AM_CXXFLAGS) @PIECXXFLAGS@ $(nss_CFLAGS) $(debuginfod_CFLAGS)
 stap_sign_module_CFLAGS = $(AM_CFLAGS) @PIECFLAGS@ $(nss_CFLAGS) $(debuginfod_CFLAGS)
 stap_sign_module_LDFLAGS = $(AM_LDFLAGS) @PIELDFLAGS@ $(debuginfod_LDFLAGS)
-stap_sign_module_LDADD = $(nss_LIBS) $(debuginfod_LIBS)
+stap_sign_module_LDADD = $(nss_LIBS) $(debuginfod_LIBS) @BOOST_IOSTREAMS_LIB@
 if HAVE_HTTP_SUPPORT
 stap_sign_module_LDADD += $(openssl_LIBS)
 endif
@@ -205,7 +205,7 @@ stap_authorize_cert_CPPFLAGS = $(AM_CPPFLAGS)
 stap_authorize_cert_CXXFLAGS = $(AM_CXXFLAGS) @PIECXXFLAGS@ $(nss_CFLAGS) $(debuginfod_CFLAGS)
 stap_authorize_cert_CFLAGS = $(AM_CFLAGS) @PIECFLAGS@ $(nss_CFLAGS) $(debuginfod_CFLAGS)
 stap_authorize_cert_LDFLAGS = $(AM_LDFLAGS) @PIELDFLAGS@ $(debuginfod_LDFLAGS)
-stap_authorize_cert_LDADD = $(nss_LIBS) $(debuginfod_LIBS)
+stap_authorize_cert_LDADD = $(nss_LIBS) $(debuginfod_LIBS) @BOOST_IOSTREAMS_LIB@
 if HAVE_HTTP_SUPPORT
 stap_authorize_cert_LDADD += $(openssl_LIBS)
 endif
@@ -215,7 +215,7 @@ stap_serverd_SOURCES = stap-serverd.cxx cscommon.cxx util.cxx privilege.cxx nssc
 stap_serverd_CXXFLAGS = $(AM_CXXFLAGS) @PIECXXFLAGS@ $(nss_CFLAGS) $(debuginfod_CFLAGS)
 stap_serverd_CFLAGS = $(AM_CFLAGS) @PIECFLAGS@ $(nss_CFLAGS) $(debuginfod_CFLAGS)
 stap_serverd_LDFLAGS = $(AM_LDFLAGS) @PIELDFLAGS@ $(debuginfod_LDFLAGS)
-stap_serverd_LDADD = $(nss_LIBS) -lpthread $(debuginfod_LIBS)
+stap_serverd_LDADD = $(nss_LIBS) -lpthread $(debuginfod_LIBS) @BOOST_IOSTREAMS_LIB@
 if HAVE_AVAHI
 stap_serverd_CFLAGS += $(avahi_CFLAGS)
 stap_serverd_CXXFLAGS += $(avahi_CFLAGS)
@@ -230,7 +230,7 @@ stap_gen_cert_SOURCES = stap-gen-cert.cxx util.cxx nsscommon.cxx
 stap_gen_cert_CXXFLAGS = $(AM_CXXFLAGS) @PIECXXFLAGS@ $(nss_CFLAGS) $(debuginfod_CFLAGS)
 stap_gen_cert_CFLAGS = $(AM_CFLAGS) @PIECFLAGS@ $(nss_CFLAGS) $(debuginfod_CFLAGS)
 stap_gen_cert_LDFLAGS = $(AM_LDFLAGS) @PIELDFLAGS@ $(debuginfod_LDFLAGS)
-stap_gen_cert_LDADD = $(nss_LIBS) $(debuginfod_LIBS)
+stap_gen_cert_LDADD = $(nss_LIBS) $(debuginfod_LIBS) @BOOST_IOSTREAMS_LIB@
 if HAVE_HTTP_SUPPORT
 stap_gen_cert_LDADD += $(openssl_LIBS)
 endif

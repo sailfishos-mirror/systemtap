@@ -15,7 +15,7 @@ AM_CPPFLAGS += -DBINDIR='"$(bindir)"' -DSYSCONFDIR='"$(sysconfdir)"' -DPKGDATADI
 
 AM_CFLAGS += @PIECFLAGS@
 AM_CXXFLAGS += @PIECXXFLAGS@
-AM_LDFLAGS = @PIELDFLAGS@
+AM_LDFLAGS = @PIELDFLAGS@ @BOOST_IOSTREAMS_LIB@
 
 bin_PROGRAMS = staprun stap-merge stapsh
 pkglibexec_PROGRAMS = stapio
