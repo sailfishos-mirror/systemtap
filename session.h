@@ -95,7 +95,7 @@ struct statistic_decl
   int64_t linear_step;
   int bit_shift;
   int stat_ops;
-  bool operator==(statistic_decl const & other)
+  bool operator==(statistic_decl const & other) const
   {
     return type == other.type
       && linear_low == other.linear_low
