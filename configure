@@ -717,6 +717,7 @@ HAVE_DYNINST_TRUE
 DYNINST_LIBS
 DYNINST_LDFLAGS
 DYNINST_CXXFLAGS
+BOOST_IOSTREAMS_LIB
 BOOST_SYSTEM_LIB
 stapbpf_LIBS
 staprun_LIBS
@@ -13158,6 +13159,44 @@ else $as_nop
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: nope" >&5
 printf "%s\n" "nope" >&6; }
     BOOST_SYSTEM_LIB=""
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS="$saved_LIBS"
+
+# add boost_iostreams
+saved_LIBS="$LIBS"
+LIBS="-lboost_iostreams $LIBS"
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking need for -lboost_iostreams library" >&5
+printf %s "checking need for -lboost_iostreams library... " >&6; }
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <cstdio>
+#include <boost/iostreams/device/file_descriptor.hpp>
+#include <boost/iostreams/stream.hpp>
+int main() {
+  boost::iostreams::stream<boost::iostreams::file_descriptor_source> in(
+    STDIN_FILENO, boost::iostreams::file_descriptor_flags::close_handle
+  );
+  boost::iostreams::stream<boost::iostreams::file_descriptor_sink> out(
+    STDOUT_FILENO, boost::iostreams::file_descriptor_flags::close_handle
+  );
+  return 0;
+}
+
+_ACEOF
+if ac_fn_cxx_try_link "$LINENO"
+then :
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yup" >&5
+printf "%s\n" "yup" >&6; }
+    BOOST_IOSTREAMS_LIB="-lboost_iostreams"
+
+else $as_nop
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: nope" >&5
+printf "%s\n" "nope" >&6; }
+    BOOST_IOSTREAMS_LIB=""
 
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam \
