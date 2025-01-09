@@ -286,19 +286,6 @@ compile_pass (systemtap_session& s)
   string makefile_nm = s.tmpdir + "/Makefile";
   ofstream o (makefile_nm.c_str());
 
-  // PR32458 / RHBZ2332597
-  // As workaround for linux 6.13 vs fedora custom kernel.spec patch,
-  // copy Makefile.rhelver from s.kernel_build_tree into s.tmpdir.
-  const string copyme = "Makefile.rhelver";
-  ifstream ihack (s.kernel_build_tree + "/" + copyme);
-  if (ihack.good())
-    {
-      ofstream ohack (s.tmpdir + "/" + copyme);
-      ohack << ihack.rdbuf();
-      ohack.close();
-    }
-  ihack.close();
-  
   string stap_export_nm = s.tmpdir + "/stapconf_export.h";
   ofstream o2 (stap_export_nm.c_str());
 
