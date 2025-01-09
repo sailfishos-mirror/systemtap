@@ -1,3 +1,8 @@
+* What's new in version 5.3
+
+- The systemtap rpm package now invokes a few basic tests during
+  %check, intended to confirm compatibility with the kernel.
+
 * What's new in version 5.2, 2024-11-08
 
 - New /* pragma:suffix */ for file-level embedded C code blocks to

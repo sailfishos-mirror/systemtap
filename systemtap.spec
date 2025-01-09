@@ -45,6 +45,7 @@
 %{!?with_httpd: %global with_httpd 0}
 %{!?with_specific_python: %global with_specific_python 0%{?fedora} >= 31}
 %{!?with_sysusers: %global with_sysusers 0%{?fedora} >= 32 || 0%{?rhel} >= 9}
+%{!?with_check: %global with_check 0%{?fedora} >= 42}
 
 # Virt is supported on these arches, even on el7, but it's not in core EL7
 %if 0%{?rhel} && 0%{?rhel} <= 7
@@ -241,8 +242,15 @@ BuildRequires: libmicrohttpd-devel
 BuildRequires: libuuid-devel
 %endif
 %if %{with_sysusers}
-BuildRequires:  systemd-rpm-macros
+BuildRequires: systemd-rpm-macros
 %endif
+%if %{with_check}
+BuildRequires: (kernel-debug-devel if kernel-debug)
+BuildRequires: (kernel-devel if kernel)
+# and some of the same Requires: as below
+BuildRequires: dejagnu gcc make
+%endif
+
 
 
 # Install requirements
@@ -846,6 +854,12 @@ done
 # Some files got ambiguous python shebangs, we fix them after everything else is done
 %py3_shebang_fix %{buildroot}%{python3_sitearch} %{buildroot}%{_bindir}/*
 %endif
+
+%check
+%if %{with_check}
+make check RUNTESTFLAGS=environment_sanity.exp
+%endif
+
 
 %pre runtime
 %if %{with_sysusers}
