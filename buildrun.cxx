@@ -345,11 +345,6 @@ compile_pass (systemtap_session& s)
   
   o << "STAPCONF_HEADER := " << s.tmpdir << "/" << s.stapconf_name << endl;
   o << ".DELETE_ON_ERROR: $(STAPCONF_HEADER)" << endl;
-  o << "$(STAPCONF_HEADER):" << endl;
-  o << "\t";
-  if (s.verbose < 4)
-    o << "@";
-  o << "$(MAKE) -f \"$(firstword $(MAKEFILE_LIST))\" gen-stapconf" << endl;
 
   vector<string> cs;  // to hold autoconf C file names
 
@@ -570,8 +565,10 @@ compile_pass (systemtap_session& s)
 
   o2.close ();
 
-  o << ".PHONY: gen-stapconf" << endl;
-  o << "gen-stapconf: " << stap_export_nm;
+  // PR32458 (!) Build the combined conf header as an ordinary
+  // dependency of the module.o file.  Don't invoke a sub-$(MAKE) with
+  // crude command line parsing.
+  o << "$(STAPCONF_HEADER): " << stap_export_nm;
   for (unsigned i=0; i<cs.size(); i++)
     o << " " << s.tmpdir << "/" << cs[i] << ".h";
   o << endl;
@@ -580,7 +577,8 @@ compile_pass (systemtap_session& s)
   if (s.verbose < 4)
     o << "@";
   o << "cat $^ > $(STAPCONF_HEADER)" << endl;
-
+  o << s.module_name <<".o : $(STAPCONF_HEADER)" << endl;
+  
   o << module_cflags << " += -include $(STAPCONF_HEADER)" << endl;
 
   for (unsigned i=0; i<s.c_macros.size(); i++)
