@@ -37,6 +37,10 @@ expect {
 		# Skip ppc64-specific tracepoints on the blocklist.
 		exp_continue
 	    }
+	    {^(u|k)probes:$} {
+		# Skip active probes
+		exp_continue
+	    }
 	    default {
 		lappend perf_tracepoints $expect_out(1,string)
 		exp_continue
