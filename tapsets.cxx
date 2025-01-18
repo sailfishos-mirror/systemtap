@@ -66,6 +66,7 @@ extern "C" {
 }
 
 using namespace std;
+using namespace __gnu_cxx;
 
 // for elf.h where PPC64_LOCAL_ENTRY_OFFSET isn't defined
 #ifndef PPC64_LOCAL_ENTRY_OFFSET

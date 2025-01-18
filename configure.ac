@@ -639,30 +639,6 @@ int main() {
 ])
 LIBS="$saved_LIBS"
 AC_SUBST(BOOST_SYSTEM_LIB)
-# add boost_iostreams
-saved_LIBS="$LIBS"
-LIBS="-lboost_iostreams $LIBS"
-AC_MSG_CHECKING([need for -lboost_iostreams library])
-AC_LINK_IFELSE([AC_LANG_SOURCE([
-#include <cstdio>
-#include <boost/iostreams/device/file_descriptor.hpp>
-#include <boost/iostreams/stream.hpp>
-int main() {
-  boost::iostreams::stream<boost::iostreams::file_descriptor_source> in(
-    STDIN_FILENO, boost::iostreams::file_descriptor_flags::close_handle
-  );
-  boost::iostreams::stream<boost::iostreams::file_descriptor_sink> out(
-    STDOUT_FILENO, boost::iostreams::file_descriptor_flags::close_handle
-  );
-  return 0;
-}
-])],[AC_MSG_RESULT([yup])
-    BOOST_IOSTREAMS_LIB="-lboost_iostreams"
-],[AC_MSG_RESULT([nope])
-    BOOST_IOSTREAMS_LIB=""
-])
-LIBS="$saved_LIBS"
-AC_SUBST(BOOST_IOSTREAMS_LIB)
 
 AC_LANG_POP(C++)
 

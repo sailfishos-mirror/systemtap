@@ -288,7 +288,6 @@ AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
-BOOST_IOSTREAMS_LIB = @BOOST_IOSTREAMS_LIB@
 BOOST_SYSTEM_LIB = @BOOST_SYSTEM_LIB@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
@@ -499,7 +498,7 @@ AM_CPPFLAGS = -D_GNU_SOURCE -I$(srcdir)/../includes \
 	-I$(builddir)/../includes/sys -DBINDIR='"$(bindir)"' \
 	-DSYSCONFDIR='"$(sysconfdir)"' -DPKGDATADIR='"${pkgdatadir}"' \
 	-DPKGLIBDIR='"$(pkglibexecdir)"' -DLOCALEDIR='"$(localedir)"'
-AM_LDFLAGS = @PIELDFLAGS@ @BOOST_IOSTREAMS_LIB@
+AM_LDFLAGS = @PIELDFLAGS@
 
 # Tighten -Wno-format-nonliteral to just where it's needed.
 # See the automake manual secton: "Per-Object Flags Emulation"

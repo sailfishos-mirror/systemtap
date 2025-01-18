@@ -18,6 +18,8 @@
 
 
 using namespace std;
+using namespace __gnu_cxx;
+
 
 static const string TOK_PROCFS("procfs");
 static const string TOK_READ("read");

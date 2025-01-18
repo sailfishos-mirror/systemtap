@@ -23,6 +23,7 @@
 #include <string>
 #include <fstream>
 #include <cassert>
+#include <ext/stdio_filebuf.h>
 #include <algorithm>
 #include <mutex>
 #include <functional> 
@@ -52,10 +53,11 @@ extern "C" {
 #endif
 }
 
-#include <boost/iostreams/device/file_descriptor.hpp>
-#include <boost/iostreams/stream.hpp>
+
 
 using namespace std;
+using namespace __gnu_cxx;
+
 
 // Return current users home directory or die.
 const char *
@@ -1070,10 +1072,8 @@ stap_system_read(int verbose, const vector<string>& args, ostream& out)
   if (child > 0)
     {
       // read everything from the child
-      boost::iostreams::stream<boost::iostreams::file_descriptor_source> in(
-        child_fd, boost::iostreams::file_descriptor_flags::close_handle
-      );
-      std::copy(std::istream_iterator<char>(in), std::istream_iterator<char>(), std::ostream_iterator<char>(out));
+      stdio_filebuf<char> in(child_fd, ios_base::in);
+      out << &in;
       return stap_waitpid(verbose, child);
     }
   return -1;
@@ -1116,10 +1116,8 @@ stap_fork_read(int verbose, ostream& out)
 
   // read everything from the child
   close(pipefd[1]);
-  boost::iostreams::stream<boost::iostreams::file_descriptor_source> in(
-    pipefd[0], boost::iostreams::file_descriptor_flags::close_handle
-  );
-  std::copy(std::istream_iterator<char>(in), std::istream_iterator<char>(), std::ostream_iterator<char>(out));
+  stdio_filebuf<char> in(pipefd[0], ios_base::in);
+  out << &in;
   return make_pair(false, stap_waitpid(verbose, child));
 }
 

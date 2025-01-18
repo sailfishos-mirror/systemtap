@@ -21,6 +21,8 @@ extern "C" {
 }
 
 using namespace std;
+using namespace __gnu_cxx;
+
 
 static const string TOK_PERF("perf");
 static const string TOK_TYPE("type");

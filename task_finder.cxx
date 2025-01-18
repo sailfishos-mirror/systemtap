@@ -19,6 +19,8 @@
 
 
 using namespace std;
+using namespace __gnu_cxx;
+
 
 // ------------------------------------------------------------------------
 // task_finder and vma tracker derived 'probes': These don't really exist.

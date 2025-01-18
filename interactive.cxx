@@ -21,9 +21,10 @@
 #include <stack>
 #include <sstream>
 #include <iterator>
-#include <fstream>
+#include <ext/stdio_filebuf.h>
 
 using namespace std;
+using namespace __gnu_cxx;
 
 extern "C" {
 #include <unistd.h>
@@ -38,9 +39,6 @@ extern "C" {
   #include <sqlite3.h>
 #endif
 }
-
-#include <boost/iostreams/device/file_descriptor.hpp>
-#include <boost/iostreams/stream.hpp>
 
 // FIXME: these declarations don't really belong here.
 extern int
@@ -1751,9 +1749,8 @@ forked_passes_0_4 (systemtap_session &s)
       try
         {
           rc = passes_0_4 (s);
-          boost::iostreams::stream<boost::iostreams::file_descriptor_sink> o(
-            ret.second, boost::iostreams::file_descriptor_flags::close_handle
-          );
+          stdio_filebuf<char> buf(ret.second, ios_base::out);
+          ostream o(&buf);
           if (rc == 0 && s.last_pass > 4)
             {
               o << s.module_name << endl;
