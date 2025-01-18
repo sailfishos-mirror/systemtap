@@ -51,10 +51,10 @@ static void __stp_print_flush(struct _stp_log *log)
         if (likely(entry && bytes_reserved >= hlen)) {
                 /* copy new _stp_trace_ header */
                 struct _stp_trace t = {
-                        .magic = STAP_TRACE_MAGIC,
                         .sequence = _stp_seq_inc(),
                         .pdu_len = len
                 };
+                memcpy(&t.magic, STAP_TRACE_MAGIC, 4);
                 memcpy(_stp_data_entry_data(entry), &t, hlen);
                 /* copy the first part of the message */
                 memcpy(_stp_data_entry_data(entry)+hlen,

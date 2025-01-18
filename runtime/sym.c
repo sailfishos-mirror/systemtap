@@ -687,7 +687,7 @@ static int _stp_build_id_check (struct _stp_module *m,
 				struct task_struct *tsk)
 {
   enum { max_buildid_hexstring = 65 };
-  static const char hexnibble[16]="0123456789abcdef";
+  static const char hexnibble[]="0123456789abcdef";
   char hexstring_theory[max_buildid_hexstring], hexstring_practice[max_buildid_hexstring];
   int buildid_len = min((max_buildid_hexstring-1)/2, m->build_id_len);
 
