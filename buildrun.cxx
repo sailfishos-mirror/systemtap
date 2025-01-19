@@ -393,6 +393,7 @@ compile_pass (systemtap_session& s)
   output_autoconf(s, o, cs, "autoconf-514-panic.c", "STAPCONF_514_PANIC", NULL);
   output_autoconf(s, o, cs, "autoconf-task_work_cancel_func.c", "STAPCONF_TASK_WORK_CANCEL_FUNC", NULL);
   output_autoconf(s, o, cs, "autoconf-pr32194-uprobe-register-unregister.c", "STAPCONF_PR32194_UPROBE_REGISTER_UNREGISTER", NULL);
+  output_autoconf(s, o, cs, "autoconf-uprobes-cb-data.c", "STAPCONF_UPROBES_CB_DATA", NULL);
   
   output_dual_exportconf(s, o2, "probe_kernel_read", "probe_kernel_write", "STAPCONF_PROBE_KERNEL");
   output_autoconf(s, o, cs, "autoconf-hw_breakpoint_context.c",

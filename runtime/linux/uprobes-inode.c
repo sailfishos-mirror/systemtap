@@ -196,8 +196,17 @@ stapiu_change_plus(struct stapiu_consumer* c, struct task_struct *task,
 		   unsigned long offset, unsigned long vm_flags,
 		   struct inode *inode);
 
+#ifdef STAPCONF_UPROBES_CB_DATA
 static int
-stapiu_probe_prehandler (struct uprobe_consumer *inst, struct pt_regs *regs)
+stapiu_probe_prehandler (struct uprobe_consumer *inst,
+			 struct pt_regs *regs,
+			 __u64 *data __attribute__((unused)))
+#else
+static int
+stapiu_probe_prehandler (struct uprobe_consumer *inst,
+			 struct pt_regs *regs)
+
+#endif
 {
   int ret;
   struct stapiu_instance *instance = 
@@ -260,6 +269,16 @@ stapiu_probe_prehandler (struct uprobe_consumer *inst, struct pt_regs *regs)
   return ret;
 }
 
+#ifdef STAPCONF_UPROBES_CB_DATA
+static int
+stapiu_retprobe_prehandler (struct uprobe_consumer *inst,
+			    unsigned long func __attribute__((unused)),
+			    struct pt_regs *regs,
+			    __u64 *data)
+{
+  return stapiu_probe_prehandler(inst, regs, data);
+}
+#else
 static int
 stapiu_retprobe_prehandler (struct uprobe_consumer *inst,
 			    unsigned long func __attribute__((unused)),
@@ -267,6 +286,7 @@ stapiu_retprobe_prehandler (struct uprobe_consumer *inst,
 {
   return stapiu_probe_prehandler(inst, regs);
 }
+#endif
 
 
 
