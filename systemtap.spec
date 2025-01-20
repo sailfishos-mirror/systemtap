@@ -245,8 +245,7 @@ BuildRequires: libuuid-devel
 BuildRequires: systemd-rpm-macros
 %endif
 %if %{with_check}
-BuildRequires: (kernel-debug-devel if kernel-debug)
-BuildRequires: (kernel-devel if kernel)
+BuildRequires: kernel-devel
 # and some of the same Requires: as below
 BuildRequires: dejagnu gcc make
 %endif
