@@ -45,7 +45,10 @@
 %{!?with_httpd: %global with_httpd 0}
 %{!?with_specific_python: %global with_specific_python 0%{?fedora} >= 31}
 %{!?with_sysusers: %global with_sysusers 0%{?fedora} >= 32 || 0%{?rhel} >= 9}
-%{!?with_check: %global with_check 0%{?fedora} >= 42}
+# NB: can't turn this on by default on any distro version whose builder system
+# may run kernels different than the distro version itself.
+%{!?with_check: %global with_check 0}
+
 
 # Virt is supported on these arches, even on el7, but it's not in core EL7
 %if 0%{?rhel} && 0%{?rhel} <= 7
