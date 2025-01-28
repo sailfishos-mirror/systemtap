@@ -1,5 +1,5 @@
 // build/run probes
-// Copyright (C) 2005-2021 Red Hat Inc.
+// Copyright (C) 2005-2025 Red Hat Inc.
 //
 // This file is part of systemtap, and is free software.  You can
 // redistribute it and/or modify it under the terms of the GNU General
@@ -345,7 +345,8 @@ compile_pass (systemtap_session& s)
   o << module_cflags << " += -Wmissing-prototypes" << endl; // GCC14 prep, PR31288
   
   o << "STAPCONF_HEADER := " << "$(obj)/" << s.stapconf_name << endl;
-  o << ".DELETE_ON_ERROR: $(STAPCONF_HEADER)" << endl;
+  // PR32607 check if the stapconf_HASH file is already present, i.e. reused from the cache.
+  // If os, then we don't need to emit any of the autoc
 
   vector<string> cs;  // to hold autoconf C file names
 
@@ -567,20 +568,31 @@ compile_pass (systemtap_session& s)
 
   o2.close ();
 
-  // PR32458 (!) Build the combined conf header as an ordinary
-  // dependency of the module.o file.  Don't invoke a sub-$(MAKE) with
-  // crude command line parsing.
-  o << "$(STAPCONF_HEADER): " << "$(obj)/" << stap_export_basenm;
-  for (unsigned i=0; i<cs.size(); i++)
-    o << " " << "$(obj)/" << cs[i] << ".h";
-  o << endl;
-
-  o << "\t";
-  if (s.verbose < 4)
-    o << "@";
-  o << "cat $^ > $(STAPCONF_HEADER)" << endl;
-  o << "$(obj)/" << s.module_name <<".o : $(STAPCONF_HEADER)" << endl;
+  // PR32607: check if the stapconf_HASH file is already present,
+  // i.e. reused from the cache, and emplaced by
+  // get_stapconf_from_cache().  If so, then we don't need to emit the
+  // autoconf dependency list here at all, thus the thing won't
+  // attempt to trigger repeated tests from the autoconf* deps listed
+  // above.
+  string stapconf_dest_path = s.tmpdir + "/" + s.stapconf_name;
+  ifstream flub (stapconf_dest_path);
+  if (flub.good()) {
+    // already computed
+  } else {
+    // PR32458 (!) Build the combined conf header as an ordinary
+    // dependency of the module.o file.  Don't invoke a sub-$(MAKE) with
+    // crude command line parsing.
+    o << "$(STAPCONF_HEADER): " << "$(obj)/" << stap_export_basenm;
+    for (unsigned i=0; i<cs.size(); i++)
+      o << " " << "$(obj)/" << cs[i] << ".h";
+    o << endl;
+    o << "\t";
+    if (s.verbose < 4)
+      o << "@";
+    o << "cat $^ > $(STAPCONF_HEADER)" << endl;
+  }
   
+  o << "$(obj)/" << s.module_name <<".o : $(STAPCONF_HEADER)" << endl;
   o << module_cflags << " += -include $(STAPCONF_HEADER)" << endl;
 
   for (unsigned i=0; i<s.c_macros.size(); i++)
