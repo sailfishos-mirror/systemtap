@@ -11,7 +11,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
-#include "../util.h"
+#include "../staputil.h"
 #include "backends.h"
 #include "../cmdline.h"
 #include "utils.h"

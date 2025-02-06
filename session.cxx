@@ -19,7 +19,7 @@
 #include "task_finder.h"
 #include "csclient.h"
 #include "rpm_finder.h"
-#include "util.h"
+#include "staputil.h"
 #include "cmdline.h"
 #include "git_version.h"
 #include "version.h"

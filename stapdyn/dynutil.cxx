@@ -23,7 +23,7 @@ extern "C" {
 #endif
 
 #include "dynutil.h"
-#include "../util.h"
+#include "../staputil.h"
 
 using namespace std;
 

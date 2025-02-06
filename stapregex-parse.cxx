@@ -11,7 +11,7 @@
 // This file incorporates code from the re2c project; please see
 // the file README.stapregex for details.
 
-#include "util.h"
+#include "staputil.h"
 
 #include "stapregex-tree.h"
 #include "stapregex-parse.h"

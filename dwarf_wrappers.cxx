@@ -8,7 +8,7 @@
 
 #include "dwarf_wrappers.h"
 #include "staptree.h"
-#include "util.h"
+#include "staputil.h"
 
 #include <cstring>
 #include <sstream>

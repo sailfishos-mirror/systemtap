@@ -17,7 +17,7 @@
 #include "session.h"
 #include "hash.h"
 #include "cache.h"
-#include "util.h"
+#include "staputil.h"
 #include "coveragedb.h"
 #include "rpm_finder.h"
 #include "task_finder.h"
@@ -392,18 +392,31 @@ sdt_benchmark_thread(unsigned long i, double fp1, float fp2)
   float fp_local2 = 2.02;
   PROBE2(stap, benchmark__fp, fp1+fp_local1, fp2+fp_local2);
   double fp_local3 = 3.03;
+  (void)fp_local3;
   double fp_local4 = 4.04;
+  (void)fp_local4;
   double fp_local5 = 5.05;
+  (void)fp_local5;
   double fp_local6 = 6.06;
+  (void)fp_local6;
   double fp_local7 = 7.07;
+  (void)fp_local7;
   double fp_local8 = 8.08;
+  (void)fp_local8;
   double fp_local9 = 9.09;
+  (void)fp_local9;
   double fp_local10 = 10.01;
+  (void)fp_local10;
   double fp_local11 = 11.01;
+  (void)fp_local11;
   double fp_local12 = 12.01;
+  (void)fp_local12;
   double fp_local13 = 13.01;
+  (void)fp_local13;
   double fp_local14 = 14.01;
+  (void)fp_local14;
   double fp_local15 = 15.01;
+  (void)fp_local15;
   fp_local1 += 0.0;
   fp_local2 += 0.0;
   fp_local3 += 0.0;

@@ -10,7 +10,7 @@
 #include "session.h"
 #include "tapsets.h"
 #include "translate.h"
-#include "util.h"
+#include "staputil.h"
 
 #include <cerrno>
 #include <cstdlib>

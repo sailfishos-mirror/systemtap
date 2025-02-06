@@ -12,7 +12,7 @@
 #include "elaborate.h"
 #include "tapsets.h"
 #include "session.h"
-#include "util.h"
+#include "staputil.h"
 
 #ifdef HAVE_LIBSQLITE3
 

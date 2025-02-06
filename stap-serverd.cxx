@@ -61,7 +61,7 @@ extern "C" {
 #endif
 }
 
-#include "util.h"
+#include "staputil.h"
 #include "nsscommon.h"
 #include "cscommon.h"
 #include "cmdline.h"

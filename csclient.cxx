@@ -17,7 +17,7 @@
 #ifdef HAVE_HTTP_SUPPORT
 #include "client-http.h"
 #endif
-#include "util.h"
+#include "staputil.h"
 #include "stap-probe.h"
 
 #include <unistd.h>

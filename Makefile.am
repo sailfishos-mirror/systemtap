@@ -49,7 +49,7 @@ endif
 stap_SOURCES = main.cxx session.cxx \
 	parse.cxx staptree.cxx elaborate.cxx translate.cxx \
 	tapsets.cxx buildrun.cxx loc2stap.cxx hash.cxx mdfour.c \
-	cache.cxx util.cxx coveragedb.cxx dwarf_wrappers.cxx \
+	cache.cxx staputil.cxx coveragedb.cxx dwarf_wrappers.cxx \
 	tapset-been.cxx tapset-procfs.cxx tapset-timers.cxx tapset-netfilter.cxx \
 	tapset-perfmon.cxx tapset-mark.cxx \
 	tapset-utrace.cxx task_finder.cxx dwflpp.cxx rpm_finder.cxx \
@@ -190,7 +190,7 @@ CLEANFILES +=  $(pkglibexec_PROGRAMS)
 
 if BUILD_TRANSLATOR
 if HAVE_NSS
-stap_sign_module_SOURCES = stap-sign-module.cxx nsscommon.cxx util.cxx
+stap_sign_module_SOURCES = stap-sign-module.cxx nsscommon.cxx staputil.cxx
 stap_sign_module_CPPFLAGS = $(AM_CPPFLAGS)
 stap_sign_module_CXXFLAGS = $(AM_CXXFLAGS) @PIECXXFLAGS@ $(nss_CFLAGS) $(debuginfod_CFLAGS)
 stap_sign_module_CFLAGS = $(AM_CFLAGS) @PIECFLAGS@ $(nss_CFLAGS) $(debuginfod_CFLAGS)
@@ -200,7 +200,7 @@ if HAVE_HTTP_SUPPORT
 stap_sign_module_LDADD += $(openssl_LIBS)
 endif
 
-stap_authorize_cert_SOURCES = stap-authorize-cert.cxx nsscommon.cxx util.cxx
+stap_authorize_cert_SOURCES = stap-authorize-cert.cxx nsscommon.cxx staputil.cxx
 stap_authorize_cert_CPPFLAGS = $(AM_CPPFLAGS)
 stap_authorize_cert_CXXFLAGS = $(AM_CXXFLAGS) @PIECXXFLAGS@ $(nss_CFLAGS) $(debuginfod_CFLAGS)
 stap_authorize_cert_CFLAGS = $(AM_CFLAGS) @PIECFLAGS@ $(nss_CFLAGS) $(debuginfod_CFLAGS)
@@ -211,7 +211,7 @@ stap_authorize_cert_LDADD += $(openssl_LIBS)
 endif
 
 if BUILD_SERVER
-stap_serverd_SOURCES = stap-serverd.cxx cscommon.cxx util.cxx privilege.cxx nsscommon.cxx cmdline.cxx
+stap_serverd_SOURCES = stap-serverd.cxx cscommon.cxx staputil.cxx privilege.cxx nsscommon.cxx cmdline.cxx
 stap_serverd_CXXFLAGS = $(AM_CXXFLAGS) @PIECXXFLAGS@ $(nss_CFLAGS) $(debuginfod_CFLAGS)
 stap_serverd_CFLAGS = $(AM_CFLAGS) @PIECFLAGS@ $(nss_CFLAGS) $(debuginfod_CFLAGS)
 stap_serverd_LDFLAGS = $(AM_LDFLAGS) @PIELDFLAGS@ $(debuginfod_LDFLAGS)
@@ -226,7 +226,7 @@ stap_serverd_LDADD += $(openssl_LIBS)
 endif
 
 
-stap_gen_cert_SOURCES = stap-gen-cert.cxx util.cxx nsscommon.cxx
+stap_gen_cert_SOURCES = stap-gen-cert.cxx staputil.cxx nsscommon.cxx
 stap_gen_cert_CXXFLAGS = $(AM_CXXFLAGS) @PIECXXFLAGS@ $(nss_CFLAGS) $(debuginfod_CFLAGS)
 stap_gen_cert_CFLAGS = $(AM_CFLAGS) @PIECFLAGS@ $(nss_CFLAGS) $(debuginfod_CFLAGS)
 stap_gen_cert_LDFLAGS = $(AM_LDFLAGS) @PIELDFLAGS@ $(debuginfod_LDFLAGS)

@@ -11,7 +11,7 @@
 // This file incorporates code from the re2c project; please see
 // the file README.stapregex for details.
 
-#include "util.h"
+#include "staputil.h"
 #include "translator-output.h"
 
 #include "session.h"

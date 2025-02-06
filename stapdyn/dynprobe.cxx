@@ -8,7 +8,7 @@
 
 #include "dynprobe.h"
 #include "dynutil.h"
-#include "../util.h"
+#include "../staputil.h"
 
 extern "C" {
 #include "../runtime/dyninst/stapdyn.h"

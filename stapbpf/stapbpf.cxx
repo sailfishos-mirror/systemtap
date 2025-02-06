@@ -44,7 +44,7 @@
 #include <sys/wait.h>
 #include <pwd.h>
 #include "bpfinterp.h"
-#include "../util.h"
+#include "../staputil.h"
 
 extern "C" {
 #include <linux/bpf.h>
@@ -2007,7 +2007,7 @@ procfs_write_event_loop (procfsprobe_data* data, bpf_transport_context* uctx)
  
       std::string msg;
 
-      unsigned read_size = 1024;
+      const int read_size = 1024;
       int bytes_read;
 
       do {

@@ -9,7 +9,7 @@
 #include "server.h"
 #include "api.h"
 #include <iostream>
-#include "../util.h"
+#include "../staputil.h"
 #include "nss_funcs.h"
 #include "utils.h"
 #include "../nsscommon.h"

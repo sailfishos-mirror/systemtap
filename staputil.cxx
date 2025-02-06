@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "util.h"
+#include "staputil.h"
 #include "stap-probe.h"
 #include <stdexcept>
 #include <cerrno>
@@ -310,13 +310,16 @@ in_group_id (gid_t target_gid)
   // Get the list of the user's groups.
   int ngids = getgroups(0, 0); // Returns the number to allocate.
   if (ngids > 0) {
-    gid_t gidlist[ngids];
+    gid_t* gidlist = new gid_t[ngids];
     ngids = getgroups(ngids, gidlist);
     for (int i = 0; i < ngids; i++) {
       // If the user is a member of the target group, then we're done.
-      if (gidlist[i] == target_gid)
+      if (gidlist[i] == target_gid) {
+        delete[] gidlist;
 	return true;
+      }
     }
+    delete[] gidlist;
   }
   if (ngids < 0) {
     cerr << _("Unable to retrieve group list") << endl;
@@ -903,7 +906,7 @@ stap_spawn(int verbose, const vector<string>& args,
   if (verbose > 1)
     clog << _("Running") << command << endl;
 
-  char const * argv[args.size() + 1];
+  vector<char const*> argv (args.size() + 1);
   for (size_t i = 0; i < args.size(); ++i)
     argv[i] = args[i].c_str();
   argv[args.size()] = NULL;
@@ -928,7 +931,7 @@ stap_spawn(int verbose, const vector<string>& args,
 
   pid_t pid = 0;
   int ret = posix_spawnp(&pid, argv[0], fa, NULL,
-                         const_cast<char * const *>(argv), env);
+                         (char * const *)argv.data(), env);
  if (allocated)
 	  delete[] env;
 

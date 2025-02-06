@@ -14,7 +14,7 @@
 #include "translate.h"
 #include "session.h"
 #include "tapsets.h"
-#include "util.h"
+#include "staputil.h"
 #include "dwarf_wrappers.h"
 #include "setupdwfl.h"
 #include "task_finder.h"
@@ -6757,7 +6757,7 @@ static void create_debug_frame_hdr (const unsigned char e_ident[],
   *debug_frame_hdr = NULL;
   *debug_frame_hdr_len = 0;
 
-  int cies = 0;
+  // int cies = 0;
   set< pair<Dwarf_Addr, Dwarf_Off> > fdes;
   set< pair<Dwarf_Addr, Dwarf_Off> >::iterator it;
 
@@ -6783,7 +6783,7 @@ static void create_debug_frame_hdr (const unsigned char e_ident[],
       if (res == 0)
 	{
 	  if (entry.CIE_id == DW_CIE_ID_64)
-	    cies++; // We can just ignore the CIEs.
+	    ; // cies++; // We can just ignore the CIEs.
 	  else
 	    {
 	      Dwarf_Addr addr;

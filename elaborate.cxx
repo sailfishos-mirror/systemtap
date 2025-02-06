@@ -13,7 +13,7 @@
 #include "parse.h"
 #include "tapsets.h"
 #include "session.h"
-#include "util.h"
+#include "staputil.h"
 #include "task_finder.h"
 #include "stapregex.h"
 #include "stringtable.h"
@@ -6109,7 +6109,6 @@ semantic_pass_types (systemtap_session& s)
   int rc = 0;
 
   // next pass: type inference
-  unsigned iterations = 0;
   if (!s.type_res_info)
     throw SEMANTIC_ERROR(_("internal error: type_res_info is NULL"));
   typeresolution_info& ti = *s.type_res_info;
@@ -6119,7 +6118,6 @@ semantic_pass_types (systemtap_session& s)
     {
       assert_no_interrupts();
 
-      iterations ++;
       ti.num_newly_resolved = 0;
       ti.num_still_unresolved = 0;
       ti.num_available_autocasts = 0;

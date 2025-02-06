@@ -10,7 +10,7 @@
 #include "bpf-internal.h"
 #include "elaborate.h"
 #include "session.h"
-#include "util.h"
+#include "staputil.h"
 
 using namespace std;
 

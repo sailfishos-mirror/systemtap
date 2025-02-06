@@ -120,7 +120,7 @@ am__dirstamp = $(am__leading_dot)dirstamp
 @HAVE_HTTP_SUPPORT_TRUE@	stap_httpd-backends.$(OBJEXT) \
 @HAVE_HTTP_SUPPORT_TRUE@	stap_httpd-utils.$(OBJEXT) \
 @HAVE_HTTP_SUPPORT_TRUE@	stap_httpd-nss_funcs.$(OBJEXT) \
-@HAVE_HTTP_SUPPORT_TRUE@	../stap_httpd-util.$(OBJEXT) \
+@HAVE_HTTP_SUPPORT_TRUE@	../stap_httpd-staputil.$(OBJEXT) \
 @HAVE_HTTP_SUPPORT_TRUE@	../stap_httpd-cmdline.$(OBJEXT) \
 @HAVE_HTTP_SUPPORT_TRUE@	../stap_httpd-nsscommon.$(OBJEXT) \
 @HAVE_HTTP_SUPPORT_TRUE@	../stap_httpd-privilege.$(OBJEXT) \
@@ -154,7 +154,8 @@ am__depfiles_remade = ../$(DEPDIR)/stap_httpd-cmdline.Po \
 	../$(DEPDIR)/stap_httpd-mdfour.Po \
 	../$(DEPDIR)/stap_httpd-nsscommon.Po \
 	../$(DEPDIR)/stap_httpd-privilege.Po \
-	../$(DEPDIR)/stap_httpd-util.Po ./$(DEPDIR)/stap_httpd-api.Po \
+	../$(DEPDIR)/stap_httpd-staputil.Po \
+	./$(DEPDIR)/stap_httpd-api.Po \
 	./$(DEPDIR)/stap_httpd-backends.Po \
 	./$(DEPDIR)/stap_httpd-main.Po \
 	./$(DEPDIR)/stap_httpd-nss_funcs.Po \
@@ -451,7 +452,7 @@ AM_CPPFLAGS = -D_GNU_SOURCE -I$(srcdir)/../includes \
 	-DSYSCONFDIR='"$(sysconfdir)"' -DPKGDATADIR='"${pkgdatadir}"' \
 	-DPKGLIBDIR='"$(pkglibexecdir)"' -DLOCALEDIR='"$(localedir)"'
 AM_LDFLAGS = @PIELDFLAGS@
-@HAVE_HTTP_SUPPORT_TRUE@stap_httpd_SOURCES = main.cxx server.cxx api.cxx backends.cxx utils.cxx nss_funcs.cxx ../util.cxx ../cmdline.cxx ../nsscommon.cxx ../privilege.cxx ../cscommon.cxx ../mdfour.c
+@HAVE_HTTP_SUPPORT_TRUE@stap_httpd_SOURCES = main.cxx server.cxx api.cxx backends.cxx utils.cxx nss_funcs.cxx ../staputil.cxx ../cmdline.cxx ../nsscommon.cxx ../privilege.cxx ../cscommon.cxx ../mdfour.c
 @HAVE_HTTP_SUPPORT_TRUE@stap_httpd_CFLAGS = $(AM_CFLAGS) $(nss_CFLAGS) $(debuginfod_CFLAGS)
 @HAVE_HTTP_SUPPORT_TRUE@stap_httpd_CXXFLAGS = $(AM_CXXFLAGS) $(nss_CFLAGS)
 @HAVE_HTTP_SUPPORT_TRUE@stap_httpd_CPPFLAGS = $(AM_CPPFLAGS) $(nss_CFLAGS)
@@ -554,7 +555,7 @@ clean-pkglibexecPROGRAMS:
 ../$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) ../$(DEPDIR)
 	@: > ../$(DEPDIR)/$(am__dirstamp)
-../stap_httpd-util.$(OBJEXT): ../$(am__dirstamp) \
+../stap_httpd-staputil.$(OBJEXT): ../$(am__dirstamp) \
 	../$(DEPDIR)/$(am__dirstamp)
 ../stap_httpd-cmdline.$(OBJEXT): ../$(am__dirstamp) \
 	../$(DEPDIR)/$(am__dirstamp)
@@ -583,7 +584,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@../$(DEPDIR)/stap_httpd-mdfour.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@../$(DEPDIR)/stap_httpd-nsscommon.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@../$(DEPDIR)/stap_httpd-privilege.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@../$(DEPDIR)/stap_httpd-util.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@../$(DEPDIR)/stap_httpd-staputil.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stap_httpd-api.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stap_httpd-backends.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stap_httpd-main.Po@am__quote@ # am--include-marker
@@ -727,19 +728,19 @@ stap_httpd-nss_funcs.obj: nss_funcs.cxx
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(stap_httpd_CPPFLAGS) $(CPPFLAGS) $(stap_httpd_CXXFLAGS) $(CXXFLAGS) -c -o stap_httpd-nss_funcs.obj `if test -f 'nss_funcs.cxx'; then $(CYGPATH_W) 'nss_funcs.cxx'; else $(CYGPATH_W) '$(srcdir)/nss_funcs.cxx'; fi`
 
-../stap_httpd-util.o: ../util.cxx
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(stap_httpd_CPPFLAGS) $(CPPFLAGS) $(stap_httpd_CXXFLAGS) $(CXXFLAGS) -MT ../stap_httpd-util.o -MD -MP -MF ../$(DEPDIR)/stap_httpd-util.Tpo -c -o ../stap_httpd-util.o `test -f '../util.cxx' || echo '$(srcdir)/'`../util.cxx
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) ../$(DEPDIR)/stap_httpd-util.Tpo ../$(DEPDIR)/stap_httpd-util.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='../util.cxx' object='../stap_httpd-util.o' libtool=no @AMDEPBACKSLASH@
+../stap_httpd-staputil.o: ../staputil.cxx
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(stap_httpd_CPPFLAGS) $(CPPFLAGS) $(stap_httpd_CXXFLAGS) $(CXXFLAGS) -MT ../stap_httpd-staputil.o -MD -MP -MF ../$(DEPDIR)/stap_httpd-staputil.Tpo -c -o ../stap_httpd-staputil.o `test -f '../staputil.cxx' || echo '$(srcdir)/'`../staputil.cxx
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) ../$(DEPDIR)/stap_httpd-staputil.Tpo ../$(DEPDIR)/stap_httpd-staputil.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='../staputil.cxx' object='../stap_httpd-staputil.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(stap_httpd_CPPFLAGS) $(CPPFLAGS) $(stap_httpd_CXXFLAGS) $(CXXFLAGS) -c -o ../stap_httpd-util.o `test -f '../util.cxx' || echo '$(srcdir)/'`../util.cxx
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(stap_httpd_CPPFLAGS) $(CPPFLAGS) $(stap_httpd_CXXFLAGS) $(CXXFLAGS) -c -o ../stap_httpd-staputil.o `test -f '../staputil.cxx' || echo '$(srcdir)/'`../staputil.cxx
 
-../stap_httpd-util.obj: ../util.cxx
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(stap_httpd_CPPFLAGS) $(CPPFLAGS) $(stap_httpd_CXXFLAGS) $(CXXFLAGS) -MT ../stap_httpd-util.obj -MD -MP -MF ../$(DEPDIR)/stap_httpd-util.Tpo -c -o ../stap_httpd-util.obj `if test -f '../util.cxx'; then $(CYGPATH_W) '../util.cxx'; else $(CYGPATH_W) '$(srcdir)/../util.cxx'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) ../$(DEPDIR)/stap_httpd-util.Tpo ../$(DEPDIR)/stap_httpd-util.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='../util.cxx' object='../stap_httpd-util.obj' libtool=no @AMDEPBACKSLASH@
+../stap_httpd-staputil.obj: ../staputil.cxx
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(stap_httpd_CPPFLAGS) $(CPPFLAGS) $(stap_httpd_CXXFLAGS) $(CXXFLAGS) -MT ../stap_httpd-staputil.obj -MD -MP -MF ../$(DEPDIR)/stap_httpd-staputil.Tpo -c -o ../stap_httpd-staputil.obj `if test -f '../staputil.cxx'; then $(CYGPATH_W) '../staputil.cxx'; else $(CYGPATH_W) '$(srcdir)/../staputil.cxx'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) ../$(DEPDIR)/stap_httpd-staputil.Tpo ../$(DEPDIR)/stap_httpd-staputil.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='../staputil.cxx' object='../stap_httpd-staputil.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(stap_httpd_CPPFLAGS) $(CPPFLAGS) $(stap_httpd_CXXFLAGS) $(CXXFLAGS) -c -o ../stap_httpd-util.obj `if test -f '../util.cxx'; then $(CYGPATH_W) '../util.cxx'; else $(CYGPATH_W) '$(srcdir)/../util.cxx'; fi`
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(stap_httpd_CPPFLAGS) $(CPPFLAGS) $(stap_httpd_CXXFLAGS) $(CXXFLAGS) -c -o ../stap_httpd-staputil.obj `if test -f '../staputil.cxx'; then $(CYGPATH_W) '../staputil.cxx'; else $(CYGPATH_W) '$(srcdir)/../staputil.cxx'; fi`
 
 ../stap_httpd-cmdline.o: ../cmdline.cxx
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(stap_httpd_CPPFLAGS) $(CPPFLAGS) $(stap_httpd_CXXFLAGS) $(CXXFLAGS) -MT ../stap_httpd-cmdline.o -MD -MP -MF ../$(DEPDIR)/stap_httpd-cmdline.Tpo -c -o ../stap_httpd-cmdline.o `test -f '../cmdline.cxx' || echo '$(srcdir)/'`../cmdline.cxx
@@ -952,7 +953,7 @@ distclean: distclean-recursive
 	-rm -f ../$(DEPDIR)/stap_httpd-mdfour.Po
 	-rm -f ../$(DEPDIR)/stap_httpd-nsscommon.Po
 	-rm -f ../$(DEPDIR)/stap_httpd-privilege.Po
-	-rm -f ../$(DEPDIR)/stap_httpd-util.Po
+	-rm -f ../$(DEPDIR)/stap_httpd-staputil.Po
 	-rm -f ./$(DEPDIR)/stap_httpd-api.Po
 	-rm -f ./$(DEPDIR)/stap_httpd-backends.Po
 	-rm -f ./$(DEPDIR)/stap_httpd-main.Po
@@ -1009,7 +1010,7 @@ maintainer-clean: maintainer-clean-recursive
 	-rm -f ../$(DEPDIR)/stap_httpd-mdfour.Po
 	-rm -f ../$(DEPDIR)/stap_httpd-nsscommon.Po
 	-rm -f ../$(DEPDIR)/stap_httpd-privilege.Po
-	-rm -f ../$(DEPDIR)/stap_httpd-util.Po
+	-rm -f ../$(DEPDIR)/stap_httpd-staputil.Po
 	-rm -f ./$(DEPDIR)/stap_httpd-api.Po
 	-rm -f ./$(DEPDIR)/stap_httpd-backends.Po
 	-rm -f ./$(DEPDIR)/stap_httpd-main.Po

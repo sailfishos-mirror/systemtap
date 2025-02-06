@@ -29,7 +29,7 @@ extern "C" {
 
 #include "buildrun.h"
 #include "remote.h"
-#include "util.h"
+#include "staputil.h"
 
 using namespace std;
 

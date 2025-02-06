@@ -9,7 +9,7 @@
 #include "config.h"
 #include "staptree.h"
 #include "parse.h"
-#include "util.h"
+#include "staputil.h"
 #include "session.h"
 #include "stringtable.h"
 

@@ -9,7 +9,7 @@
 #include "config.h"
 #include "session.h"
 #include "cache.h"
-#include "util.h"
+#include "staputil.h"
 #include "stap-probe.h"
 #include <cerrno>
 #include <string>

@@ -9,7 +9,7 @@
 #include "config.h"
 #include "buildrun.h"
 #include "session.h"
-#include "util.h"
+#include "staputil.h"
 #include "hash.h"
 #include "translate.h"
 

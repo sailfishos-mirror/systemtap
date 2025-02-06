@@ -52,7 +52,7 @@ extern "C" {
 }
 
 #include "nsscommon.h"
-#include "util.h"
+#include "staputil.h"
 
 using namespace std;
 

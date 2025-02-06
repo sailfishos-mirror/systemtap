@@ -17,7 +17,7 @@
 #include "task_finder.h"
 #include "translate.h"
 #include "session.h"
-#include "util.h"
+#include "staputil.h"
 #include "buildrun.h"
 #include "dwarf_wrappers.h"
 #include "hash.h"

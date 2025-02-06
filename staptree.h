@@ -24,7 +24,7 @@ extern "C" {
 #include <stdint.h>
 }
 
-#include "util.h"
+#include "staputil.h"
 #include "stringtable.h"
 
 

@@ -13,7 +13,7 @@
 #include "task_finder.h"
 #include "tapset-dynprobe.h"
 #include "translate.h"
-#include "util.h"
+#include "staputil.h"
 
 #include <cstring>
 #include <string>

@@ -9,7 +9,7 @@
 #include "config.h"
 #include "interactive.h"
 #include "session.h"
-#include "util.h"
+#include "staputil.h"
 #include "staptree.h"
 #include "parse.h"
 #include "csclient.h"

@@ -20,7 +20,7 @@ extern "C" {
 #include <dyninst/BPatch_thread.h>
 
 #include "dynutil.h"
-#include "../util.h"
+#include "../staputil.h"
 
 extern "C" {
 #include "../runtime/dyninst/stapdyn.h"

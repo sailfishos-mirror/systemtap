@@ -33,7 +33,7 @@ extern "C" {
 #include <dyninst/BPatch_point.h>
 
 #include "dynutil.h"
-#include "../util.h"
+#include "../staputil.h"
 
 
 using namespace std;

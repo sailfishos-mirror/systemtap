@@ -17,7 +17,7 @@
 #include "config.h"
 #include "session.h"
 #include "hash.h"
-#include "util.h"
+#include "staputil.h"
 
 #include <cstdlib>
 #include <cstring>

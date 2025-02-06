@@ -24,7 +24,7 @@ extern "C" {
 }
 #include <string>
 
-#include "util.h"
+#include "staputil.h"
 #include "nsscommon.h"
 
 using namespace std;

@@ -10,7 +10,7 @@
 #include <iostream>
 #include <string>
 #include <fstream>
-#include "../util.h"
+#include "../staputil.h"
 #include "utils.h"
 #include "nss_funcs.h"
 #include "../nsscommon.h"

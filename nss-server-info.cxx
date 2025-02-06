@@ -15,7 +15,7 @@
 #include "cscommon.h"
 #include "csclient.h"
 #include "client-nss.h"
-#include "util.h"
+#include "staputil.h"
 #include "stap-probe.h"
 
 #include <sys/times.h>

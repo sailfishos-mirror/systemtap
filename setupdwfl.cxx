@@ -12,7 +12,7 @@
 #include "dwarf_wrappers.h"
 #include "dwflpp.h"
 #include "session.h"
-#include "util.h"
+#include "staputil.h"
 
 #include <algorithm>
 #include <iostream>

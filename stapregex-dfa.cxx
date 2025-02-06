@@ -24,7 +24,7 @@
 #include <climits>
 
 #include "translator-output.h"
-#include "util.h"
+#include "staputil.h"
 
 #include "stapregex-parse.h"
 #include "stapregex-tree.h"

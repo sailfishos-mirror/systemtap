@@ -30,7 +30,7 @@
 #include "bpfinterp.h"
 #include "libbpf.h"
 #include "../bpf-internal.h"
-#include "../util.h"
+#include "../staputil.h"
 
 #define stapbpf_abort(reason) \
   ({ fprintf(stderr, _("bpfinterp.cxx:%d: %s\n"), \
@@ -836,7 +836,7 @@ bpf_interpret(size_t ninsns, const struct bpf_insn insns[],
   std::vector<int> &map_fds = *ctx->map_fds;
   FILE *output_f = ctx->output_f;
 
-  foreach_stack foreach_ctxs[map_fds.size()];
+  std::vector<foreach_stack> foreach_ctxs(map_fds.size());
 
   map_values.clear(); // XXX: avoid double free
 

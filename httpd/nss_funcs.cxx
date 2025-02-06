@@ -9,7 +9,7 @@
 #include <vector>
 #include "../nsscommon.h"
 #include "../cscommon.h"
-#include "../util.h"
+#include "../staputil.h"
 #include "nss_funcs.h"
 #include <iostream>
 #include <fstream>

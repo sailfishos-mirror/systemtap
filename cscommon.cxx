@@ -11,7 +11,7 @@
 
 // Disable the code in this file if NSS is not available
 #if HAVE_NSS
-#include "util.h"
+#include "staputil.h"
 #include "cscommon.h"
 #include "nsscommon.h"
 

@@ -10,7 +10,7 @@
 #include <sstream>
 #include <iomanip>
 #include "utils.h"
-#include "../util.h"
+#include "../staputil.h"
 #include "../nsscommon.h"
 
 extern "C" {

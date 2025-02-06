@@ -20,7 +20,7 @@ extern "C" {
 #include <sys/types.h>
 }
 
-#include "util.h"
+#include "staputil.h"
 #include "privilege.h"
 
 using namespace std;

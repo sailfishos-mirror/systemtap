@@ -9,7 +9,7 @@
 #include "session.h"
 #include "tapsets.h"
 #include "translate.h"
-#include "util.h"
+#include "staputil.h"
 #include "fnmatch.h"
 
 #if defined(HAVE_LIBDEBUGINFOD) && defined(HAVE_JSON_C) && defined(METADATA_QUERY_ENABLED)

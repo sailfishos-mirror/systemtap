@@ -13,7 +13,7 @@
 #include "staptree.h"
 #include "parse.h"
 #include "session.h"
-#include "util.h"
+#include "staputil.h"
 #include "stringtable.h"
 
 #if HAVE_LANGUAGE_SERVER_SUPPORT

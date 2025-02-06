@@ -11,7 +11,7 @@
 #ifdef HAVE_HTTP_SUPPORT
 #include "session.h"
 #include "client-http.h"
-#include "util.h"
+#include "staputil.h"
 #include "staptree.h"
 #include "elaborate.h"
 #include "nsscommon.h"

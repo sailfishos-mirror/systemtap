@@ -12,7 +12,7 @@
 #include "tapsets.h"
 #include "task_finder.h"
 #include "translate.h"
-#include "util.h"
+#include "staputil.h"
 
 #include <cstring>
 #include <string>
