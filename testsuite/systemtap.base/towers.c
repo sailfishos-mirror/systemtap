@@ -23,15 +23,13 @@ int freelist, movesdone;
 /*  Program to Solve the Towers of Hanoi */
 
 void
-error (emsg)
-     char *emsg;
+error (char *emsg)
 {
   printf ("Error in Towers: %s\n", emsg);
 }
 
 void
-makenull (s)
-     int s;
+makenull (int s)
 {
   stack[s] = 0;
 }
@@ -51,8 +49,7 @@ get_element ()
 }
 
 void
-push (i, s)
-     int i, s;
+push (int i, int s)
 {
   int errorfound, localel;
   errorfound = false;
@@ -72,8 +69,7 @@ push (i, s)
 }
 
 void
-init (s, n)
-     int s, n;
+init (int s, int n)
 {
   int discctr;
   makenull (s);
@@ -82,8 +78,7 @@ init (s, n)
 }
 
 int
-pop (s)
-     int s;
+pop (int s)
 {
   int temp, temp1;
   if (stack[s] > 0)
@@ -101,16 +96,14 @@ pop (s)
 }
 
 void
-move (s1, s2)
-     int s1, s2;
+move (int s1, int s2)
 {
   push (pop (s1), s2);
   movesdone = movesdone + 1;
 }
 
 void
-tower (i, j, k)
-     int i, j, k;
+tower (int i, int j, int k)
 {
   int other;
   if (k == 1)
