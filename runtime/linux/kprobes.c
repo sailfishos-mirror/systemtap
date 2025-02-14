@@ -800,6 +800,8 @@ stapkp_init(struct stap_kprobe_probe *probes,
       if (rc == 1) // failed to relocate addr?
          continue; // don't fuss about it, module probably not loaded
 
+      // PR32695 gcc might statically determine the strcmp will nevery match
+#pragma GCC diagnostic ignored "-Wstring-compare"
       // NB: We keep going even if a probe failed to register (PR6749). We only
       // warn about it if it wasn't optional and isn't in a module.
       if (rc && !skp->optional_p
