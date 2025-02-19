@@ -7,7 +7,7 @@ bar (int i, long j)
 }
 
 static int
-func (int (*f) ())
+func (int (*f) (int, long))
 {
   volatile int i = 2;
   volatile long j = 21;

@@ -15,7 +15,7 @@ bar (const int i, const long j)
 }
 
 static int
-func (int (*f) ())
+func (int (*f) (const int, const long))
 {
   const int a[] = { 17, 23 };
   const fooer baz = { .i = 2, .j = 21 };
