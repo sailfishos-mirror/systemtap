@@ -31,6 +31,9 @@ static struct context *_stp_runtime_get_context(void);
 
 #endif
 
+#if __GNUC__ < 5
+#define __counted_by(member)
+#else
 /* Define UBSAN related define if not defined by linux headers */
 #ifndef __counted_by
 #if __has_attribute(__counted_by__)
@@ -39,5 +42,6 @@ static struct context *_stp_runtime_get_context(void);
 #define __counted_by(member)
 #endif
 #endif
+#endif /* __GNUC__ < 5 */
 
 #endif /* _RUNTIME_H_ */
