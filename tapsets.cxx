@@ -12942,6 +12942,11 @@ tracepoint_builder::get_tracequery_modules(systemtap_session& s,
       osrc << "#define PARAMS(args...) args" << endl;
       osrc << "#endif" << endl;
 
+      // 6.13 handle DECLARE_TRACE_SYSCALL for sys_enter and sys_exit also
+      osrc << "#undef DECLARE_TRACE_SYSCALL" << endl;
+      osrc << "#define DECLARE_TRACE_SYSCALL(name, proto, args) \\" << endl;
+      osrc << "  DECLARE_TRACE(name, PARAMS(proto), PARAMS(args))" << endl;
+
       // 2.6.35 added the NOARGS variant, but it's the same for us
       osrc << "#undef DECLARE_TRACE_NOARGS" << endl;
       osrc << "#define DECLARE_TRACE_NOARGS(name) \\" << endl;
