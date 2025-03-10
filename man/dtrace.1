@@ -41,7 +41,11 @@ generate a systemtap header file.
 
 .TP
 .B \-G
-generate a systemtap probe definition object file.
+generate a systemtap probe definition object file.  This invokes the C
+compiler with a sensible set of compiler flags.  If you need to add
+more, flags found in the \fBCFLAGS\fP environment variable will be
+transcribed to the compiler.  If this is not enough control, use the
+\-k option to capture the generated C file and compile as needed.
 
 .TP
 .B \-o \fIfile\fR
