@@ -13,7 +13,7 @@
 %endif
 %{!?with_rpm: %global with_rpm 1}
 %{!?elfutils_version: %global elfutils_version 0.179}
-%{!?with_boost: %global with_boost 0}
+%{!?with_boost: %global with_boost 1}
 %ifarch %{ix86} x86_64 ppc ppc64 ppc64le aarch64
 %{!?with_dyninst: %global with_dyninst 0%{?fedora} >= 18 || 0%{?rhel} >= 7}
 %else
@@ -189,9 +189,7 @@ BuildRequires: pkgconfig(ncurses)
 BuildRequires: systemd
 %endif
 # Needed for libstd++ < 4.0, without <tr1/memory>
-%if %{with_boost}
 BuildRequires: boost-devel
-%endif
 %if %{with_crash}
 BuildRequires: crash-devel zlib-devel
 %endif

@@ -821,6 +821,8 @@ passes_0_4 (systemtap_session &s)
 
 	      unsigned prev_s_library_files = s.library_files.size();
 
+              vector<pair<string,unsigned>> tapset_library_workqueue;
+                
               for (auto it = files.begin(); it != files.end(); ++it)
 	        {
                   unsigned tapset_flags = pf_guru | pf_squash_errors;
@@ -887,16 +889,14 @@ passes_0_4 (systemtap_session &s)
 		  // a trusted environment, where client-side
 		  // $XDG_DATA_DIRS are not passed.
 
-		  stapfile* f = parse (s, *it, tapset_flags);
-		  if (f == 0)
-		    s.print_warning(_F("tapset \"%s\" has errors, and will be skipped", it->c_str()));
-		  else
-                    {
-                      assert (f->privileged);
-                      s.library_files.push_back (f);
-                    }
+                  // PR32788: collect a list of files, instead of processing them
+                  // right away.
+                  tapset_library_workqueue.push_back(make_pair(*it, tapset_flags));
 		}
 
+              // PR32788: Parse all tapset files in parallel.
+              parse_all (s, tapset_library_workqueue);
+              
 	      unsigned next_s_library_files = s.library_files.size();
 	      if (s.verbose>1 && !files.empty())
 		  //TRANSLATORS: Searching through directories, 'processed' means 'examined so far'

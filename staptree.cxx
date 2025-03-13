@@ -21,6 +21,7 @@
 #include <vector>
 #include <algorithm>
 #include <cstring>
+#include <atomic>
 
 using namespace std;
 
@@ -119,11 +120,11 @@ probe_point::from_globby_comp(const std::string& comp)
   return false;
 }
 
-unsigned probe::last_probeidx = 0;
+static atomic<unsigned> last_probeidx(0);
 
 probe::probe ():
   body (0), base (0), tok (0), systemtap_v_conditional (0), privileged (false),
-  synthetic (false), id (last_probeidx ++)
+  synthetic (false), id (atomic_fetch_add(&last_probeidx,1))
 {
 }
 
@@ -134,7 +135,7 @@ probe::probe ():
 probe::probe(probe* p, probe_point* l):
   locations (1, l), body (deep_copy_visitor::deep_copy (p->body)),
   base (p), tok (p->tok), systemtap_v_conditional (p->systemtap_v_conditional),
-  privileged (p->privileged), synthetic (p->synthetic), id (last_probeidx ++)
+  privileged (p->privileged), synthetic (p->synthetic), id (atomic_fetch_add(&last_probeidx,1))
 {
   assert (p->locals.size() == 0);
   assert (p->unused_locals.size() == 0);

@@ -16,6 +16,9 @@
 #include <iostream>
 #include <stdexcept>
 #include <staptree.h>
+#include <vector>
+#include <string>
+#include <utility>
 #include "stringtable.h"
 
 struct systemtap_session;
@@ -143,6 +146,8 @@ enum parse_flag
     pf_auto_path = 16,
   };
 
+
+void parse_all (systemtap_session &s, const std::vector<std::pair<std::string,unsigned>> &files);
 
 stapfile* parse (systemtap_session& s,const std::string& n, std::istream& i, unsigned flags);
 stapfile* parse (systemtap_session& s, const std::string& n, unsigned flags);

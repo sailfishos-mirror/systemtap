@@ -921,8 +921,6 @@ std::ostream& operator << (std::ostream& o, const probe_point& k);
 
 struct probe
 {
-  static unsigned last_probeidx;
-
   std::vector<probe_point*> locations;
   statement* body;
   struct probe* base;

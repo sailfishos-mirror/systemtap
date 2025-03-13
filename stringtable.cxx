@@ -15,12 +15,17 @@
 #include <cstring>
 #include <fstream>
 #include <unordered_set>
+#include <mutex>
 
 
 using namespace std;
-#if defined(HAVE_BOOST_UTILITY_STRING_REF_HPP)
-using namespace boost;
 
+// PR32788 - parallelization - conflicts with string interning and its
+// frequently-used lookup table.  So we disable it entirely, and may
+// well remove the code later.
+
+#if 0 && defined(HAVE_BOOST_UTILITY_STRING_REF_HPP)
+using namespace boost;
 
 #if INTERNED_STRING_INSTRUMENT
 static bool whitespace_p (char c)
@@ -78,8 +83,14 @@ typedef unordered_set<std::string> stringtable_t;
 #endif
 
 
+#if 0 /* PR32788 experiment */
+static mutex st_lock; // protects the following two globals:
+#endif
+
 static char chartable[256];
 static stringtable_t stringtable;
+
+
 // XXX: set a larger initial size?  For reference, a
 //
 //    probe kernel.function("*") {}
@@ -103,6 +114,10 @@ interned_string interned_string::intern(const string& value)
   if (value.size() == 1)
     return intern(value[0]);
 
+#if 0 /* PR32788 experiment */
+  lock_guard<mutex> stringtable_lock (st_lock);
+#endif
+  
   pair<stringtable_t::iterator,bool> result = stringtable.insert(value);
   PROBE2(stap, intern_string, value.c_str(), result.second);
   stringtable_t::iterator it = result.first; // persistent iterator!
@@ -130,6 +145,10 @@ interned_string interned_string::intern(const char* value)
 // static
 interned_string interned_string::intern(char value)
 {
+#if 0 /* PR32788 experiment */  
+  lock_guard<mutex> chartable_lock (st_lock);
+#endif
+  
   if (!value)
     return interned_string ();
 

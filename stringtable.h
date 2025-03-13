@@ -17,7 +17,11 @@
 // TODO use C++17's std::string_view when possible.  It even hashes natively.
 // (some compilers already have std::experimental::string_view)
 
-#if defined(HAVE_BOOST_UTILITY_STRING_REF_HPP)
+// PR32788 - parallelization - conflicts with string interning and its
+// frequently-used lookup table.  So we disable it entirely, and may
+// well remove the code later.
+
+#if 0 && defined(HAVE_BOOST_UTILITY_STRING_REF_HPP)
 #include <boost/version.hpp>
 #include <boost/utility/string_ref.hpp> //header with string_ref
 
@@ -46,7 +50,7 @@ struct interned_string: public boost::string_ref
   bool operator == (const char* y) { return compare(boost::string_ref(y)) == 0; }
   bool operator == (const std::string& y) { return compare(boost::string_ref(y)) == 0; }
   friend bool operator == (interned_string x, interned_string y) { return x.compare(y) == 0; }
-  friend  bool operator == (const char * x, interned_string y)
+  friend bool operator == (const char * x, interned_string y)
   {
     return y.compare(boost::string_ref(x)) == 0;
   }

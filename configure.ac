@@ -621,8 +621,13 @@ AC_MSG_NOTICE([stapbpf will link $stapbpf_LIBS])
 # This is no longer necessary.
 
 AC_LANG_PUSH(C++)
-# Use boost::string_ref if available
-AC_CHECK_HEADERS([boost/utility/string_ref.hpp])
+
+# PR32788 concurrency goodies
+AC_CHECK_HEADERS([boost/asio/thread_pool.hpp])
+AC_CHECK_HEADERS([boost/asio/post.hpp])
+# Use boost::string_ref if available; moot with PR32788
+# AC_CHECK_HEADERS([boost/utility/string_ref.hpp])
+
 # add boost_system bits for stapdyn with dyninst 10+
 saved_LIBS="$LIBS"
 LIBS="-lboost_system $LIBS"

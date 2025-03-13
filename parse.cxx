@@ -34,11 +34,29 @@
 #include <iterator>
 #include <unordered_set>
 
+#include <thread>
+#include <mutex>
+#ifdef HAVE_BOOST_ASIO_THREAD_POOL_HPP
+#include <boost/asio/thread_pool.hpp>
+#else
+#error "need boost thread_pool.hpp"
+#endif
+
+#ifdef HAVE_BOOST_ASIO_POST_HPP
+#include <boost/asio/post.hpp>
+#else
+#error "need boost post.hpp"
+#endif
+
 extern "C" {
 #include <fnmatch.h>
 }
 
 using namespace std;
+
+// Protects mutative accesses to the single systemtap_session& object
+// shared by all concurrent parser threads.
+static recursive_mutex session_lock;
 
 
 class parser;
@@ -362,6 +380,7 @@ void
 parser::print_error  (const parse_error &pe, bool errs_as_warnings)
 {
   const token *tok = pe.tok ? pe.tok : last_t;
+  lock_guard<recursive_mutex> s_lock (session_lock);  
   session.print_error(pe, tok, input_name, errs_as_warnings);
   num_errors ++;
 }
@@ -506,9 +525,11 @@ parser::scan_pp1 (bool ignore_macros = false)
           // macros.....)
           if (name == "define")
             throw PARSE_ERROR (_("attempt to redefine '@define'"), t);
-          if (input.atwords.count(name))
+          if (input.atwords.count(name)) {
+            lock_guard<recursive_mutex> s_lock (session_lock);              
             session.print_warning (_F("macro redefines built-in operator '@%s'", name.c_str()), t);
-
+          }
+          
           macrodecl* decl = (pp1_namespace[name] = new macrodecl);
           decl->tok = t;
 
@@ -570,6 +591,7 @@ parser::scan_pp1 (bool ignore_macros = false)
       if (t->type == tok_operator && t->content[0] == '@')
         {
           const string& name = t->content.substr(1); // strip initial '@'
+          lock_guard<recursive_mutex> s_lock (session_lock);              
 
           // check if name refers to a real parameter or macro
           macrodecl* decl;
@@ -765,6 +787,7 @@ parser::parse_library_macros ()
            it != pp1_namespace.end(); it++)
         {
           string name = it->first;
+          lock_guard<recursive_mutex> s_lock (session_lock);              
 
           if (session.library_macros.find(name) != session.library_macros.end())
             {
@@ -792,6 +815,7 @@ parser::parse_library_macros ()
        it != pp1_namespace.end(); it++)
     {
       string name = it->first;
+      lock_guard<recursive_mutex> s_lock (session_lock);              
       
       session.library_macros[name] = it->second;
       session.library_macros[name]->context = ctx_library;
@@ -825,6 +849,8 @@ parser::parse_library_macros ()
 bool eval_pp_conditional (systemtap_session& s,
                           const token* l, const token* op, const token* r)
 {
+  lock_guard<recursive_mutex> s_lock (session_lock); // because s.kernel_config[] accesses etc. might mutate
+  
   if (l->type == tok_identifier && (l->content == "kernel_v" ||
                                     l->content == "kernel_vr" || 
                                     l->content == "systemtap_v"))
@@ -1665,6 +1691,7 @@ skip:
           n->make_junk(tok_junk_invalid_arg);
           return n;
         }
+      lock_guard<recursive_mutex> s_lock (session_lock);      
       session.used_args[idx-1] = true;
       const string& arg = session.args[idx-1];
       input_put ((c == '$') ? arg : lex_cast_qstring (arg), n);
@@ -1823,8 +1850,10 @@ skip:
                   n->content = token_str;
                   return n;
                 }
-              if (c == '}' && c2 == '%') // possible typo
+              if (c == '}' && c2 == '%') { // possible typo
+                lock_guard<recursive_mutex> s_lock (session_lock);      
                 session.print_warning (_("possible erroneous closing '}%', use '%}'?"), n);
+              }
               token_str.push_back (c);
               c = c2;
               c2 = input_get();
@@ -1995,7 +2024,8 @@ parser::parse ()
     if(pe.tok) c_state->tok = pe.tok;
     // This is the root where the parsing failed i.e the place to complete, so send the error up
     #if HAVE_LANGUAGE_SERVER_SUPPORT
-    if(session.language_server_mode){
+    lock_guard<recursive_mutex> s_lock (session_lock);    
+    if(session.language_server_mode) {
       session.lang_server->c_state = c_state;
       throw pe;
     }
@@ -2445,6 +2475,7 @@ parser::do_parse_functiondecl (vector<functiondecl*>& functions, const token* t,
   string gname = "__global_" + string(t->content);
   string pname = "__private_" + detox_path(fname) + string(t->content);
   string name = priv ? pname : gname;
+  lock_guard<recursive_mutex> s_lock (session_lock);
   name += "__overload_" + lex_cast(session.overload_count[t->content]++);
 
   functiondecl *fd = new functiondecl ();
@@ -4425,5 +4456,40 @@ parser::parse_target_symbol_components (target_symbol* e)
   if (pprint && (peek_op ("->") || peek_op("[")))
     throw PARSE_ERROR(_("-> and [ are not accepted for a pretty-printing variable"));
 }
+
+
+// Parse each given file, concurrently in threads.  Since the rest of
+// the parser is not written with threads in mind, use an temporary
+// copy systemtap_session object for each one, then merge the results.
+void parse_all (systemtap_session &session,
+                const std::vector<std::pair<std::string,unsigned>> &files)
+{
+  boost::asio::thread_pool TP (thread::hardware_concurrency());
+  vector<stapfile*> results (files.size()); // allocate/initialize with null pointers
+
+  // fork all threads, operating on now-final-shaped vectors
+  for (size_t i=0; i<files.size(); i++)
+    {
+      string file = files[i].first;
+      unsigned flags = files[i].second;
+      boost::asio::post(TP,[file, flags, i, &results, &session]() {
+        results[i] = parse (session, file, flags);
+      });
+    }
+
+  // wait for work to finish
+  TP.join();
+  
+  // join all threads, copying back certain fields of the session copy objects
+  for (size_t i=0; i<files.size(); i++)
+    {
+      if (results[i])
+        session.library_files.push_back (results[i]);
+    }
+
+  // let destructor clean up temporary session etc.
+}
+
+
 
 /* vim: set sw=2 ts=8 cino=>4,n-2,{2,^-2,t0,(0,u0,w1,M1 : */

@@ -13372,13 +13372,24 @@ ac_compile='$CXX -c $CXXFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CXX -o conftest$ac_exeext $CXXFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=$ac_cv_cxx_compiler_gnu
 
-# Use boost::string_ref if available
-ac_fn_cxx_check_header_compile "$LINENO" "boost/utility/string_ref.hpp" "ac_cv_header_boost_utility_string_ref_hpp" "$ac_includes_default"
-if test "x$ac_cv_header_boost_utility_string_ref_hpp" = xyes
+
+# PR32788 concurrency goodies
+ac_fn_cxx_check_header_compile "$LINENO" "boost/asio/thread_pool.hpp" "ac_cv_header_boost_asio_thread_pool_hpp" "$ac_includes_default"
+if test "x$ac_cv_header_boost_asio_thread_pool_hpp" = xyes
 then :
-  printf "%s\n" "#define HAVE_BOOST_UTILITY_STRING_REF_HPP 1" >>confdefs.h
+  printf "%s\n" "#define HAVE_BOOST_ASIO_THREAD_POOL_HPP 1" >>confdefs.h
 
 fi
+
+ac_fn_cxx_check_header_compile "$LINENO" "boost/asio/post.hpp" "ac_cv_header_boost_asio_post_hpp" "$ac_includes_default"
+if test "x$ac_cv_header_boost_asio_post_hpp" = xyes
+then :
+  printf "%s\n" "#define HAVE_BOOST_ASIO_POST_HPP 1" >>confdefs.h
+
+fi
+
+# Use boost::string_ref if available; moot with PR32788
+# AC_CHECK_HEADERS([boost/utility/string_ref.hpp])
 
 # add boost_system bits for stapdyn with dyninst 10+
 saved_LIBS="$LIBS"

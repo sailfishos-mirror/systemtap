@@ -13,8 +13,11 @@
 /* Define to 1 if you have the avahi libraries. */
 #undef HAVE_AVAHI
 
-/* Define to 1 if you have the <boost/utility/string_ref.hpp> header file. */
-#undef HAVE_BOOST_UTILITY_STRING_REF_HPP
+/* Define to 1 if you have the <boost/asio/post.hpp> header file. */
+#undef HAVE_BOOST_ASIO_POST_HPP
+
+/* Define to 1 if you have the <boost/asio/thread_pool.hpp> header file. */
+#undef HAVE_BOOST_ASIO_THREAD_POOL_HPP
 
 /* Define to 1 if you have the necessary declarations in bpf.h */
 #undef HAVE_BPF_DECLS
