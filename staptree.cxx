@@ -124,7 +124,7 @@ static atomic<unsigned> last_probeidx(0);
 
 probe::probe ():
   body (0), base (0), tok (0), systemtap_v_conditional (0), privileged (false),
-  synthetic (false), id (atomic_fetch_add(&last_probeidx,1))
+  synthetic (false), id (atomic_fetch_add(&last_probeidx,1U))
 {
 }
 
@@ -135,7 +135,7 @@ probe::probe ():
 probe::probe(probe* p, probe_point* l):
   locations (1, l), body (deep_copy_visitor::deep_copy (p->body)),
   base (p), tok (p->tok), systemtap_v_conditional (p->systemtap_v_conditional),
-  privileged (p->privileged), synthetic (p->synthetic), id (atomic_fetch_add(&last_probeidx,1))
+  privileged (p->privileged), synthetic (p->synthetic), id (atomic_fetch_add(&last_probeidx,1U))
 {
   assert (p->locals.size() == 0);
   assert (p->unused_locals.size() == 0);
