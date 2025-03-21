@@ -17,7 +17,7 @@
 	dirfd = int_arg(1)
 	dirfd_str = _dfd_str(dirfd)
 	pathname = user_string_quoted(pointer_arg(2))
-	pahtname_unquoted = user_string_nofault(pointer_arg(2))
+	pathname_unquoted = user_string_nofault(pointer_arg(2))
 	mode = uint_arg(3)
 %)
 

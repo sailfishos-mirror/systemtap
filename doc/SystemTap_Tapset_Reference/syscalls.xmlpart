@@ -908,7 +908,7 @@ same convenience variables.
 <row><entry>
     mkdirat
 </entry><entry>
-    dirfd, dirfd_str, mode, pahtname_unquoted, pathname
+    dirfd, dirfd_str, mode, pathname_unquoted, pathname
 </entry></row>
 <row><entry>
     mknod

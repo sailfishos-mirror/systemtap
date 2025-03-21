@@ -723,7 +723,7 @@ mode, pathname, pathname_uaddr, pathname_unquoted
 .P
 .TP
 .B syscall.mkdirat
-dirfd, dirfd_str, mode, pahtname_unquoted, pathname
+dirfd, dirfd_str, mode, pathname_unquoted, pathname
 .P
 .TP
 .B syscall.mknod
