@@ -305,11 +305,17 @@ compile_pass (systemtap_session& s)
   // but flags= filter was removed from kernel scripts/Kbuild.include mid-2019
   o << "_KBUILD_CFLAGS := $(call flags,KBUILD_CFLAGS) $(KBUILD_CFLAGS)" << endl;
 
+  // Support deprecation of $(EXTRA_CFLAGS); replacement flag available since 3.18ish.
+  // See linux kernel commits f77bf01425b119 and e966ad0edd005 
+  string extra_cflags = "EXTRA_CFLAGS";
+  if (strverscmp (s.kernel_base_release.c_str(), "6.15") >= 0)
+    extra_cflags = "ccflags-y";
+  
   o << "stap_check_gcc = $(shell " << superverbose
     << " if $(CC) $(1) -S -o /dev/null -xc /dev/null > /dev/null 2>&1; then "
     << "echo \"$(1)\"; else echo \"$(2)\"; fi)" << endl;
   o << "CHECK_BUILD := $(CC) -DMODULE $(NOSTDINC_FLAGS) $(KBUILD_CPPFLAGS) $(CPPFLAGS) "
-    << "$(LINUXINCLUDE) $(_KBUILD_CFLAGS) $(CFLAGS_KERNEL) $(EXTRA_CFLAGS) "
+    << "$(LINUXINCLUDE) $(_KBUILD_CFLAGS) $(CFLAGS_KERNEL) $(" << extra_cflags << ") "
     << "$(CFLAGS) -DKBUILD_BASENAME=\\\"" << s.module_name << "\\\" "
     << "-Wmissing-prototypes "  // GCC14 prep, PR31288
     << "-Werror" << " -S -o /dev/null -xc " << endl;
@@ -323,7 +329,7 @@ compile_pass (systemtap_session& s)
   // RHBZ 543529: early rhel6 kernels' module-signing kbuild logic breaks out-of-tree modules
   o << "CONFIG_MODULE_SIG := n" << endl;
 
-  string module_cflags = "EXTRA_CFLAGS";
+  string module_cflags = extra_cflags;
   o << module_cflags << " :=" << endl;
 
   // XXX: This gruesome hack is needed on some kernels built with separate O=directory,
@@ -596,10 +602,10 @@ compile_pass (systemtap_session& s)
   o << module_cflags << " += -include $(STAPCONF_HEADER)" << endl;
 
   for (unsigned i=0; i<s.c_macros.size(); i++)
-    o << "EXTRA_CFLAGS += -D " << lex_cast_qstring(s.c_macros[i]) << endl; // XXX right quoting?
+    o << extra_cflags << " += -D " << lex_cast_qstring(s.c_macros[i]) << endl; // XXX right quoting?
 
   if (s.verbose > 3)
-    o << "EXTRA_CFLAGS += -ftime-report -Q" << endl;
+    o << extra_cflags << " += -ftime-report -Q" << endl;
 
   // XXX: unfortunately, -save-temps can't work since linux kbuild cwd
   // is not writable.
@@ -609,7 +615,7 @@ compile_pass (systemtap_session& s)
 
   // Kernels can be compiled with CONFIG_CC_OPTIMIZE_FOR_SIZE to select
   // -Os, otherwise -O2 is the default.
-  o << "EXTRA_CFLAGS += -freorder-blocks" << endl; // improve on -Os
+  o << extra_cflags << " += -freorder-blocks" << endl; // improve on -Os
 
   // Generate eh_frame for self-backtracing
   // FIXME Work around the issue with riscv kernel modules not being
@@ -620,49 +626,49 @@ compile_pass (systemtap_session& s)
   // eh_frame bad-reloc warnings from kbuild.
   //
   if (s.architecture != "riscv" && s.kernel_config["CONFIG_CC_HAS_IBT"] != "y")
-    o << "EXTRA_CFLAGS += -fasynchronous-unwind-tables" << endl;
+    o << extra_cflags << " += -fasynchronous-unwind-tables" << endl;
 
   // We used to allow the user to override default optimization when so
   // requested by adding a -O[0123s] so they could determine the
   // time/space/speed tradeoffs themselves, but we cannot guantantee that
   // the (un)optimized code actually compiles and/or generates functional
   // code, so we had to remove it.
-  // o << "EXTRA_CFLAGS += " << s.gcc_flags << endl; // Add -O[0123s]
+  // o << extra_cflags << " += " << s.gcc_flags << endl; // Add -O[0123s]
 
   // o << "CFLAGS += -fno-unit-at-a-time" << endl;
 
   // gcc 5.0.0-0.13.fc23 ipa-icf seems to consume gigacpu on stap-generated code
-  o << "EXTRA_CFLAGS += $(call cc-option,-fno-ipa-icf)" << endl;
+  o << extra_cflags << " += $(call cc-option,-fno-ipa-icf)" << endl;
 
   // Assumes linux 2.6 kbuild
-  o << "EXTRA_CFLAGS += -Wno-unused " << "-Werror" << endl;
+  o << extra_cflags << " += -Wno-unused " << "-Werror" << endl;
   #if CHECK_POINTER_ARITH_PR5947
-  o << "EXTRA_CFLAGS += -Wpointer-arith" << endl;
+  o << extra_cflags << " += -Wpointer-arith" << endl;
   #endif
 
   // Accept extra diagnostic-suppression pragmas etc.
-  o << "EXTRA_CFLAGS += -Wno-pragmas" << endl;
+  o << extra_cflags << " += -Wno-pragmas" << endl;
 
   // Suppress gcc12 diagnostic bug in kernel-devel for 5.16ish
-  o << "EXTRA_CFLAGS += $(call cc-option,-Wno-infinite-recursion)" << endl;
+  o << extra_cflags << " += $(call cc-option,-Wno-infinite-recursion)" << endl;
 
   // Suppress gcc12 diagnostic about STAP_KPROBE_PROBE_STR_* null checks
-  o << "EXTRA_CFLAGS += -Wno-address" << endl;
+  o << extra_cflags << " += -Wno-address" << endl;
   
   // PR25845: Recent gcc (seen on 9.3.1) warns fairly common 32-bit pointer-conversions:
-  o << "EXTRA_CFLAGS += $(call cc-option,-Wno-pointer-to-int-cast)" << endl;
-  o << "EXTRA_CFLAGS += $(call cc-option,-Wno-int-to-pointer-cast)" << endl;
+  o << extra_cflags << " += $(call cc-option,-Wno-pointer-to-int-cast)" << endl;
+  o << extra_cflags << " += $(call cc-option,-Wno-int-to-pointer-cast)" << endl;
   // TODO: Some tests also suffer from -Werror=overflow. That seems like a warning requiring a tiny bit more care.
 
   // If we've got a reasonable runtime path from the user, we'll just
   // do '-IDIR'. If there are any sneaky/odd characters in it, we'll
   // have to quote it, like '-I"DIR"'.
   if (s.runtime_path.find_first_not_of(PATH_ALLOWED_CHARS, 0) == string::npos)
-    o << "EXTRA_CFLAGS += -I" << s.runtime_path << endl;
+    o << extra_cflags << " += -I" << s.runtime_path << endl;
   else
     {
       s.print_warning("quoting runtime path in the module Makefile.");
-      o << "EXTRA_CFLAGS += -I\"" << s.runtime_path << "\"" << endl;
+      o << extra_cflags << " += -I\"" << s.runtime_path << "\"" << endl;
     }
 
   // XXX: this may help ppc toc overflow
@@ -1076,11 +1082,17 @@ make_tracequeries(systemtap_session& s, const map<string,string>& contents)
       return objs;
     }
 
+  // Support deprecation of $(EXTRA_CFLAGS); replacement flag available since 3.18ish.
+  // See linux kernel commits f77bf01425b119 and e966ad0edd005 
+  string extra_cflags = "EXTRA_CFLAGS";
+  if (strverscmp (s.kernel_base_release.c_str(), "6.15") >= 0)
+    extra_cflags = "ccflags-y";
+  
   // create a simple Makefile
   string makefile(dir + "/Makefile");
   ofstream omf(makefile.c_str());
   // force debuginfo generation, and relax implicit functions
-  omf << "EXTRA_CFLAGS := -g -Wno-implicit-function-declaration " << "-Werror" << endl;
+  omf << extra_cflags << " := -g -Wno-implicit-function-declaration " << "-Werror" << endl;
   // RHBZ 655231: later rhel6 kernels' module-signing kbuild logic breaks out-of-tree modules
   omf << "CONFIG_MODULE_SIG := n" << endl;
   // PR23488: need to override this kconfig, else we get no useful struct decls
@@ -1088,13 +1100,13 @@ make_tracequeries(systemtap_session& s, const map<string,string>& contents)
   // objtool is slow and uses a lot of memory, skip it since these modules aren't loaded
   omf << "CONFIG_STACK_VALIDATION := " << endl;
   // PR18389: disable GCC's Identical Code Folding, since the stubs may look identical
-  omf << "EXTRA_CFLAGS += $(call cc-option,-fno-ipa-icf)" << endl;
+  omf << extra_cflags << " += $(call cc-option,-fno-ipa-icf)" << endl;
 
-  omf << "EXTRA_CFLAGS += -I" + s.kernel_build_tree << endl;
+  omf << extra_cflags << " += -I" + s.kernel_build_tree << endl;
   if (s.kernel_source_tree != "")
-    omf << "EXTRA_CFLAGS += -I" + s.kernel_source_tree << endl;
+    omf << extra_cflags << " += -I" + s.kernel_source_tree << endl;
   for (unsigned i = 0; i < s.kernel_extra_cflags.size(); i++)
-    omf << "EXTRA_CFLAGS += " + s.kernel_extra_cflags[i] << endl;
+    omf << extra_cflags << " += " + s.kernel_extra_cflags[i] << endl;
 
   omf << "obj-m := " << endl;
   // write out each header-specific source file into a separate file
@@ -1156,10 +1168,16 @@ make_typequery_kmod(systemtap_session& s, const vector<string>& headers, string&
 
   name = dir + "/" + basename + ".ko";
 
+  // Support deprecation of $(EXTRA_CFLAGS); replacement flag available since 3.18ish.
+  // See linux kernel commits f77bf01425b119 and e966ad0edd005 
+  string extra_cflags = "EXTRA_CFLAGS";
+  if (strverscmp (s.kernel_base_release.c_str(), "6.15") >= 0)
+    extra_cflags = "ccflags-y";
+
   // create a simple Makefile
   string makefile(dir + "/Makefile");
   ofstream omf(makefile.c_str());
-  omf << "EXTRA_CFLAGS := -g -fno-eliminate-unused-debug-types" << endl;
+  omf << extra_cflags << " := -g -fno-eliminate-unused-debug-types" << endl;
 
   // RHBZ 655231: later rhel6 kernels' module-signing kbuild logic breaks out-of-tree modules
   omf << "CONFIG_MODULE_SIG := n" << endl;
