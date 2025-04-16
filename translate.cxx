@@ -2102,9 +2102,8 @@ c_unparser::emit_module_init ()
       o->newline() << "#ifdef STP_ON_THE_FLY_TIMER_ENABLE";
 
       // Initialize hrtimer needed for on-the-fly arming/disarming
-      o->newline() << "hrtimer_init(&module_refresh_timer, CLOCK_MONOTONIC,";
-      o->newline() << "             HRTIMER_MODE_REL);";
-      o->newline() << "module_refresh_timer.function = &module_refresh_timer_cb;";
+      o->newline() << "STP_HRTIMER_SETUP(&module_refresh_timer, &module_refresh_timer_cb, ";
+      o->newline() << "             CLOCK_MONOTONIC, HRTIMER_MODE_REL);";
 
       // We check here if it's worth it to start the timer at all. We only need
       // the background timer if there is a probe which doesn't support directy

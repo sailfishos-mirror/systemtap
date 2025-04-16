@@ -523,7 +523,7 @@ static void _stp_detach(void)
 	if (!_stp_exit_flag)
 		_stp_transport_data_fs_overwrite(1);
 
-        del_timer_sync(&_stp_ctl_work_timer);
+        STP_TIMER_DELETE_SYNC(&_stp_ctl_work_timer);
 	wake_up_interruptible(&_stp_ctl_wq);
 }
 

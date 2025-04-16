@@ -43,4 +43,15 @@ typedef enum hrtimer_restart hrtimer_return_t;
 #define HRTIMER_MODE_REL HRTIMER_REL
 #endif
 
+#ifdef STAPCONF_HRTIMER_INIT
+#define STP_HRTIMER_SETUP(timer, func, clock_id, mode)	\
+  do {							\
+    hrtimer_init((timer), (clock_id), (mode));		\
+    (*timer).function = (func);				\
+  }while(0)
+#else
+#define STP_HRTIMER_SETUP(timer, func, clock_id, mode)	\
+  hrtimer_setup((timer), (func), (clock_id), (mode))
+#endif
+
 #endif /* _LINUX_TIMER_H_ */

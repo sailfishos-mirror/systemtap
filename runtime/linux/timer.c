@@ -74,8 +74,8 @@ static int
 _stp_hrtimer_create(struct stap_hrtimer_probe *stp,
 		    hrtimer_return_t (*function)(struct hrtimer *))
 {
-	hrtimer_init(&stp->hrtimer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-	stp->hrtimer.function = function;
+	STP_HRTIMER_SETUP(&stp->hrtimer, function,
+			  CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	return 0;
 }
 
