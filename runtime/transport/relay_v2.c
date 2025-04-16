@@ -285,7 +285,7 @@ static void _stp_transport_data_fs_stop(void)
 
 	if (atomic_read (&_stp_relay_data.transport_state) == STP_TRANSPORT_RUNNING) {
 		atomic_set (&_stp_relay_data.transport_state, STP_TRANSPORT_STOPPED);
-		del_timer_sync(&_stp_relay_data.timer);
+		STP_TIMER_DELETE_SYNC(&_stp_relay_data.timer);
 		dbug_trans(0, "flushing...\n");
 		if (_stp_relay_data.rchan)
 			relay_flush(_stp_relay_data.rchan);
