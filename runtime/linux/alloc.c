@@ -460,9 +460,9 @@ static void *_stp_vzalloc_node(size_t size, int node)
 #endif
 
 /* Note, calls __alloc_percpu which may sleep and always uses GFP_KERNEL. */
-static void *_stp_alloc_percpu(size_t size)
+static void __percpu *_stp_alloc_percpu(size_t size)
 {
-	void *ret;
+	void __percpu *ret;
 
 	if (size > _STP_MAX_PERCPU_SIZE)
 		return NULL;
@@ -586,7 +586,7 @@ static void _stp_vfree(void *addr)
 #endif
 }
 
-static void _stp_free_percpu(void *addr)
+static void _stp_free_percpu(void __percpu *addr)
 {
 #ifdef DEBUG_MEM
 	_stp_mem_debug_free(addr, STP_MEM_PERCPU);
