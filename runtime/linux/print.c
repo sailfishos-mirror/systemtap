@@ -45,7 +45,7 @@ struct _stp_log {
 };
 #include "print_flush.c"
 
-static struct _stp_log *_stp_log_pcpu;
+static struct _stp_log __percpu *_stp_log_pcpu;
 
 /*
  * An atomic counter is used to synchronize every possible print buffer usage

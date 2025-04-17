@@ -29,7 +29,7 @@ typedef struct _Stat {
 	stat_data *agg;
 
 	/* The stat data is per-cpu data.  */
-	stat_data *sd;
+	stat_data __percpu *sd;
 } *Stat;
 
 static Stat _stp_stat_alloc(size_t stat_data_size)
