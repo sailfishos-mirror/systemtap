@@ -17,10 +17,10 @@
 
 
 struct pmap {
-	int bit_shift;	/* scale factor for integer arithmetic */
-	int stat_ops;	/* related statistical operators */
-	MAP agg;	/* aggregation map */
-	MAP *map;	/* per-cpu maps */
+	int bit_shift;		/* scale factor for integer arithmetic */
+	int stat_ops;		/* related statistical operators */
+	MAP agg;		/* aggregation map */
+	MAP __percpu *map;	/* per-cpu maps */
 };
 
 static inline MAP _stp_pmap_get_agg(PMAP p)
