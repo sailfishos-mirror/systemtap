@@ -22,7 +22,7 @@ struct stap_perf_probe {
         union
 	{
 	  /* per-cpu data. allocated with _stp_alloc_percpu() */
-	  struct perf_event **events;
+	  struct perf_event  * __percpu *events;
 	  struct 
 	  {
 	    /* per-task data. allocated by perf_event_create_kernel_counter */
