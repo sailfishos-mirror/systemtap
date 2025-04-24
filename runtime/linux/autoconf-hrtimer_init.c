@@ -1,6 +1,8 @@
 #include <linux/hrtimer.h>
 
+extern void foo(void);
+
 void foo(void) {
-  hrtimer_init(&stp->hrtimer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-  stp->hrtimer.function = function;
+  struct hrtimer timer;
+  hrtimer_init(&timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 }
