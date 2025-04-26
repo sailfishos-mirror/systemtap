@@ -10892,8 +10892,12 @@ hwbkpt_derived_probe_group::emit_module_decls (systemtap_session& s)
   s.op->newline() << "static struct perf_event_attr ";
   s.op->newline() << "stap_hwbkpt_probe_array[" << hwbkpt_probes.size() << "];";
 
-  s.op->newline() << "static void *";
-  s.op->newline() << "stap_hwbkpt_ret_array[" << hwbkpt_probes.size() << "];";
+  // For address-space checking pedanticism, separate the u and k
+  // hwbpkt data.  Only one or the other slot will actually be used
+  // for any particular index.
+  s.op->newline() << "static struct perf_event * stap_hwbkpt_u_ret_array[" << hwbkpt_probes.size() << "];";
+  s.op->newline() << "static struct perf_event * __percpu * stap_hwbkpt_k_ret_array[" << hwbkpt_probes.size() << "];";
+  
   s.op->newline() << "static struct stap_hwbkpt_probe stap_hwbkpt_probes[] = {";
   s.op->indent(1);
 
@@ -10965,15 +10969,15 @@ hwbkpt_derived_probe_group::emit_module_init (systemtap_session& s)
 {
   s.op->newline() << "rc = stap_hwbkpt_init(&enter_hwbkpt_probe, stap_hwbkpt_probes, "
     << hwbkpt_probes.size() << ", stap_hwbkpt_probe_array, "
-    << "stap_hwbkpt_ret_array, &probe_point);";
+    << "stap_hwbkpt_u_ret_array, stap_hwbkpt_k_ret_array, &probe_point);";
 }
 
 void
 hwbkpt_derived_probe_group::emit_module_exit (systemtap_session& s)
 {
-  //Unregister hwbkpt probes.
+  // Unregister hwbkpt probes.
   s.op->newline() << "stap_hwbkpt_exit(stap_hwbkpt_probes, "
-    << hwbkpt_probes.size() << ", stap_hwbkpt_ret_array);";
+    << hwbkpt_probes.size() << ", stap_hwbkpt_u_ret_array, stap_hwbkpt_k_ret_array);";
 }
 
 

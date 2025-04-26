@@ -85,19 +85,24 @@ static struct proc_ops stm_fops_cmd = {
 
 #define CMD_FILE "stap_hwbkpt_cmd"
 
-int init_module(void)
+int hwbkpt_init_module(void);
+int hwbkpt_init_module(void)
 {
 	stm_ctl = proc_create (CMD_FILE, 0666, NULL, &stm_fops_cmd);
 	if (stm_ctl == NULL) 
 		return -1;
 	return 0;
 }
+module_init(hwbkpt_init_module);
 
-void cleanup_module(void)
+void hwbkpt_cleanup_module(void);
+void hwbkpt_cleanup_module(void)
 {
 	if (stm_ctl)
 		remove_proc_entry (CMD_FILE, NULL);
 }
+
+module_exit(hwbkpt_cleanup_module);
 
 MODULE_DESCRIPTION("systemtap test module");
 MODULE_LICENSE("GPL");
