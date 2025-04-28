@@ -174,7 +174,7 @@ timer_derived_probe_group::emit_module_exit (systemtap_session& s)
   if (probes.empty()) return;
 
   s.op->newline() << "for (i=0; i<" << probes.size() << "; i++)";
-  s.op->newline(1) << "del_timer_sync (& stap_timer_probes[i].timer_list);";
+  s.op->newline(1) << "STP_TIMER_DELETE_SYNC (& stap_timer_probes[i].timer_list);";
   s.op->indent(-1);
 }
 
