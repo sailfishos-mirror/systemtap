@@ -1213,6 +1213,7 @@ make_typequery_kmod(systemtap_session& s, const vector<string>& headers, string&
   // this is mandated by linux kbuild as of 5.11+
   osrc << "#include <linux/module.h>" << endl;
   osrc << "MODULE_LICENSE(\"GPL\");" << endl;
+  osrc << "MODULE_DESCRIPTION(\"" << basename << "\");" << endl;
   
   osrc.close();
 
