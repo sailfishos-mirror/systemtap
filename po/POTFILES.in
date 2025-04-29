@@ -88,6 +88,8 @@ stap-serverd.cxx
 stap-sign-module.cxx
 staptree.cxx
 staptree.h
+staputil.cxx
+staputil.h
 stapvirt.c
 stringtable.cxx
 stringtable.h
@@ -111,6 +113,4 @@ translate.cxx
 translate.h
 translator-output.cxx
 translator-output.h
-util.cxx
-util.h
 version.h
