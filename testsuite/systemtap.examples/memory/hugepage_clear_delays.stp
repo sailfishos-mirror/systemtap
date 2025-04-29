@@ -2,7 +2,8 @@
 
 global huge_clear
 
-probe kernel.function("clear_huge_page").return
+probe kernel.function("folio_zero_user").return!,
+  kernel.function("clear_huge_page").return
 {
   huge_clear [execname(), pid()]
     <<< (gettimeofday_us() - @entry(gettimeofday_us()))
