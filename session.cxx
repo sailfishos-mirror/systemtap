@@ -507,14 +507,14 @@ systemtap_session::version_string ()
 pair <string,string>
 systemtap_session::kernel_version_range()
 {
-  return make_pair<string,string>("3.10", "6.14-rc");    // PRERELEASE
+  return make_pair<string,string>("3.10", "6.15-rc");    // PRERELEASE
 }
 
 void
 systemtap_session::version ()
 {
   cout << _F("Systemtap translator/driver (version %s)\n"
-             "Copyright (C) 2005-2024 Red Hat, Inc. and others\n"   // PRERELEASE
+             "Copyright (C) 2005-2025 Red Hat, Inc. and others\n"   // PRERELEASE
              "This is free software; see the source for copying conditions.\n",
              version_string().c_str());
   auto vr = kernel_version_range();

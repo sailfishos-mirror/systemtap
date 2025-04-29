@@ -1349,10 +1349,14 @@ exit 0
 
 # PRERELEASE
 %changelog
-* Fri Nov 08 2024 Frank Ch. Eigler <fche@redhat.com> - 5.2-1
+* Fri May 02 2025 Frank Ch. Eigler <fche@redhat.com> - 5.3-1
 - Upstream release, see wiki page below for detailed notes.
   https://sourceware.org/systemtap/wiki/SystemTapReleases
 
+* Fri Nov 08 2024 Frank Ch. Eigler <fche@redhat.com> - 5.2-1
+- Upstream release, see wiki page below for detailed notes.
+  https://sourceware.org/systemtap/wiki/SystemTapReleases
+  
 * Thu Aug 08 2024 Lumír Balhar <lbalhar@redhat.com> - 5.2-pre
 - Final split of sdt-dtrace and sdt-devel (rhbz#2296275)
   https://fedoraproject.org/wiki/Changes/Separate_dtrace_package
