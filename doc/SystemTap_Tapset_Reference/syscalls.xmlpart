@@ -61,11 +61,6 @@ same convenience variables.
     addr, code, code_str
 </entry></row>
 <row><entry>
-    bdflush
-</entry><entry>
-    $id, $regs, data, data_str, func, int, pt_regs*
-</entry></row>
-<row><entry>
     bind
 </entry><entry>
     addrlen, my_addr_uaddr, sockfd, uaddr_af, uaddr_ip, uaddr_ip_port, uaddr_ipv6_flowinfo, uaddr_ipv6_scope_id
@@ -141,24 +136,9 @@ same convenience variables.
     clk_id, clk_id_str, tp_uaddr, tp_uaddr_str
 </entry></row>
 <row><entry>
-    clone
-</entry><entry>
-    $id, $regs, child_tid_uaddr, clone_flags, int, parent_tid_uaddr, pt_regs*, stack_start
-</entry></row>
-<row><entry>
     close
 </entry><entry>
     fd
-</entry></row>
-<row><entry>
-    compat_adjtimex
-</entry><entry>
-    $id, $regs, buf_str, buf_uaddr, int, pt_regs*
-</entry></row>
-<row><entry>
-    compat_clock_nanosleep
-</entry><entry>
-    $id, $regs, clk_id, clk_id_str, flags, flags_str, int, pt_regs*, rem_uaddr, req_str, req_uaddr
 </entry></row>
 <row><entry>
     compat_execve
@@ -171,69 +151,9 @@ same convenience variables.
     args, dirfd, dirfd_str, env_str, filename, flags, flags_str
 </entry></row>
 <row><entry>
-    compat_fadvise64
-</entry><entry>
-    $id, $regs, advice, advice_str, fd, int, len, offset, pt_regs*
-</entry></row>
-<row><entry>
-    compat_fadvise64_64
-</entry><entry>
-    $id, $regs, advice, advice_str, fd, int, len, offset, pt_regs*
-</entry></row>
-<row><entry>
-    compat_fallocate
-</entry><entry>
-    $id, $regs, fd, int, len, mode, mode_str, offset, pt_regs*
-</entry></row>
-<row><entry>
-    compat_ftruncate64
-</entry><entry>
-    $id, $regs, fd, int, length, pt_regs*
-</entry></row>
-<row><entry>
-    compat_futex
-</entry><entry>
-    $id, $regs, futex_uaddr, int, op, pt_regs*, uaddr2_uaddr, utime_uaddr, val3, val
-</entry></row>
-<row><entry>
-    compat_futimesat
-</entry><entry>
-    $id, $regs, dirfd, dirfd_str, filename, filename_uaddr, filename_unquoted, int, pt_regs*, tvp_str, tvp_uaddr
-</entry></row>
-<row><entry>
     compat_getitimer
 </entry><entry>
     value_uaddr, which
-</entry></row>
-<row><entry>
-    compat_lookup_dcookie
-</entry><entry>
-    $id, $regs, buffer_uaddr, cookie, int, len, pt_regs*
-</entry></row>
-<row><entry>
-    compat_nanosleep
-</entry><entry>
-    $id, $regs, int, pt_regs*, rem_uaddr, req_str, req_uaddr
-</entry></row>
-<row><entry>
-    compat_ppoll
-</entry><entry>
-    $id, $regs, fds_uaddr, int, nfds, pt_regs*, sigmask, sigsetsize, tsp, tsp_str
-</entry></row>
-<row><entry>
-    compat_pselect6
-</entry><entry>
-    $id, $regs, exceptfds, int, nfds, pt_regs*, readfds, sigmask, timeout, timeout_str, writefds
-</entry></row>
-<row><entry>
-    compat_readahead
-</entry><entry>
-    $id, $regs, count, fd, int, offset, pt_regs*
-</entry></row>
-<row><entry>
-    compat_recvmmsg
-</entry><entry>
-    $id, $regs, flags, flags_str, int, mmsg_uaddr, pt_regs*, s, timeout_str, timeout_uaddr, vlen
 </entry></row>
 <row><entry>
     compat_select
@@ -294,31 +214,6 @@ same convenience variables.
     compat_sys_shmctl
 </entry><entry>
     buf_uaddr, cmd, cmd_str, shmid
-</entry></row>
-<row><entry>
-    compat_sys_utimes
-</entry><entry>
-    $id, $regs, filename, filename_unquoted, int, pt_regs*, timeval, tvp_uaddr_str
-</entry></row>
-<row><entry>
-    compat_truncate64
-</entry><entry>
-    $id, $regs, int, length, path, path_uaddr, path_unquoted, pt_regs*
-</entry></row>
-<row><entry>
-    compat_utime
-</entry><entry>
-    $id, $regs, actime, buf_uaddr, filename, filename_uaddr, filename_unquoted, int, modtime, pt_regs*
-</entry></row>
-<row><entry>
-    compat_utimensat
-</entry><entry>
-    $id, $regs, dfd, dfd_str, filename, filename_uaddr, filename_unquoted, flags, flags_str, int, pt_regs*, tsp_str, tsp_uaddr
-</entry></row>
-<row><entry>
-    compat_vmsplice
-</entry><entry>
-    $id, $regs, fd, flags, flags_str, int, iov, nr_segs, pt_regs*
 </entry></row>
 <row><entry>
     connect
@@ -414,11 +309,6 @@ same convenience variables.
     fadvise64
 </entry><entry>
     advice, advice_str, fd, len, offset
-</entry></row>
-<row><entry>
-    fadvise64_64
-</entry><entry>
-    $id, $regs, advice, advice_str, fd, int, len, offset, pt_regs*
 </entry></row>
 <row><entry>
     fallocate
@@ -539,11 +429,6 @@ same convenience variables.
     ftruncate
 </entry><entry>
     fd, length
-</entry></row>
-<row><entry>
-    ftruncate64
-</entry><entry>
-    $id, $regs, fd, int, length, pt_regs*
 </entry></row>
 <row><entry>
     futex
@@ -841,11 +726,6 @@ same convenience variables.
     fd, offset_high, offset_low, result_uaddr, whence, whence_str
 </entry></row>
 <row><entry>
-    lookup_dcookie
-</entry><entry>
-    $id, $regs, buffer_uaddr, cookie, int, len, pt_regs*
-</entry></row>
-<row><entry>
     lremovexattr
 </entry><entry>
     name_str, name_str_unquoted, name_uaddr, path, path_uaddr, path_unquoted
@@ -908,7 +788,7 @@ same convenience variables.
 <row><entry>
     mkdirat
 </entry><entry>
-    dirfd, dirfd_str, mode, pathname_unquoted, pathname
+    dirfd, dirfd_str, mode, pahtname_unquoted, pathname
 </entry></row>
 <row><entry>
     mknod
@@ -1169,11 +1049,6 @@ same convenience variables.
     pwrite
 </entry><entry>
     buf_str, buf_uaddr, count, fd, offset
-</entry></row>
-<row><entry>
-    pwrite32
-</entry><entry>
-    $id, $regs, buf_str, buf_uaddr, count, fd, int, offset, pt_regs*
 </entry></row>
 <row><entry>
     pwritev
@@ -1616,11 +1491,6 @@ same convenience variables.
     how, how_str, s
 </entry></row>
 <row><entry>
-    sigaction
-</entry><entry>
-    $id, $regs, act_str, act_uaddr, int, oact_uaddr, pt_regs*, sig, sig_str
-</entry></row>
-<row><entry>
     sigaction32
 </entry><entry>
     act_str, act_uaddr, oact_uaddr, sig, sig_str
@@ -1736,11 +1606,6 @@ same convenience variables.
     fd
 </entry></row>
 <row><entry>
-    sysctl
-</entry><entry>
-    $id, $regs, args, int, pt_regs*
-</entry></row>
-<row><entry>
     sysfs
 </entry><entry>
     arg1, arg2, option
@@ -1854,11 +1719,6 @@ same convenience variables.
     unshare
 </entry><entry>
     unshare_flags, unshare_flags_str
-</entry></row>
-<row><entry>
-    uselib
-</entry><entry>
-    $id, $regs, int, library, library_uaddr, library_unquoted, pt_regs*
 </entry></row>
 <row><entry>
     userfaultfd

@@ -2,12 +2,12 @@
 .\"     Title: probe::sunrpc.clnt.restart_call
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: November 2024
+.\"      Date: April 2025
 .\"    Manual: Networking Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "PROBE::SUNRPC\&.CLNT" "3stap" "November 2024" "SystemTap Tapset Reference" "Networking Tapset"
+.TH "PROBE::SUNRPC\&.CLNT" "3stap" "April 2025" "SystemTap Tapset Reference" "Networking Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -36,14 +36,9 @@ sunrpc\&.clnt\&.restart_call
 .fi
 .SH "VALUES"
 .PP
-\fItk_runstate\fR
+\fIxid\fR
 .RS 4
-the task run status
-.RE
-.PP
-\fItk_priority\fR
-.RS 4
-the task priority
+the transmission id
 .RE
 .PP
 \fIservername\fR
@@ -51,14 +46,9 @@ the task priority
 the server machine name
 .RE
 .PP
-\fItk_pid\fR
+\fItk_priority\fR
 .RS 4
-the debugging aid of task
-.RE
-.PP
-\fItk_flags\fR
-.RS 4
-the task flags
+the task priority
 .RE
 .PP
 \fIprog\fR
@@ -66,9 +56,19 @@ the task flags
 the RPC program number
 .RE
 .PP
-\fIxid\fR
+\fItk_flags\fR
 .RS 4
-the transmission id
+the task flags
+.RE
+.PP
+\fItk_runstate\fR
+.RS 4
+the task run status
+.RE
+.PP
+\fItk_pid\fR
+.RS 4
+the debugging aid of task
 .RE
 .SH SEE ALSO\n 
 .IR tapset::rpc (3stap)

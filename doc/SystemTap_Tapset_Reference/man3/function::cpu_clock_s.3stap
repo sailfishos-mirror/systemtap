@@ -2,12 +2,12 @@
 .\"     Title: function::cpu_clock_s
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: November 2024
+.\"      Date: April 2025
 .\"    Manual: Timestamp Functions
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "FUNCTION::CPU_CLOCK_" "3stap" "November 2024" "SystemTap Tapset Reference" "Timestamp Functions"
+.TH "FUNCTION::CPU_CLOCK_" "3stap" "April 2025" "SystemTap Tapset Reference" "Timestamp Functions"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------

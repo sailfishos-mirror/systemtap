@@ -2,12 +2,12 @@
 .\"     Title: probe::nfsd.lookup
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: November 2024
+.\"      Date: April 2025
 .\"    Manual: Network File Storage Tapsets
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "PROBE::NFSD\&.LOOKUP" "3stap" "November 2024" "SystemTap Tapset Reference" "Network File Storage Tapsets"
+.TH "PROBE::NFSD\&.LOOKUP" "3stap" "April 2025" "SystemTap Tapset Reference" "Network File Storage Tapsets"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -36,14 +36,14 @@ nfsd\&.lookup
 .fi
 .SH "VALUES"
 .PP
+\fIfilename\fR
+.RS 4
+file name
+.RE
+.PP
 \fIfh\fR
 .RS 4
 file handle of parent dir(the first part is the length of the file handle)
-.RE
-.PP
-\fIclient_ip\fR
-.RS 4
-the ip address of client
 .RE
 .PP
 \fIfilelen\fR
@@ -51,9 +51,9 @@ the ip address of client
 the length of file name
 .RE
 .PP
-\fIfilename\fR
+\fIclient_ip\fR
 .RS 4
-file name
+the ip address of client
 .RE
 .SH SEE ALSO\n 
 .IR tapset::nfsd (3stap)

@@ -1,5 +1,5 @@
 ." -*- nroff -*-
-.TH TAPSET::SYSCALLS 3stap "November 2024" "Systemtap Tapset Reference"
+.TH TAPSET::SYSCALLS 3stap "April 2025" "Systemtap Tapset Reference"
 .SH NAME
 tapset::syscalls - systemtap syscall tapset
 
@@ -44,10 +44,6 @@ seconds
 .TP
 .B syscall.arch_prctl
 addr, code, code_str
-.P
-.TP
-.B syscall.bdflush
-$id, $regs, data, data_str, func, int, pt_regs*
 .P
 .TP
 .B syscall.bind
@@ -110,20 +106,8 @@ clk_id, clk_id_str, flags, flags_str, rem_uaddr, req_str, req_uaddr
 clk_id, clk_id_str, tp_uaddr, tp_uaddr_str
 .P
 .TP
-.B syscall.clone
-$id, $regs, child_tid_uaddr, clone_flags, int, parent_tid_uaddr, pt_regs*, stack_start
-.P
-.TP
 .B syscall.close
 fd
-.P
-.TP
-.B syscall.compat_adjtimex
-$id, $regs, buf_str, buf_uaddr, int, pt_regs*
-.P
-.TP
-.B syscall.compat_clock_nanosleep
-$id, $regs, clk_id, clk_id_str, flags, flags_str, int, pt_regs*, rem_uaddr, req_str, req_uaddr
 .P
 .TP
 .B syscall.compat_execve
@@ -134,56 +118,8 @@ args, env_str, filename
 args, dirfd, dirfd_str, env_str, filename, flags, flags_str
 .P
 .TP
-.B syscall.compat_fadvise64
-$id, $regs, advice, advice_str, fd, int, len, offset, pt_regs*
-.P
-.TP
-.B syscall.compat_fadvise64_64
-$id, $regs, advice, advice_str, fd, int, len, offset, pt_regs*
-.P
-.TP
-.B syscall.compat_fallocate
-$id, $regs, fd, int, len, mode, mode_str, offset, pt_regs*
-.P
-.TP
-.B syscall.compat_ftruncate64
-$id, $regs, fd, int, length, pt_regs*
-.P
-.TP
-.B syscall.compat_futex
-$id, $regs, futex_uaddr, int, op, pt_regs*, uaddr2_uaddr, utime_uaddr, val3, val
-.P
-.TP
-.B syscall.compat_futimesat
-$id, $regs, dirfd, dirfd_str, filename, filename_uaddr, filename_unquoted, int, pt_regs*, tvp_str, tvp_uaddr
-.P
-.TP
 .B syscall.compat_getitimer
 value_uaddr, which
-.P
-.TP
-.B syscall.compat_lookup_dcookie
-$id, $regs, buffer_uaddr, cookie, int, len, pt_regs*
-.P
-.TP
-.B syscall.compat_nanosleep
-$id, $regs, int, pt_regs*, rem_uaddr, req_str, req_uaddr
-.P
-.TP
-.B syscall.compat_ppoll
-$id, $regs, fds_uaddr, int, nfds, pt_regs*, sigmask, sigsetsize, tsp, tsp_str
-.P
-.TP
-.B syscall.compat_pselect6
-$id, $regs, exceptfds, int, nfds, pt_regs*, readfds, sigmask, timeout, timeout_str, writefds
-.P
-.TP
-.B syscall.compat_readahead
-$id, $regs, count, fd, int, offset, pt_regs*
-.P
-.TP
-.B syscall.compat_recvmmsg
-$id, $regs, flags, flags_str, int, mmsg_uaddr, pt_regs*, s, timeout_str, timeout_uaddr, vlen
 .P
 .TP
 .B syscall.compat_select
@@ -232,26 +168,6 @@ shmaddr_uaddr, shmflg, shmflg_str, shmid
 .TP
 .B syscall.compat_sys_shmctl
 buf_uaddr, cmd, cmd_str, shmid
-.P
-.TP
-.B syscall.compat_sys_utimes
-$id, $regs, filename, filename_unquoted, int, pt_regs*, timeval, tvp_uaddr_str
-.P
-.TP
-.B syscall.compat_truncate64
-$id, $regs, int, length, path, path_uaddr, path_unquoted, pt_regs*
-.P
-.TP
-.B syscall.compat_utime
-$id, $regs, actime, buf_uaddr, filename, filename_uaddr, filename_unquoted, int, modtime, pt_regs*
-.P
-.TP
-.B syscall.compat_utimensat
-$id, $regs, dfd, dfd_str, filename, filename_uaddr, filename_unquoted, flags, flags_str, int, pt_regs*, tsp_str, tsp_uaddr
-.P
-.TP
-.B syscall.compat_vmsplice
-$id, $regs, fd, flags, flags_str, int, iov, nr_segs, pt_regs*
 .P
 .TP
 .B syscall.connect
@@ -328,10 +244,6 @@ dirfd, dirfd_str, flags, flags_str, mode, mode_str, pathname, pathname_unquoted
 .TP
 .B syscall.fadvise64
 advice, advice_str, fd, len, offset
-.P
-.TP
-.B syscall.fadvise64_64
-$id, $regs, advice, advice_str, fd, int, len, offset, pt_regs*
 .P
 .TP
 .B syscall.fallocate
@@ -428,10 +340,6 @@ fd
 .TP
 .B syscall.ftruncate
 fd, length
-.P
-.TP
-.B syscall.ftruncate64
-$id, $regs, fd, int, length, pt_regs*
 .P
 .TP
 .B syscall.futex
@@ -670,10 +578,6 @@ list_uaddr, path, path_uaddr, path_unquoted, size
 fd, offset_high, offset_low, result_uaddr, whence, whence_str
 .P
 .TP
-.B syscall.lookup_dcookie
-$id, $regs, buffer_uaddr, cookie, int, len, pt_regs*
-.P
-.TP
 .B syscall.lremovexattr
 name_str, name_str_unquoted, name_uaddr, path, path_uaddr, path_unquoted
 .P
@@ -723,7 +627,7 @@ mode, pathname, pathname_uaddr, pathname_unquoted
 .P
 .TP
 .B syscall.mkdirat
-dirfd, dirfd_str, mode, pathname_unquoted, pathname
+dirfd, dirfd_str, mode, pahtname_unquoted, pathname
 .P
 .TP
 .B syscall.mknod
@@ -932,10 +836,6 @@ addr, data, pid, request
 .TP
 .B syscall.pwrite
 buf_str, buf_uaddr, count, fd, offset
-.P
-.TP
-.B syscall.pwrite32
-$id, $regs, buf_str, buf_uaddr, count, fd, int, offset, pt_regs*
 .P
 .TP
 .B syscall.pwritev
@@ -1290,10 +1190,6 @@ key, shmflg, shmflg_str, size
 how, how_str, s
 .P
 .TP
-.B syscall.sigaction
-$id, $regs, act_str, act_uaddr, int, oact_uaddr, pt_regs*, sig, sig_str
-.P
-.TP
 .B syscall.sigaction32
 act_str, act_uaddr, oact_uaddr, sig, sig_str
 .P
@@ -1386,10 +1282,6 @@ fd, flags, flags_str, nbytes, offset
 fd
 .P
 .TP
-.B syscall.sysctl
-$id, $regs, args, int, pt_regs*
-.P
-.TP
 .B syscall.sysfs
 arg1, arg2, option
 .P
@@ -1480,10 +1372,6 @@ dfd, dfd_str, flag, flag_str, pathname, pathname_str, pathname_str_unquoted
 .TP
 .B syscall.unshare
 unshare_flags, unshare_flags_str
-.P
-.TP
-.B syscall.uselib
-$id, $regs, int, library, library_uaddr, library_unquoted, pt_regs*
 .P
 .TP
 .B syscall.userfaultfd

@@ -2,12 +2,12 @@
 .\"     Title: function::ipmib_local_addr
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: November 2024
+.\"      Date: April 2025
 .\"    Manual: SNMP Information Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "FUNCTION::IPMIB_LOCA" "3stap" "November 2024" "SystemTap Tapset Reference" "SNMP Information Tapset"
+.TH "FUNCTION::IPMIB_LOCA" "3stap" "April 2025" "SystemTap Tapset Reference" "SNMP Information Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------

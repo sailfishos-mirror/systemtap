@@ -2,12 +2,12 @@
 .\"     Title: probe::nfs.proc.rename
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: November 2024
+.\"      Date: April 2025
 .\"    Manual: Network File Storage Tapsets
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "PROBE::NFS\&.PROC\&." "3stap" "November 2024" "SystemTap Tapset Reference" "Network File Storage Tapsets"
+.TH "PROBE::NFS\&.PROC\&." "3stap" "April 2025" "SystemTap Tapset Reference" "Network File Storage Tapsets"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -36,9 +36,9 @@ nfs\&.proc\&.rename
 .fi
 .SH "VALUES"
 .PP
-\fInew_filelen\fR
+\fInew_fh\fR
 .RS 4
-length of new file name
+file handle of new parent dir
 .RE
 .PP
 \fIold_name\fR
@@ -46,29 +46,9 @@ length of new file name
 old file name
 .RE
 .PP
-\fIserver_ip\fR
-.RS 4
-IP address of server
-.RE
-.PP
-\fIold_fh\fR
-.RS 4
-file handle of old parent dir
-.RE
-.PP
 \fIprot\fR
 .RS 4
 transfer protocol
-.RE
-.PP
-\fIversion\fR
-.RS 4
-NFS version (the function is used for all NFS version)
-.RE
-.PP
-\fInew_fh\fR
-.RS 4
-file handle of new parent dir
 .RE
 .PP
 \fInew_name\fR
@@ -76,9 +56,29 @@ file handle of new parent dir
 new file name
 .RE
 .PP
+\fIold_fh\fR
+.RS 4
+file handle of old parent dir
+.RE
+.PP
+\fIversion\fR
+.RS 4
+NFS version (the function is used for all NFS version)
+.RE
+.PP
 \fIold_filelen\fR
 .RS 4
 length of old file name
+.RE
+.PP
+\fIserver_ip\fR
+.RS 4
+IP address of server
+.RE
+.PP
+\fInew_filelen\fR
+.RS 4
+length of new file name
 .RE
 .SH SEE ALSO\n 
 .IR tapset::nfs_proc (3stap)
