@@ -11,6 +11,11 @@
 #ifndef _STP_HW_BREAKPOINT_H_INCLUDED_
 #define _STP_HW_BREAKPOINT_H_INCLUDED_
 
+#ifndef IS_ERR_PCPU
+/* Need to define our own IS_ERR_PCPU for Linux 6.11 and older */
+#define IS_ERR_PCPU(ptr) (IS_ERR((const void *)(__force const unsigned long)(ptr)))
+#endif
+
 struct stap_hwbkpt_probe {
 	bool kernel_p;
 
