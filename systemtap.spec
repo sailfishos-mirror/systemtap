@@ -389,6 +389,10 @@ boot-time probing if supported.
 Summary: Static probe support header files
 License: GPL-2.0-or-later AND CC0-1.0
 URL: https://sourceware.org/systemtap/
+%if 0%{?rhel} && 0%{?rhel} <= 10
+# for RHEL buildability compatibility, pull in sdt-dtrace at all times
+Requires: systemtap-sdt-dtrace = %{version}-%{release}
+%endif
 
 %description sdt-devel
 This package includes the <sys/sdt.h> header file used for static
