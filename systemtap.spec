@@ -863,7 +863,7 @@ make check RUNTESTFLAGS=environment_sanity.exp
 
 %pre runtime
 %if %{with_sysusers}
-%if 0%{?fedora} && 0%{?fedora} < 42
+%if (0%{?fedora} && 0%{?fedora} < 42) || (0%{?rhel} && 0%{?rhel} < 11)
 echo '%_systemtap_runtime_preinstall' | systemd-sysusers --replace=%{_sysusersdir}/systemtap-runtime.conf -
 exit 0
 %endif
@@ -879,7 +879,7 @@ exit 0
 
 %pre server
 %if %{with_sysusers}
-%if 0%{?fedora} && 0%{?fedora} < 42
+%if (0%{?fedora} && 0%{?fedora} < 42) || (0%{?rhel} && 0%{?rhel} < 11)
 echo '%_systemtap_server_preinstall' | systemd-sysusers --replace=%{_sysusersdir}/systemtap-server.conf -
 exit 0
 %endif
@@ -893,7 +893,7 @@ exit 0
 
 %pre testsuite
 %if %{with_sysusers}
-%if 0%{?fedora} && 0%{?fedora} < 42
+%if (0%{?fedora} && 0%{?fedora} < 42) || (0%{?rhel} && 0%{?rhel} < 11)
 echo '%_systemtap_testsuite_preinstall' | systemd-sysusers --replace=%{_sysusersdir}/systemtap-testsuite.conf -
 exit 0
 %endif
