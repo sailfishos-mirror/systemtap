@@ -4427,8 +4427,9 @@ dwflpp::literal_stmt_for_pointer (location_context &ctx,
                                   Dwarf_Die *die_mem)
 {
   if (sess.verbose>2)
-      clog << _F("literal_stmt_for_pointer: finding value for %s (%s)\n",
-                  dwarf_type_name(start_typedie).c_str(), (dwarf_diename(cu) ?: "<unknown>"));
+    clog << _("literal_stmt_for_pointer: finding value for ") << *e->tok
+         << _F(" type %s (%s)\n",
+               dwarf_type_name(start_typedie).c_str(), (dwarf_diename(cu) ?: "<unknown>"));
 
   assert(ctx.pointer != NULL);
   location *tail = ctx.translate_argument (ctx.pointer);

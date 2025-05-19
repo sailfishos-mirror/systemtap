@@ -1894,7 +1894,7 @@ semantic_pass_symbols (systemtap_session& s)
       assert_no_interrupts();
       stapfile* dome = s.files[i];
 
-      // Pass 1: add globals and functions to systemtap-session primart list,
+      // Pass 1: add globals and functions to systemtap-session primary list,
       //         so the find_* functions find them
       //
       // NB: tapset global/function definitions may duplicate or conflict
@@ -2796,6 +2796,8 @@ symresolution_info::visit_symbol (symbol* e)
   vardecl* d = find_var (e->name, 0, e->tok);
   if (d)
     {
+      if (session.verbose > 4)
+        clog << "resolved variable " << *e->tok << " to " << *d->tok << endl;
       e->referent = d;
       e->name = d->name;
     }
@@ -2814,6 +2816,8 @@ symresolution_info::visit_symbol (symbol* e)
         // must be probe-condition expression
         throw SEMANTIC_ERROR (_("probe condition must not reference undeclared global"), e->tok);
       e->referent = v;
+      if (session.verbose > 4)
+        clog << "resolved variable " << *e->tok << " to new local" << endl;
     }
 }
 
@@ -5112,6 +5116,7 @@ const_folder::visit_defined_op (defined_op* e)
       // Don't be greedy... we'll only collapse one at a time so type
       // resolution can have another go at it.
       relaxed_p = false;
+      session.print_warning (_F("Collapsing unresolved @define to %ld", value), e->tok);
       literal_number* n = new literal_number (value);
       n->tok = e->tok;
       n->visit (this);

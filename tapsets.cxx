@@ -3118,9 +3118,22 @@ var_expanding_visitor::visit_defined_op (defined_op* e)
 
     target_symbol* tsym = dynamic_cast<target_symbol*> (e->operand);
     if (tsym && tsym->saved_conversion_error) // failing
-      resolved = false;
+      {
+        if (sess.verbose>3)
+          {
+            for (const semantic_error *c = tsym->saved_conversion_error;
+                 c != 0;
+                 c = c->get_chain()) {
+              clog << _("variable location problem [man error::dwarf]: ") << c->what() << endl;
+            }
+          }
+        resolved = false;
+      }
     else if (e->operand == old_operand) // unresolved but not marked failing
       {
+        if (sess.verbose>3)
+          clog << _("@defined unresolved due to un-rewritten operand ") << *e << endl;
+        
         // There are some visitors that won't touch certain target_symbols,
         // e.g. dwarf_var_expanding_visitor won't resolve @cast.  We should
         // leave it for now so some other visitor can have a chance.
@@ -3132,6 +3145,8 @@ var_expanding_visitor::visit_defined_op (defined_op* e)
       resolved = true;
   } catch (const semantic_error& e) {
     // some uncooperative value like @perf("NO_SUCH_VALUE")
+    if (sess.verbose > 3)
+      clog << sess.build_error_msg (e);
     resolved = false;
   }
   defined_ops.pop ();
