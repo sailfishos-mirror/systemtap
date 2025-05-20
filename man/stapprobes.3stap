@@ -700,6 +700,11 @@ for use in conditionals such as
 .SAMPLE
 @defined($foo\->bar) ? $foo\->bar : 0
 .ESAMPLE
+Use full $context variables or @cast() expressions in @define parameters
+for unambiguous processing.  The TYPECAST script-level variable
+facility is incompletely supported.  Simplify the parameters by reducing
+nesting or indirection, if encountering "Collapsing unresolved @define to ..."
+warnings.
 .TP
 @probewrite($VAR)
 see the PROBES section of \fIstap\fR(1).
