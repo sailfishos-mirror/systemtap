@@ -2602,7 +2602,7 @@ semantic_pass (systemtap_session& s)
       if (rc == 0) rc = semantic_pass_symbols (s);
       if (rc == 0) monitor_mode_write (s);
       if (rc == 0) rc = semantic_pass_conditions (s);
-      if (rc == 0) rc = semantic_pass_optimize1 (s);
+      if (rc == 0) rc = semantic_pass_optimize1 (s); // includes const_fold and last ditch @defined() processing
       if (rc == 0) rc = semantic_pass_types (s);
       if (rc == 0) rc = gen_dfa_table(s);
       if (rc == 0) add_global_var_display (s);
@@ -6045,7 +6045,7 @@ struct initial_typeresolution_info : public typeresolution_info
 static int initial_typeres_pass(systemtap_session& s)
 {
   // minimal type resolution based off of semantic_pass_types(), without
-  // checking for complete type resolutions or autocast expanding
+  // checking for complete type resolutions, PR32964 but including autocast expanding
   initial_typeresolution_info ti(s);
 
   ti.assert_resolvability = false;
@@ -6067,6 +6067,30 @@ static int initial_typeres_pass(systemtap_session& s)
           ti.current_function = fd;
           ti.t = pe_unknown;
           fd->body->visit (& ti);
+
+          // Check and run the autocast expanding visitor.
+          if (ti.num_available_autocasts > 0)
+            {
+              autocast_expanding_visitor aev (s, ti);
+              aev.replace (fd->body);
+              
+              // PR18079, rerun the const-folder / dead-block-remover
+              // if autocast evaluation enabled a @defined()
+              if (! aev.relaxed())
+                {
+                  bool relaxed_p = true;
+                  const_folder cf (s, relaxed_p);
+                  cf.replace (fd->body);
+                  if (! s.unoptimized)
+                    {
+                      dead_control_remover dc (s, relaxed_p);
+                      fd->body->visit (&dc);
+                    }
+                  (void) relaxed_p; // we judge success later by num_still_unresolved, not this flag
+                }
+              
+              ti.num_available_autocasts = 0;
+            }
         }
 
       for (unsigned j=0; j<s.probes.size(); j++)
@@ -6079,6 +6103,24 @@ static int initial_typeres_pass(systemtap_session& s)
           ti.t = pe_unknown;
           pn->body->visit (& ti);
 
+          // Check and run the autocast expanding visitor.
+          if (ti.num_available_autocasts > 0)
+            {
+              autocast_expanding_visitor aev (s, ti);
+              var_expand_const_fold_loop (s, pn->body, aev);
+              // PR18079, rerun the const-folder / dead-block-remover
+              // if autocast evaluation enabled a @defined()
+              if (! s.unoptimized)
+                {
+                  bool relaxed_p;
+                  dead_control_remover dc (s, relaxed_p);
+                  pn->body->visit (&dc);
+                  (void) relaxed_p; // we judge success later by num_still_unresolved, not this flag
+                }
+              
+              ti.num_available_autocasts = 0;
+            }
+          
           probe_point* pp = pn->sole_location();
           if (pp->condition)
             {
@@ -6147,30 +6189,8 @@ semantic_pass_types (systemtap_session& s)
             //   ti.unresolved (fd->tok);
             for (unsigned i=0; i < fd->locals.size(); ++i)
               ti.check_local (fd->locals[i]);
-            
-            // Check and run the autocast expanding visitor.
-            if (ti.num_available_autocasts > 0)
-              {
-                autocast_expanding_visitor aev (s, ti);
-                aev.replace (fd->body);
 
-                // PR18079, rerun the const-folder / dead-block-remover
-                // if autocast evaluation enabled a @defined()
-                if (! aev.relaxed())
-                  {
-                    bool relaxed_p = true;
-                    const_folder cf (s, relaxed_p);
-                    cf.replace (fd->body);
-                    if (! s.unoptimized)
-                      {
-                        dead_control_remover dc (s, relaxed_p);
-                        fd->body->visit (&dc);
-                      }
-                    (void) relaxed_p; // we judge success later by num_still_unresolved, not this flag
-                  }
-
-                ti.num_available_autocasts = 0;
-              }
+            // PR32964: autocast resolution is now done early in initial_typeres_pass
           }
         catch (const semantic_error& e)
           {
@@ -6191,24 +6211,8 @@ semantic_pass_types (systemtap_session& s)
             pn->body->visit (& ti);
             for (unsigned i=0; i < pn->locals.size(); ++i)
               ti.check_local (pn->locals[i]);
-            
-            // Check and run the autocast expanding visitor.
-            if (ti.num_available_autocasts > 0)
-              {
-                autocast_expanding_visitor aev (s, ti);
-                var_expand_const_fold_loop (s, pn->body, aev);
-                // PR18079, rerun the const-folder / dead-block-remover
-                // if autocast evaluation enabled a @defined()
-                if (! s.unoptimized)
-                  {
-                    bool relaxed_p;
-                    dead_control_remover dc (s, relaxed_p);
-                    pn->body->visit (&dc);
-                    (void) relaxed_p; // we judge success later by num_still_unresolved, not this flag
-                  }
 
-                ti.num_available_autocasts = 0;
-              }
+            // PR32964: autocast resolution is now done early in initial_typeres_pass
             
             probe_point* pp = pn->sole_location();
             if (pp->condition)
