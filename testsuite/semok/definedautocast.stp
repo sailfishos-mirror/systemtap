@@ -1,0 +1,6 @@
+#! stap -Wp2
+
+probe kernel.function("do_exit") {
+	x = & @cast(0, "struct block_device")
+	println(@defined(x->__bd_flags->counter)) 
+}

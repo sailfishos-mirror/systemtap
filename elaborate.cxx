@@ -5163,7 +5163,7 @@ const_folder::visit_target_symbol (target_symbol* e)
     }
 }
 
-static int initial_typeres_pass(systemtap_session& s);
+static int initial_typeres_pass(systemtap_session& s, bool& relaxed_p);
 static int semantic_pass_const_fold (systemtap_session& s, bool& relaxed_p)
 {
   // attempt an initial type resolution pass to see if there are any type
@@ -5171,7 +5171,7 @@ static int semantic_pass_const_fold (systemtap_session& s, bool& relaxed_p)
   // with a const.
 
   // return if the initial type resolution pass reported errors (type mismatches)
-  int rc = initial_typeres_pass(s);
+  int rc = initial_typeres_pass(s, relaxed_p);
   if (rc)
     {
       relaxed_p = true;
@@ -5994,6 +5994,25 @@ struct autocast_expanding_visitor: public var_expanding_visitor
         }
     }
 
+  void visit_symbol (symbol* e) // propagate referent exp_type
+  {
+    // PR32964: mimic typeresolution_info::resolve_details, for case
+    // where the symbol (autocast_op operand) is within a @defined().
+
+    if (e->referent && e->referent->type_details && !e->type_details)
+      {
+        const exp_type_ptr &src = e->referent->type_details;
+        exp_type_ptr &dest = e->type_details;
+        dest = src;
+        ti.num_newly_resolved++;
+        relaxed_p = false;
+        if (sess.verbose > 4)
+          clog << "resolved early type details " << *dest << " to " << *e->tok << endl;
+      }
+    var_expanding_visitor::visit_symbol (e);    
+  }
+
+
   void visit_autocast_op (autocast_op* e)
     {
       const bool lvalue = is_active_lvalue (e);
@@ -6004,7 +6023,7 @@ struct autocast_expanding_visitor: public var_expanding_visitor
           if (fc)
             {
               ti.num_newly_resolved++;
-
+              relaxed_p = false;
               resolve_functioncall (fc);
 	      // NB: at this stage, the functioncall object has one
 	      // argument too few if we're in lvalue context.  It will
@@ -6042,7 +6061,7 @@ struct initial_typeresolution_info : public typeresolution_info
   void visit_cast_op (cast_op*) {}
 };
 
-static int initial_typeres_pass(systemtap_session& s)
+static int initial_typeres_pass(systemtap_session& s, bool& relaxed_p)
 {
   // minimal type resolution based off of semantic_pass_types(), without
   // checking for complete type resolutions, PR32964 but including autocast expanding
@@ -6069,7 +6088,7 @@ static int initial_typeres_pass(systemtap_session& s)
           fd->body->visit (& ti);
 
           // Check and run the autocast expanding visitor.
-          if (ti.num_available_autocasts > 0)
+          if (true || ti.num_available_autocasts > 0)
             {
               autocast_expanding_visitor aev (s, ti);
               aev.replace (fd->body);
@@ -6078,7 +6097,7 @@ static int initial_typeres_pass(systemtap_session& s)
               // if autocast evaluation enabled a @defined()
               if (! aev.relaxed())
                 {
-                  bool relaxed_p = true;
+                  // bool relaxed_p = true;
                   const_folder cf (s, relaxed_p);
                   cf.replace (fd->body);
                   if (! s.unoptimized)
@@ -6086,7 +6105,7 @@ static int initial_typeres_pass(systemtap_session& s)
                       dead_control_remover dc (s, relaxed_p);
                       fd->body->visit (&dc);
                     }
-                  (void) relaxed_p; // we judge success later by num_still_unresolved, not this flag
+                  // (void) relaxed_p; // we judge success later by num_still_unresolved, not this flag
                 }
               
               ti.num_available_autocasts = 0;
@@ -6104,7 +6123,7 @@ static int initial_typeres_pass(systemtap_session& s)
           pn->body->visit (& ti);
 
           // Check and run the autocast expanding visitor.
-          if (ti.num_available_autocasts > 0)
+          if (true || ti.num_available_autocasts > 0)
             {
               autocast_expanding_visitor aev (s, ti);
               var_expand_const_fold_loop (s, pn->body, aev);
@@ -6112,10 +6131,10 @@ static int initial_typeres_pass(systemtap_session& s)
               // if autocast evaluation enabled a @defined()
               if (! s.unoptimized)
                 {
-                  bool relaxed_p;
+                  // bool relaxed_p;
                   dead_control_remover dc (s, relaxed_p);
                   pn->body->visit (&dc);
-                  (void) relaxed_p; // we judge success later by num_still_unresolved, not this flag
+                  // (void) relaxed_p; // we judge success later by num_still_unresolved, not this flag
                 }
               
               ti.num_available_autocasts = 0;
