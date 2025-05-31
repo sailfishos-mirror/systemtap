@@ -1,3 +1,11 @@
+* What's new in version 5.4
+
+- Type checking and autocast processing have been made more thorough,
+  so elided variables are checked more and @defined() tests may be
+  more complicated.  Preexisting scripts that rely on elision for
+  bypassing type violations may now get caught.  No --compatible
+  option exists to suppress this new behaviour.
+
 * What's new in version 5.3, 2025-05-02
 
 - Updated to support drastic linux 6.13 kbuild changes, numerous

@@ -24,13 +24,16 @@ probe oneshot {
 }
 
 # error var and the try block are elided which means
-# it's not an issue to use e4 as a long here
-global e4 = 10
-probe oneshot {
-    try { }
-    catch (e4)
-    { }
-}
+# it's not an issue to use e4 as a long here ...
+# except after PR32964, type checking is done more
+# systematically on even elided variables, so this 
+# would be an error!
+# global e4 = 10
+# probe oneshot {
+#     try { }
+#     catch (e4)
+#     { }
+# }
 
 # e5 can be a global string
 global e5 = "foo"
