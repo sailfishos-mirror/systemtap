@@ -6683,21 +6683,21 @@ void resolve_2types (Referrer* referrer, Referent* referent,
       // propagate from upstream
       re_type = t;
       r->resolved (re_tok, re_type);
-      // catch re_type/te_type mismatch later
+      resolve_2types (referrer, referent, r, t, accept_unknown);
     }
   else if (re_type == pe_unknown && te_type != pe_unknown)
     {
       // propagate from referent
       re_type = te_type;
       r->resolved (re_tok, re_type);
-      // catch re_type/t mismatch later
+      resolve_2types (referrer, referent, r, t, accept_unknown);
     }
   else if (re_type != pe_unknown && te_type == pe_unknown)
     {
       // propagate to referent
       te_type = re_type;
       r->resolved (re_tok, re_type, referent);
-      // catch re_type/t mismatch later
+      resolve_2types (referrer, referent, r, t, accept_unknown);      
     }
   else if (! accept_unknown)
     r->unresolved (re_tok);
@@ -7636,14 +7636,14 @@ typeresolution_info::mismatch (const binary_expression* e)
 {
   num_still_unresolved ++;
 
-  if (assert_resolvability && mismatch_complexity <= 1)
+  if (mismatch_complexity <= 1)
     {
       stringstream msg;
       msg << _F("type mismatch: left and right sides don't agree (%s vs %s)",
                 lex_cast(e->left->type).c_str(), lex_cast(e->right->type).c_str());
       session.print_error (SEMANTIC_ERROR (msg.str(), e->tok));
     }
-  else if (!assert_resolvability)
+  else
     mismatch_complexity = max(1, mismatch_complexity);
 }
 
@@ -7656,7 +7656,7 @@ typeresolution_info::mismatch (const token* tok, exp_type t1, exp_type t2)
 {
   num_still_unresolved ++;
 
-  if (assert_resolvability && mismatch_complexity <= 2)
+  if (mismatch_complexity <= 2)
     {
       stringstream msg;
       msg << _F("type mismatch: expected %s", lex_cast(t1).c_str());
@@ -7664,7 +7664,7 @@ typeresolution_info::mismatch (const token* tok, exp_type t1, exp_type t2)
         msg << _F(" but found %s", lex_cast(t2).c_str());
       session.print_error (SEMANTIC_ERROR (msg.str(), tok));
     }
-  else if (!assert_resolvability)
+  else
     mismatch_complexity = max(2, mismatch_complexity);
 }
 
@@ -7679,7 +7679,7 @@ typeresolution_info::mismatch (const token *tok, exp_type type,
 {
   num_still_unresolved ++;
 
-  if (assert_resolvability && mismatch_complexity <= 3)
+  if (mismatch_complexity <= 3)
     {
       assert(decl != NULL);
 
@@ -7737,7 +7737,7 @@ typeresolution_info::mismatch (const token *tok, exp_type type,
       err.set_chain(chain);
       session.print_error (err);
     }
-  else if (!assert_resolvability)
+  else
     mismatch_complexity = max(3, mismatch_complexity);
 }
 
