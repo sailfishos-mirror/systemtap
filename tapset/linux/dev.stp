@@ -64,17 +64,19 @@ function disk_name:string(hd:long, partno:long)
 		return sprintf("%s%d", disk_name, partno)
 }
 
-%( kernel_v >= "6.10" %?
 %{
+#include <linux/blk_types.h>
 #include <linux/blkdev.h>
 %}
 
 function bdev_partno(bdev:long)
 %{ /* pure */ /* unprivileged */
+#ifdef BD_PARTNO
   STAP_RETURN(bdev_partno((const struct block_device *) STAP_ARG_bdev));
+#else
+  STAP_RETURN(0);
+#endif
 %}
-%:
-%)
 
 function bdevname:string(bdev:long)
 {
@@ -84,15 +86,13 @@ function bdevname:string(bdev:long)
 
 	hd = bdev->bd_disk
 
-%( kernel_v >= "6.10" %?
-	partno = bdev_partno(bdev)
-%:
-	if (@defined(@cast(bdev, "block_device", "kernel")->bd_partno))
+	if (@defined(&bdev->__bd_flags))
+		partno = bdev_partno(bdev)
+	else if (@defined(bdev->bd_partno))
 		partno = bdev->bd_partno
 	else if (bdev->bd_part)
 		partno = bdev->bd_part->partno
 	else
 		partno = MINOR(bdev->bd_dev) - hd->first_minor;
-%)
 	return disk_name(hd, partno)
 }
