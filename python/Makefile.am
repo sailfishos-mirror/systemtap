@@ -2,10 +2,10 @@
 
 AUTOMAKE_OPTIONS = subdir-objects
 
-# Note that we have to use 'abs_builddir' here since we change
+# Note that we have to use absolute directores here since we change
 # directories back to the source directory when building the python
 # extension.
-AM_CPPFLAGS = -I$(srcdir)/../includes
+AM_CPPFLAGS = -I$(abs_srcdir)/../includes
 AM_CPPFLAGS += -I$(abs_builddir)/../includes/sys
 
 # Any script in the following variable will get byte-compiled at
