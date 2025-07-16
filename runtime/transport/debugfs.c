@@ -186,8 +186,12 @@ static struct dentry *_stp_debugfs_get_root_dir(void)
 				s_instances);
 #endif
 		_stp_lock_inode(sb->s_root->d_inode);
+#ifdef STAPCONF_LOOKUP_NOPERM
+		__stp_debugfs_root_dir = lookup_noperm(&QSTR(name), sb->s_root);
+#else
 		__stp_debugfs_root_dir = lookup_one_len(name, sb->s_root,
                                                        strlen(name));
+#endif
 		_stp_unlock_inode(sb->s_root->d_inode);
 		if (!IS_ERR(__stp_debugfs_root_dir))
 			dput(__stp_debugfs_root_dir);

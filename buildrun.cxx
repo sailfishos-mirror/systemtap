@@ -466,6 +466,7 @@ compile_pass (systemtap_session& s)
   output_autoconf(s, o, cs, "autoconf-time32.c", "STAPCONF_TIME32_H", NULL);
   output_autoconf(s, o, cs, "autoconf-time32-old.c", "STAPCONF_TIME32_OLD_H", NULL);
   output_autoconf(s, o, cs, "autoconf-compat-utimbuf.c", "STAPCONF_COMPAT_UTIMBUF", NULL);
+  output_exportconf(s, o2, "lookup_noperm", "STAPCONF_LOOKUP_NOPERM");
   
   // used by tapset/timestamp_monotonic.stp
   output_autoconf(s, o, cs, "autoconf-cpu-clock.c", "STAPCONF_CPU_CLOCK", NULL);
