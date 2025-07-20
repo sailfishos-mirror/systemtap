@@ -6219,11 +6219,10 @@ dwarf_derived_probe::emit_probe_local_init(systemtap_session& s, translator_outp
 	   pcii++)
         {
 	  // Find the associated perf.counter probe
-	  unsigned i = 0;
 
 	  for (auto it=s.perf_counters.begin() ;
 	       it != s.perf_counters.end();
-	       it++, i++)
+	       it++)
 	    {
 	      if ((*it).first == (*pcii))
 	        {
