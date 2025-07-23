@@ -342,7 +342,7 @@ __noendbr void ibt_restore(u64 save)
 #include "../regs.c"
 #include "regs-ia64.c"
 
-#if (defined(STAPCONF_UTRACE_VIA_TRACEPOINTS))
+#if (defined(STAPCONF_UTRACE_VIA_TRACEPOINTS) || defined(STAPCONF_UTRACE_VIA_TRACEPOINTS2))
 #define HAVE_TASK_FINDER
 #include "task_finder.c"
 #else

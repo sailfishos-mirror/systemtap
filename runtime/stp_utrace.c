@@ -13,7 +13,7 @@
 #ifndef _STP_UTRACE_C
 #define _STP_UTRACE_C
 
-#if (!defined(STAPCONF_UTRACE_VIA_TRACEPOINTS))
+#if (!defined(STAPCONF_UTRACE_VIA_TRACEPOINTS) && !defined(STAPCONF_UTRACE_VIA_TRACEPOINTS2))
 #error "STAPCONF_UTRACE_VIA_TRACEPOINTS must be defined."
 #endif
 
@@ -258,8 +258,14 @@ static const struct utrace_engine_ops utrace_detached_ops; /* forward decl */
 static void utrace_report_clone(void *cb_data __attribute__ ((unused)),
 				struct task_struct *task,
 				struct task_struct *child);
+#ifdef STAPCONF_UTRACE_VIA_TRACEPOINTS2
+static void utrace_report_death(void *cb_data __attribute__ ((unused)),
+				struct task_struct *task,
+				bool group_dead __attribute__ ((unused)));
+#else
 static void utrace_report_death(void *cb_data __attribute__ ((unused)),
 				struct task_struct *task);
+#endif
 static void utrace_report_syscall_entry(void *cb_data __attribute__ ((unused)),
 					struct pt_regs *regs, long id);
 static void utrace_report_syscall_exit(void *cb_data __attribute__ ((unused)),
@@ -2767,8 +2773,14 @@ static void utrace_finish_vfork(struct task_struct *task)
  * For this reason, utrace_release_task checks for the event bits that get
  * us here, and delays its cleanup for us to do.
  */
+#ifdef STAPCONF_UTRACE_VIA_TRACEPOINTS2
+static void utrace_report_death(void *cb_data __attribute__ ((unused)),
+				struct task_struct *task,
+				bool group_dead __attribute__ ((unused)))
+#else
 static void utrace_report_death(void *cb_data __attribute__ ((unused)),
 				struct task_struct *task)
+#endif
 {
 	struct utrace_bucket *bucket;
 	struct utrace *utrace;
