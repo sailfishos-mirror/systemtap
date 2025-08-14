@@ -739,13 +739,12 @@ dwflpp::getscopes_die(Dwarf_Die* die)
   vector<Dwarf_Die> scopes;
   Dwarf_Die *scope = die;
   auto it = parents->end();
-  do
+  while (scope != NULL)
     {
       scopes.push_back(*scope);
       it = parents->find(scope->addr);
-      scope = &it->second;
+      scope = (it != parents->end()) ? &it->second : NULL;
     }
-  while (it != parents->end());
 
 #ifdef DEBUG_DWFLPP_GETSCOPES
   Dwarf_Die *dscopes = NULL;
