@@ -62,6 +62,9 @@ static size_t __stp_relay_switch_subbuf(struct rchan_buf *buf, size_t length)
 {
 	char *old, *new;
 	size_t old_subbuf, new_subbuf;
+#if !defined(STAPCONF_PR33324_PREV_PADDING)
+	size_t prev_padding;
+#endif
 
 	if (unlikely(buf == NULL))
 		return 0;
@@ -70,9 +73,15 @@ static size_t __stp_relay_switch_subbuf(struct rchan_buf *buf, size_t length)
 		length = buf->chan->subbuf_size;
 
 	if (buf->offset != buf->chan->subbuf_size + 1) {
+#if defined(STAPCONF_PR33324_PREV_PADDING)
 		buf->prev_padding = buf->chan->subbuf_size - buf->offset;
 		old_subbuf = buf->subbufs_produced % buf->chan->n_subbufs;
 		buf->padding[old_subbuf] = buf->prev_padding;
+#else
+		prev_padding = buf->chan->subbuf_size - buf->offset;
+                old_subbuf = buf->subbufs_produced % buf->chan->n_subbufs;
+                buf->padding[old_subbuf] = prev_padding;
+#endif
 		buf->subbufs_produced++;
 		buf->dentry->d_inode->i_size += buf->chan->subbuf_size -
 			buf->padding[old_subbuf];
@@ -83,7 +92,11 @@ static size_t __stp_relay_switch_subbuf(struct rchan_buf *buf, size_t length)
 	new_subbuf = buf->subbufs_produced % buf->chan->n_subbufs;
 	new = (char*)buf->start + new_subbuf * buf->chan->subbuf_size;
 	buf->offset = 0;
+#if defined(STAPCONF_PR33324_PREV_PADDING)
 	if (!buf->chan->cb->subbuf_start(buf, new, old, buf->prev_padding)) {
+#else
+	if (!buf->chan->cb->subbuf_start(buf, new, old)) {
+#endif
 		buf->offset = buf->chan->subbuf_size + 1;
 		return 0;
 	}
@@ -219,9 +232,14 @@ static void _stp_transport_data_fs_overwrite(int overwrite)
  * Keep track of how many times we encountered a full subbuffer, to aid
  * the user space app in telling how many lost events there were.
  */
+#if defined(STAPCONF_PR33324_PREV_PADDING)
 static int __stp_relay_subbuf_start_callback(struct rchan_buf *buf,
                                              void *subbuf, void *prev_subbuf,
                                              size_t prev_padding)
+#else
+static int __stp_relay_subbuf_start_callback(struct rchan_buf *buf,
+                                             void *subbuf, void *prev_subbuf)
+#endif
 {
         if (_stp_relay_data.overwrite_flag || !relay_buf_full(buf))
                 return 1;
