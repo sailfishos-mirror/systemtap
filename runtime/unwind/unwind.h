@@ -525,6 +525,7 @@ struct unwind_context { };
 #define MAXBACKTRACE 20
 #endif
 
+#ifndef _LINUX_UNWIND_USER_DEFERRED_TYPES_H
 struct unwind_cache {
 	enum uwcache_state {
 		uwcache_uninitialized,
@@ -534,5 +535,6 @@ struct unwind_cache {
 	unsigned depth; /* pc[0..(depth-1)] contains valid entries */
 	unsigned long pc[MAXBACKTRACE];
 };
+#endif
 
 #endif /*_STP_UNWIND_H_*/
