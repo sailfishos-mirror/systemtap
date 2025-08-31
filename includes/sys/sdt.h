@@ -299,7 +299,7 @@ __extension__ extern unsigned long long __sdt_unsp;
 
 #define _SDT_ASM_BASE							      \
   _SDT_ASM_1(.ifndef _.stapsdt.base)					      \
-  _SDT_ASM_5(		.pushsection .stapsdt.base,"aG","progbits",	      \
+  _SDT_ASM_5(		.pushsection .stapsdt.base,"aGR","progbits",	      \
 							.stapsdt.base,comdat) \
   _SDT_ASM_1(		.weak _.stapsdt.base)				      \
   _SDT_ASM_1(		.hidden _.stapsdt.base)				      \
