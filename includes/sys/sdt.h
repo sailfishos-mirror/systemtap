@@ -297,10 +297,16 @@ __extension__ extern unsigned long long __sdt_unsp;
   _SDT_ASM_1(994:	.balign 4)					      \
   _SDT_ASM_1(		.popsection)
 
-#define _SDT_ASM_BASE							      \
+#if _SDT_ASM_SECTION_RETAIN_SUPPORT
+# define _SDT_ASM_RETAIN "aGR"
+#else
+# define _SDT_ASM_RETAIN "aG"
+#endif
+
+
+#define _SDT_ASM_BASE                                                   \
   _SDT_ASM_1(.ifndef _.stapsdt.base)					      \
-  _SDT_ASM_5(		.pushsection .stapsdt.base,"aGR","progbits",	      \
-							.stapsdt.base,comdat) \
+  _SDT_ASM_5(		.pushsection .stapsdt.base,_SDT_ASM_RETAIN,"progbits",.stapsdt.base,comdat) \
   _SDT_ASM_1(		.weak _.stapsdt.base)				      \
   _SDT_ASM_1(		.hidden _.stapsdt.base)				      \
   _SDT_ASM_1(	_.stapsdt.base: .space 1)				      \

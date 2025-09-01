@@ -1,6 +1,7 @@
 /* @configure_input@
 
-   This file just defines _SDT_ASM_SECTION_AUTOGROUP_SUPPORT to 0 or 1 to
-   indicate whether the assembler supports "?" in .pushsection directives.  */
+   This file just defines some autoconf-detected assembler capability flags.
+*/
 
 #define _SDT_ASM_SECTION_AUTOGROUP_SUPPORT @support_section_question@
+#define _SDT_ASM_SECTION_RETAIN_SUPPORT @support_section_retain@

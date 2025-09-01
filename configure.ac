@@ -873,6 +873,20 @@ if test $stap_cv_sectionq = yes; then
   support_section_question=1
 fi
 
+AC_CACHE_CHECK([for assembler .section "R" flags support], stap_cv_sectionr, [
+old_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS -Wa,--fatal-warnings"
+AC_COMPILE_IFELSE([AC_LANG_SOURCE([asm(".section .text,\"aGR\",\"progbits\",foogroup,comdat\n"
+		       ".byte 2\n");])],
+		  stap_cv_sectionr=yes, stap_cv_sectionr=no)
+CFLAGS="$old_CFLAGS"])
+AC_SUBST(support_section_retain)
+support_section_retain=0
+if test $stap_cv_sectionr = yes; then
+  support_section_retain=1
+fi
+
+
 
 AC_ARG_WITH([bpf],
   AS_HELP_STRING([--without-bpf],[Do not try to build BPF components]))

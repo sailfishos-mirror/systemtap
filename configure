@@ -675,6 +675,7 @@ selinux_LIBS
 selinux_CFLAGS
 HAVE_BPF_DECLS_FALSE
 HAVE_BPF_DECLS_TRUE
+support_section_retain
 support_section_question
 HAVE_LANGUAGE_SERVER_SUPPORT_FALSE
 HAVE_LANGUAGE_SERVER_SUPPORT_TRUE
@@ -14457,6 +14458,40 @@ support_section_question=0
 if test $stap_cv_sectionq = yes; then
   support_section_question=1
 fi
+
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for assembler .section \"R\" flags support" >&5
+printf %s "checking for assembler .section \"R\" flags support... " >&6; }
+if test ${stap_cv_sectionr+y}
+then :
+  printf %s "(cached) " >&6
+else case e in #(
+  e)
+old_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS -Wa,--fatal-warnings"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+asm(".section .text,\"aGR\",\"progbits\",foogroup,comdat\n"
+		       ".byte 2\n");
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"
+then :
+  stap_cv_sectionr=yes
+else case e in #(
+  e) stap_cv_sectionr=no ;;
+esac
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+CFLAGS="$old_CFLAGS" ;;
+esac
+fi
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $stap_cv_sectionr" >&5
+printf "%s\n" "$stap_cv_sectionr" >&6; }
+
+support_section_retain=0
+if test $stap_cv_sectionr = yes; then
+  support_section_retain=1
+fi
+
 
 
 
