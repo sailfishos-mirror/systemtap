@@ -33,6 +33,20 @@
 #include <cstring>
 #include <cerrno>
 
+#include <thread>
+#include <mutex>
+#ifdef HAVE_BOOST_ASIO_THREAD_POOL_HPP
+#include <boost/asio/thread_pool.hpp>
+#else
+#error "need boost thread_pool.hpp"
+#endif
+
+#ifdef HAVE_BOOST_ASIO_POST_HPP
+#include <boost/asio/post.hpp>
+#else
+#error "need boost post.hpp"
+#endif
+
 extern "C" {
 #include <dwarf.h>
 #include <elfutils/libdwfl.h>
@@ -6732,6 +6746,35 @@ struct unwindsym_dump_context
   size_t debug_line_str_len;
 
   set<string> undone_unwindsym_modules;
+
+  unwindsym_dump_context (systemtap_session& s,
+			  ofstream& o)
+    : session (s),
+      output (o),
+      stp_module_index (0),
+      build_id_len (0),
+      build_id_bits (NULL),
+      build_id_vaddr (0),
+      stp_kretprobe_trampoline_addr (~0UL),
+      stext_offset (0),
+      seclist (),
+      addrmap (),
+      debug_frame (NULL),
+      debug_len (0),
+      debug_frame_hdr (NULL),
+      debug_frame_off (0),
+      eh_frame (0),
+      eh_frame_hdr (NULL),
+      eh_len (0),
+      eh_frame_hdr_len (0),
+      eh_addr (0),
+      eh_frame_hdr_addr (0),
+      debug_line (NULL),
+      debug_line_len (0),
+      debug_line_str (NULL),
+      debug_line_str_len (0),
+      undone_unwindsym_modules (s.unwindsym_modules)
+  {}
 };
 
 static bool need_byte_swap_for_target (const unsigned char e_ident[])
@@ -8175,6 +8218,18 @@ prepare_symbol_data (systemtap_session& s)
   // NB: do this before the ctx.unwindsym_modules copy is taken
 }
 
+
+static int
+collect_dwflmod_offsets (Dwfl_Module *m __attribute__ ((unused)),
+			 void **userdata __attribute__ ((unused)),
+			 const char *name __attribute__ ((unused)),
+			 Dwarf_Addr base __attribute__ ((unused)),
+			 void *arg __attribute__ ((unused)))
+{
+  return DWARF_CB_ABORT;
+}
+
+
 void
 emit_symbol_data (systemtap_session& s)
 {
@@ -8193,35 +8248,11 @@ emit_symbol_data (systemtap_session& s)
         "#include \"stap_common.h\"\n";
     }
 
-  vector<pair<string,unsigned> > seclist;
-  map<unsigned, addrmap_t> addrmap;
-  unwindsym_dump_context ctx = { s, kallsyms_out,
-				 0, /* module index */
-				 0, NULL, 0, /* build_id len, bits, vaddr */
-				 ~0UL, /* stp_kretprobe_trampoline_addr */
-				 0, /* stext_offset */
-				 seclist, addrmap,
-				 NULL, /* debug_frame */
-				 0, /* debug_len */
-				 NULL, /* debug_frame_hdr */
-				 0, /* debug_frame_hdr_len */
-				 0, /* debug_frame_off */
-				 NULL, /* eh_frame */
-				 NULL, /* eh_frame_hdr */
-				 0, /* eh_len */
-				 0, /* eh_frame_hdr_len */
-				 0, /* eh_addr */
-				 0, /* eh_frame_hdr_addr */
-				 NULL, /* debug_line */
-				 0, /* debug_line_len */
-				 NULL, /* debug_line_str */
-				 0, /* debug_line_str_len */
-				 s.unwindsym_modules };
-
   // Micro optimization, mainly to speed up tiny regression tests
   // using just begin probe.
   if (s.unwindsym_modules.size () == 0)
     {
+      unwindsym_dump_context ctx (s, kallsyms_out);
       emit_symbol_data_done(&ctx, s);
       return;
     }
@@ -8239,23 +8270,38 @@ emit_symbol_data (systemtap_session& s)
 				     offline searches. */
         offline_search_modules.insert (foo);
     }
+
   Dwfl *dwfl = setup_dwfl_kernel (offline_search_modules, &count, s);
+  vector<Dwfl *> dwfls;
+  dwfls.push_back (dwfl);
+
   /* NB: It's not an error to find a few fewer modules than requested.
      There might be third-party modules loaded (e.g. uprobes). */
   /* DWFL_ASSERT("all kernel modules found",
      count >= offline_search_modules.size()); */
 
   ptrdiff_t off = 0;
+  deque<unwindsym_dump_context> ctxs;
+
+  /* TODO: Make TP conditional on elfutils thread safety support.  */
+  boost::asio::thread_pool TP (thread::hardware_concurrency());
   do
     {
       assert_no_interrupts();
-      if (ctx.undone_unwindsym_modules.empty()) break;
-      off = dwfl_getmodules (dwfl, &dump_unwindsyms, (void *) &ctx, off);
+      // if (it->undone_unwindsym_modules.empty()) break;
+
+      ctxs.emplace_back (s, kallsyms_out);
+      unwindsym_dump_context *ctx = &ctxs.back ();
+
+      boost::asio::post (TP, [ctx, dwfl, off] {
+        dwfl_getmodules (dwfl, &dump_unwindsyms, (void *) ctx, off);
+      });
+
+      off = dwfl_getmodules (dwfl, &collect_dwflmod_offsets, NULL, off);
     }
   while (off > 0);
-  DWFL_ASSERT("dwfl_getmodules", off == 0);
-  dwfl_end(dwfl);
 
+  DWFL_ASSERT("dwfl_getmodules", off == 0);
   // ---- step 2: process any user modules (files) listed
   for (std::set<std::string>::iterator it = s.unwindsym_modules.begin();
        it != s.unwindsym_modules.end();
@@ -8264,21 +8310,38 @@ emit_symbol_data (systemtap_session& s)
       string modname = *it;
       assert (modname.length() != 0);
       if (! is_user_module (modname)) continue;
-      Dwfl *dwfl = setup_dwfl_user (modname);
+      dwfl = setup_dwfl_user (modname);
+
       if (dwfl != NULL) // tolerate missing data; will warn below
         {
-          ptrdiff_t off = 0;
+	  dwfls.push_back (dwfl);
+          off = 0;
+
           do
             {
               assert_no_interrupts();
-              if (ctx.undone_unwindsym_modules.empty()) break;
-              off = dwfl_getmodules (dwfl, &dump_unwindsyms, (void *) &ctx, off);
+              //if (ctx.undone_unwindsym_modules.empty()) break;
+
+	      ctxs.emplace_back (s, kallsyms_out);
+	      unwindsym_dump_context *ctx = &ctxs.back ();
+
+	      boost::asio::post (TP, [dwfl, ctx, off] {
+                dwfl_getmodules (dwfl, &dump_unwindsyms, (void *) &ctx, off);
+	      });
+
+	      off = dwfl_getmodules (dwfl, &collect_dwflmod_offsets, NULL, off);
             }
           while (off > 0);
           DWFL_ASSERT("dwfl_getmodules", off == 0);
         }
-      dwfl_end(dwfl);
     }
+
+  TP.join ();
+  for (auto it = dwfls.begin (); it != dwfls.end (); ++it)
+    dwfl_end (*it);
+
+  // unwindsyms_dump_context ctx = merge_ctxs (ctxs);
+  unwindsym_dump_context ctx (s, kallsyms_out);
 
   // Use /proc/kallsyms if debuginfo not found.
   if (ctx.undone_unwindsym_modules.find("kernel") != ctx.undone_unwindsym_modules.end())
