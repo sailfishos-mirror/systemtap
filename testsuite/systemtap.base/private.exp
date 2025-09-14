@@ -1,5 +1,7 @@
 # Test the private keyword feature
 
+if {! [installtest_p]} then { return }
+
 set test "private"
 
 # Setup
