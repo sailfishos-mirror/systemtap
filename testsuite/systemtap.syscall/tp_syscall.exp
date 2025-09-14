@@ -60,11 +60,11 @@ proc test_procedure {} {
     catch {eval exec $cmd} output
     send_log "${output}\n"
     if {[file exists ${test_module}]} {
-	pass "${script} compilation"
+	pass "[file tail ${script}] compilation"
     } else {
 	# If compiling the test module failed, there isn't much point
 	# in trying to run any of the real tests.
-	fail "${script} compilation"
+	fail "[file tail ${script}] compilation"
 	return
     }
 
