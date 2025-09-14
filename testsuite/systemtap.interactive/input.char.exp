@@ -9,15 +9,15 @@ catch {
     send -raw "abcde"
     
     expect  {
-        "a\r\nb\r\nc\r\nzze\r\n" { pass "ok" }
-        timeout { fail "(timeout)" }
+        "a\r\nb\r\nc\r\nzze\r\n" { pass "sub1" }
+        timeout { fail "sub1" }
     }
     
     send -h -raw "12345\n"
     
     expect {
-        "1\r\n2\r\n3\r\n4\r\n5\r\n\r\n" { pass "ok" }
-        timeout { fail "(timeout)" }
+        "1\r\n2\r\n3\r\n4\r\n5\r\n\r\n" { pass "sub2" }
+        timeout { fail "sub2" }
     }
 }
 

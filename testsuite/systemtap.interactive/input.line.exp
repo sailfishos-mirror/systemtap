@@ -9,22 +9,22 @@ catch {
     send -raw "abcde\n"
     
     expect {
-        "abcde\r\n"  { pass "ok" }
-        timeout { fail "(timeout)" }
+        "abcde\r\n"  { pass "sub1" }
+        timeout { fail "sub1" }
     }
     
     send -h -raw "123456789"
     
     expect {
-        -re .+ { fail "unexpected output"}
-        timeout { pass "ok" }
+        -re .+ { fail "sub2"}
+        timeout { pass "sub2" }
     }
     
     send -raw "\n"
     
     expect {
-        "123456789\r\n" { pass "ok" }
-        timeout { fail "(timeout)" }
+        "123456789\r\n" { pass "sub3" }
+        timeout { fail "sub3" }
     }
 }
 kill -INT -[exp_pid] 3
