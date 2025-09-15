@@ -500,10 +500,10 @@ static const string TOK_LIBRARY("library");
 static const string TOK_PLT("plt");
 static const string TOK_METHOD("method");
 static const string TOK_CLASS("class");;
-static const string TOK_CALLEE("callee");;
-static const string TOK_CALLEES("callees");;
-static const string TOK_NEAREST("nearest");;
-
+static const string TOK_CALLEE("callee");
+static const string TOK_CALLEES("callees");
+static const string TOK_NEAREST("nearest");
+static const string TOK_KERNEL_VMLINUX_H("kernel<vmlinux.h>");
 
 
 struct dwarf_query; // forward decl
@@ -4853,7 +4853,7 @@ dwarf_var_expanding_visitor::visit_target_symbol (target_symbol *e)
 void
 dwarf_var_expanding_visitor::visit_cast_op (cast_op *e)
 {
-  // Fill in our current module context if needed
+  // Fill in our current module context if needed, i.e., absent third field in @cast() 
   if (e->module.empty())
     {
       // Backward compatibility for @cast() ops, sans module string,
@@ -4862,7 +4862,16 @@ dwarf_var_expanding_visitor::visit_cast_op (cast_op *e)
       if (strverscmp(sess.compatible.c_str(), "4.3") < 0)
         e->module = "kernel";
       else
-        e->module = q.dw.module_name;
+        {
+          // absolute /user/space/path/name xor kernel xor kernel-module name
+          if (is_user_module (q.dw.module_name))
+            e->module = q.dw.module_name;
+          else if ((strverscmp(sess.compatible.c_str(), "5.4") >= 0) && // default on new enough systemtap
+                   (strverscmp(sess.kernel_base_release.c_str(), "6.7") >= 0)) // for new enough kernel to have a vmlinux.h
+            e->module = string(TOK_KERNEL_VMLINUX_H) + string(":") + q.dw.module_name; // PR33428: prefix
+          else
+            e->module = q.dw.module_name;            
+        }
     }
   
   var_expanding_visitor::visit_cast_op(e);
@@ -5153,10 +5162,27 @@ void dwarf_cast_expanding_visitor::visit_cast_op (cast_op* e)
 
   // split the module string by ':' for alternatives
   vector<string> modules;
+
+  // PR33428: prepend "kernel<vmlinux.h>" to the list if there is any
+  // "kernel" or "kernel<FILE>" component.
+  if ((strverscmp(sess.compatible.c_str(), "5.4") >= 0) && // default on new enough systemtap
+      (strverscmp(sess.kernel_base_release.c_str(), "6.7") >= 0) && // for new enough kernel to have a vmlinux.h
+      (e->module.find(TOK_KERNEL_VMLINUX_H) == string::npos)) // don't prepend again; might already be here from implicit "" expansion
+    {
+      if (e->module.starts_with("kernel")) // right at the front?
+        e->module = string(TOK_KERNEL_VMLINUX_H) + string(":") + e->module;
+      else {
+        string::size_type p = e->module.find(":kernel"); // in the middle?
+        if (p != string::npos)
+          e->module.insert(p, TOK_KERNEL_VMLINUX_H + string (":"));
+      }
+    }
+  
   tokenize(e->module, modules, ":");
-  bool userspace_p=false; // PR10601
+  
   for (unsigned i = 0; !result && i < modules.size(); ++i)
     {
+      bool userspace_p=false; // PR10601
       string& module = modules[i];
       filter_special_modules(module);
 

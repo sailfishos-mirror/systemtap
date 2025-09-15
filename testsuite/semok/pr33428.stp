@@ -1,0 +1,8 @@
+#! stap -p2
+
+probe module("nfsv3").function("nfs3_proc_access"), kernel.function("do_sys_open")
+{
+  print(@cast(0xf00d, "struct mount")$, "kernel<vmlinux.h") // explicit
+  print(@cast(0xbeef, "struct mount")$) // implicit "nfsv3"->"kernel<vmlinux.h>:nfsv3"
+  print(@cast(0xdead, "struct mount")$,"kernel<linux/sched.h>") // explicit ->"kernel<vmlinux.h>:kernel<linux/sched.h>"
+}

@@ -1,5 +1,13 @@
 * What's new in version 5.4
 
+- The kernel-context @cast operator now implicitly searches a kernel's
+  <vmlinux.h> generated header file first, if available (kernel 5.7+),
+  for type declarations.  This can make some debuginfo access
+  unnecessary, and thus processing faster.  It can work around kernel
+  API changes where type declarations move between headers.
+  Use --compatible=5.3 to disable this behaviour.
+  Use @cast(..., "kernel<vmlinux.h>") manually if desired.
+
 - Type checking and autocast processing have been made more thorough,
   so elided variables are checked more and @defined() tests may be
   more complicated.  Preexisting scripts that rely on elision for

@@ -1201,9 +1201,19 @@ make_typequery_kmod(systemtap_session& s, const vector<string>& headers, string&
   // full kernel build tree, it's possible to get at types that aren't in the
   // normal include path, e.g.:
   //    @cast(foo, "bsd_acct_struct", "kernel<kernel/acct.c>")->...
-  omf << "CFLAGS_" << basename << ".o :=";
+  omf << "CFLAGS_" << basename << ".o := -w "; // suppress warnings
+  bool no_vmlinux_h = true;
   for (size_t i = 0; i < headers.size(); ++i)
-    omf << " -include " << lex_cast_qstring(headers[i]); // XXX right quoting?
+    {
+      const string& h = headers[i];
+      if (h == string("vmlinux.h")) // PR33428: vmlinux.h special case
+        {
+          omf << " -include " << lex_cast_qstring(s.kernel_build_tree) << "/" << lex_cast_qstring("vmlinux.h");
+          no_vmlinux_h = false;
+        }
+      else
+        omf << " -include " << lex_cast_qstring(h); // XXX right quoting?
+    }
   omf << endl;
 
   omf << "obj-m := " + basename + ".o" << endl;
@@ -1213,10 +1223,17 @@ make_typequery_kmod(systemtap_session& s, const vector<string>& headers, string&
   string source(dir + "/" + basename + ".c");
   ofstream osrc(source.c_str());
 
-  // this is mandated by linux kbuild as of 5.11+
-  osrc << "#include <linux/module.h>" << endl;
-  osrc << "MODULE_LICENSE(\"GPL\");" << endl;
-  osrc << "MODULE_DESCRIPTION(\"" << basename << "\");" << endl;
+  if (no_vmlinux_h) {
+    // this is mandated by linux kbuild as of 5.11+
+    osrc << "#include <linux/module.h>" << endl;
+    osrc << "MODULE_LICENSE(\"GPL\");" << endl;
+    osrc << "MODULE_DESCRIPTION(\"" << basename << "\");" << endl;
+  } else {
+    // PR33428: do the same as the above, but without using linux/module.h macro infrastructure, because
+    // vmlinux.h conflicts with kernel headers.
+    osrc << "static const char modinfo[] __attribute__((__used__)) __attribute__((__section__(\".modinfo\"))) = \"license=GPL\\0description=typequery\";" << endl;
+  }
+  
   
   osrc.close();
 

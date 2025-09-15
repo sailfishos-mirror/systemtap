@@ -1899,6 +1899,10 @@ surrounded by angle brackets, in case normal debuginfo is not available.  For
 kernel headers, prefix it with "kernel" to use the appropriate build system.
 All other headers are built with default GCC parameters into a user module.
 Multiple headers may be specified in sequence to resolve a codependency.
+.PP
+As of systemtap version 5.4, the kernel "<vmlinux.h>" header is tried before
+any specified kernel headers or modules, which may make it unnecessary to list
+any explicit module or header file names for kernel data structures.
 .SAMPLE
 @cast(tv, "timeval", "<sys/time.h>")\->tv_sec
 @cast(task, "task_struct", "kernel<linux/sched.h>")\->tgid
