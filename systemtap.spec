@@ -121,6 +121,12 @@ m     stapsys  stapsys\
 m     stapdev  stapusr\
 m     stapdev  stapdev
 
+%define _systemtap_server_preinstall_tmpfiles \
+# See systemd-tmpfiles(8) tmpfiles.d(5)\
+d /var/lib/stap-server 0750 stap-server stap-server -\
+d /var/lib/stap-server/.systemtap 0700 stap-server stap-server -\
+d /var/log/stap-server 0755 stap-server stap-server -\
+f /var/log/stap-server/log 0644 stap-server stap-server -
 
 Name: systemtap
 # PRERELEASE
@@ -734,6 +740,8 @@ mkdir -p %{buildroot}%{_sysusersdir}
 echo '%_systemtap_runtime_preinstall' > %{buildroot}%{_sysusersdir}/systemtap-runtime.conf
 echo '%_systemtap_server_preinstall' > %{buildroot}%{_sysusersdir}/systemtap-server.conf
 echo '%_systemtap_testsuite_preinstall' > %{buildroot}%{_sysusersdir}/systemtap-testsuite.conf
+mkdir -p %{buildroot}%{_tmpfilesdir}
+echo '%_systemtap_server_preinstall_tmpfiles' > %{buildroot}%{_tmpfilesdir}/systemtap-server.conf
 %endif
 
 
@@ -885,6 +893,7 @@ exit 0
 %if %{with_sysusers}
 %if (0%{?fedora} && 0%{?fedora} < 42) || (0%{?rhel} && 0%{?rhel} < 11)
 echo '%_systemtap_server_preinstall' | systemd-sysusers --replace=%{_sysusersdir}/systemtap-server.conf -
+echo '%_systemtap_server_preinstall_tmpfiles' | systemd-tmpfiles --replace=%{_tmpfilesdir}/systemtap-server.conf -
 exit 0
 %endif
 %else
@@ -1117,6 +1126,7 @@ exit 0
 %if %{with_systemd}
 %{_unitdir}/stap-server.service
 %{_tmpfilesdir}/stap-server.conf
+%{_tmpfilesdir}/systemtap-server.conf
 %else
 %{initdir}/stap-server
 %dir %{_sysconfdir}/stap-server/conf.d
