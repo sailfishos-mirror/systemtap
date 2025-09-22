@@ -14,7 +14,7 @@
 %{!?with_rpm: %global with_rpm 1}
 %{!?elfutils_version: %global elfutils_version 0.179}
 %{!?with_boost: %global with_boost 1}
-%ifarch %{ix86} x86_64 ppc ppc64 ppc64le aarch64
+%ifarch x86_64 ppc ppc64 ppc64le aarch64
 %{!?with_dyninst: %global with_dyninst 0%{?fedora} >= 18 || 0%{?rhel} >= 7}
 %else
 %{!?with_dyninst: %global with_dyninst 0}
