@@ -153,7 +153,9 @@ probe netdev.transmit
  * @new_mtu: The new MTU
  */
 probe netdev.change_mtu
-	= kernel.function("dev_set_mtu")
+	= kernel.function("netif_set_mtu_ext") !,
+	  kernel.function("dev_set_mtu_ext") !,
+	  kernel.function("dev_set_mtu")
 {
 	old_mtu = $dev->mtu
 	new_mtu = $new_mtu
