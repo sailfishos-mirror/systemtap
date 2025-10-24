@@ -69,7 +69,11 @@ stap_set_mnt_ns(int fd)
 		goto out;
 
 	ns = get_proc_ns(file_inode(file));
+#if defined(STAPCONF_PR33574_PNO_TYPE)
 	if (ns->ops->type != CLONE_NEWNS) {
+#else
+	if (ns->ns_type != CLONE_NEWNS) {
+#endif
 		err = -EINVAL;
 		goto out;
 	}

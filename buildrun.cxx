@@ -402,6 +402,7 @@ compile_pass (systemtap_session& s)
   output_autoconf(s, o, cs, "autoconf-pr32194-uprobe-register-unregister.c", "STAPCONF_PR32194_UPROBE_REGISTER_UNREGISTER", NULL);
   output_autoconf(s, o, cs, "autoconf-uprobes-cb-data.c", "STAPCONF_UPROBES_CB_DATA", NULL);
   output_autoconf(s, o, cs, "autoconf-pr33324-prev_padding.c", "STAPCONF_PR33324_PREV_PADDING", NULL);
+  output_autoconf(s, o, cs, "autoconf-pr33574-pno-type.c", "STAPCONF_PR33574_PNO_TYPE", NULL);
   
   output_dual_exportconf(s, o2, "probe_kernel_read", "probe_kernel_write", "STAPCONF_PROBE_KERNEL");
   output_autoconf(s, o, cs, "autoconf-hw_breakpoint_context.c",
