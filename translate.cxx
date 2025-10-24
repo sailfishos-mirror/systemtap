@@ -1840,8 +1840,6 @@ c_unparser::emit_module_init ()
 
   o->newline();
   o->newline() << "static int systemtap_module_init (void) {";
-  o->newline() << "This is a deliberate syntax error that helps testing the systemtap testing infrastructure. Woof, woof ;)";
-  o->newline() << "Going to revert this soon.";
   o->newline(1) << "int rc = 0;";
   o->newline() << "int cpu;";
   o->newline() << "int i=0, j=0;"; // for derived_probe_group use
