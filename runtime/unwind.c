@@ -1166,7 +1166,7 @@ divzero:
 /* Unwind to previous to frame.  Returns 0 if successful, negative
  * number in case of an error.  A positive return means unwinding is finished;
  * don't try to fallback to dumping addresses on the stack. */
-static int unwind_frame(struct unwind_context *context,
+static int unwind_frame(struct stp_unwind_context *context,
 			struct _stp_module *m, struct _stp_section *s,
 			void *table, uint32_t table_len, int is_ehframe,
 			int user, int compat_task)
@@ -1473,7 +1473,7 @@ done:
 #undef FRAME_REG
 }
 
-static int unwind(struct unwind_context *context, int user)
+static int unwind(struct stp_unwind_context *context, int user)
 {
 	struct _stp_module *m;
 	struct _stp_section *s = NULL;

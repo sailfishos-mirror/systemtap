@@ -511,22 +511,21 @@ struct uw_state {
 	struct unwind_item cie_regs[ARRAY_SIZE(reg_info)];
 };
 
-struct unwind_context {
+struct stp_unwind_context {
     struct unwind_frame_info info;
     struct uw_state state;
 };
 
 static const struct cfa badCFA = { ARRAY_SIZE(reg_info), 1 };
 #else  /* !STP_USE_DWARF_UNWINDER */
-struct unwind_context { };
+struct stp_unwind_context { };
 #endif /* !STP_USE_DWARF_UNWINDER */
 
 #ifndef MAXBACKTRACE
 #define MAXBACKTRACE 20
 #endif
 
-#ifndef _LINUX_UNWIND_USER_DEFERRED_TYPES_H
-struct unwind_cache {
+struct stp_unwind_cache {
 	enum uwcache_state {
 		uwcache_uninitialized,
 		uwcache_partial,
@@ -535,6 +534,5 @@ struct unwind_cache {
 	unsigned depth; /* pc[0..(depth-1)] contains valid entries */
 	unsigned long pc[MAXBACKTRACE];
 };
-#endif
 
 #endif /*_STP_UNWIND_H_*/

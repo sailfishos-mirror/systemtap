@@ -187,10 +187,10 @@ cycles_t cycles_sum;
 
 /* Current state of the unwinder (as used in the unwind.c dwarf unwinder). */
 #if defined(STP_NEED_UNWIND_DATA)
-struct unwind_cache uwcache_user;
-struct unwind_cache uwcache_kernel;
-struct unwind_context uwcontext_user;
-struct unwind_context uwcontext_kernel;
+struct stp_unwind_cache uwcache_user;
+struct stp_unwind_cache uwcache_kernel;
+struct stp_unwind_context uwcontext_user;
+struct stp_unwind_context uwcontext_kernel;
 #endif
 
 /* Only used when perf dervied probes have been defined. */
