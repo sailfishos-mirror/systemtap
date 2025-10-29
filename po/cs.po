@@ -3,7 +3,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: systemtap 3.0\n"
 "Report-Msgid-Bugs-To: systemtap@sourceware.org\n"
-"POT-Creation-Date: 2025-04-29 13:40-0400\n"
+"POT-Creation-Date: 2025-10-29 16:49-0400\n"
 "PO-Revision-Date: \n"
 "Last-Translator: \n"
 "Language-Team: Czech\n"
@@ -236,14 +236,14 @@ msgstr[2] "nekonzistentní datové typy parametrů"
 
 #: bpf-translate.cxx:1932
 msgid ""
-"BUG: bpf embeddedcode non-helper 'call' operation only supports printf(),"
-"sprintf(),exit() for now"
+"BUG: bpf embeddedcode non-helper 'call' operation only supports "
+"printf(),sprintf(),exit() for now"
 msgstr ""
 
 #: bpf-translate.cxx:1934
 msgid ""
-"BUG: bpf embeddedcode non-helper 'call' operation only supports printf(),"
-"sprintf() for now"
+"BUG: bpf embeddedcode non-helper 'call' operation only supports "
+"printf(),sprintf() for now"
 msgstr ""
 
 #: bpf-translate.cxx:1951
@@ -517,22 +517,22 @@ msgstr "neplatný odkaz do pole"
 msgid "bpf translation failure: %s"
 msgstr "Chyba zpracování symbolu "
 
-#: buildrun.cxx:743
+#: buildrun.cxx:747
 #, c-format
 msgid ""
 "Checking \" %s \" failed with error: %s\n"
 "Ensure kernel development headers & makefiles are installed."
 msgstr ""
 
-#: buildrun.cxx:783
+#: buildrun.cxx:787
 msgid "Pass 4, preamble: (re)building SystemTap's version of uprobes."
 msgstr "Fáze 4, úvod: sestavuji SystemTap verzi mechanizmu 'uprobe'."
 
-#: buildrun.cxx:829
+#: buildrun.cxx:833
 msgid "uprobes rebuild exit code: "
 msgstr "návratový kód sestavení vlastního 'uprobe' mechanizmu:"
 
-#: buildrun.cxx:1128
+#: buildrun.cxx:1132
 #, c-format
 msgid "Processing tracepoint header %s with query %s"
 msgstr ""
@@ -953,7 +953,7 @@ msgstr ""
 msgid "missing process %s %s debuginfo"
 msgstr ""
 
-#: dwflpp.cxx:502 dwflpp.cxx:4180
+#: dwflpp.cxx:502 dwflpp.cxx:4179
 msgid "Getting symbols"
 msgstr "Získávám symboly"
 
@@ -962,504 +962,508 @@ msgstr "Získávám symboly"
 msgid "die parent cache %s:%s size %zu"
 msgstr ""
 
-#: dwflpp.cxx:986
+#: dwflpp.cxx:985
 #, c-format
 msgid "global alias cache %s:%s size %zu"
 msgstr ""
 
-#: dwflpp.cxx:1052
+#: dwflpp.cxx:1051
 #, c-format
 msgid "function cache %s:%s size %zu"
 msgstr ""
 
-#: dwflpp.cxx:1073
+#: dwflpp.cxx:1072
 #, c-format
 msgid "function cache %s:%s hit %s"
 msgstr ""
 
-#: dwflpp.cxx:1095 dwflpp.cxx:1116
+#: dwflpp.cxx:1094 dwflpp.cxx:1115
 #, c-format
 msgid "function cache %s:%s match %s vs %s"
 msgstr ""
 
-#: dwflpp.cxx:1150
+#: dwflpp.cxx:1149
 #, c-format
 msgid "module function cache %s size %zu"
 msgstr ""
 
-#: dwflpp.cxx:1172
+#: dwflpp.cxx:1171
 #, c-format
 msgid "module function cache %s hit %s"
 msgstr ""
 
-#: dwflpp.cxx:1398
+#: dwflpp.cxx:1397
 #, c-format
 msgid "module %s --ldd skipped: unsupported interpreter: %s"
 msgstr ""
 
-#: dwflpp.cxx:1415
+#: dwflpp.cxx:1414
 #, c-format
 msgid "library iteration on %s failed: %s"
 msgstr ""
 
-#: dwflpp.cxx:1444
+#: dwflpp.cxx:1443
 #, c-format
 msgid "Added -d '%s"
 msgstr ""
 
-#: dwflpp.cxx:1446
+#: dwflpp.cxx:1445
 #, c-format
 msgid "' due to '%s'"
 msgstr ""
 
-#: dwflpp.cxx:1675
+#: dwflpp.cxx:1674
 #, c-format
 msgid "found the following lines for %s:"
 msgstr ""
 
-#: dwflpp.cxx:1879
+#: dwflpp.cxx:1878
 #, c-format
 msgid "no line records for %s:%d [man error::dwarf]"
 msgstr ""
 
 #. TRANSLATORS: Here we are trying to advise what source file
 #. TRANSLATORS: to attempt.
-#: dwflpp.cxx:1885
+#: dwflpp.cxx:1884
 msgid " (try "
 msgstr " (zkuste "
 
-#: dwflpp.cxx:1889
+#: dwflpp.cxx:1888
 msgid " or "
 msgstr " nebo "
 
-#: dwflpp.cxx:2094
+#: dwflpp.cxx:2093
 #, c-format
 msgid ""
 "label '%s' at address %s (dieoffset: %s) is not contained by its scope '%s' "
 "(dieoffset: %s) -- bad debuginfo? [man error::dwarf]"
 msgstr ""
 
-#: dwflpp.cxx:2318
+#: dwflpp.cxx:2317
 #, c-format
 msgid ""
 "Callee \"%s\" in function \"%s\" is a tail call: .callee probe may not fire. "
 "Try placing the probe directly on the callee function instead."
 msgstr ""
 
-#: dwflpp.cxx:2391
+#: dwflpp.cxx:2390
 #, c-format
 msgid "selected source file '%s'\n"
 msgstr ""
 
-#: dwflpp.cxx:2428
+#: dwflpp.cxx:2427
 #, c-format
 msgid "aborting prologue search: no source lines found for cu '%s'\n"
 msgstr ""
 
-#: dwflpp.cxx:2442
+#: dwflpp.cxx:2441
 msgid "lines from dwarf_getsrclines() not sorted"
 msgstr "výstup z dwarf_getsrclines() není setříděn"
 
-#: dwflpp.cxx:2481
+#: dwflpp.cxx:2480
 #, c-format
 msgid "missing entrypc dwarf line record for function '%s'\n"
 msgstr ""
 
-#: dwflpp.cxx:2491
+#: dwflpp.cxx:2490
 #, c-format
 msgid "null entrypc dwarf line record for function '%s'\n"
 msgstr ""
 
-#: dwflpp.cxx:2499
+#: dwflpp.cxx:2498
 #, c-format
 msgid "searching for prologue of function '%s' %#<PRIx64>@%s:%d\n"
 msgstr ""
 
-#: dwflpp.cxx:2529
+#: dwflpp.cxx:2528
 #, c-format
 msgid "checking line record %#<PRIx64>@%s:%d%s\n"
 msgstr ""
 
-#: dwflpp.cxx:2570
+#: dwflpp.cxx:2569
 #, c-format
 msgid "prologue found function '%s'"
 msgstr ""
 
-#: dwflpp.cxx:2574
+#: dwflpp.cxx:2573
 msgid " (naked)"
 msgstr " (bez prologu)"
 
-#: dwflpp.cxx:2578
+#: dwflpp.cxx:2577
 msgid " (tail-call?)"
 msgstr " (prolog přeskočen?)"
 
-#: dwflpp.cxx:2581
+#: dwflpp.cxx:2580
 msgid " (marked)"
 msgstr " (označený)"
 
-#: dwflpp.cxx:2654
+#: dwflpp.cxx:2653
 #, c-format
 msgid ", ignored %s more"
 msgstr ""
 
-#: dwflpp.cxx:2663
+#: dwflpp.cxx:2662
 msgid " (skip comdat)"
 msgstr " (přeskoč 'comdat')"
 
-#: dwflpp.cxx:2668
+#: dwflpp.cxx:2667
 #, c-format
 msgid "entry-pc lookup (%s dieoffset: %s) = %#<PRIx64> (rc %d)"
 msgstr ""
 
-#: dwflpp.cxx:2894 dwflpp.cxx:2906
+#: dwflpp.cxx:2893 dwflpp.cxx:2905
 msgid "in"
 msgstr "v"
 
-#: dwflpp.cxx:2898 dwflpp.cxx:2910
+#: dwflpp.cxx:2897 dwflpp.cxx:2909
 msgid "<no alternatives>"
 msgstr "<žádné alternativy>"
 
-#: dwflpp.cxx:2899 dwflpp.cxx:2911
+#: dwflpp.cxx:2898 dwflpp.cxx:2910
 msgid "alternatives: "
 msgstr "alternativy: "
 
-#: dwflpp.cxx:2889
+#: dwflpp.cxx:2888
 #, c-format
 msgid ""
 "unable to find local '%s', [man error::dwarf] dieoffset %s in %s, near pc %s "
 "%s %s %s (%s)"
 msgstr ""
 
-#: dwflpp.cxx:2902
+#: dwflpp.cxx:2901
 #, c-format
 msgid ""
 "unable to find global '%s', [man error::dwarf] dieoffset %s in %s, %s %s %s "
 "(%s)"
 msgstr ""
 
-#: dwflpp.cxx:2982 dwflpp.cxx:4321
+#: dwflpp.cxx:2981 dwflpp.cxx:4320
 #, c-format
 msgid "unable to get die scopes for '%s' in an inlined subroutine"
 msgstr ""
 
-#: dwflpp.cxx:3016
+#: dwflpp.cxx:3015
 msgid "alternative locations: "
 msgstr "alternativní umístění: "
 
-#: dwflpp.cxx:3034
+#: dwflpp.cxx:3033
 msgid "<no alternative locations>"
 msgstr "<žádná alternativní umístění>"
 
-#: dwflpp.cxx:3036
+#: dwflpp.cxx:3035
 #, fuzzy, c-format
 msgid "<error getting alternative locations: %s>"
 msgstr "<žádná alternativní umístění>"
 
-#: dwflpp.cxx:3068
+#: dwflpp.cxx:3067
 msgid "<unknown"
 msgstr "<neznámý"
 
-#: dwflpp.cxx:3144
+#: dwflpp.cxx:3143
 msgid "unknown source"
 msgstr "neznámé umístění"
 
-#: dwflpp.cxx:3157
+#: dwflpp.cxx:3156
 msgid "dieoffset: "
 msgstr "'dieoffset': "
 
-#: dwflpp.cxx:3162
+#: dwflpp.cxx:3161
 msgid " from "
 msgstr " z "
 
-#: dwflpp.cxx:3167
+#: dwflpp.cxx:3166
 msgid "unknown debug file for "
 msgstr "chybí ladicí informace pro "
 
-#: dwflpp.cxx:3187
+#: dwflpp.cxx:3186
 msgid "function: "
 msgstr "funkce: "
 
-#: dwflpp.cxx:3213
+#: dwflpp.cxx:3212
 msgid "<unknown> at "
 msgstr "<neznámá funkce> na "
 
-#: dwflpp.cxx:3223 dwflpp.cxx:3240 dwflpp.cxx:3253
+#: dwflpp.cxx:3222 dwflpp.cxx:3239 dwflpp.cxx:3252
 msgid " at "
 msgstr " na "
 
-#: dwflpp.cxx:3238
+#: dwflpp.cxx:3237
 msgid " inlined by "
 msgstr " 'inline' v rámci "
 
-#: dwflpp.cxx:3303
+#: dwflpp.cxx:3302
 #, fuzzy, c-format
 msgid "not accessible at this address (pc: %s) [man error::dwarf]"
 msgstr "nedostupný na této adrese (%#<PRIx64>)"
 
-#: dwflpp.cxx:3314
+#: dwflpp.cxx:3313
 #, c-format
 msgid ""
 "dwarf_getlocation_addr failed at this address (pc: %s) [man error::dwarf]"
 msgstr ""
 
-#: dwflpp.cxx:3316
+#: dwflpp.cxx:3315
 #, c-format
 msgid "dwarf_error: %s"
 msgstr ""
 
-#: dwflpp.cxx:3369
+#: dwflpp.cxx:3368
 #, c-format
 msgid "Type %s isn't a struct/class/union"
 msgstr ""
 
-#: dwflpp.cxx:3379
+#: dwflpp.cxx:3378
 #, c-format
 msgid "Type %s is empty"
 msgstr ""
 
-#: dwflpp.cxx:3383
+#: dwflpp.cxx:3382
 #, c-format
 msgid "Type %s: %s"
 msgstr ""
 
-#: dwflpp.cxx:3419
+#: dwflpp.cxx:3418
 #, c-format
 msgid "Couldn't obtain type attribute for anonymous member at %s:%d"
 msgstr ""
 
-#: dwflpp.cxx:3538
+#: dwflpp.cxx:3537
 #, c-format
 msgid "no location for field '%s':%s"
 msgstr ""
 
-#: dwflpp.cxx:3549
+#: dwflpp.cxx:3548
 #, fuzzy, c-format
 msgid "cannot get type of field: %s"
 msgstr ""
 "nemohu získat základní typ (zbavený modifikátorů 'const'/'volatile'/"
 "atd.)typu %s: %s"
 
-#: dwflpp.cxx:3586
+#: dwflpp.cxx:3585
 #, c-format
 msgid "invalid access '%s' vs '%s'"
 msgstr ""
 
-#: dwflpp.cxx:3614
+#: dwflpp.cxx:3613
 #, fuzzy, c-format
 msgid "invalid access '%s' for array type"
 msgstr "neplatný odkaz do pole"
 
-#: dwflpp.cxx:3626
+#: dwflpp.cxx:3625
 #, fuzzy, c-format
 msgid "invalid access '%s' for %s"
 msgstr "Neplatný parametr '%s' pro -C."
 
-#: dwflpp.cxx:3633
+#: dwflpp.cxx:3632
 #, fuzzy, c-format
 msgid "unresolved %s"
 msgstr "chyba při rozpoznávání symbolu"
 
-#: dwflpp.cxx:3658
+#: dwflpp.cxx:3657
 #, c-format
 msgid "unable to find member '%s' for %s%s%s"
 msgstr ""
 
-#: dwflpp.cxx:3689
+#: dwflpp.cxx:3688
 #, c-format
 msgid "invalid access '%s' vs. %s"
 msgstr ""
 
-#: dwflpp.cxx:3694
+#: dwflpp.cxx:3693
 #, fuzzy, c-format
 msgid "cannot find type: %s"
 msgstr "nemohu najít "
 
-#: dwflpp.cxx:3698
+#: dwflpp.cxx:3697
 #, fuzzy, c-format
 msgid "%s: unexpected type tag %s"
 msgstr "neočekávaný typ"
 
-#: dwflpp.cxx:3719
+#: dwflpp.cxx:3718
 #, fuzzy, c-format
 msgid "cannot get type of pointee: %s"
 msgstr ""
 "nemohu získat základní typ (zbavený modifikátorů 'const'/'volatile'/"
 "atd.)typu %s: %s"
 
-#: dwflpp.cxx:3734
+#: dwflpp.cxx:3733
 #, fuzzy, c-format
 msgid "cannot get bit field parameters: %s"
 msgstr ""
 "nemohu získat základní typ (zbavený modifikátorů 'const'/'volatile'/"
 "atd.)typu %s: %s"
 
-#: dwflpp.cxx:3777
+#: dwflpp.cxx:3776
 #, fuzzy
 msgid "cannot handle offset into register"
 msgstr "nelze použít offset při čtení z registru"
 
-#: dwflpp.cxx:3784
+#: dwflpp.cxx:3783
 msgid "requested size larger than constant"
 msgstr ""
 
-#: dwflpp.cxx:3813
+#: dwflpp.cxx:3812
 msgid "unhandled constant size"
 msgstr ""
 
-#: dwflpp.cxx:3829
+#: dwflpp.cxx:3828
 msgid "noncontiguous location for base fetch"
 msgstr "nelze přisoudit adresu nespojité datové oblasti"
 
-#: dwflpp.cxx:3834
+#: dwflpp.cxx:3833
 #, fuzzy
 msgid "cannot handle offset into implicit pointer"
 msgstr "nelze použít index do implicitního ukazatele"
 
-#: dwflpp.cxx:3842
+#: dwflpp.cxx:3841
 #, fuzzy
 msgid "pointer optimized out"
 msgstr "ukazatel byl zahozen při optimalizaci"
 
-#: dwflpp.cxx:3845
+#: dwflpp.cxx:3844
 msgid "location not available"
 msgstr "umístění není dostupné"
 
-#: dwflpp.cxx:3930
+#: dwflpp.cxx:3929
 msgid "cannot write to member address"
 msgstr "nelze zapisovat na cílovou adresu"
 
-#: dwflpp.cxx:3934
+#: dwflpp.cxx:3933
 msgid "cannot take the address of a bit field"
 msgstr "nemohu získat adresu bitového pole"
 
-#: dwflpp.cxx:3943
+#: dwflpp.cxx:3942
 msgid "cannot take address of object in register"
 msgstr "nemohu získat adresu objektu v registru"
 
-#: dwflpp.cxx:3947
+#: dwflpp.cxx:3946
 msgid "cannot take address of noncontiguous object"
 msgstr "nemohu získat adresu nesouvislého objektu"
 
-#: dwflpp.cxx:3951
+#: dwflpp.cxx:3950
 msgid "cannot take address of computed value"
 msgstr "nemohu získat adresu vypočtené hodnoty"
 
-#: dwflpp.cxx:3955
+#: dwflpp.cxx:3954
 msgid "cannot take address of constant value"
 msgstr "nemohu získat adresu konstanty"
 
-#: dwflpp.cxx:3959
+#: dwflpp.cxx:3958
 msgid "cannot take address of unavailable value"
 msgstr "nemohu získat adresu nedostupné hodnoty"
 
-#: dwflpp.cxx:3963
+#: dwflpp.cxx:3962
 msgid "cannot take address of implicit pointer"
 msgstr "nemohu získat adresu implicitního ukazatele"
 
-#: dwflpp.cxx:3980
+#: dwflpp.cxx:3979
 #, fuzzy, c-format
 msgid "unsupported type tag %s for %s"
 msgstr "nepodporovaný unární operátor "
 
-#: dwflpp.cxx:4012
+#: dwflpp.cxx:4011
 #, c-format
 msgid "'%s'%s is being accessed instead of a member%s"
 msgstr ""
 
-#: dwflpp.cxx:4037
+#: dwflpp.cxx:4036
 #, c-format
 msgid "unsupported type (mystery encoding %s for %s"
 msgstr ""
 
-#: dwflpp.cxx:4052 tapsets.cxx:3988
+#: dwflpp.cxx:4051 tapsets.cxx:4003
 #, c-format
 msgid "cannot get byte_size attribute for type %s: %s"
 msgstr "nemohu číst atribut 'byte_size' typu %s: %s"
 
-#: dwflpp.cxx:4072 dwflpp.cxx:4107
+#: dwflpp.cxx:4071 dwflpp.cxx:4106
 #, fuzzy, c-format
 msgid "cannot get data_bit_offset parameters: %s"
 msgstr ""
 "nemohu získat základní typ (zbavený modifikátorů 'const'/'volatile'/"
 "atd.)typu %s: %s"
 
-#: dwflpp.cxx:4115
+#: dwflpp.cxx:4114
 #, c-format
 msgid ""
 "bit_offset=%<PRIu64>, bit_size=%<PRIu64> byte_size=%<PRIu64> -> "
 "offset=%<PRIu64>, rel_bit_offset=%<PRIu64>\n"
 msgstr ""
 
-#: dwflpp.cxx:4131
+#: dwflpp.cxx:4130
 msgid "cannot write to array address"
 msgstr "nelze zapisovat na adresu pole"
 
-#: dwflpp.cxx:4134
+#: dwflpp.cxx:4133
 msgid "cannot write to reference"
 msgstr "nelze zapisovat na adresu reference"
 
-#: dwflpp.cxx:4157
+#: dwflpp.cxx:4156
 #, fuzzy, c-format
 msgid "cannot get size for type %s: %s"
 msgstr "nemohu číst atribut 'byte_size' typu %s: %s"
 
-#: dwflpp.cxx:4176
+#: dwflpp.cxx:4175
 #, c-format
 msgid "finding symtable address for %s\n"
 msgstr ""
 
-#: dwflpp.cxx:4201
+#: dwflpp.cxx:4200
 #, c-format
 msgid "found %s @%#<PRIx64>\n"
 msgstr ""
 
-#: dwflpp.cxx:4229
+#: dwflpp.cxx:4228
 #, c-format
 msgid ""
 "finding location for local '%s' near address %#<PRIx64>, module bias "
 "%#<PRIx64>\n"
 msgstr ""
 
-#: dwflpp.cxx:4233
+#: dwflpp.cxx:4232
 #, c-format
 msgid "finding location for global '%s' in CU '%s'\n"
 msgstr ""
 
-#: dwflpp.cxx:4257
+#: dwflpp.cxx:4256
 #, fuzzy, c-format
 msgid "failed to retrieve location attribute for '%s' [man error::dwarf]"
 msgstr "problém se symbolickou (dwarf) adresací proměnné [man error::dwarf]:"
 
-#: dwflpp.cxx:4272 dwflpp.cxx:4348
+#: dwflpp.cxx:4271 dwflpp.cxx:4347
 #, c-format
 msgid "failed to retrieve type attribute for '%s' [man error::dwarf]"
 msgstr ""
 
-#: dwflpp.cxx:4366
+#: dwflpp.cxx:4365
 #, c-format
 msgid "literal_stmt_for_return: finding return value for %s (%s)\n"
 msgstr ""
 
-#: dwflpp.cxx:4374
+#: dwflpp.cxx:4373
 #, fuzzy, c-format
 msgid "failed to retrieve return value location for %s [man error::dwarf] (%s)"
 msgstr "problém se symbolickou (dwarf) adresací proměnné [man error::dwarf]:"
 
-#: dwflpp.cxx:4379
+#: dwflpp.cxx:4378
 #, c-format
 msgid "function %s (%s) has no return value"
 msgstr ""
 
-#: dwflpp.cxx:4389 dwflpp.cxx:4413
+#: dwflpp.cxx:4388 dwflpp.cxx:4412
 #, c-format
 msgid ""
 "failed to retrieve return value type attribute for %s [man error::dwarf] (%s)"
 msgstr ""
 
-#: dwflpp.cxx:4430
-#, c-format
-msgid "literal_stmt_for_pointer: finding value for %s (%s)\n"
+#: dwflpp.cxx:4429
+msgid "literal_stmt_for_pointer: finding value for "
 msgstr ""
+
+#: dwflpp.cxx:4430
+#, fuzzy, c-format
+msgid " type %s (%s)\n"
+msgstr "chybný datový typ"
 
 #: dwflpp.cxx:4559
 msgid " - blocklisted"
@@ -1710,7 +1714,7 @@ msgstr "nemohu vytvořit 'begin' sondu"
 msgid "no probes found"
 msgstr "nenalezeny žádné sondy"
 
-#: elaborate.cxx:2719 elaborate.cxx:2728 elaborate.cxx:2860
+#: elaborate.cxx:2719 elaborate.cxx:2728 elaborate.cxx:2864
 #, fuzzy, c-format
 msgid "unresolved arity-%zu global array %s, missing global declaration?"
 msgstr "lokální pole není podporováno, chybí klíčové slovo 'global'?"
@@ -1719,512 +1723,517 @@ msgstr "lokální pole není podporováno, chybí klíčové slovo 'global'?"
 msgid "unresolved array in delete statement"
 msgstr "nerozpoznané pole v příkazu 'delete'"
 
-#: elaborate.cxx:2815
+#: elaborate.cxx:2817
 msgid "probe condition must not reference undeclared global"
 msgstr "podmíněná sonda nesmí být vázána na nedeklarovanou globální proměnnou"
 
-#: elaborate.cxx:2836
+#: elaborate.cxx:2840
 msgid "wildcard not allowed in array index"
 msgstr "zástupný znak nelze použít pro specifikaci indexu pole"
 
-#: elaborate.cxx:2902 elaborate.cxx:2956
+#: elaborate.cxx:2906 elaborate.cxx:2960
 #, c-format
 msgid "unresolved pragma:read global %s"
 msgstr ""
 
-#: elaborate.cxx:2922 elaborate.cxx:2976
+#: elaborate.cxx:2926 elaborate.cxx:2980
 #, c-format
 msgid "unresolved pragma:write global %s"
 msgstr ""
 
-#: elaborate.cxx:2996
+#: elaborate.cxx:3000
 msgid "probe condition must not reference function"
 msgstr "podmínka sondy nesmí být vázána na funkci"
 
-#: elaborate.cxx:3032 elaborate.cxx:3491 elaborate.cxx:3538 elaborate.cxx:3592
+#: elaborate.cxx:3036 elaborate.cxx:3495 elaborate.cxx:3542 elaborate.cxx:3596
 msgid " (similar: "
 msgstr " (podobné: "
 
-#: elaborate.cxx:3030
+#: elaborate.cxx:3034
 #, fuzzy, c-format
 msgid "unresolved function %s%s"
 msgstr "nepoužitá funkce: "
 
-#: elaborate.cxx:3062
+#: elaborate.cxx:3066
 #, c-format
 msgid "      local %s is already defined"
 msgstr ""
 
-#: elaborate.cxx:3077
+#: elaborate.cxx:3081
 #, c-format
 msgid "      local %s is formal parameter"
 msgstr ""
 
-#: elaborate.cxx:3102
+#: elaborate.cxx:3106
 #, c-format
 msgid "      global %s is already defined"
 msgstr ""
 
-#: elaborate.cxx:3112
+#: elaborate.cxx:3116
 #, c-format
 msgid "cross-file global variable reference to %s from"
 msgstr ""
 
-#: elaborate.cxx:3132
+#: elaborate.cxx:3136
 #, c-format
 msgid "      global %s is defined in chosen-tapset-file %s"
 msgstr ""
 
-#: elaborate.cxx:3155
+#: elaborate.cxx:3159
 #, c-format
 msgid "      global %s is defined in new-tapset-file %s"
 msgstr ""
 
-#: elaborate.cxx:3196
+#: elaborate.cxx:3200
 #, fuzzy, c-format
 msgid "function may not be used when --privilege=%s is specified"
 msgstr "funkci nelze použít pokud není aktivován guru režim (-g)"
 
-#: elaborate.cxx:3205
+#: elaborate.cxx:3209
 #, fuzzy
 msgid "function may not be used with bpf runtime"
 msgstr "funkci nelze použít pokud není aktivován guru režim (-g)"
 
-#: elaborate.cxx:3208
+#: elaborate.cxx:3212
 #, fuzzy
 msgid "function requires bpf runtime"
 msgstr "vyhodnocení skutečných parametrů funkce"
 
-#: elaborate.cxx:3215
+#: elaborate.cxx:3219
 msgid "function may not be used unless -g is specified"
 msgstr "funkci nelze použít pokud není aktivován guru režim (-g)"
 
-#: elaborate.cxx:3290
+#: elaborate.cxx:3294
 #, c-format
 msgid "      function %s is defined in chosen-tapset-file %s"
 msgstr ""
 
-#: elaborate.cxx:3315
+#: elaborate.cxx:3319
 #, c-format
 msgid "      function %s is defined in new-tapset-file %s"
 msgstr ""
 
-#: elaborate.cxx:3334
+#: elaborate.cxx:3338
 #, c-format
 msgid "arity mismatch found (function '%s' takes %zu args)"
 msgstr ""
 
-#: elaborate.cxx:3348
+#: elaborate.cxx:3352
 msgid "conflicting functions"
 msgstr "konfliktní identifikátor funkce"
 
-#: elaborate.cxx:3403
+#: elaborate.cxx:3407
 #, fuzzy, c-format
 msgid "Eliding unused function '%s'"
 msgstr "Zahazuji unární operátor bez vedlejších účinků"
 
-#: elaborate.cxx:3460 elaborate.cxx:3507 elaborate.cxx:3552
+#: elaborate.cxx:3464 elaborate.cxx:3511 elaborate.cxx:3556
 #, fuzzy, c-format
 msgid "Eliding unused variable '%s'"
 msgstr "Zahazuji unární operátor bez vedlejších účinků"
 
-#: elaborate.cxx:3488 elaborate.cxx:3535
+#: elaborate.cxx:3492 elaborate.cxx:3539
 #, c-format
 msgid "never-assigned local variable '%s'%s"
 msgstr ""
 
-#: elaborate.cxx:3589
+#: elaborate.cxx:3593
 #, fuzzy, c-format
 msgid "never-assigned global variable '%s'%s"
 msgstr "konfliktní identifikátor globální proměnné"
 
-#: elaborate.cxx:3665
+#: elaborate.cxx:3669
 #, fuzzy
 msgid "Expecting lvalue for assignment, try -> instead"
 msgstr "Očekávána je l-hodnota. Zkuste použít '->' namísto '.'"
 
-#: elaborate.cxx:3668
+#: elaborate.cxx:3672
 #, fuzzy
 msgid "Expecting lvalue for assignment"
 msgstr "přiřazení musí mít r-hodnotu"
 
-#: elaborate.cxx:3723
+#: elaborate.cxx:3727
 #, c-format
 msgid "Eliding assignment to '%s'"
 msgstr ""
 
-#: elaborate.cxx:3745
+#: elaborate.cxx:3749
 #, fuzzy, c-format
 msgid "Eliding unused error string catcher %s at %s"
 msgstr "Zahazuji přetypování bez vedlejších účinků "
 
-#: elaborate.cxx:3754 elaborate.cxx:3883 elaborate.cxx:6113
+#: elaborate.cxx:3758 elaborate.cxx:3887 elaborate.cxx:6179
 #, fuzzy
 msgid "internal error: type_res_info is NULL"
 msgstr "interní chyba při překladu 'printf'"
 
-#: elaborate.cxx:3820
+#: elaborate.cxx:3824
 msgid "Eliding side-effect-free null statement "
 msgstr "V rámci optimalizace zahazuji prázdný příkaz "
 
-#: elaborate.cxx:3840
+#: elaborate.cxx:3844
 msgid "Flattening nested block "
 msgstr "Narovnávám vnořený blok bez vedlejších účinků "
 
-#: elaborate.cxx:3852
+#: elaborate.cxx:3856
 msgid "Eliding side-effect-free empty block "
 msgstr "Zahazuji vnořený blok bez vedlejších účinků "
 
-#: elaborate.cxx:3858
+#: elaborate.cxx:3862
 msgid "Eliding side-effect-free singleton block "
 msgstr "Zahazuji 'singleton' blok bez vedlejších účinků "
 
-#: elaborate.cxx:3876
+#: elaborate.cxx:3880
 #, c++-format
 msgid "Eliding empty try {} block "
 msgstr "Zahazuji prázdný 'try {}' blok "
 
-#: elaborate.cxx:3911
+#: elaborate.cxx:3915
 msgid "Eliding side-effect-free if statement "
 msgstr "Zahazuji 'if' příkaz bez vedlejších účinků "
 
-#: elaborate.cxx:3919
+#: elaborate.cxx:3923
 msgid "Creating simple evaluation from if statement "
 msgstr "Transformuji příkaz 'if' na jednoduché vyhodnocení "
 
-#: elaborate.cxx:3933
+#: elaborate.cxx:3937
 msgid "Inverting the condition of if statement "
 msgstr "Obracím logiku příkazu 'if'"
 
-#: elaborate.cxx:3957
+#: elaborate.cxx:3961
 msgid "Eliding side-effect-free foreach statement "
 msgstr "Zahazuji příkaz 'foreach' bez vedlejších účinků "
 
-#: elaborate.cxx:3979
+#: elaborate.cxx:3983
 msgid "Eliding side-effect-free for statement "
 msgstr "Zahazuji příkaz 'for' bez vedlejších účinků "
 
-#: elaborate.cxx:4077
+#: elaborate.cxx:4081
 #, fuzzy, c-format
 msgid "side-effect-free function '%s'"
 msgstr "Zahazuji volání funkce bez vedlejších účinků "
 
-#: elaborate.cxx:4205
+#: elaborate.cxx:4209
 msgid "Creating if statement from unused logical-or "
 msgstr "Transformuji '||' na 'if' "
 
-#: elaborate.cxx:4236
+#: elaborate.cxx:4240
 msgid "Creating if statement from unused logical-and "
 msgstr "Transformuji '&&' na 'if' "
 
-#: elaborate.cxx:4262
+#: elaborate.cxx:4266
 msgid "Creating if statement from unused ternary expression "
 msgstr "Transformuji ternární operátor na 'if' "
 
-#: elaborate.cxx:4292
+#: elaborate.cxx:4296
 msgid "Eliding unused binary "
 msgstr "Zahazuji binární operátor bez vedlejších účinků "
 
-#: elaborate.cxx:4320
+#: elaborate.cxx:4324
 msgid "Eliding unused unary "
 msgstr "Zahazuji unární operátor bez vedlejších účinků"
 
-#: elaborate.cxx:4342
+#: elaborate.cxx:4346
 msgid "Eliding regex query "
 msgstr "Zahazuji regulární výraz bez vedlejších účinků "
 
-#: elaborate.cxx:4393
+#: elaborate.cxx:4397
 msgid "Eliding side-effect-free function call "
 msgstr "Zahazuji volání funkce bez vedlejších účinků "
 
-#: elaborate.cxx:4425
+#: elaborate.cxx:4429
 msgid "Eliding unused print "
 msgstr "Zahazuji příkaz 'print' bez vedlejších účinků "
 
-#: elaborate.cxx:4483 elaborate.cxx:4491
+#: elaborate.cxx:4487 elaborate.cxx:4495
 msgid "Eliding unused target symbol "
 msgstr "Zahazuji 'l-hodnotu' bez vedlejších účinků "
 
-#: elaborate.cxx:4499
+#: elaborate.cxx:4503
 msgid "Eliding unused typecast "
 msgstr "Zahazuji přetypování bez vedlejších účinků "
 
-#: elaborate.cxx:4507
+#: elaborate.cxx:4511
 msgid "Eliding unused autocast "
 msgstr "Zahazuji automatické přetypování bez vedlejších účinků "
 
-#: elaborate.cxx:4520
+#: elaborate.cxx:4524
 msgid "Eliding unused check "
 msgstr "Zahazuji nepotřebné makro '@defined' bez vedlejších účinků "
 
-#: elaborate.cxx:4612
+#: elaborate.cxx:4616
 #, fuzzy, c-format
 msgid "Collapsing constant-%<PRIi64> if-statement %s"
 msgstr "Zjednodušuji zřetězení "
 
-#: elaborate.cxx:4638
+#: elaborate.cxx:4642
 msgid "Collapsing constantly-false for-loop "
 msgstr "Zahazuji 'for' cyklus, který se nikdy neprovede "
 
-#: elaborate.cxx:4664
+#: elaborate.cxx:4668
 msgid "Collapsing constantly-limited foreach-loop "
 msgstr "Zahazuji 'foreach' cyklus, který se nikdy neprovede "
 
-#: elaborate.cxx:4711
+#: elaborate.cxx:4715
 msgid "unsupported binary operator "
 msgstr "nepodporovaný binarní operátor "
 
-#: elaborate.cxx:4764
+#: elaborate.cxx:4768
 msgid "Collapsing constant-identity binary operator "
 msgstr "Zjednodušuji binární operaci "
 
-#: elaborate.cxx:4792
+#: elaborate.cxx:4796
 #, fuzzy, c-format
 msgid "Collapsing constant-%<PRIi64> binary operator %s"
 msgstr "Zjednodušuji binární operaci "
 
-#: elaborate.cxx:4810
+#: elaborate.cxx:4814
 msgid "Collapsing constant unary "
 msgstr "Zjednodušuji unární operaci "
 
-#: elaborate.cxx:4824
+#: elaborate.cxx:4828
 msgid "unsupported unary operator "
 msgstr "nepodporovaný unární operátor "
 
-#: elaborate.cxx:4868
+#: elaborate.cxx:4872
 msgid "Collapsing constant logical-OR "
 msgstr "Zjednodušuji operaci '||' s konstantní výslednou hodnotou "
 
-#: elaborate.cxx:4915
+#: elaborate.cxx:4919
 msgid "Collapsing constant logical-AND "
 msgstr "Zjednodušuji operaci '&&' s konstantní výslednou hodnotou "
 
-#: elaborate.cxx:4943
+#: elaborate.cxx:4947
 #, fuzzy
 msgid "Collapsing compound expression"
 msgstr "Zjednodušuji nerovnost s konstantní výslednou hodnotou "
 
-#: elaborate.cxx:4983
+#: elaborate.cxx:4987
 msgid "Collapsing constant-boundary comparison "
 msgstr "Zjednodušuji nerovnost s konstantní výslednou hodnotou "
 
-#: elaborate.cxx:5001
+#: elaborate.cxx:5005
 msgid "Collapsing constant comparison "
 msgstr "Zjednodušuji rovnost s konstantní výslednou hodnotou "
 
-#: elaborate.cxx:5018
+#: elaborate.cxx:5022
 msgid "unsupported comparison operator "
 msgstr "nepodporovaný operátor porovnání "
 
-#: elaborate.cxx:5034
+#: elaborate.cxx:5038
 msgid "Collapsing constant concatenation "
 msgstr "Zjednodušuji zřetězení "
 
-#: elaborate.cxx:5046
+#: elaborate.cxx:5050
 msgid "Collapsing identity concatenation "
 msgstr "Zjednodušuji zřetězení s prázdným řetězcem "
 
-#: elaborate.cxx:5067
+#: elaborate.cxx:5071
 #, fuzzy, c-format
 msgid "Collapsing constant-%<PRIi64> ternary %s"
 msgstr "Zjednodušuji unární operaci "
 
-#: elaborate.cxx:5102
+#: elaborate.cxx:5106
 msgid "Collapsing untouched @defined check "
 msgstr "Zahazuji kontrolu '@defined' bez vedlejších účinků "
 
-#: elaborate.cxx:5122
+#: elaborate.cxx:5119
+#, fuzzy, c-format
+msgid "Collapsing unresolved @define to %ld [stapprobes]"
+msgstr "Zahazuji kontrolu '@defined' bez vedlejších účinků "
+
+#: elaborate.cxx:5127
 #, fuzzy
 msgid "Preserving unresolved @defined check "
 msgstr "Zahazuji kontrolu '@defined' bez vedlejších účinků "
 
-#: elaborate.cxx:5150
+#: elaborate.cxx:5155
 msgid "Bad $context variable being substituted with literal 0"
 msgstr "Na žádost uživatele (--skip-badvars) nahrazuji $context nulou"
 
-#: elaborate.cxx:5221
+#: elaborate.cxx:5226
 msgid "statement will never be reached"
 msgstr "nedosažitelný kód"
 
-#: elaborate.cxx:5306
+#: elaborate.cxx:5311
 #, fuzzy
 msgid "instance of overloaded function will never be reached"
 msgstr "nedosažitelný kód"
 
-#: elaborate.cxx:5365
+#: elaborate.cxx:5370
 #, fuzzy, c-format
 msgid "Changing %s reference to %s reference\n"
 msgstr "nelze zapisovat na adresu reference"
 
-#: elaborate.cxx:5455
+#: elaborate.cxx:5460
 msgid "stable function must also be /* pure */"
 msgstr "'stable' funkce musí též být '/* pure */'"
 
-#: elaborate.cxx:5867
+#: elaborate.cxx:5872
 #, c-format
 msgid "Probe '%s' is already in a group, but is joining another"
 msgstr ""
 
-#: elaborate.cxx:5875
+#: elaborate.cxx:5880
 #, c-format
 msgid "Probe '%s' has been elided"
 msgstr ""
 
-#: elaborate.cxx:5987
+#: elaborate.cxx:5992
 #, c-format
 msgid "resolved function '%s' conflicts with an existing function"
 msgstr ""
 
-#: elaborate.cxx:6172
+#: elaborate.cxx:6216
 #, fuzzy, c-format
 msgid "while processing function %s"
 msgstr "konfliktní identifikátor funkce"
 
-#: elaborate.cxx:6219
+#: elaborate.cxx:6247
 #, fuzzy, c-format
 msgid "while processing probe %s"
 msgstr "během registrace přezdívky"
 
-#: elaborate.cxx:6230
+#: elaborate.cxx:6258
 msgid "wrapping not supported for scalars"
 msgstr "'wrapping' pro skalární proměnné není podporován"
 
-#: elaborate.cxx:6515
+#: elaborate.cxx:6543
 #, fuzzy
 msgid "internal error: unsupported assignment operator "
 msgstr "nepodporovaná operace přiřazení "
 
-#: elaborate.cxx:6684
+#: elaborate.cxx:6712
 #, fuzzy, c-format
 msgid "internal error: unresolved symbol '%s'"
 msgstr "nerozpoznaný symbol: "
 
-#: elaborate.cxx:6774 elaborate.cxx:6810
+#: elaborate.cxx:6802 elaborate.cxx:6838
 msgid "Resolution problem with "
 msgstr "Chyba zpracování symbolu "
 
 #. TRANSLATORS: simply saying not an issue with a probe or function
-#: elaborate.cxx:6789 elaborate.cxx:6825
+#: elaborate.cxx:6817 elaborate.cxx:6853
 msgid "other"
 msgstr "jiný"
 
-#: elaborate.cxx:6795
+#: elaborate.cxx:6823
 msgid "unresolved target-symbol expression"
 msgstr "chyba zpracování výrazu"
 
-#: elaborate.cxx:6831
+#: elaborate.cxx:6859
 msgid "unresolved @var() expression"
 msgstr "chyba zpracování výrazu '@var()'"
 
-#: elaborate.cxx:6844
+#: elaborate.cxx:6872
 msgid "unexpected @defined"
 msgstr "neočekávaný výskyt '@defined'"
 
-#: elaborate.cxx:6853 staptree.cxx:2213
+#: elaborate.cxx:6881 staptree.cxx:2213
 #, fuzzy
 msgid "unexpected @probewrite"
 msgstr "očekávám 'probe'"
 
-#: elaborate.cxx:6860
+#: elaborate.cxx:6888
 #, fuzzy
 msgid "internal error: @entry is only valid in .return probes"
 msgstr "'@entry' lze použít jen v '.return' sondách"
 
-#: elaborate.cxx:6872
+#: elaborate.cxx:6900
 #, c-format
 msgid "type definition '%s' not found in '%s'"
 msgstr ""
 
-#: elaborate.cxx:6886
+#: elaborate.cxx:6914
 msgid "unknown type in dereference"
 msgstr "dereference na neznámý typ"
 
-#: elaborate.cxx:6995
+#: elaborate.cxx:7023
 #, c-format
 msgid "internal error: unresolved function call to '%s'"
 msgstr ""
 
-#: elaborate.cxx:7090
+#: elaborate.cxx:7118
 msgid "Activating uprobes support because /* pragma:uprobes */ seen."
 msgstr "Aktivuji podporu 'uprobes' neboť je přítmna '/* pragma:uprobes */'"
 
-#: elaborate.cxx:7101
+#: elaborate.cxx:7129
 #, fuzzy
 msgid "Turning on DFA subexpressions because /* pragma:tagged_dfa */ seen"
 msgstr "Aktivuji podporu 'uprobes' neboť je přítmna '/* pragma:uprobes */'"
 
-#: elaborate.cxx:7274 translate.cxx:4932
+#: elaborate.cxx:7302 translate.cxx:4932
 msgid "invalid operand of delete expression"
 msgstr "neznámý operand příkazu 'delete'"
 
-#: elaborate.cxx:7410
+#: elaborate.cxx:7438
 msgid "Unspecified conversion in print operator format string"
 msgstr "Nespecifikovaná konverze ve formátovacím řetězci"
 
-#: elaborate.cxx:7426
+#: elaborate.cxx:7454
 msgid "Wrong number of args to formatted print operator"
 msgstr "Chybný počet argumentů ve formátovacím řetězci"
 
-#: elaborate.cxx:7559
+#: elaborate.cxx:7587
 msgid "array locals not supported, missing global declaration? "
 msgstr "proměnné typu pole musí být 'global'"
 
-#: elaborate.cxx:7569
+#: elaborate.cxx:7597
 msgid "stat locals not supported, missing global declaration? "
 msgstr "statistické proměnné musí být 'global'"
 
-#: elaborate.cxx:7584
+#: elaborate.cxx:7612
 msgid "unresolved type "
 msgstr "chyba určení datového typu "
 
-#: elaborate.cxx:7599
+#: elaborate.cxx:7627
 msgid "invalid operator"
 msgstr "neznámý operátor"
 
-#: elaborate.cxx:7601
+#: elaborate.cxx:7629
 msgid "invalid type "
 msgstr "chybný datový typ "
 
-#: elaborate.cxx:7614
+#: elaborate.cxx:7642
 #, c-format
 msgid "type mismatch: left and right sides don't agree (%s vs %s)"
 msgstr ""
 
-#: elaborate.cxx:7634
+#: elaborate.cxx:7662
 #, fuzzy, c-format
 msgid "type mismatch: expected %s"
 msgstr "chybný datový typ"
 
-#: elaborate.cxx:7636
+#: elaborate.cxx:7664
 #, fuzzy, c-format
 msgid " but found %s"
 msgstr " nalezen "
 
-#: elaborate.cxx:7685
+#: elaborate.cxx:7713
 #, c-format
 msgid "type mismatch: expected %s but found %s"
 msgstr ""
 
-#: elaborate.cxx:7697
+#: elaborate.cxx:7725
 #, c-format
 msgid "index %d "
 msgstr ""
 
-#: elaborate.cxx:7698
+#: elaborate.cxx:7726
 #, fuzzy, c-format
 msgid "type mismatch (%s)"
 msgstr "chybný datový typ"
 
-#: elaborate.cxx:7702
+#: elaborate.cxx:7730
 msgid "type"
 msgstr "typ"
 
-#: elaborate.cxx:7704
+#: elaborate.cxx:7732
 #, c-format
 msgid " of index %d"
 msgstr ""
 
-#: elaborate.cxx:7705
+#: elaborate.cxx:7733
 #, c-format
 msgid " was first inferred here (%s)"
 msgstr ""
@@ -4015,7 +4024,7 @@ msgstr "Předán chybný parametr. Prosím, nahlaste tuto chybu."
 #, fuzzy, c-format
 msgid ""
 "Systemtap translator/driver (version %s)\n"
-"Copyright (C) 2005-2024 Red Hat, Inc. and others\n"
+"Copyright (C) 2005-2025 Red Hat, Inc. and others\n"
 "This is free software; see the source for copying conditions.\n"
 msgstr ""
 "Překladač a řadič jadených modulů systemtapu (verze %s)\n"
@@ -5088,7 +5097,7 @@ msgstr "Chybný parametr přepínače '-r': '%s'.\n"
 #, fuzzy, c-format
 msgid ""
 "Systemtap module loader/runner (version %s, %s)\n"
-"Copyright (C) 2005-2024 Red Hat, Inc. and others\n"
+"Copyright (C) 2005-2025 Red Hat, Inc. and others\n"
 "This is free software; see the source for copying conditions.\n"
 msgstr ""
 "Zavaděč jadených modulů systemtapu (verze %s, %s)\n"
@@ -6298,7 +6307,7 @@ msgid "cannot expand unknown type"
 msgstr "neznámý typ"
 
 #: tapset-mark.cxx:575 tapset-netfilter.cxx:432 tapset-python.cxx:236
-#: tapset-python.cxx:244 tapsets.cxx:10991 tapset-timers.cxx:580
+#: tapset-python.cxx:244 tapsets.cxx:11031 tapset-timers.cxx:580
 #: tapset-utrace.cxx:1306 tapset-utrace.cxx:1320
 #, c-format
 msgid "%s will be ignored by bpf backend"
@@ -6313,7 +6322,7 @@ msgstr "mark_builder uvolňuje cache"
 msgid " cannot be opened: "
 msgstr " nemohu otevřít: "
 
-#: tapset-mark.cxx:755 tapsets.cxx:8870 tapsets.cxx:9045
+#: tapset-mark.cxx:755 tapsets.cxx:8910 tapsets.cxx:9085
 #, c-format
 msgid "no match (similar mark: %s)"
 msgid_plural "no match (similar marks: %s)"
@@ -6360,8 +6369,8 @@ msgstr "nemohu vytvořit java 'end' sondu"
 #: tapset-netfilter.cxx:193
 #, c-format
 msgid ""
-"unsupported netfilter priority \"%s\" for protocol family \"%s\"; need stap -"
-"g"
+"unsupported netfilter priority \"%s\" for protocol family \"%s\"; need stap "
+"-g"
 msgstr ""
 
 #: tapset-netfilter.cxx:200
@@ -6425,7 +6434,7 @@ msgstr "chybí jméno počitadla perf sondy"
 msgid "duplicate counter name"
 msgstr "duplicitní jméno počitadla"
 
-#: tapset-perfmon.cxx:362 tapsets.cxx:8716
+#: tapset-perfmon.cxx:362 tapsets.cxx:8756
 msgid "invalid -c command for unspecified process probe [man stapprobes]"
 msgstr ""
 "neplatný -c PŘÍKAZ pro nespecifikovanou sondu v uživatelském procesu [man "
@@ -6558,7 +6567,7 @@ msgstr "chyba při vytváření syntetické inicializační sondy"
 msgid "can't create python call mark probe"
 msgstr "nemohu vytvořit 'procfs' sondu"
 
-#: tapsets.cxx:783 tapsets.cxx:8886
+#: tapsets.cxx:783 tapsets.cxx:8926
 #, fuzzy, c-format
 msgid "cannot find executable '%s'"
 msgstr "nemohu najít "
@@ -6577,7 +6586,7 @@ msgstr ""
 msgid "malformed specification '%s'"
 msgstr ""
 
-#: tapsets.cxx:1479 tapsets.cxx:9215
+#: tapsets.cxx:1479 tapsets.cxx:9255
 msgid "Couldn't get elf header"
 msgstr "Chyba čtení ELF hlavičky"
 
@@ -6753,123 +6762,127 @@ msgstr[2] ""
 "V souvislosti s procfs jsou implementovány pouze následující přiřazovací "
 "operátory: '=', '.='"
 
-#: tapsets.cxx:3140
+#: tapsets.cxx:3127 tapsets.cxx:4670 tapsets.cxx:11351
+msgid "variable location problem [man error::dwarf]: "
+msgstr "problém se symbolickou (dwarf) adresací proměnné [man error::dwarf]:"
+
+#: tapsets.cxx:3135
+msgid "@defined unresolved due to un-rewritten operand "
+msgstr ""
+
+#: tapsets.cxx:3155
 msgid "Resolving "
 msgstr ""
 
-#: tapsets.cxx:3201
+#: tapsets.cxx:3216
 msgid "need a clone of context-op function "
 msgstr ""
 
-#: tapsets.cxx:3212
+#: tapsets.cxx:3227
 msgid "reusing previous clone"
 msgstr ""
 
-#: tapsets.cxx:3251
+#: tapsets.cxx:3266
 msgid "clone: "
 msgstr ""
 
-#: tapsets.cxx:3363
+#: tapsets.cxx:3378
 msgid "cannot take address of pretty-printed variable"
 msgstr "nelze přisoudit adresu 'pretty-printed' proměnné"
 
-#: tapsets.cxx:3367
+#: tapsets.cxx:3382
 msgid "invalid target_symbol for pretty-print"
 msgstr "neplatný cílový symbol pro 'pretty-print'"
 
-#: tapsets.cxx:3971
+#: tapsets.cxx:3986
 #, fuzzy
 msgid "no usable location for symbol [error::dwarf]"
 msgstr "problém se symbolickou (dwarf) adresací proměnné [man error::dwarf]:"
 
-#: tapsets.cxx:4506
+#: tapsets.cxx:4521
 msgid "unknown type to save in kretprobe"
 msgstr "neznámý typ pro uložení pro sondu 'kretprobe'"
 
-#: tapsets.cxx:4655 tapsets.cxx:11311
-msgid "variable location problem [man error::dwarf]: "
-msgstr "problém se symbolickou (dwarf) adresací proměnné [man error::dwarf]:"
-
-#: tapsets.cxx:4708
+#: tapsets.cxx:4723
 msgid "write to target variable not permitted; need stap -g"
 msgstr "zápis do proměnné není dovolen; použijte stap -g"
 
-#: tapsets.cxx:4721
+#: tapsets.cxx:4736
 msgid "write to target variable not permitted in .return probes"
 msgstr "zápis do proměnné není dovolen v '.return' sondě"
 
-#: tapsets.cxx:4725
+#: tapsets.cxx:4740
 #, c-format
 msgid ""
 "confusing usage, value is captured as @entry(%s) in .return probe [man "
 "stapprobes] RETURN PROBES"
 msgstr ""
 
-#: tapsets.cxx:4734
+#: tapsets.cxx:4749
 msgid "cannot write to context variable"
 msgstr "nelze zapisovat do kontextové proměnné"
 
-#: tapsets.cxx:4737 tapsets.cxx:7001 tapsets.cxx:11265
+#: tapsets.cxx:4752 tapsets.cxx:7041 tapsets.cxx:11305
 msgid "cannot take address of context variable"
 msgstr "nelze přisoudit adresu kontextové proměnné"
 
-#: tapsets.cxx:4748
+#: tapsets.cxx:4763
 #, c-format
 msgid ""
 "debuginfo scope not found for module '%s', cannot resolve context variable "
 "[man error::dwarf]"
 msgstr ""
 
-#: tapsets.cxx:4788
+#: tapsets.cxx:4803
 #, c-format
 msgid "liveness analysis skipped on CONFIG_RETPOLINE kernel %s"
 msgstr ""
 
-#: tapsets.cxx:4792
+#: tapsets.cxx:4807
 #, c-format
 msgid "write at %p will have no effect"
 msgstr ""
 
-#: tapsets.cxx:4932
+#: tapsets.cxx:4956
 #, c-format
 msgid "perf counter '%s' not defined"
 msgstr ""
 
 #. TRANSLATORS: Here we're using a cached module.
-#: tapsets.cxx:5106
+#: tapsets.cxx:5130
 msgid "Pass 2: using cached "
 msgstr "Fáze 2: využívám cache: "
 
-#: tapsets.cxx:5130
+#: tapsets.cxx:5154
 msgid "write to @cast context variable not permitted; need stap -g"
 msgstr "zápis do @cast kontextové proměnné není dovolen; použijte stap -g"
 
-#: tapsets.cxx:5221
+#: tapsets.cxx:5262
 msgid "write not permitted; need stap -g"
 msgstr "zápis není povolen; použijte stap -g"
 
-#: tapsets.cxx:5226 tapsets.cxx:11200
+#: tapsets.cxx:5267 tapsets.cxx:11240
 msgid "cannot take address of tracepoint variable"
 msgstr "nelze přisoudit adresu proměnné 'tracepoint' bodu"
 
-#: tapsets.cxx:5229
+#: tapsets.cxx:5270
 msgid "internal error: no-op autocast encountered"
 msgstr "interní chyba: pokus o přetypování 'NOP' operace"
 
-#: tapsets.cxx:5383
+#: tapsets.cxx:5424
 msgid "write to @var variable not permitted; need stap -g"
 msgstr "zápis do @var není dovolen; použijte stap -g"
 
-#: tapsets.cxx:5442
+#: tapsets.cxx:5483
 msgid ", in "
 msgstr ", v "
 
-#: tapsets.cxx:5440
+#: tapsets.cxx:5481
 #, c-format
 msgid "unable to find global '%s' in %s%s%s"
 msgstr ""
 
-#: tapsets.cxx:5539
+#: tapsets.cxx:5580
 msgid ""
 "process probes not available without kernel CONFIG_TRACEPOINTS/"
 "CONFIG_ARCH_SUPPORTS_UPROBES/CONFIG_UPROBES"
@@ -6877,200 +6890,200 @@ msgstr ""
 "instrumentace userspace programů není dostupná bez kernel CONFIG_TRACEPOINTS/"
 "CONFIG_ARCH_SUPPORTS_UPROBES/CONFIG_UPROBES"
 
-#: tapsets.cxx:5606
+#: tapsets.cxx:5647
 msgid "missing relocation basis"
 msgstr "chybějící relokační báze"
 
-#: tapsets.cxx:5608
+#: tapsets.cxx:5649
 msgid "inconsistent relocation address"
 msgstr "nekonzistentní relokační adresa"
 
-#: tapsets.cxx:5618
+#: tapsets.cxx:5659
 #, fuzzy, c-format
 msgid "maxactive value out of range [0,%s]"
 msgstr "hodnota 'randomization' mimo rozsah"
 
-#: tapsets.cxx:5636
+#: tapsets.cxx:5677
 #, c-format
 msgid ""
 "expanding .return vars at prologue_end (0x%s) rather than entrypc (0x%s)\n"
 msgstr ""
 
-#: tapsets.cxx:5809
+#: tapsets.cxx:5850
 #, c-format
 msgid "adding caller checks for callee %s\n"
 msgstr ""
 
-#: tapsets.cxx:5832
+#: tapsets.cxx:5873
 #, c-format
 msgid "adding caller check [u]stack(%d) == reloc(0x%s)\n"
 msgstr ""
 
-#: tapsets.cxx:5886
+#: tapsets.cxx:5927
 #, c-format
 msgid "saveargs: examining '%s' (dieoffset: %#<PRIx64>)\n"
 msgstr ""
 
-#: tapsets.cxx:5898
+#: tapsets.cxx:5939
 #, c-format
 msgid ""
 "saveargs: failed to retrieve type name for return value (dieoffset: %s)\n"
 msgstr ""
 
-#: tapsets.cxx:5926
+#: tapsets.cxx:5967
 #, c-format
 msgid "saveargs: failed to retrieve name for local (dieoffset: %s)\n"
 msgstr ""
 
-#: tapsets.cxx:5932
+#: tapsets.cxx:5973
 #, c-format
 msgid "saveargs: finding location for local '%s' (dieoffset: %s)\n"
 msgstr ""
 
-#: tapsets.cxx:5954
+#: tapsets.cxx:5995
 #, c-format
 msgid ""
 "saveargs: failed to resolve the location for local '%s' (dieoffset: %s)\n"
 msgstr ""
 
-#: tapsets.cxx:5965
+#: tapsets.cxx:6006
 #, c-format
 msgid ""
 "saveargs: local '%s' (dieoffset: %s) is not available at this address (%s)\n"
 msgstr ""
 
-#: tapsets.cxx:5979
+#: tapsets.cxx:6020
 #, c-format
 msgid "saveargs: failed to retrieve type name for local '%s' (dieoffset: %s)\n"
 msgstr ""
 
-#: tapsets.cxx:7080
+#: tapsets.cxx:7120
 msgid "target-symbol requires debuginfo"
 msgstr "chybějící ladicí informace pro symbol"
 
-#: tapsets.cxx:7295
+#: tapsets.cxx:7335
 #, fuzzy, c-format
 msgid "unrecognized register '%s'"
 msgstr "nerozpoznaná varianta časovače"
 
-#: tapsets.cxx:7392
+#: tapsets.cxx:7432
 #, fuzzy, c-format
 msgid "unrecognized base register '%s'"
 msgstr "nerozpoznaná varianta časovače"
 
-#: tapsets.cxx:7397
+#: tapsets.cxx:7437
 #, fuzzy, c-format
 msgid "unrecognized index register '%s'"
 msgstr "nerozpoznaná varianta časovače"
 
-#: tapsets.cxx:7479
+#: tapsets.cxx:7519
 msgid "can't retrieve symbol table"
 msgstr "nemám k dispozici tabulku symbolů"
 
-#: tapsets.cxx:7613
+#: tapsets.cxx:7653
 #, c-format
 msgid "Can't parse SDT_V3 operand '%s' [man error::sdt]"
 msgstr ""
 
-#: tapsets.cxx:7617
+#: tapsets.cxx:7657
 #, c-format
 msgid ""
 "Downgrading SDT_V2 probe argument to dwarf, can't parse '%s' [man error::sdt]"
 msgstr ""
 
-#: tapsets.cxx:7624
+#: tapsets.cxx:7664
 msgid "SDT asm not understood, requires debuginfo [man error::sdt]"
 msgstr ""
 "selhala interpretace 'SDT assembly' bez ladicích informací [man error::sdt]"
 
 #. TRANSLATORS: We're mapping the operand to a new expression*.
-#: tapsets.cxx:7634
+#: tapsets.cxx:7674
 #, c-format
 msgid "mapped asm operand %s to "
 msgstr ""
 
-#: tapsets.cxx:7639
+#: tapsets.cxx:7679
 msgid "cannot take address of sdt variable"
 msgstr "nelze přisoudit adresu 'sdt' proměnné"
 
-#: tapsets.cxx:7729
+#: tapsets.cxx:7769
 #, c-format
 msgid "unable to find plt variable '%s' (alternatives: %s)"
 msgstr ""
 
 #. TRANSLATORS: Describing what probe type (kprobe or uprobe) the probe
 #. TRANSLATORS: is matched to.
-#: tapsets.cxx:7847
+#: tapsets.cxx:7887
 #, c-format
 msgid "matched probe_name %s probe type "
 msgstr ""
 
-#: tapsets.cxx:8114 tapsets.cxx:8173
+#: tapsets.cxx:8154 tapsets.cxx:8213
 msgid " (provider "
 msgstr " (poskytovatel "
 
-#: tapsets.cxx:8114
+#: tapsets.cxx:8154
 #, c-format
 msgid " saw .note.stapsdt %s%s "
 msgstr ""
 
-#: tapsets.cxx:8135
+#: tapsets.cxx:8175
 #, c-format
 msgid "got unknown probe_type : 0x%x"
 msgstr ""
 
-#: tapsets.cxx:8173
+#: tapsets.cxx:8213
 msgid "saw .probes "
 msgstr "vidím '.probes'"
 
-#: tapsets.cxx:8193
+#: tapsets.cxx:8233
 #, c-format
 msgid "looking for semaphore symbol %s "
 msgstr ""
 
-#: tapsets.cxx:8214
+#: tapsets.cxx:8254
 msgid ", found at 0x"
 msgstr ", nalezen na 0x"
 
-#: tapsets.cxx:8219
+#: tapsets.cxx:8259
 msgid ", not found"
 msgstr ", nenalezen"
 
-#: tapsets.cxx:8270
+#: tapsets.cxx:8310
 msgid "probe_type == uprobe1, use statement addr: 0x"
 msgstr "probe_type == uprobe1, použijte 'statement addr': 0x"
 
-#: tapsets.cxx:8274
+#: tapsets.cxx:8314
 msgid "probe_type == uprobe2, use statement addr: 0x"
 msgstr "probe_type == uprobe2, použijte 'statement addr': 0x"
 
-#: tapsets.cxx:8278
+#: tapsets.cxx:8318
 msgid "probe_type == uprobe3, use statement addr: 0x"
 msgstr "probe_type == uprobe3, použijte 'statement addr': 0x"
 
-#: tapsets.cxx:8282
+#: tapsets.cxx:8322
 #, fuzzy, c-format
 msgid "probe_type == use_uprobe_no_dwarf, use label name: _stapprobe1_%s"
 msgstr "probe_type == uprobe1, použijte 'statement addr': 0x"
 
-#: tapsets.cxx:8505
+#: tapsets.cxx:8545
 #, fuzzy, c-format
 msgid "glob %s error (%d)"
 msgstr "wordexp: chyba syntaktické analýzy (%d)\n"
 
-#: tapsets.cxx:8562
+#: tapsets.cxx:8602
 #, c-format
 msgid "Expanded library(\"%s\") to library(\"%s\")"
 msgstr ""
 
-#: tapsets.cxx:8591
+#: tapsets.cxx:8631
 #, c-format
 msgid ""
 "'%s' is not a needed library of '%s'. Specify the full path to squelch this "
 "warning."
 msgstr ""
 
-#: tapsets.cxx:8600
+#: tapsets.cxx:8640
 #, c-format
 msgid "no match (similar library: %s)"
 msgid_plural "no match (similar libraries: %s)"
@@ -7078,11 +7091,11 @@ msgstr[0] ""
 msgstr[1] ""
 msgstr[2] ""
 
-#: tapsets.cxx:8713
+#: tapsets.cxx:8753
 msgid "invalid -x pid for unspecified process probe [man stapprobes]"
 msgstr "neplatný -x pid pro nespecifikovanou 'process' sondu [man stapprobes]"
 
-#: tapsets.cxx:8720
+#: tapsets.cxx:8760
 msgid ""
 "unspecified process probe is invalid without a -c COMMAND or -x PID [man "
 "stapprobes]"
@@ -7090,13 +7103,13 @@ msgstr ""
 "nespecifikovaná sonda pro uživatelský proces není validní viz -c PŘÍKAZ, "
 "nebo -x PID [man stapprobes]"
 
-#: tapsets.cxx:8805 tapsets.cxx:8943
+#: tapsets.cxx:8845 tapsets.cxx:8983
 #, c-format
 msgid "Expanded process(\"%s\") to process(\"%s\")"
 msgstr ""
 
-#: tapsets.cxx:8843 tapsets.cxx:8855 tapsets.cxx:9144 tapsets.cxx:9156
-#: tapsets.cxx:10685
+#: tapsets.cxx:8883 tapsets.cxx:8895 tapsets.cxx:9184 tapsets.cxx:9196
+#: tapsets.cxx:10725
 #, c-format
 msgid "no match (similar function: %s)"
 msgid_plural "no match (similar functions: %s)"
@@ -7104,23 +7117,23 @@ msgstr[0] ""
 msgstr[1] ""
 msgstr[2] ""
 
-#: tapsets.cxx:8995
+#: tapsets.cxx:9035
 msgid "process return probes not available [man error::inode-uprobes]"
 msgstr ""
 "'return' sondy pro uživatelské procesy nejsou dostupné [man error::inode-"
 "uprobes]"
 
-#: tapsets.cxx:9015
+#: tapsets.cxx:9055
 #, c-format
 msgid "dwarf_builder::build for %s"
 msgstr ""
 
-#: tapsets.cxx:9063 tapsets.cxx:10708
+#: tapsets.cxx:9103 tapsets.cxx:10748
 msgid "absolute statement probe in unprivileged script; need stap -g"
 msgstr ""
 "'kernel.statement.absolute' v neprivilegovaném skriptu; použijte stap -g"
 
-#: tapsets.cxx:9106
+#: tapsets.cxx:9146
 #, c-format
 msgid "cannot probe .return of %u inlined function %s"
 msgid_plural "cannot probe .return of %u inlined functions %s"
@@ -7128,7 +7141,7 @@ msgstr[0] ""
 msgstr[1] ""
 msgstr[2] ""
 
-#: tapsets.cxx:9112
+#: tapsets.cxx:9152
 #, c-format
 msgid "skipped .return probe of %u inlined function"
 msgid_plural "skipped .return probe of %u inlined functions"
@@ -7136,165 +7149,165 @@ msgstr[0] ""
 msgstr[1] ""
 msgstr[2] ""
 
-#: tapsets.cxx:9372
+#: tapsets.cxx:9412
 msgid "Multiple 'sys_ni_syscall' symbols found.\n"
 msgstr "Nalezeno více 'sys_ni_syscall' symbolů\n"
 
-#: tapsets.cxx:9407
+#: tapsets.cxx:9447
 msgid "Error: Cannot find vmlinux."
 msgstr "Chyba: Nemohu najít 'vmlinux'."
 
-#: tapsets.cxx:9631
+#: tapsets.cxx:9671
 msgid "absolute process probes not available [man error::inode-uprobes]"
 msgstr ""
 "sondy 'process.statement.absolute' nedostupné [man error::inode-uprobes]"
 
-#: tapsets.cxx:9693
+#: tapsets.cxx:9733
 #, c-format
 msgid "Too many simultaneous uses of perf values (%d is greater than 16)"
 msgstr ""
 
-#: tapsets.cxx:10364
+#: tapsets.cxx:10404
 #, fuzzy
 msgid "binary path required for BPF runtime"
 msgstr "vyhodnocení skutečných parametrů funkce"
 
-#: tapsets.cxx:10367
+#: tapsets.cxx:10407
 #, fuzzy
 msgid "probe not compatible with BPF runtime"
 msgstr "v --runtime=dyninst nejsou profilovací časovače dostupné"
 
-#: tapsets.cxx:11024
+#: tapsets.cxx:11064
 msgid "CONFIG_PERF_EVENTS not available on this kernel"
 msgstr "běžící jádro nemá CONFIG_PERF_EVENTS"
 
-#: tapsets.cxx:11027
+#: tapsets.cxx:11067
 msgid "CONFIG_HAVE_HW_BREAKPOINT not available on this kernel"
 msgstr "běžící jádro nemá CONFIG_HAVE_HW_BREAKPOINT"
 
-#: tapsets.cxx:11033
+#: tapsets.cxx:11073
 #, c-format
 msgid "%s.data probes are not supported on arm64 kernels"
 msgstr ""
 
-#: tapsets.cxx:11176
+#: tapsets.cxx:11216
 msgid " (alternatives: "
 msgstr " (alternativy: "
 
-#: tapsets.cxx:11174
+#: tapsets.cxx:11214
 #, fuzzy, c-format
 msgid "unable to find tracepoint variable '%s'%s"
 msgstr "nelze přisoudit adresu proměnné 'tracepoint' bodu"
 
-#: tapsets.cxx:11191
+#: tapsets.cxx:11231
 #, fuzzy, c-format
 msgid "write to tracepoint variable '%s' not permitted; need stap -g"
 msgstr "zápis do proměnné není dovolen; použijte stap -g"
 
-#: tapsets.cxx:11268
+#: tapsets.cxx:11308
 #, fuzzy, c-format
 msgid "write to tracepoint '%s' not permitted"
 msgstr "zápis do parametru značky není povolen"
 
-#: tapsets.cxx:11544
+#: tapsets.cxx:11584
 #, fuzzy, c-format
 msgid "cannot resolve size of array %s for probe %s"
 msgstr "nemohu získat typ prvku pole typu %s: %s"
 
-#: tapsets.cxx:11558
+#: tapsets.cxx:11598
 #, c-format
 msgid "array %s for probe %s has unknown size"
 msgstr ""
 
-#: tapsets.cxx:11567
+#: tapsets.cxx:11607
 #, fuzzy, c-format
 msgid "cannot get byte size of type '%s' for tracepoint '%s'"
 msgstr "nemohu číst parametry bitového pole: %s"
 
-#: tapsets.cxx:11607
+#: tapsets.cxx:11647
 #, fuzzy, c-format
 msgid "cannot get type of parameter '%s' of tracepoint '%s'"
 msgstr "nemohu číst parametry bitového pole: %s"
 
-#: tapsets.cxx:11612
+#: tapsets.cxx:11652
 #, fuzzy, c-format
 msgid "cannot get declaration of parameter '%s' of tracepoint '%s'"
 msgstr "nemohu číst parametry bitového pole: %s"
 
-#: tapsets.cxx:11633
+#: tapsets.cxx:11673
 #, c-format
 msgid "found parameter for tracepoint '%s': type:'%s' name:'%s' decl:'%s' %s"
 msgstr ""
 
-#: tapsets.cxx:11662 tapsets.cxx:11684
+#: tapsets.cxx:11702 tapsets.cxx:11724
 #, fuzzy, c-format
 msgid "cannot get offset attribute for variable '%s' of tracepoint '%s'"
 msgstr "nemohu číst parametry bitového pole: %s"
 
-#: tapsets.cxx:12582
+#: tapsets.cxx:12622
 msgid "SYSTEM:TRACEPOINT syntax not supported with --compatible <= 2.6"
 msgstr "syntaxe SYSTEM:TRACEPOINT není podporovaná pro '--compatible <= 2.6'"
 
-#: tapsets.cxx:12591
+#: tapsets.cxx:12631
 msgid "invalid tracepoint string provided"
 msgstr "neplatný 'tracepoint' string"
 
-#: tapsets.cxx:12718
+#: tapsets.cxx:12758
 #, c-format
 msgid "tracepoint %s is blocklisted on architecture %s"
 msgstr ""
 
-#: tapsets.cxx:12752
+#: tapsets.cxx:12792
 #, fuzzy, c-format
 msgid "Unable to resolve base type of %s for probe %s\n"
 msgstr "Výstupní soubor %s nelze otevřít\n"
 
-#: tapsets.cxx:12826
+#: tapsets.cxx:12866
 msgid "tracepoint_builder releasing dwflpp"
 msgstr "'tracepoint_builder' uvolňuje 'dwflpp'"
 
-#: tapsets.cxx:12854
+#: tapsets.cxx:12894
 #, c-format
 msgid "Pass 2: getting a tracepoint query for %zu headers: "
 msgstr ""
 
-#: tapsets.cxx:12876
+#: tapsets.cxx:12916
 #, fuzzy, c-format
 msgid "Pass 2: using cached %s"
 msgstr "Fáze 2: využívám cache: "
 
-#: tapsets.cxx:13109
+#: tapsets.cxx:13149
 #, c-format
 msgid "Ignoring inaccessible kernel source tree (DW_AT_comp_dir) at '%s'"
 msgstr ""
 
-#: tapsets.cxx:13114
+#: tapsets.cxx:13154
 #, c-format
 msgid "Ignoring duplicate kernel source tree (DW_AT_comp_dir) at '%s'"
 msgstr ""
 
-#: tapsets.cxx:13119
+#: tapsets.cxx:13159
 #, c-format
 msgid "Located kernel source tree (DW_AT_comp_dir) at '%s'"
 msgstr ""
 
-#: tapsets.cxx:13155
+#: tapsets.cxx:13195
 #, c-format
 msgid "Located kernel source tree at '%s'"
 msgstr ""
 
-#: tapsets.cxx:13204
+#: tapsets.cxx:13244
 msgid "Checking tracepoint glob "
 msgstr "Ověřuji 'tracepoint' glob "
 
-#: tapsets.cxx:13260
+#: tapsets.cxx:13300
 #, fuzzy
 msgid ""
 "SYSTEM: new BPF TRACEPOINT behavior not supported by target kernel (or use --"
 "compatible=4.1 option)"
 msgstr "syntaxe SYSTEM:TRACEPOINT není podporovaná pro '--compatible <= 2.6'"
 
-#: tapsets.cxx:13283
+#: tapsets.cxx:13323
 #, c-format
 msgid "no match (similar tracepoint: %s)"
 msgid_plural "no match (similar tracepoints: %s)"
@@ -7374,11 +7387,11 @@ msgstr "neznámá cílová proměnná"
 
 #: tapset-utrace.cxx:627
 msgid ""
-"only \"process(PATH_OR_PID).syscall\" and \"process(PATH_OR_PID).syscall."
-"return\" probes support target symbols"
+"only \"process(PATH_OR_PID).syscall\" and "
+"\"process(PATH_OR_PID).syscall.return\" probes support target symbols"
 msgstr ""
-"pouze \"process(PATH_OR_PID).syscall\" a \"process(PATH_OR_PID).syscall."
-"return\" sondy podporují cílové symboly"
+"pouze \"process(PATH_OR_PID).syscall\" a "
+"\"process(PATH_OR_PID).syscall.return\" sondy podporují cílové symboly"
 
 #: tapset-utrace.cxx:632
 msgid "cannot take address of utrace variable"
@@ -7886,8 +7899,8 @@ msgstr ""
 #~ "user-space process-tracking facilities not available [man error::process-"
 #~ "tracking]"
 #~ msgstr ""
-#~ "nástroje pro sledování uživatelských procesů jsou nedostupné [man error::"
-#~ "process-tracking]"
+#~ "nástroje pro sledování uživatelských procesů jsou nedostupné [man "
+#~ "error::process-tracking]"
 
 #~ msgid "failed to create thread"
 #~ msgstr "chyba při vytváření vlákna"
