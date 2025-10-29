@@ -2,7 +2,7 @@ SYSTEMTAP EXAMPLES INDEX
 (see also keyword-index.txt)
 
 
-For systemtap version 5.3.
+For systemtap version 5.4.
 
 apps/gmalloc_watch.stp - Tracing glib2 memory allocations
 keywords: trace
@@ -1057,7 +1057,7 @@ keywords: network tracepoint socket
   Every five seconds the dropwatch.stp script lists the number of
   socket buffers freed at locations in the kernel.
 
-  # stap dropwatch.stp -T 1
+  # stap -d kernel dropwatch.stp -T 1
 
 
 network/net_xmit_json.stp - Tracks time between packet queue and transmit.

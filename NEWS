@@ -1,4 +1,4 @@
-* What's new in version 5.4
+* What's new in version 5.4, 2025-10-31
 
 - The kernel-context @cast operator now implicitly searches a kernel's
   <vmlinux.h> generated header file first, if available (kernel 5.7+),
@@ -13,6 +13,10 @@
   more complicated.  Preexisting scripts that rely on elision for
   bypassing type violations may now get caught.  No --compatible
   option exists to suppress this new behaviour.
+
+- The sys/sdt.h file now arranges to include the section flag "R"
+  (RETAIN) for the .stapsdt.base elf sections related to sdt markers,
+  for compatibility with aggressive GC operations in some linkers.
 
 * What's new in version 5.3, 2025-05-02
 

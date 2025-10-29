@@ -2,7 +2,7 @@ SYSTEMTAP EXAMPLES INDEX BY KEYWORD
 (see also index.txt)
 
 
-For systemtap version 5.3.
+For systemtap version 5.4.
 
 = _BEST =
 
@@ -1983,7 +1983,7 @@ keywords: network tracepoint socket
   Every five seconds the dropwatch.stp script lists the number of
   socket buffers freed at locations in the kernel.
 
-  # stap dropwatch.stp -T 1
+  # stap -d kernel dropwatch.stp -T 1
 
 
 network/net_xmit_json.stp - Tracks time between packet queue and transmit.
@@ -3468,7 +3468,7 @@ keywords: network tracepoint socket
   Every five seconds the dropwatch.stp script lists the number of
   socket buffers freed at locations in the kernel.
 
-  # stap dropwatch.stp -T 1
+  # stap -d kernel dropwatch.stp -T 1
 
 
 network/socket-trace.stp - Trace Functions Called in Network Socket Code
@@ -4211,7 +4211,7 @@ keywords: network tracepoint socket
   Every five seconds the dropwatch.stp script lists the number of
   socket buffers freed at locations in the kernel.
 
-  # stap dropwatch.stp -T 1
+  # stap -d kernel dropwatch.stp -T 1
 
 
 process/cycle_thief.stp - Track IRQ's and Other Processes Stealing Cycles from a Task

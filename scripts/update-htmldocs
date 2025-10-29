@@ -27,9 +27,7 @@ DIR=`mktemp -d stapdocsXXX -p /tmp/`; cd $DIR
 # We'll need to build the latest stap with docs, ensure a check that everything built properly or bail
 
 # TODO Could set BRANCH from cmdline arg
-#BRANCH=master
-# PRERELEASE
-BRANCH=release-5.2
+BRANCH=master
 git clone --branch $BRANCH --depth 1 git://sourceware.org/git/systemtap.git
 
 # Checkout the htdocs CVS^H^H^Hgit

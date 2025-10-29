@@ -38,7 +38,7 @@
            		<li><a href="keyword-index.html">By Keyword</a></li>
          	</ul>
 
-<p><em>For systemtap version 5.3.</em></p><h2>Best Examples</h2>
+<p><em>For systemtap version 5.4.</em></p><h2>Best Examples</h2>
 <ul>
 <li><a href="#general/helloworld.stp">general/helloworld.stp - SystemTap "Hello World" Program</a></li>
 <li><a href="#general/para-callgraph.stp">general/para-callgraph.stp - Callgraph Tracing with Arguments</a></li>
@@ -342,7 +342,7 @@ keywords: <a href="keyword-index.html#NETWORK">NETWORK</a> <a href="keyword-inde
 <p>The connect_stat.stp script prints a task&#39;s entire ancestry (parent process name/uid/gid) whenever it attempts an outgoing socket connection to a given IP address.</p><p><font size="-2"><pre># stap connect_stat.stp 127.0.0.1 -T 1</pre></font></p>
 </li><li><a name="network/dropwatch.stp"></a><a href="#network/dropwatch.stp">&para;</a> <a href="network/dropwatch.stp">network/dropwatch.stp</a> - Watch Where Socket Buffers Are Freed in the Kernel<br>
 keywords: <a href="keyword-index.html#NETWORK">NETWORK</a> <a href="keyword-index.html#TRACEPOINT">TRACEPOINT</a> <a href="keyword-index.html#SOCKET">SOCKET</a> <br>
-<p>Every five seconds the dropwatch.stp script lists the number of socket buffers freed at locations in the kernel.</p><p><font size="-2"><pre># stap dropwatch.stp -T 1</pre></font></p>
+<p>Every five seconds the dropwatch.stp script lists the number of socket buffers freed at locations in the kernel.</p><p><font size="-2"><pre># stap -d kernel dropwatch.stp -T 1</pre></font></p>
 </li><li><a name="network/net_xmit_json.stp"></a><a href="#network/net_xmit_json.stp">&para;</a> <a href="network/net_xmit_json.stp">network/net_xmit_json.stp</a> - Tracks time between packet queue and transmit.<br>
 keywords: <a href="keyword-index.html#NETWORK">NETWORK</a> <a href="keyword-index.html#STATISTICS">STATISTICS</a> <a href="keyword-index.html#JSON">JSON</a> <br>
 <p>This script tracks time between packet queue and transmit. The information is provided to userspace via procfs in JSON format.</p><p><font size="-2"><pre># stap net_xmit_json.stp -T 1</pre></font></p>
