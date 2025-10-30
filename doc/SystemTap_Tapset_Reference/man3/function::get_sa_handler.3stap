@@ -2,12 +2,12 @@
 .\"     Title: function::get_sa_handler
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: April 2025
+.\"      Date: October 2025
 .\"    Manual: Signal Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "FUNCTION::GET_SA_HAN" "3stap" "April 2025" "SystemTap Tapset Reference" "Signal Tapset"
+.TH "FUNCTION::GET_SA_HAN" "3stap" "October 2025" "SystemTap Tapset Reference" "Signal Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------

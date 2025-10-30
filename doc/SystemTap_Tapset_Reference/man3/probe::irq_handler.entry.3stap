@@ -2,12 +2,12 @@
 .\"     Title: probe::irq_handler.entry
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: April 2025
+.\"      Date: October 2025
 .\"    Manual: Interrupt Request (IRQ) Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "PROBE::IRQ_HANDLER\&" "3stap" "April 2025" "SystemTap Tapset Reference" "Interrupt Request (IRQ) Tapset"
+.TH "PROBE::IRQ_HANDLER\&" "3stap" "October 2025" "SystemTap Tapset Reference" "Interrupt Request (IRQ) Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -36,29 +36,9 @@ irq_handler\&.entry
 .fi
 .SH "VALUES"
 .PP
-\fIhandler\fR
+\fIflags\fR
 .RS 4
-interrupt handler function
-.RE
-.PP
-\fIthread_fn\fR
-.RS 4
-interrupt handler function for threaded interrupts
-.RE
-.PP
-\fIaction\fR
-.RS 4
-struct irqaction* for this interrupt num
-.RE
-.PP
-\fIdev_name\fR
-.RS 4
-name of device
-.RE
-.PP
-\fIdir\fR
-.RS 4
-pointer to the proc/irq/NN/name entry
+Flags for IRQ handler
 .RE
 .PP
 \fInext_irqaction\fR
@@ -71,29 +51,49 @@ pointer to next irqaction for shared interrupts
 symbolic string representation of IRQ flags
 .RE
 .PP
-\fIthread\fR
-.RS 4
-thread pointer for threaded interrupts
-.RE
-.PP
-\fIflags\fR
-.RS 4
-Flags for IRQ handler
-.RE
-.PP
-\fIdev_id\fR
-.RS 4
-Cookie to identify device
-.RE
-.PP
 \fIirq\fR
 .RS 4
 irq number
 .RE
 .PP
+\fIdev_name\fR
+.RS 4
+name of device
+.RE
+.PP
+\fIthread\fR
+.RS 4
+thread pointer for threaded interrupts
+.RE
+.PP
+\fIaction\fR
+.RS 4
+struct irqaction* for this interrupt num
+.RE
+.PP
+\fIdir\fR
+.RS 4
+pointer to the proc/irq/NN/name entry
+.RE
+.PP
+\fIhandler\fR
+.RS 4
+interrupt handler function
+.RE
+.PP
 \fIthread_flags\fR
 .RS 4
 Flags related to thread
+.RE
+.PP
+\fIthread_fn\fR
+.RS 4
+interrupt handler function for threaded interrupts
+.RE
+.PP
+\fIdev_id\fR
+.RS 4
+Cookie to identify device
 .RE
 .SH SEE ALSO\n 
 .IR tapset::irq (3stap)

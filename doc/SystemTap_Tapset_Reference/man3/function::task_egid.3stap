@@ -2,12 +2,12 @@
 .\"     Title: function::task_egid
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: April 2025
+.\"      Date: October 2025
 .\"    Manual: Context Functions
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "FUNCTION::TASK_EGID" "3stap" "April 2025" "SystemTap Tapset Reference" "Context Functions"
+.TH "FUNCTION::TASK_EGID" "3stap" "October 2025" "SystemTap Tapset Reference" "Context Functions"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------

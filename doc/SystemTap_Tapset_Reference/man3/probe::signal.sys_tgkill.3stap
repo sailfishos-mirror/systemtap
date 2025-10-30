@@ -2,12 +2,12 @@
 .\"     Title: probe::signal.sys_tgkill
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: April 2025
+.\"      Date: October 2025
 .\"    Manual: Signal Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "PROBE::SIGNAL\&.SYS_" "3stap" "April 2025" "SystemTap Tapset Reference" "Signal Tapset"
+.TH "PROBE::SIGNAL\&.SYS_" "3stap" "October 2025" "SystemTap Tapset Reference" "Signal Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -36,9 +36,9 @@ signal\&.sys_tgkill
 .fi
 .SH "VALUES"
 .PP
-\fIsig_pid\fR
+\fItask\fR
 .RS 4
-The PID of the thread receiving the kill signal
+A task handle to the signal recipient
 .RE
 .PP
 \fIsig_name\fR
@@ -46,19 +46,14 @@ The PID of the thread receiving the kill signal
 A string representation of the signal
 .RE
 .PP
-\fIname\fR
+\fIsig_pid\fR
 .RS 4
-Name of the probe point
+The PID of the thread receiving the kill signal
 .RE
 .PP
 \fIsig\fR
 .RS 4
 The specific kill signal sent to the process
-.RE
-.PP
-\fItask\fR
-.RS 4
-A task handle to the signal recipient
 .RE
 .PP
 \fItgid\fR
@@ -69,6 +64,11 @@ The thread group ID of the thread receiving the kill signal
 \fIpid_name\fR
 .RS 4
 The name of the signal recipient
+.RE
+.PP
+\fIname\fR
+.RS 4
+Name of the probe point
 .RE
 .SH "DESCRIPTION"
 .PP

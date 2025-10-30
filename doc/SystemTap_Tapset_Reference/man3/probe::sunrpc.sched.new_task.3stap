@@ -2,12 +2,12 @@
 .\"     Title: probe::sunrpc.sched.new_task
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: April 2025
+.\"      Date: October 2025
 .\"    Manual: Networking Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "PROBE::SUNRPC\&.SCHE" "3stap" "April 2025" "SystemTap Tapset Reference" "Networking Tapset"
+.TH "PROBE::SUNRPC\&.SCHE" "3stap" "October 2025" "SystemTap Tapset Reference" "Networking Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -36,19 +36,14 @@ sunrpc\&.sched\&.new_task
 .fi
 .SH "VALUES"
 .PP
-\fIxid\fR
+\fIprot\fR
 .RS 4
-the transmission id in the RPC call
+the IP protocol in the RPC call
 .RE
 .PP
 \fIvers\fR
 .RS 4
 the program version in the RPC call
-.RE
-.PP
-\fIprot\fR
-.RS 4
-the IP protocol in the RPC call
 .RE
 .PP
 \fIprog\fR
@@ -59,6 +54,11 @@ the program number in the RPC call
 \fItk_flags\fR
 .RS 4
 the flags of the task
+.RE
+.PP
+\fIxid\fR
+.RS 4
+the transmission id in the RPC call
 .RE
 .SH SEE ALSO\n 
 .IR tapset::rpc (3stap)

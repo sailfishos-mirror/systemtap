@@ -2,12 +2,12 @@
 .\"     Title: function::system
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: April 2025
+.\"      Date: October 2025
 .\"    Manual: Shell command functions
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "FUNCTION::SYSTEM" "3stap" "April 2025" "SystemTap Tapset Reference" "Shell command functions"
+.TH "FUNCTION::SYSTEM" "3stap" "October 2025" "SystemTap Tapset Reference" "Shell command functions"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------

@@ -2,12 +2,12 @@
 .\"     Title: probe::kprocess.start
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: April 2025
+.\"      Date: October 2025
 .\"    Manual: Kernel Process Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "PROBE::KPROCESS\&.ST" "3stap" "April 2025" "SystemTap Tapset Reference" "Kernel Process Tapset"
+.TH "PROBE::KPROCESS\&.ST" "3stap" "October 2025" "SystemTap Tapset Reference" "Kernel Process Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------

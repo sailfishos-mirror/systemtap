@@ -2,12 +2,12 @@
 .\"     Title: probe::sunrpc.svc.drop
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: April 2025
+.\"      Date: October 2025
 .\"    Manual: Networking Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "PROBE::SUNRPC\&.SVC\" "3stap" "April 2025" "SystemTap Tapset Reference" "Networking Tapset"
+.TH "PROBE::SUNRPC\&.SVC\" "3stap" "October 2025" "SystemTap Tapset Reference" "Networking Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -36,14 +36,9 @@ sunrpc\&.svc\&.drop
 .fi
 .SH "VALUES"
 .PP
-\fIrq_vers\fR
+\fIsv_name\fR
 .RS 4
-the program version in the request
-.RE
-.PP
-\fIrq_prog\fR
-.RS 4
-the program number in the request
+the service name
 .RE
 .PP
 \fIpeer_ip\fR
@@ -51,9 +46,9 @@ the program number in the request
 the peer address where the request is from
 .RE
 .PP
-\fIrq_xid\fR
+\fIrq_prog\fR
 .RS 4
-the transmission id in the request
+the program number in the request
 .RE
 .PP
 \fIrq_prot\fR
@@ -66,9 +61,14 @@ the IP protocol of the reqeust
 the procedure number in the request
 .RE
 .PP
-\fIsv_name\fR
+\fIrq_vers\fR
 .RS 4
-the service name
+the program version in the request
+.RE
+.PP
+\fIrq_xid\fR
+.RS 4
+the transmission id in the request
 .RE
 .SH SEE ALSO\n 
 .IR tapset::rpc (3stap)

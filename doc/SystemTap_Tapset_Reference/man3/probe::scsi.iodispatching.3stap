@@ -2,12 +2,12 @@
 .\"     Title: probe::scsi.iodispatching
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: April 2025
+.\"      Date: October 2025
 .\"    Manual: SCSI Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "PROBE::SCSI\&.IODISP" "3stap" "April 2025" "SystemTap Tapset Reference" "SCSI Tapset"
+.TH "PROBE::SCSI\&.IODISP" "3stap" "October 2025" "SystemTap Tapset Reference" "SCSI Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -41,9 +41,9 @@ scsi\&.iodispatching
 The request buffer address
 .RE
 .PP
-\fIlun\fR
+\fIrequest_bufflen\fR
 .RS 4
-The lun number
+The request buffer length
 .RE
 .PP
 \fIdevice_state\fR
@@ -51,14 +51,29 @@ The lun number
 The current state of the device
 .RE
 .PP
-\fIrequest_bufflen\fR
+\fIdevice_state_str\fR
 .RS 4
-The request buffer length
+The current state of the device, as a string
+.RE
+.PP
+\fIdata_direction\fR
+.RS 4
+The data_direction specifies whether this command is from/to the device 0 (DMA_BIDIRECTIONAL), 1 (DMA_TO_DEVICE), 2 (DMA_FROM_DEVICE), 3 (DMA_NONE)
+.RE
+.PP
+\fIreq_addr\fR
+.RS 4
+The current struct request pointer, as a number
 .RE
 .PP
 \fIchannel\fR
 .RS 4
 The channel number
+.RE
+.PP
+\fIdev_id\fR
+.RS 4
+The scsi device id
 .RE
 .PP
 \fIhost_no\fR
@@ -71,24 +86,9 @@ The host number
 Data direction, as a string
 .RE
 .PP
-\fIdata_direction\fR
+\fIlun\fR
 .RS 4
-The data_direction specifies whether this command is from/to the device 0 (DMA_BIDIRECTIONAL), 1 (DMA_TO_DEVICE), 2 (DMA_FROM_DEVICE), 3 (DMA_NONE)
-.RE
-.PP
-\fIdev_id\fR
-.RS 4
-The scsi device id
-.RE
-.PP
-\fIreq_addr\fR
-.RS 4
-The current struct request pointer, as a number
-.RE
-.PP
-\fIdevice_state_str\fR
-.RS 4
-The current state of the device, as a string
+The lun number
 .RE
 .SH SEE ALSO\n 
 .IR tapset::scsi (3stap)

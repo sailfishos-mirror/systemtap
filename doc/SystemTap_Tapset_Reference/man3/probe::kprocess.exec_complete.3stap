@@ -2,12 +2,12 @@
 .\"     Title: probe::kprocess.exec_complete
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: April 2025
+.\"      Date: October 2025
 .\"    Manual: Kernel Process Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "PROBE::KPROCESS\&.EX" "3stap" "April 2025" "SystemTap Tapset Reference" "Kernel Process Tapset"
+.TH "PROBE::KPROCESS\&.EX" "3stap" "October 2025" "SystemTap Tapset Reference" "Kernel Process Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -41,9 +41,9 @@ kprocess\&.exec_complete
 Name of the system call (\(lqexecve\(rq) (SystemTap v2\&.5+)
 .RE
 .PP
-\fIsuccess\fR
+\fIretstr\fR
 .RS 4
-A boolean indicating whether the exec was successful
+A string representation of errno (SystemTap v2\&.5+)
 .RE
 .PP
 \fIerrno\fR
@@ -51,9 +51,9 @@ A boolean indicating whether the exec was successful
 The error number resulting from the exec
 .RE
 .PP
-\fIretstr\fR
+\fIsuccess\fR
 .RS 4
-A string representation of errno (SystemTap v2\&.5+)
+A boolean indicating whether the exec was successful
 .RE
 .SH "CONTEXT"
 .PP
