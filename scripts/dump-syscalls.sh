@@ -37,7 +37,7 @@ function __dump_syscalls() {
     test $2 -eq 64 && __OUT=$SYSCALLS_64 || __OUT=$SYSCALLS_32
     #Need to mung things so BASE_NR replaced with actual number
     processed=$(mktemp)
-    cpp -I${STRACE_SRC}/linux/generic $1 -DLINUX_MIPSO32 -DLINUX_MIPSN32 -DLINUX_MIPSN64 > $processed
+    cpp -I${STRACE_SRC}/src/linux/generic $1 -DLINUX_MIPSO32 -DLINUX_MIPSN32 -DLINUX_MIPSN64 > $processed
     cat $processed | tr -d ' ' | awk -v bt=$2 -F'[][\"]' '/^\[[^\]]+\]={[^}]/ {
         printf("__syscall_%s_num2name[%s]=\"%s\"\n", bt, $2, $4);
         printf("__syscall_%s_name2num[\"%s\"]=%s\n", bt, $4, $2)
@@ -85,52 +85,52 @@ EOF05
 
 # ======= x86_64 =======
 __init
-__dump_syscalls $STRACE_SRC/linux/x86_64/syscallent.h 64
-__dump_syscalls $STRACE_SRC/linux/i386/syscallent.h 32
+__dump_syscalls $STRACE_SRC/src/linux/x86_64/syscallent.h 64
+__dump_syscalls $STRACE_SRC/src/linux/i386/syscallent.h 32
 __generate_tapset $TAPSET_X86_64 x86_64
 
 # ======= i386 =======
 __init
-__dump_syscalls $STRACE_SRC/linux/i386/syscallent.h 32
+__dump_syscalls $STRACE_SRC/src/linux/i386/syscallent.h 32
 __generate_tapset $TAPSET_I386 i386
 
 # ======= powerpc =======
 __init
-__dump_syscalls $STRACE_SRC/linux/powerpc64/syscallent.h 64
-__dump_syscalls $STRACE_SRC/linux/powerpc/syscallent.h 32
+__dump_syscalls $STRACE_SRC/src/linux/powerpc64/syscallent.h 64
+__dump_syscalls $STRACE_SRC/src/linux/powerpc/syscallent.h 32
 __generate_tapset $TAPSET_POWERPC powerpc
 
 # ======= s390 =======
 __init
-__dump_syscalls $STRACE_SRC/linux/s390x/syscallent.h 64
-__dump_syscalls $STRACE_SRC/linux/s390/syscallent.h 32
+__dump_syscalls $STRACE_SRC/src/linux/s390x/syscallent.h 64
+__dump_syscalls $STRACE_SRC/src/linux/s390/syscallent.h 32
 __generate_tapset $TAPSET_S390 s390
 
 # ======= arm =======
 __init
-__dump_syscalls $STRACE_SRC/linux/arm/syscallent.h 32
+__dump_syscalls $STRACE_SRC/src/linux/arm/syscallent.h 32
 __generate_tapset $TAPSET_ARM arm
 
 # ======= aarch64 =======
 __init
-__dump_syscalls $STRACE_SRC/linux/arm/syscallent.h 32
-__dump_syscalls $STRACE_SRC/linux/64/syscallent.h 64
-__dump_syscalls $STRACE_SRC/linux/aarch64/syscallent.h 64
+__dump_syscalls $STRACE_SRC/src/linux/arm/syscallent.h 32
+__dump_syscalls $STRACE_SRC/src/linux/64/syscallent.h 64
+__dump_syscalls $STRACE_SRC/src/linux/aarch64/syscallent.h 64
 __generate_tapset $TAPSET_AARCH64 arm64
 
 # ======= mips =======
 __init
-__dump_syscalls $STRACE_SRC/linux/mips/syscallent-n64.h 64
-__dump_syscalls $STRACE_SRC/linux/mips/syscallent-o32.h 32
-__dump_syscalls $STRACE_SRC/linux/mips/syscallent-n32.h 32
+__dump_syscalls $STRACE_SRC/src/linux/mips/syscallent-n64.h 64
+__dump_syscalls $STRACE_SRC/src/linux/mips/syscallent-o32.h 32
+__dump_syscalls $STRACE_SRC/src/linux/mips/syscallent-n32.h 32
 __generate_tapset $TAPSET_MIPS mips
 # ======= riscv =======
 __init
-__dump_syscalls $STRACE_SRC/linux/riscv64/syscallent.h 64
+__dump_syscalls $STRACE_SRC/src/linux/riscv64/syscallent.h 64
 # Currently strace doesn't have actual encoding of RISCV32 syscalls.
 # However, the call names should match up closely and should be better
 # than nothing.
-__dump_syscalls $STRACE_SRC/linux/riscv64/syscallent.h 32
+__dump_syscalls $STRACE_SRC/src/linux/riscv64/syscallent.h 32
 __generate_tapset $TAPSET_RISCV riscv
 
 rm -f $SYSCALLS_32 $SYSCALLS_64
