@@ -13,6 +13,7 @@ struct file_attr {
 	unsigned int fa_cowextsize;	/* CoW extsize field value (get/set) */
 };
 
+#ifdef __NR_file_getattr
 static long my_file_getattr(int dfd, const char *filename,
                             struct file_attr *ufattr,
                             size_t usize, int at_flags)
@@ -22,6 +23,7 @@ static long my_file_getattr(int dfd, const char *filename,
 
     return syscall(__NR_file_getattr, dfd, filename, ufattr, usize, at_flags);
 }
+#endif
 
 int main(void)
 {
