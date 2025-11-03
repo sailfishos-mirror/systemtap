@@ -1,0 +1,157 @@
+# file_setattr __________________________________________________
+# Since Linux 6.17-rc1
+# SYSCALL_DEFINE5(file_setattr,
+#                 int, dfd,
+#                 const char __user *, filename,
+#                 struct file_attr __user *, ufattr,
+#                 size_t, usize,
+#                 unsigned int, at_flags)
+
+@define _SYSCALL_FILE_SETATTR_NAME
+%(
+	name = "file_setattr"
+%)
+
+@define _SYSCALL_FILE_SETATTR_ARGSTR
+%(
+	argstr = sprintf("%d, %s, %p, %s, %p, %lu, %d", dfd, dfd_str, filename, filename_str, ufattr, usize, at_flags)
+%)
+
+@define _SYSCALL_FILE_SETATTR_REGARGS
+%(
+        dfd = int_arg(1)
+        dfd_str = _dfd_str(int_arg(1))
+        dfd_str_unquoted = user_string_nofault(pointer_arg(1))
+        filename = pointer_arg(2)
+        filename_str = user_string_quoted(pointer_arg(2))
+        filename_str_unquoted = user_string_nofault(pointer_arg(2))
+        ufattr = pointer_arg(3)
+        usize = uint_arg(4)
+        at_flags = uint_arg(5)
+%)
+
+@define _SYSCALL_FILE_SETATTR_REGARGS_STORE
+%(
+	if (@probewrite(dfd))
+          set_int_arg(1, dfd)
+
+        if (@probewrite(dfd_str_unquoted))
+          set_user_string_arg(pointer_arg(1), dfd_str_unquoted)
+
+        if(@probewrite(filename))
+          set_pointer_arg(2, filename)
+
+        if (@probewrite(filename_str_unquoted))
+          set_user_string_arg(pointer_arg(2), filename_str_unquoted)
+
+        if (@probewrite(ufattr))
+          set_pointer_arg(3, ufattr)
+
+        if (@probewrite(usize))
+          set_uint_arg(4, usize)
+
+        if (@probewrite(at_flags))
+          set_uint_arg(5, at_flags)
+
+%)
+
+probe syscall.file_setattr = dw_syscall.file_setattr !, nd_syscall.file_setattr ? {}
+probe syscall.file_setattr.return = dw_syscall.file_setattr.return !, nd_syscall.file_setattr.return ? {}
+
+# dw_file_setattr _____________________________________________________
+
+# kernel.function("__do_sys_file_setattr") {
+#   $dfd:int
+#   $filename:char
+#   const* $ufattr:struct
+#   file_attr* $usize:size_t
+#   $at_flags:unsigned int
+#   $filepath:struct path
+#   $fattr:struct file_attr
+#   $fa:struct file_kattr
+# }
+#
+# stap -ve 'probe kernel.function("__do_sys_file_setattr") {printdln(", ", "XXX", $dfd, $filename, $ufattr, $usize, $at_flags)}' -c ~/a.out
+
+probe dw_syscall.file_setattr = kernel.function("__do_sys_file_setattr").call ?
+{
+	@_SYSCALL_FILE_SETATTR_NAME
+	dfd = __int32($dfd)
+	dfd_str = _dfd_str(__int32($dfd))
+        dfd_str_unquoted = user_string_nofault(__int32($dfd))
+        filename = $filename
+	filename_str = user_string_quoted($filename)
+        filename_str_unquoted = user_string_nofault($filename)
+        ufattr = $ufattr
+        usize = __uint32($usize)
+        at_flags = __uint32($at_flags)
+	@_SYSCALL_FILE_SETATTR_ARGSTR
+}
+probe dw_syscall.file_setattr.return = kernel.function("__do_sys_file_setattr").return ?
+{
+	@_SYSCALL_FILE_SETATTR_NAME
+	@SYSC_RETVALSTR($return)
+}
+
+# nd_file_setattr _____________________________________________________
+
+probe nd_syscall.file_setattr = nd1_syscall.file_setattr!, nd2_syscall.file_setattr!, tp_syscall.file_setattr
+  { }
+
+probe nd1_syscall.file_setattr = kprobe.function("__do_sys_file_setattr") ?
+{
+	@_SYSCALL_FILE_SETATTR_NAME
+	asmlinkage()
+	@_SYSCALL_FILE_SETATTR_REGARGS
+	@_SYSCALL_FILE_SETATTR_ARGSTR
+}
+
+/* kernel 4.17+ */
+probe nd2_syscall.file_setattr = kprobe.function(@arch_syscall_prefix "__do_sys_file_setattr") ?
+{
+	__set_syscall_pt_regs(pointer_arg(1))
+        @_SYSCALL_FILE_SETATTR_NAME
+        @_SYSCALL_FILE_SETATTR_REGARGS
+        @_SYSCALL_FILE_SETATTR_ARGSTR
+},
+{
+        %( @_IS_SREG_KERNEL %? @_SYSCALL_FILE_SETATTR_REGARGS_STORE %)
+}
+
+/* kernel 3.5+, but undesirable because it affects all syscalls */
+probe tp_syscall.file_setattr = kernel.trace("sys_enter")
+{
+        # Old kernels not having this define __NR_file_setattr work too because in that case we
+        # define __NR_file_setattr (__NR_syscall_max + 1) in runtime/linux/compat_unistd.h
+        @__syscall_nr_gate(@const("__NR_file_setattr"))
+        @_SYSCALL_FILE_SETATTR_NAME
+        @_SYSCALL_FILE_SETATTR_REGARGS
+        @_SYSCALL_FILE_SETATTR_ARGSTR
+},
+{
+        %( @_IS_SREG_KERNEL %? @_SYSCALL_FILE_SETATTR_REGARGS_STORE %)
+}
+
+probe nd_syscall.file_setattr.return = nd1_syscall.file_setattr.return!, nd2_syscall.file_setattr.return!, tp_syscall.file_setattr.return
+  { }
+
+probe nd1_syscall.file_setattr.return = kprobe.function("__do_sys_file_setattr").return ?
+{
+	@_SYSCALL_FILE_SETATTR_NAME
+	@SYSC_RETVALSTR(returnval())
+}
+
+# /* kernel 4.17+ */
+# probe nd2_syscall.file_setattr.return = kprobe.function(@arch_syscall_prefix "__do_sys_file_setattr").return ?
+# {
+# 	@_SYSCALL_FILE_SETATTR_NAME
+# 	@SYSC_RETVALSTR(returnval())
+# }
+
+/* kernel 3.5+, but undesirable because it affects all syscalls */
+probe tp_syscall.file_setattr.return = kernel.trace("sys_exit")
+{
+	__set_syscall_pt_regs($regs)
+	@_SYSCALL_FILE_SETATTR_NAME
+	@SYSC_RETVALSTR($ret)
+}

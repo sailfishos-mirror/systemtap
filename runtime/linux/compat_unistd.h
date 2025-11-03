@@ -493,6 +493,9 @@
 #ifndef __NR_file_getattr
 #define __NR_file_getattr (__NR_syscall_max + 1)
 #endif
+#ifndef __NR_file_setattr
+#define __NR_file_setattr (__NR_syscall_max + 1)
+#endif
 
 #if defined(__x86_64__)
 
