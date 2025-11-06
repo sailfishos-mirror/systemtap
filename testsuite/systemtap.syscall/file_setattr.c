@@ -1,3 +1,5 @@
+/* COVERAGE: file_setattr */
+
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <string.h>

@@ -1,0 +1,127 @@
+# lsm_set_self_attr __________________________________________________
+// SYSCALL_DEFINE4(lsm_set_self_attr, unsigned int, attr, struct lsm_ctx __user *,
+//                 ctx, u32 __user *, size, u32, flags)
+
+@define _SYSCALL_LSM_SET_SELF_ATTR_NAME
+%(
+	name = "lsm_set_self_attr"
+%)
+
+@define _SYSCALL_LSM_SET_SELF_ATTR_ARGSTR
+%(
+	argstr = sprintf("%u, %p, %p, %u", attr, ctx, size, flags)
+%)
+
+@define _SYSCALL_LSM_SET_SELF_ATTR_REGARGS
+%(
+        attr = uint_arg(1)
+        ctx = pointer_arg(2)
+        size = pointer_arg(3)
+        flags = uint_arg(4)
+%)
+
+@define _SYSCALL_LSM_SET_SELF_ATTR_REGARGS_STORE
+%(
+	if (@probewrite(attr))
+          set_uint_arg(1, attr)
+
+        if(@probewrite(ctx))
+          set_pointer_arg(2, ctx)
+
+        if (@probewrite(size))
+          set_pointer_arg(3, size)
+
+        if (@probewrite(flags))
+          set_uint_arg(4, flags)
+
+%)
+
+probe syscall.lsm_set_self_attr = dw_syscall.lsm_set_self_attr !, nd_syscall.lsm_set_self_attr ? {}
+probe syscall.lsm_set_self_attr.return = dw_syscall.lsm_set_self_attr.return !, nd_syscall.lsm_set_self_attr.return ? {}
+
+# dw_lsm_set_self_attr _____________________________________________________
+# kernel.function("__do_sys_lsm_set_self_attr@security/lsm_syscalls.c:77")
+#                 $attr:unsigned int
+#                 $ctx:struct lsm_ctx*
+#                 $size:u32*
+#                 $flags:u32
+
+# can't use .call below, as such probepoint wouldn't resolve, at least not on 6.18.0-0.rc2.251021g6548d364a3e85.24.fc44.x86_64
+probe dw_syscall.lsm_set_self_attr = kernel.function("__do_sys_lsm_set_self_attr") ?
+{
+	@_SYSCALL_LSM_SET_SELF_ATTR_NAME
+        attr = __uint32($attr)
+        ctx = $ctx
+        size = $size
+        flags = __uint32($flags)
+	@_SYSCALL_LSM_SET_SELF_ATTR_ARGSTR
+}
+probe dw_syscall.lsm_set_self_attr.return = kernel.function("__ia32_sys_lsm_set_self_attr").return ?,
+                                            kernel.function(@arch_syscall0_prefix "sys_lsm_set_self_attr").return ?
+{
+	@_SYSCALL_LSM_SET_SELF_ATTR_NAME
+	@SYSC_RETVALSTR($return)
+}
+
+# nd_lsm_set_self_attr _____________________________________________________
+
+probe nd_syscall.lsm_set_self_attr = nd1_syscall.lsm_set_self_attr!, nd2_syscall.lsm_set_self_attr!, tp_syscall.lsm_set_self_attr
+  { }
+
+probe nd1_syscall.lsm_set_self_attr = kprobe.function("__do_sys_lsm_set_self_attr") ?
+{
+	@_SYSCALL_LSM_SET_SELF_ATTR_NAME
+	asmlinkage()
+	@_SYSCALL_LSM_SET_SELF_ATTR_REGARGS
+	@_SYSCALL_LSM_SET_SELF_ATTR_ARGSTR
+}
+
+/* kernel 4.17+ */
+probe nd2_syscall.lsm_set_self_attr = kprobe.function(@arch_syscall_prefix "__do_sys_lsm_set_self_attr") ?
+{
+	__set_syscall_pt_regs(pointer_arg(1))
+        @_SYSCALL_LSM_SET_SELF_ATTR_NAME
+        @_SYSCALL_LSM_SET_SELF_ATTR_REGARGS
+        @_SYSCALL_LSM_SET_SELF_ATTR_ARGSTR
+},
+{
+        %( @_IS_SREG_KERNEL %? @_SYSCALL_LSM_SET_SELF_ATTR_REGARGS_STORE %)
+}
+
+/* kernel 3.5+, but undesirable because it affects all syscalls */
+probe tp_syscall.lsm_set_self_attr = kernel.trace("sys_enter")
+{
+        # Old kernels not having this define __NR_lsm_set_self_attr work too because in that case we
+        # define __NR_lsm_set_self_attr (__NR_syscall_max + 1) in runtime/linux/compat_unistd.h
+        @__syscall_nr_gate(@const("__NR_lsm_set_self_attr"))
+        @_SYSCALL_LSM_SET_SELF_ATTR_NAME
+        @_SYSCALL_LSM_SET_SELF_ATTR_REGARGS
+        @_SYSCALL_LSM_SET_SELF_ATTR_ARGSTR
+},
+{
+        %( @_IS_SREG_KERNEL %? @_SYSCALL_LSM_SET_SELF_ATTR_REGARGS_STORE %)
+}
+
+probe nd_syscall.lsm_set_self_attr.return = nd1_syscall.lsm_set_self_attr.return!, nd2_syscall.lsm_set_self_attr.return!, tp_syscall.lsm_set_self_attr.return
+  { }
+
+probe nd1_syscall.lsm_set_self_attr.return = kprobe.function("__do_sys_lsm_set_self_attr").return ?
+{
+	@_SYSCALL_LSM_SET_SELF_ATTR_NAME
+	@SYSC_RETVALSTR(returnval())
+}
+
+# /* kernel 4.17+ */
+# probe nd2_syscall.lsm_set_self_attr.return = kprobe.function(@arch_syscall_prefix "__do_sys_lsm_set_self_attr").return ?
+# {
+# 	@_SYSCALL_LSM_SET_SELF_ATTR_NAME
+# 	@SYSC_RETVALSTR(returnval())
+# }
+
+/* kernel 3.5+, but undesirable because it affects all syscalls */
+probe tp_syscall.lsm_set_self_attr.return = kernel.trace("sys_exit")
+{
+	__set_syscall_pt_regs($regs)
+	@_SYSCALL_LSM_SET_SELF_ATTR_NAME
+	@SYSC_RETVALSTR($ret)
+}
