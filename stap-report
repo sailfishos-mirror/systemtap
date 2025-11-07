@@ -77,6 +77,7 @@ nss_db_status () {
 }
 
 run "id"
+run "free"
 run "stap -V"
 run "which stap"
 run "cat $HOME/.systemtap/rc"
