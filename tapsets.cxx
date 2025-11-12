@@ -4867,8 +4867,12 @@ dwarf_var_expanding_visitor::visit_cast_op (cast_op *e)
           if (is_user_module (q.dw.module_name))
             e->module = q.dw.module_name;
           else if ((strverscmp(sess.compatible.c_str(), "5.4") >= 0) && // default on new enough systemtap
-                   (strverscmp(sess.kernel_base_release.c_str(), "6.7") >= 0)) // for new enough kernel to have a vmlinux.h
-            e->module = string(TOK_KERNEL_VMLINUX_H) + string(":") + q.dw.module_name; // PR33428: prefix
+                   access(string(sess.kernel_build_tree+"/vmlinux.h").c_str(), R_OK) == 0)  // file exists; not just kernel 6.7+
+            {
+              if (sess.verbose > 3)
+                clog << _("added implicit kernel<vmlinux.h> for @cast context") << " " << q.dw.module_name << endl;
+              e->module = string(TOK_KERNEL_VMLINUX_H) + string(":") + q.dw.module_name; // PR33428: prefix
+            }
           else
             e->module = q.dw.module_name;            
         }
@@ -5166,16 +5170,21 @@ void dwarf_cast_expanding_visitor::visit_cast_op (cast_op* e)
   // PR33428: prepend "kernel<vmlinux.h>" to the list if there is any
   // "kernel" or "kernel<FILE>" component.
   if ((strverscmp(sess.compatible.c_str(), "5.4") >= 0) && // default on new enough systemtap
-      (strverscmp(sess.kernel_base_release.c_str(), "6.7") >= 0) && // for new enough kernel to have a vmlinux.h
-      (e->module.find(TOK_KERNEL_VMLINUX_H) == string::npos)) // don't prepend again; might already be here from implicit "" expansion
+      access(string(sess.kernel_build_tree+"/vmlinux.h").c_str(), R_OK) == 0)  // file exists; not just kernel 6.7+
     {
-      if (e->module.starts_with("kernel")) // right at the front?
-        e->module = string(TOK_KERNEL_VMLINUX_H) + string(":") + e->module;
-      else {
-        string::size_type p = e->module.find(":kernel"); // in the middle?
-        if (p != string::npos)
-          e->module.insert(p, TOK_KERNEL_VMLINUX_H + string (":"));
-      }
+      if (sess.verbose > 3)
+        clog << _("added implicit kernel<vmlinux.h> for @cast expanding") << " " << e->module << endl;
+
+      if (e->module.find(TOK_KERNEL_VMLINUX_H) == string::npos) // don't prepend again; might already be here from implicit "" expansion
+        {
+          if (e->module.starts_with("kernel")) // right at the front?
+            e->module = string(TOK_KERNEL_VMLINUX_H) + string(":") + e->module;
+          else {
+            string::size_type p = e->module.find(":kernel"); // in the middle?
+            if (p != string::npos)
+              e->module.insert(p, TOK_KERNEL_VMLINUX_H + string (":"));
+          }
+        }
     }
   
   tokenize(e->module, modules, ":");
