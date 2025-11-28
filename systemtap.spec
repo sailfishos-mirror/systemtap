@@ -98,23 +98,23 @@ g     stapusr  156\
 g     stapsys  157\
 g     stapdev  158\
 g     stapunpriv 159\
-u     stapunpriv 159      "systemtap unprivileged user"   /var/lib/stapunpriv   /sbin/nologin\
+u     stapunpriv 159      "systemtap unprivileged user"\
 m     stapunpriv stapunpriv
 
 %define _systemtap_server_preinstall \
 # See systemd-sysusers(8) sysusers.d(5)\
 \
 g     stap-server  -\
-u     stap-server  -      "systemtap compiler server"   /var/lib/stap-server   /sbin/nologin\
+u     stap-server  -      "systemtap compiler server"   /var/lib/stap-server\
 m     stap-server stap-server
 
 
 %define _systemtap_testsuite_preinstall \
 # See systemd-sysusers(8) sysusers.d(5)\
 \
-u     stapusr  -          "systemtap testsuite user"    /   /sbin/nologin\
-u     stapsys  -          "systemtap testsuite user"    /   /sbin/nologin\
-u     stapdev  -          "systemtap testsuite user"    /   /sbin/nologin\
+u     stapusr  -          "systemtap testsuite user"\
+u     stapsys  -          "systemtap testsuite user"\
+u     stapdev  -          "systemtap testsuite user"\
 m     stapusr  stapusr\
 m     stapsys  stapusr\
 m     stapsys  stapsys\
@@ -884,10 +884,17 @@ getent group stapusr >/dev/null || groupadd -f -g 156 -r stapusr
 getent group stapsys >/dev/null || groupadd -f -g 157 -r stapsys
 getent group stapdev >/dev/null || groupadd -f -g 158 -r stapdev
 getent passwd stapunpriv >/dev/null || \
-  useradd -c "Systemtap Unprivileged User" -u 159 -g stapunpriv -d %{_localstatedir}/lib/stapunpriv -r -s /sbin/nologin stapunpriv 2>/dev/null || \
-  useradd -c "Systemtap Unprivileged User" -g stapunpriv -d %{_localstatedir}/lib/stapunpriv -r -s /sbin/nologin stapunpriv
+  useradd -c "Systemtap Unprivileged User" -u 159 -g stapunpriv -d / -r -s /sbin/nologin stapunpriv 2>/dev/null || \
+  useradd -c "Systemtap Unprivileged User" -g stapunpriv -d / -r -s /sbin/nologin stapunpriv
 exit 0
 %endif
+
+%post runtime
+# stapunpriv is a system user not needing a homedir.  Previously, specfile did
+# set a homedir, but didn't create it.  Fresh installations now set "/" as the
+# homedir via _systemtap_runtime_preinstall, as SYSUSERS.D(5) recommends.  Fix
+# existing broken installations, keep upgrade path clean.  Related: RHEL-130244.
+getent passwd stapunpriv | cut -d: -f6 | grep -q '^/var/lib/stapunpriv$' && usermod -d / stapunpriv
 
 %pre server
 %if %{with_sysusers}
