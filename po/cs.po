@@ -2039,7 +2039,7 @@ msgstr "Zahazuji kontrolu '@defined' bez vedlejších účinků "
 
 #: elaborate.cxx:5119
 #, fuzzy, c-format
-msgid "Collapsing unresolved @define to %ld [stapprobes]"
+msgid "Collapsing unresolved @define to %lld [stapprobes]"
 msgstr "Zahazuji kontrolu '@defined' bez vedlejších účinků "
 
 #: elaborate.cxx:5127

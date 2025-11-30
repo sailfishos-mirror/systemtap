@@ -5116,7 +5116,7 @@ const_folder::visit_defined_op (defined_op* e)
       // Don't be greedy... we'll only collapse one at a time so type
       // resolution can have another go at it.
       relaxed_p = false;
-      session.print_warning (_F("Collapsing unresolved @define to %ld [stapprobes]", value), e->tok);
+      session.print_warning (_F("Collapsing unresolved @define to %lld [stapprobes]", (long long)value), e->tok);
       literal_number* n = new literal_number (value);
       n->tok = e->tok;
       n->visit (this);

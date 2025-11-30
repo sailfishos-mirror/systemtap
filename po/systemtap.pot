@@ -1973,7 +1973,7 @@ msgstr ""
 
 #: elaborate.cxx:5119
 #, c-format
-msgid "Collapsing unresolved @define to %ld [stapprobes]"
+msgid "Collapsing unresolved @define to %lld [stapprobes]"
 msgstr ""
 
 #: elaborate.cxx:5127
