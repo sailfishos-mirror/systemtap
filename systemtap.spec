@@ -894,7 +894,7 @@ exit 0
 # set a homedir, but didn't create it.  Fresh installations now set "/" as the
 # homedir via _systemtap_runtime_preinstall, as SYSUSERS.D(5) recommends.  Fix
 # existing broken installations, keep upgrade path clean.  Related: RHEL-130244.
-getent passwd stapunpriv | cut -d: -f6 | grep -q '^/var/lib/stapunpriv$' && usermod -d / stapunpriv
+getent passwd stapunpriv | cut -d: -f6 | grep -q '^/var/lib/stapunpriv$' && usermod -d / stapunpriv ||:
 
 %pre server
 %if %{with_sysusers}
