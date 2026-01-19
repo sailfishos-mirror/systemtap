@@ -21,6 +21,7 @@
 #include <iostream>
 #include <sstream>
 #include <map>
+#include <mutex>
 #include <set>
 #include <stdexcept>
 
@@ -126,6 +127,28 @@ struct parse_error: public std::runtime_error
     }
 };
 
+/* TODO: elfutils needs a way to communicate whether it was built with
+   thread safety.  */
+#define EU_THREAD_SAFETY 1
+
+#ifdef EU_THREAD_SAFETY
+using stap_mutex = std::mutex;
+using stap_mutex_guard = std::lock_guard<stap_mutex&>;
+#else
+/* No-op if thread safety is unsupported.  */
+struct stap_mutex {
+    void lock() noexcept {}
+    void unlock() noexcept {}
+    bool try_lock() noexcept { return true; }
+};
+
+class stap_mutex_guard {
+public:
+    explicit stap_mutex_guard(stap_mutex&) noexcept {}
+    stap_mutex_guard(const stap_mutex_guard&) = delete;
+    stap_mutex_guard& operator=(const stap_mutex_guard&) = delete;
+};
+#endif
 
 struct symresolution_info;
 
@@ -494,6 +517,8 @@ public:
   std::string build_as;
   uid_t build_as_uid;
   gid_t build_as_gid;
+
+  stap_mutex lock;
 
   // NB: It is very important for all of the above (and below) fields
   // to be cleared in the systemtap_session ctor (session.cxx).

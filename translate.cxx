@@ -33,6 +33,21 @@
 #include <cstring>
 #include <cerrno>
 
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+#ifdef HAVE_BOOST_ASIO_THREAD_POOL_HPP
+#include <boost/asio/thread_pool.hpp>
+#else
+#error "need boost thread_pool.hpp"
+#endif
+
+#ifdef HAVE_BOOST_ASIO_POST_HPP
+#include <boost/asio/post.hpp>
+#else
+#error "need boost post.hpp"
+#endif
+
 extern "C" {
 #include <dwarf.h>
 #include <elfutils/libdwfl.h>
@@ -6701,8 +6716,27 @@ typedef map<Dwarf_Addr,const char*> addrmap_t; // NB: plain map, sorted by addre
 struct unwindsym_dump_context
 {
   systemtap_session& session;
-  ostream& output;
   unsigned stp_module_index;
+
+  ostringstream output; // Translated output
+  ostringstream log_build_id;    // stderr logging
+  ostringstream log_section_list;    // stderr logging
+  ostringstream log_symbol_tables;    // stderr logging
+  ostringstream log_unwindsyms;    // stderr logging
+
+  boost::asio::thread_pool& TP;
+
+  /* Return values for dump_* functions.  */
+  std::atomic<int> dump_build_id_res;
+  std::atomic<int> dump_section_list_res;
+  std::atomic<int> dump_symbol_tables_res;
+  std::atomic<int> dump_unwind_tables_res;
+  std::atomic<int> dump_line_tables_res;
+  std::atomic<int> dump_unwindsyms_res;
+
+  /* Counter indicating how many threads are still running dump_* functions.
+     The last thread will run dump_unwindsym_cxt.  */
+  std::atomic<int> workers_remaining;
 
   int build_id_len;
   unsigned char *build_id_bits;
@@ -6711,8 +6745,14 @@ struct unwindsym_dump_context
   unsigned long stp_kretprobe_trampoline_addr;
   Dwarf_Addr stext_offset;
 
-  vector<pair<string,unsigned> > seclist; // encountered relocation bases
-                                          // (section names and sizes)
+  /* Encountered relocation bases (section names and sizes).  Populated by
+     dump_section_list.  dump_symbol_tables may try to read concurrently,
+     so use a condition variable to prevent reading seclist before ready.  */
+  vector<pair<string,unsigned> > seclist;   
+  bool seclist_ready;
+  std::mutex seclist_mutex;
+  std::condition_variable seclist_cv;
+
   map<unsigned, addrmap_t> addrmap; // per-relocation-base sorted addrmap
 
   void *debug_frame;
@@ -6732,6 +6772,51 @@ struct unwindsym_dump_context
   size_t debug_line_str_len;
 
   set<string> undone_unwindsym_modules;
+
+  unwindsym_dump_context (systemtap_session& s, boost::asio::thread_pool& tp,
+			  unsigned modindex)
+    : session (s),
+      stp_module_index (modindex),
+      output (),
+      log_build_id (),
+      log_section_list (),
+      log_symbol_tables (),
+      log_unwindsyms (),
+      TP (tp),
+      dump_build_id_res (DWARF_CB_ABORT),
+      dump_section_list_res (DWARF_CB_ABORT),
+      dump_symbol_tables_res (DWARF_CB_ABORT),
+      dump_unwind_tables_res (DWARF_CB_ABORT),
+      dump_line_tables_res (DWARF_CB_ABORT),
+      dump_unwindsyms_res (DWARF_CB_ABORT),
+      workers_remaining (5),
+      build_id_len (0),
+      build_id_bits (NULL),
+      build_id_vaddr (0),
+      stp_kretprobe_trampoline_addr (~0UL),
+      stext_offset (0),
+      seclist (),
+      seclist_ready (false),
+      seclist_mutex (),
+      seclist_cv (),
+      addrmap (),
+      debug_frame (NULL),
+      debug_len (0),
+      debug_frame_hdr (NULL),
+      debug_frame_hdr_len (0),
+      debug_frame_off (0),
+      eh_frame (0),
+      eh_frame_hdr (NULL),
+      eh_len (0),
+      eh_frame_hdr_len (0),
+      eh_addr (0),
+      eh_frame_hdr_addr (0),
+      debug_line (NULL),
+      debug_line_len (0),
+      debug_line_str (NULL),
+      debug_line_str_len (0),
+      undone_unwindsym_modules (s.unwindsym_modules)
+  {}
 };
 
 static bool need_byte_swap_for_target (const unsigned char e_ident[])
@@ -6954,7 +7039,8 @@ static void get_unwind_data (Dwfl_Module *m,
 static int
 dump_build_id (Dwfl_Module *m,
 	       unwindsym_dump_context *c,
-	       const char *name, Dwarf_Addr)
+	       const char *name, Dwarf_Addr,
+               ostringstream& log)
 {
   string modname = name;
 
@@ -6996,8 +7082,8 @@ dump_build_id (Dwfl_Module *m,
 
     if (c->session.verbose > 1)
       {
-        clog << _F("Found build-id in %s, length %d, start at %#" PRIx64,
-                   name, build_id_len, build_id_vaddr) << endl;
+        log << _F("Found build-id in %s, length %d, start at %#" PRIx64,
+                  name, build_id_len, build_id_vaddr) << endl;
       }
 
     c->build_id_len = build_id_len;
@@ -7040,7 +7126,7 @@ dump_section_list (Dwfl_Module *m,
       string secname = ".absolute";
       unsigned size = end - start;
       c->seclist.push_back (make_pair (secname, size));
-      return DWARF_CB_OK;
+      goto done;
     }
   else if (n == 1)
     {
@@ -7049,7 +7135,7 @@ dump_section_list (Dwfl_Module *m,
       secname = (modname == "kernel") ? "_stext" : ".dynamic";
       unsigned size = end - start;
       c->seclist.push_back (make_pair (secname, size));
-      return DWARF_CB_OK;
+      goto done;
     }
   else if (n > 1)
     {
@@ -7077,11 +7163,20 @@ dump_section_list (Dwfl_Module *m,
 	    }
 	}
 
-      return DWARF_CB_OK;
+      goto done;
     }
 
   // Impossible... dflw_assert above will have triggered.
   return DWARF_CB_ABORT;
+
+done:
+  {
+    std::lock_guard<std::mutex> lock (c->seclist_mutex);
+    c->seclist_ready = true;
+  }
+
+  c->seclist_cv.notify_all ();
+  return DWARF_CB_OK;
 }
 
 static void find_debug_frame_offset (Dwfl_Module *m,
@@ -7309,7 +7404,8 @@ skippable_arch_symbol (GElf_Half e_machine, const char *name, GElf_Sym *sym)
 static int
 dump_symbol_tables (Dwfl_Module *m,
 		    unwindsym_dump_context *c,
-		    const char *modname, Dwarf_Addr base)
+		    const char *modname, Dwarf_Addr base,
+                    ostringstream& log)
 {
   // Use end as sanity check when resolving symbol addresses.
   Dwarf_Addr end;
@@ -7381,8 +7477,8 @@ dump_symbol_tables (Dwfl_Module *m,
 			       ki >= 0);
 
 		  if (c->session.verbose > 2)
-		    clog << _F("Found kernel _stext extra offset %#" PRIx64,
-			       extra_offset) << endl;
+		    log << _F("Found kernel _stext extra offset %#" PRIx64,
+			      extra_offset) << endl;
 
 		  if (! c->session.need_symbols
 		      && (kretprobe_trampoline_addr != (unsigned long) -1
@@ -7498,6 +7594,10 @@ dump_symbol_tables (Dwfl_Module *m,
 		    secname = ".dynamic";
 		  else
 		    {
+		      /* Wait for seclist to be populated by another thread.  */
+		      std::unique_lock<std::mutex> ul (c->seclist_mutex);
+		      c->seclist_cv.wait (ul, [c] { return c->seclist_ready; });
+
 		      // Compute our section number
 		      for (secidx = 0; secidx < c->seclist.size(); secidx++)
 			if (c->seclist[secidx].first==secname)
@@ -7910,18 +8010,18 @@ dump_unwindsym_cxt (Dwfl_Module *m,
   return DWARF_CB_OK;
 }
 
-static void dump_kallsyms(unwindsym_dump_context *c)
+static void dump_kallsyms (ofstream &output, unsigned stpmod_idx,
+			   systemtap_session& s)
 {
   ifstream kallsyms("/proc/kallsyms");
-  unsigned stpmod_idx = c->stp_module_index;
   string line;
   unsigned size = 0;
   Dwarf_Addr start = 0;
   Dwarf_Addr end = 0;
   Dwarf_Addr prev = 0;
 
-  c->output << "static struct _stp_symbol "
-            << "_stp_module_" << stpmod_idx << "_symbols_" << 0 << "[] = {\n";
+  output << "static struct _stp_symbol "
+         << "_stp_module_" << stpmod_idx << "_symbols_" << 0 << "[] = {\n";
 
   while (getline(kallsyms, line))
     {
@@ -7944,8 +8044,8 @@ static void dump_kallsyms(unwindsym_dump_context *c)
       if (!start || addr == 0 || prev == addr)
         continue;
 
-      c->output << "  { 0x" << hex << addr - start << dec
-			<< ", " << lex_cast_qstring(name) << " },\n";
+      output << "  { 0x" << hex << addr - start << dec
+	     << ", " << lex_cast_qstring(name) << " },\n";
 
       size++;
       prev = addr;
@@ -7953,27 +8053,58 @@ static void dump_kallsyms(unwindsym_dump_context *c)
 
   // PR30321 apply privilege separation for passes 2/3/4, esp. if invoked as root
   if ((getuid() != 0) && (size == 0))
-    c->session.print_warning (_F("No kallsyms found.  Your uid=%d.", getuid()));
+    s.print_warning (_F("No kallsyms found.  Your uid=%d.", getuid()));
 
-  c->output << "};\n";
-  c->output << "static struct _stp_section _stp_module_" << stpmod_idx << "_sections[] = {\n";
-  c->output << "{\n"
-            << ".name = " << lex_cast_qstring(KERNEL_RELOC_SYMBOL) << ",\n"
-            << ".size = 0x" << hex << end - start << dec << ",\n"
-            << ".symbols = _stp_module_" << stpmod_idx << "_symbols_" << 0 << ",\n"
-            << ".num_symbols = " << size << ",\n";
-  c->output << "},\n";
-  c->output << "};\n";
-  c->output << "static struct _stp_module _stp_module_" << stpmod_idx << " = {\n";
-  c->output << ".name = " << lex_cast_qstring("kernel") << ",\n";
-  c->output << ".sections = _stp_module_" << stpmod_idx << "_sections" << ",\n";
-  c->output << ".num_sections = sizeof(_stp_module_" << stpmod_idx << "_sections)/"
-            << "sizeof(struct _stp_section),\n";
-  c->output << "};\n\n";
-
-  c->undone_unwindsym_modules.erase("kernel");
-  c->stp_module_index++;
+  output << "};\n";
+  output << "static struct _stp_section _stp_module_" << stpmod_idx << "_sections[] = {\n";
+  output << "{\n"
+         << ".name = " << lex_cast_qstring(KERNEL_RELOC_SYMBOL) << ",\n"
+         << ".size = 0x" << hex << end - start << dec << ",\n"
+         << ".symbols = _stp_module_" << stpmod_idx << "_symbols_" << 0 << ",\n"
+         << ".num_symbols = " << size << ",\n";
+  output << "},\n";
+  output << "};\n";
+  output << "static struct _stp_module _stp_module_" << stpmod_idx << " = {\n";
+  output << ".name = " << lex_cast_qstring("kernel") << ",\n";
+  output << ".sections = _stp_module_" << stpmod_idx << "_sections" << ",\n";
+  output << ".num_sections = sizeof(_stp_module_" << stpmod_idx << "_sections)/"
+         << "sizeof(struct _stp_section),\n";
+  output << "};\n\n";
 }
+
+
+/* Post task to the thread pool if elfutils thread safety is enabled,
+   otherwise run task now on the current thread.  */
+template <typename F, typename... Args>
+static void
+run_task (boost::asio::thread_pool& TP, F f, Args&&... args)
+{
+#ifdef EU_THREAD_SAFETY
+  boost::asio::post (TP, std::bind (f, std::forward<Args>(args)...));
+#else
+  (void) TP;
+  (void) f (std::forward<Args>(args)...);
+#endif
+}
+
+static void
+maybe_dump_unwindsyms (unwindsym_dump_context *c,
+                       Dwfl_Module *m,
+                       const char *name,
+                       Dwarf_Addr base)
+{
+  if (c->workers_remaining.load () == 0
+      && c->dump_build_id_res.load () == DWARF_CB_OK
+      && c->dump_section_list_res.load () == DWARF_CB_OK
+      && c->dump_symbol_tables_res.load () == DWARF_CB_OK
+      && c->dump_unwind_tables_res.load () == DWARF_CB_OK)
+    {
+      int res = dump_unwindsym_cxt (m, c, name, base);
+      c->dump_unwindsyms_res.store (res);
+    }
+}
+
+
 
 static int
 dump_unwindsyms (Dwfl_Module *m,
@@ -7995,9 +8126,9 @@ dump_unwindsyms (Dwfl_Module *m,
     return DWARF_CB_OK;
 
   if (c->session.verbose > 1)
-    clog << "dump_unwindsyms " << name
-         << " index=" << c->stp_module_index
-         << " base=0x" << hex << base << dec << endl;
+    c->log_unwindsyms << "dump_unwindsyms " << name
+                      << " index=" << c->stp_module_index
+                      << " base=0x" << hex << base << dec << endl;
 
   // We want to extract several bits of information:
   //
@@ -8006,62 +8137,70 @@ dump_unwindsyms (Dwfl_Module *m,
   // - symbol table of the text-like sections, with all addresses relativized to each base
   // - the contents of .debug_frame and/or .eh_frame section, for unwinding purposes
 
-  int res = DWARF_CB_OK;
+  run_task (c->TP, [m, c, name, base] {
+    int res = dump_build_id (m, c, name, base, c->log_build_id);
+    c->dump_build_id_res.store (res);
 
-  c->build_id_len = 0;
-  c->build_id_vaddr = 0;
-  c->build_id_bits = NULL;
-  res = dump_build_id (m, c, name, base);
+    c->workers_remaining.fetch_sub (1);
+    maybe_dump_unwindsyms (c, m, name, base);
+  });
 
-  c->seclist.clear();
-  if (res == DWARF_CB_OK)
-    res = dump_section_list(m, c, name, base);
+  run_task (c->TP, [m, c, name, base] {
+    int res = dump_section_list (m, c, name, base);
+    c->dump_section_list_res.store (res);
+
+    c->workers_remaining.fetch_sub (1);
+    maybe_dump_unwindsyms (c, m, name, base);
+  });
 
   // We always need to check the symbols of the kernel if we use it,
   // for the extra_offset (also used for build_ids) and possibly
   // stp_kretprobe_trampoline_addr for the dwarf unwinder.
-  c->addrmap.clear();
-  if (res == DWARF_CB_OK
-      && (c->session.need_symbols || ! strcmp(name, "kernel")))
-    res = dump_symbol_tables (m, c, name, base);
+  run_task (c->TP, [m, c, name, base] {
+    int res;
+    if (c->session.need_symbols || ! strcmp(name, "kernel"))
+      res = dump_symbol_tables (m, c, name, base, c->log_symbol_tables);
+    else
+      res = DWARF_CB_OK;
 
-  c->debug_frame = NULL;
-  c->debug_len = 0;
-  c->debug_frame_hdr = NULL;
-  c->debug_frame_hdr_len = 0;
-  c->debug_frame_off = 0;
-  c->eh_frame = NULL;
-  c->eh_frame_hdr = NULL;
-  c->eh_len = 0;
-  c->eh_frame_hdr_len = 0;
-  c->eh_addr = 0;
-  c->eh_frame_hdr_addr = 0;
-  if (res == DWARF_CB_OK && c->session.need_unwind)
-    res = dump_unwind_tables (m, c, name, base);
+    c->dump_symbol_tables_res.store (res);
+    c->workers_remaining.fetch_sub (1);
+    maybe_dump_unwindsyms (c, m, name, base);
+  });
+   
+  run_task (c->TP, [m, c, name, base] {
+    int res;
+    if (c->session.need_unwind)
+       res = dump_unwind_tables (m, c, name, base);
+    else
+       res = DWARF_CB_OK;
 
-  c->debug_line = NULL;
-  c->debug_line_len = 0;
-  c->debug_line_str = NULL;
-  c->debug_line_str_len = 0;
-  if (res == DWARF_CB_OK && c->session.need_lines)
-    // we dont set res = dump_line_tables() because unwindsym stuff should still
-    // get dumped to the output even if gathering debug_line data fails
-    (void) dump_line_tables (m, c, name, base);
+    c->dump_unwind_tables_res.store (res);
+    c->workers_remaining.fetch_sub (1);
+    maybe_dump_unwindsyms (c, m, name, base);
+  });
 
-  /* And finally dump everything collected in the output. */
-  if (res == DWARF_CB_OK)
-    res = dump_unwindsym_cxt (m, c, name, base);
+  run_task (c->TP, [m, c, name, base] {
+    if (c->session.need_lines)
+      {
+        // we dont set res = dump_line_tables() because unwindsym stuff should still
+        // get dumped to the output even if gathering debug_line data fails
+        (void) dump_line_tables (m, c, name, base);
+      }
 
-  if (res == DWARF_CB_OK)
-    c->stp_module_index++;
+      c->dump_line_tables_res.store (DWARF_CB_OK);
+      c->workers_remaining.fetch_sub (1);
+      maybe_dump_unwindsyms (c, m, name, base);
+    });
 
-  return res;
+  return DWARF_CB_OK;
 }
 
 
 // Emit symbol table & unwind data, plus any calls needed to register
 // them with the runtime.
-void emit_symbol_data_done (unwindsym_dump_context*, systemtap_session&);
+void emit_symbol_data_done (deque<unwindsym_dump_context>&, ofstream&,
+			    unsigned, unsigned long, systemtap_session&);
 
 
 void
@@ -8178,7 +8317,11 @@ prepare_symbol_data (systemtap_session& s)
 void
 emit_symbol_data (systemtap_session& s)
 {
+  unsigned modindex = 0;
+  unsigned long trampoline_addr = ~0UL;
+  deque<unwindsym_dump_context> ctxs;
   ofstream kallsyms_out (s.symbols_source.c_str ());
+  boost::asio::thread_pool TP (thread::hardware_concurrency());
 
   if (s.runtime_usermode_p ())
     {
@@ -8193,36 +8336,12 @@ emit_symbol_data (systemtap_session& s)
         "#include \"stap_common.h\"\n";
     }
 
-  vector<pair<string,unsigned> > seclist;
-  map<unsigned, addrmap_t> addrmap;
-  unwindsym_dump_context ctx = { s, kallsyms_out,
-				 0, /* module index */
-				 0, NULL, 0, /* build_id len, bits, vaddr */
-				 ~0UL, /* stp_kretprobe_trampoline_addr */
-				 0, /* stext_offset */
-				 seclist, addrmap,
-				 NULL, /* debug_frame */
-				 0, /* debug_len */
-				 NULL, /* debug_frame_hdr */
-				 0, /* debug_frame_hdr_len */
-				 0, /* debug_frame_off */
-				 NULL, /* eh_frame */
-				 NULL, /* eh_frame_hdr */
-				 0, /* eh_len */
-				 0, /* eh_frame_hdr_len */
-				 0, /* eh_addr */
-				 0, /* eh_frame_hdr_addr */
-				 NULL, /* debug_line */
-				 0, /* debug_line_len */
-				 NULL, /* debug_line_str */
-				 0, /* debug_line_str_len */
-				 s.unwindsym_modules };
-
   // Micro optimization, mainly to speed up tiny regression tests
   // using just begin probe.
   if (s.unwindsym_modules.size () == 0)
     {
-      emit_symbol_data_done(&ctx, s);
+      unwindsym_dump_context ctx (s, TP, modindex);
+      emit_symbol_data_done(ctxs, kallsyms_out, modindex, trampoline_addr, s);
       return;
     }
 
@@ -8239,23 +8358,32 @@ emit_symbol_data (systemtap_session& s)
 				     offline searches. */
         offline_search_modules.insert (foo);
     }
+
   Dwfl *dwfl = setup_dwfl_kernel (offline_search_modules, &count, s);
+  vector<Dwfl *> dwfls;
+  dwfls.push_back (dwfl);
+
   /* NB: It's not an error to find a few fewer modules than requested.
      There might be third-party modules loaded (e.g. uprobes). */
   /* DWFL_ASSERT("all kernel modules found",
      count >= offline_search_modules.size()); */
 
   ptrdiff_t off = 0;
+
   do
     {
       assert_no_interrupts();
-      if (ctx.undone_unwindsym_modules.empty()) break;
-      off = dwfl_getmodules (dwfl, &dump_unwindsyms, (void *) &ctx, off);
+      // if (it->undone_unwindsym_modules.empty()) break;
+      ctxs.emplace_back (s, TP, modindex++);
+      unwindsym_dump_context *ctx = &ctxs.back ();
+      off = dwfl_getmodules (dwfl, &dump_unwindsyms, (void *) ctx, off);
     }
   while (off > 0);
-  DWFL_ASSERT("dwfl_getmodules", off == 0);
-  dwfl_end(dwfl);
 
+  if (off > 0)
+    return;
+
+  DWFL_ASSERT("dwfl_getmodules", off == 0);
   // ---- step 2: process any user modules (files) listed
   for (std::set<std::string>::iterator it = s.unwindsym_modules.begin();
        it != s.unwindsym_modules.end();
@@ -8264,60 +8392,88 @@ emit_symbol_data (systemtap_session& s)
       string modname = *it;
       assert (modname.length() != 0);
       if (! is_user_module (modname)) continue;
-      Dwfl *dwfl = setup_dwfl_user (modname);
+      dwfl = setup_dwfl_user (modname);
+
       if (dwfl != NULL) // tolerate missing data; will warn below
         {
-          ptrdiff_t off = 0;
+	  dwfls.push_back (dwfl);
+          off = 0;
+
           do
             {
               assert_no_interrupts();
-              if (ctx.undone_unwindsym_modules.empty()) break;
-              off = dwfl_getmodules (dwfl, &dump_unwindsyms, (void *) &ctx, off);
+              //if (ctx.undone_unwindsym_modules.empty()) break;
+	      ctxs.emplace_back (s, TP, modindex++);
+	      unwindsym_dump_context *ctx = &ctxs.back ();
+              off =  dwfl_getmodules (dwfl, &dump_unwindsyms, (void *) ctx, off);
             }
           while (off > 0);
           DWFL_ASSERT("dwfl_getmodules", off == 0);
         }
-      dwfl_end(dwfl);
     }
 
-  // Use /proc/kallsyms if debuginfo not found.
-  if (ctx.undone_unwindsym_modules.find("kernel") != ctx.undone_unwindsym_modules.end())
-    dump_kallsyms(&ctx);
+  TP.join ();
 
-  emit_symbol_data_done (&ctx, s);
+  for (auto it = dwfls.begin (); it != dwfls.end (); ++it)
+    dwfl_end (*it);
+
+  bool dump_flag = false;
+  for (auto &ctx : ctxs)
+    {
+      /* TODO: Print the logs earlier.  */
+      clog << ctx.log_build_id.str (); 
+      clog << ctx.log_section_list.str (); 
+      clog << ctx.log_symbol_tables.str (); 
+      clog << ctx.log_unwindsyms.str (); 
+      kallsyms_out << ctx.output.str ();
+
+      if (ctx.undone_unwindsym_modules.find("kernel")
+	  != ctx.undone_unwindsym_modules.end())
+	{
+	  dump_flag = true;
+	  trampoline_addr = ctx.stp_kretprobe_trampoline_addr;
+	}
+    }
+
+  if (dump_flag)
+    dump_kallsyms (kallsyms_out, modindex, s);
+
+  emit_symbol_data_done (ctxs, kallsyms_out, modindex, trampoline_addr, s);
 }
 
 void
-self_unwind_declarations(unwindsym_dump_context *ctx)
+self_unwind_declarations(ofstream& output)
 {
-  ctx->output << "static uint8_t _stp_module_self_eh_frame [] = {0,};\n";
-  ctx->output << "struct _stp_symbol _stp_module_self_symbols_0[] = {{0},};\n";
-  ctx->output << "struct _stp_symbol _stp_module_self_symbols_1[] = {{0},};\n";
-  ctx->output << "struct _stp_section _stp_module_self_sections[] = {\n";
-  ctx->output << "{.name = \".symtab\", .symbols = _stp_module_self_symbols_0, .num_symbols = 0},\n";
-  ctx->output << "{.name = \".text\", .symbols = _stp_module_self_symbols_1, .num_symbols = 0},\n";
-  ctx->output << "};\n";
-  ctx->output << "struct _stp_module _stp_module_self = {\n";
-  ctx->output << ".name = \"stap_self_tmp_value\",\n";
-  ctx->output << ".path = \"stap_self_tmp_value\",\n";
-  ctx->output << ".num_sections = 2,\n";
-  ctx->output << ".sections = _stp_module_self_sections,\n";
-  ctx->output << ".eh_frame = _stp_module_self_eh_frame,\n";
-  ctx->output << ".eh_frame_len = 0,\n";
-  ctx->output << ".unwind_hdr_addr = 0x0,\n";
-  ctx->output << ".unwind_hdr = NULL,\n";
-  ctx->output << ".unwind_hdr_len = 0,\n";
-  ctx->output << ".debug_frame = NULL,\n";
-  ctx->output << ".debug_frame_len = 0,\n";
-  ctx->output << ".debug_line = NULL,\n";
-  ctx->output << ".debug_line_len = 0,\n";
-  ctx->output << ".debug_line_str = NULL,\n";
-  ctx->output << ".debug_line_str_len = 0,\n";
-  ctx->output << "};\n";
+  output << "static uint8_t _stp_module_self_eh_frame [] = {0,};\n";
+  output << "struct _stp_symbol _stp_module_self_symbols_0[] = {{0},};\n";
+  output << "struct _stp_symbol _stp_module_self_symbols_1[] = {{0},};\n";
+  output << "struct _stp_section _stp_module_self_sections[] = {\n";
+  output << "{.name = \".symtab\", .symbols = _stp_module_self_symbols_0, .num_symbols = 0},\n";
+  output << "{.name = \".text\", .symbols = _stp_module_self_symbols_1, .num_symbols = 0},\n";
+  output << "};\n";
+  output << "struct _stp_module _stp_module_self = {\n";
+  output << ".name = \"stap_self_tmp_value\",\n";
+  output << ".path = \"stap_self_tmp_value\",\n";
+  output << ".num_sections = 2,\n";
+  output << ".sections = _stp_module_self_sections,\n";
+  output << ".eh_frame = _stp_module_self_eh_frame,\n";
+  output << ".eh_frame_len = 0,\n";
+  output << ".unwind_hdr_addr = 0x0,\n";
+  output << ".unwind_hdr = NULL,\n";
+  output << ".unwind_hdr_len = 0,\n";
+  output << ".debug_frame = NULL,\n";
+  output << ".debug_frame_len = 0,\n";
+  output << ".debug_line = NULL,\n";
+  output << ".debug_line_len = 0,\n";
+  output << ".debug_line_str = NULL,\n";
+  output << ".debug_line_str_len = 0,\n";
+  output << "};\n";
 }
 
 void
-emit_symbol_data_done (unwindsym_dump_context *ctx, systemtap_session& s)
+emit_symbol_data_done (deque<unwindsym_dump_context>& ctxs,
+		       ofstream& output, unsigned modindex,
+		       unsigned long trampoline_addr, systemtap_session& s)
 {
   // Add a .eh_frame terminator dummy object file, much like
   // libgcc/crtstuff.c's EH_FRAME_SECTION_NAME closer.  We need this in
@@ -8330,32 +8486,34 @@ emit_symbol_data_done (unwindsym_dump_context *ctx, systemtap_session& s)
   T_800->assert_0_indent (); // flush to disk
 
   // Print out a definition of the runtime's _stp_modules[] globals.
-  ctx->output << "\n";
-  self_unwind_declarations(ctx);
-   ctx->output << "struct _stp_module *_stp_modules [] = {\n";
-  for (unsigned i=0; i<ctx->stp_module_index; i++)
+  output << "\n";
+  self_unwind_declarations(output);
+   output << "struct _stp_module *_stp_modules [] = {\n";
+  for (unsigned i=0; i<modindex; i++)
     {
-      ctx->output << "& _stp_module_" << i << ",\n";
+      output << "& _stp_module_" << i << ",\n";
     }
-  ctx->output << "& _stp_module_self,\n";
-  ctx->output << "};\n";
-  ctx->output << "const unsigned _stp_num_modules = ARRAY_SIZE(_stp_modules);\n";
+  output << "& _stp_module_self,\n";
+  output << "};\n";
+  output << "const unsigned _stp_num_modules = ARRAY_SIZE(_stp_modules);\n";
 
-  ctx->output << "unsigned long _stp_kretprobe_trampoline = ";
+  output << "unsigned long _stp_kretprobe_trampoline = ";
   // Special case for -1, which is invalid in hex if host width > target width.
-  if (ctx->stp_kretprobe_trampoline_addr == (unsigned long) -1)
-    ctx->output << "-1;\n";
+  if (trampoline_addr == (unsigned long) -1)
+    output << "-1;\n";
   else
-    ctx->output << "0x" << hex << ctx->stp_kretprobe_trampoline_addr << dec
-		<< ";\n";
+    output << "0x" << hex << trampoline_addr << dec << ";\n";
 
   // Some nonexistent modules may have been identified with "-d".  Note them.
   if (! s.suppress_warnings)
-    for (set<string>::iterator it = ctx->undone_unwindsym_modules.begin();
-	 it != ctx->undone_unwindsym_modules.end();
-	 it ++)
-      s.print_warning (_("missing unwind/symbol data for module '")
-		       + (*it) + "'");
+    for (auto ctx_it = ctxs.begin (); ctx_it != ctxs.end (); ++ctx_it)
+      {
+	for (set<string>::iterator it = ctx_it->undone_unwindsym_modules.begin();
+	     it != ctx_it->undone_unwindsym_modules.end();
+	     it ++)
+	  s.print_warning (_("missing unwind/symbol data for module '")
+			   + (*it) + "'");
+      }
 }
 
 struct recursion_info: public traversing_visitor
