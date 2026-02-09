@@ -220,7 +220,7 @@ missing_rpm_list_print (systemtap_session &sess, const char* rpm_type)
                               "error");
     }
     else if(strcmp(rpm_type,"-debuginfo")==0)
-      cerr << sess.colorize(_("Missing separate debuginfos, use: debuginfo-install "), "error");
+      cerr << sess.colorize(_("Missing separate debuginfos, use: dnf debuginfo-install "), "error");
 
     else{
         cerr << _("Incorrect parameter passed, please report this error.") << endl;

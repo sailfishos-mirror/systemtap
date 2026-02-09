@@ -113,7 +113,11 @@ KERN_ARCH=`uname -m`
 # strip arch from uname, for kernels like 5.14.0-447.el9.x86_64+rt or
 # 6.9.0-0.rc2.1.el10.x86_64+rt strip the +rt suffix too
 KERN_REV=`echo $UNAME | sed s/.$KERN_ARCH// | sed s/\+rt$//`
-if [ -x /usr/bin/dnf4 ]; then
+if [ -x /usr/bin/dnf5 ]; then
+    DI="dnf5 debuginfo-install"
+    DI_DEPS=""
+    D="dnf5"
+elif [ -x /usr/bin/dnf4 ]; then
     DI="dnf4 debuginfo-install"
     DI_DEPS=""
     D="dnf4"

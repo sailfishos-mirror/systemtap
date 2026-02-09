@@ -180,14 +180,8 @@
     <para>
 	    The easiest way to install the required kernel information
 	    packages is through <command>yum install</command> and
-	    <command>debuginfo-install</command> commands.
-	    The <command>debuginfo-install</command> command is included with
-	    later versions of the <package>yum-utils</package>
-	    package (for example, version 1.1.10) and also requires
-	    an appropriate <command>yum</command> repository from
-	    which to download and install
-	    <package>-debuginfo</package> and <package>-debuginfo-common</package>
-	    packages.  You can install the required
+	    <command>dnf debuginfo-install</command> commands.
+	    You can install the required
 	    <package>-devel</package>,
 	    <package>-debuginfo</package>, and
 	    <package>-debuginfo-common</package> packages for your
@@ -204,7 +198,7 @@
    </para>
 
 <screen><command>yum install <replaceable>kernelname</replaceable>-devel-<replaceable>version</replaceable></command>
-<command>debuginfo-install <replaceable>kernelname</replaceable>-<replaceable>version</replaceable></command></screen>
+<command>dnf debuginfo-install <replaceable>kernelname</replaceable>-<replaceable>version</replaceable></command></screen>
 
 <para>
 	Replace <replaceable>kernelname</replaceable> with the appropriate kernel variant name
@@ -214,7 +208,7 @@
 </para>
 
 <screen><command>yum install kernel-PAE-devel-2.6.18-53.1.13.el5</command>
-<command>debuginfo-install kernel-PAE-2.6.18-53.1.13.el5</command></screen>
+<command>dnf debuginfo-install kernel-PAE-2.6.18-53.1.13.el5</command></screen>
 
     <para>
 Once you have manually downloaded the required packages to the machine, run the following command as root to install them:
