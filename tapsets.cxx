@@ -1589,6 +1589,13 @@ dwarf_query::add_probe_point(interned_string dw_funcname,
 	      symbol_table *sym_table = mi->sym_table;
 	      func_info *symbol = sym_table->get_func_containing_address(addr);
 
+              // RHEL-149811: misbehaving kernel module/symbol
+              // processing can generate wrong addresses and leave symbol=null
+              if (!symbol)
+                throw SEMANTIC_ERROR(_F("can't find symbol for address %#"
+                                        PRIx64 " for module %s", addr,
+                                        module_val.to_string().c_str()));
+              
 	      // Do not use LEP to find offset here. When 'symbol_name'
 	      // is used to register probe, kernel itself will find LEP.
 	      Dwarf_Addr offset = orig_addr - symbol->addr;
