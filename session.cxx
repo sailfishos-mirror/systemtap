@@ -2070,9 +2070,8 @@ systemtap_session::check_options (int argc, char * const argv [])
   if (tmpdir != NULL)
     assert_regexp_match("TMPDIR", tmpdir, "^[-/._0-9a-z]+$");
 
-  // If the kernel is using signed modules, we need to enforce server
-  // use.
-  if (!client_options && (runtime_mode == kernel_runtime) && modules_must_be_signed())
+  // If the kernel is using signed modules, we need to enforce server use.
+  if (!client_options && (last_pass >= 4) && (runtime_mode == kernel_runtime) && modules_must_be_signed())
     {
       if (verbose > 1)
         clog << _("This host requires module signing.") << endl;
