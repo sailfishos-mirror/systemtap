@@ -13002,6 +13002,19 @@ tracepoint_builder::get_tracequery_modules(systemtap_session& s,
       osrc << "#define PARAMS(args...) args" << endl;
       osrc << "#endif" << endl;
 
+      // 6.16 routes TRACE_EVENT* through DECLARE_TRACE_EVENT instead of DECLARE_TRACE
+      osrc << "#undef DECLARE_TRACE_EVENT" << endl;
+      osrc << "#define DECLARE_TRACE_EVENT(name, proto, args) \\" << endl;
+      osrc << "  DECLARE_TRACE(name, PARAMS(proto), PARAMS(args))" << endl;
+      
+      osrc << "#undef DECLARE_TRACE_EVENT_CONDITION" << endl;
+      osrc << "#define DECLARE_TRACE_EVENT_CONDITION(name, proto,    args, cond) \\" << endl;
+      osrc << "  DECLARE_TRACE(name, PARAMS(proto), PARAMS(args))" << endl;
+      
+      osrc << "#undef DECLARE_TRACE_EVENT_SYSCALL" << endl;
+      osrc << "#define DECLARE_TRACE_EVENT_SYSCALL(name, proto, args)   \\" << endl;
+      osrc << "  DECLARE_TRACE(name, PARAMS(proto), PARAMS(args))" << endl;
+      
       // 6.13 handle DECLARE_TRACE_SYSCALL for sys_enter and sys_exit also
       osrc << "#undef DECLARE_TRACE_SYSCALL" << endl;
       osrc << "#define DECLARE_TRACE_SYSCALL(name, proto, args) \\" << endl;
@@ -13081,7 +13094,11 @@ tracepoint_builder::get_tracequery_modules(systemtap_session& s,
 	      osrc << "#define TRACE_EVENT_FN(name, proto, args, tstruct, assign, print, reg, unreg) \\" << endl;
 	      osrc << "  struct stapprobe_##name { unsigned long long pad; struct { tstruct } data; } stapprobe_##name;" << endl;
 
-	      osrc << "#undef TRACE_EVENT_CONDITION" << endl;
+              osrc << "#undef TRACE_EVENT_SYSCALL" << endl;
+              osrc << "#define TRACE_EVENT_SYSCALL(name, proto, args, tstruct, assign, print, reg, unreg) \\" << endl;
+              osrc << "  struct stapprobe_##name { unsigned long long pad; struct { tstruct } data; } stapprobe_##name;" << endl;
+
+              osrc << "#undef TRACE_EVENT_CONDITION" << endl;
 	      osrc << "#define TRACE_EVENT_CONDITION(name, proto, args, cond, tstruct, assign, print) \\" << endl;
 	      osrc << " struct stapprobe_##name { unsigned long long pad; struct { tstruct } data; } stapprobe_##name;" << endl;
 	  }
