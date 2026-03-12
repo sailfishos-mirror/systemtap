@@ -2220,6 +2220,12 @@ static const _stp_val_array _stp_madvice_advice_list[] = {
 #ifdef MADV_DODUMP
 	V(MADV_DODUMP),
 #endif
+#ifdef MADV_GUARD_INSTALL
+        V(MADV_GUARD_INSTALL),
+#endif
+#ifdef MADV_GUARD_REMOVE
+        V(MADV_GUARD_REMOVE),
+#endif
 	{0, NULL}
 };
 %}
