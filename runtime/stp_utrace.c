@@ -330,7 +330,11 @@ stp_lock_task_sighand(struct task_struct *tsk, unsigned long *flags)
 	struct sighand_struct *ret;
 
 	ret = __lock_task_sighand(tsk, flags);
+#if defined(__cond_lock) // PR33978
 	(void)__cond_lock(&tsk->sighand->siglock, ret);
+#else
+	(void)__try_acquire_ctx_lock(&tsk->sighand->siglock, ret);
+#endif
 	return ret;
 }
 #else
