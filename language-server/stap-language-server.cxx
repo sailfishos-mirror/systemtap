@@ -154,6 +154,15 @@ document::get_last_code_block(vector<string>& lines, string& code, int last_line
     return i;
 }
 
+template <typename T>
+T update_location(T sym, int first_line)
+{
+    source_loc new_loc(sym->tok->location);
+    new_loc.line += first_line - 1;
+    sym->tok = sym->tok->adjust_location(new_loc);
+    return sym;
+}
+
 void
 document::register_code_block(string& code, int first_line){
     // Clear old user_files, since each registeration should be independant
@@ -163,22 +172,12 @@ document::register_code_block(string& code, int first_line){
     // Parse the code_block
     int rc = pass_1(*s, code);
 
-    // Location is made relative to the document start.
-    // This is needed since in order to determine the current valid definitions,
-    // we need to see the absolute line numbers on which they were created
-    auto update_location = [first_line](auto sym){
-        source_loc new_loc(sym->tok->location);
-        new_loc.line += first_line - 1;
-        sym->tok = sym->tok->adjust_location(new_loc);
-        return sym;
-    };
-
     if(0 == rc){ // Just skip if there is an error in a code blocks
         stapfile *user_file = s->user_files.front();
         for(auto g = user_file->globals.begin(); g != user_file->globals.end(); ++g)
-            globals.push_back(update_location(*g));
+            globals.push_back(update_location(*g, first_line));
         for(auto f = user_file->functions.begin(); f != user_file->functions.end(); ++f)
-            functions.insert({ (*f)->name, update_location(*f) });
+            functions.insert({ (*f)->name, update_location(*f, first_line) });
         // TODO: Probe aliases (user_file->aliases)
     }
 }
@@ -207,6 +206,28 @@ document::register_code_blocks(int start_line, int last_line, bool clear_decls){
         register_code_block(code, line_num);
     s->language_server_mode = true;
 }
+
+// Remove and reregister the remaining code blocks from start_ln to the first unmodified line.
+// These are the ones which may have been changed by an insertion.
+// Anything after the first_untouched will have
+// their source locations shifted (as they were moved by insertion/deletion)
+template <typename Container, typename Iterator>
+void update_remove_or_pass(Container& container, Iterator& it, symboldecl* sym,
+                           size_t start_ln, size_t end_ln, int delta_line_count) {
+    source_loc new_loc(sym->tok->location);
+    size_t ln = new_loc.line;
+    if (start_ln <= ln && ln <= end_ln){
+        delete sym;
+        it = container.erase(it);
+    }else if(end_ln < ln){
+        // Update the line num
+        new_loc.line += delta_line_count;
+        sym->tok = sym->tok->adjust_location(new_loc);
+        ++it;
+    }
+    else // ln < start_ln which means that this definition came before the change i.e no update
+        ++it;
+};
 
 void
 document::apply_change(lsp_object change, TextDocumentSyncKind kind){
@@ -378,30 +399,10 @@ document::apply_change(lsp_object change, TextDocumentSyncKind kind){
             source.erase(insert_range_start, insert_range_end-insert_range_start);
             source.insert(insert_range_start, text);
 
-            // Remove and reregister the remaining code blocks from start_ln to the first unmodified line.
-            // These are the ones which may have been changed by an insertion.
-            // Anything after the first_untouched will have
-            // their source locations shifted (as they were moved by insertion/deletion)
-            auto update_remove_or_pass = [start_ln, end_ln, delta_line_count](auto& container, auto& it, symboldecl* sym){
-                source_loc new_loc(sym->tok->location);
-                size_t ln = new_loc.line;
-                if (start_ln <= ln && ln <= end_ln){
-                    delete sym;
-                    it = container.erase(it);
-                }else if(end_ln < ln){
-                    // Update the line num
-                    new_loc.line += delta_line_count;
-                    sym->tok = sym->tok->adjust_location(new_loc);
-                    ++it;
-                }
-                else // ln < start_ln which means that this definition came before the change i.e no update
-                    ++it;
-            };
-
             for (auto it = globals.cbegin(); it != globals.cend();)
-                update_remove_or_pass(globals, it, *it);
+                update_remove_or_pass(globals, it, *it, start_ln, end_ln, delta_line_count);
             for (auto it = functions.cbegin(); it != functions.cend();)
-                update_remove_or_pass(functions, it, it->second);
+                update_remove_or_pass(functions, it, it->second, start_ln, end_ln, delta_line_count);
         }
 
         register_code_blocks(start_ln /* Only reregister up to start_ln */, first_untouched /* starting before first_untouched */ , false /* Don't clear the vectors */ );
