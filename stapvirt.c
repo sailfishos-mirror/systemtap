@@ -470,7 +470,7 @@ static int
 getXmlPortNumber(xmlNodePtr port)
 {
     const char *name = getXmlPortName(port);
-    char *lastdot = strrchr(name, '.');
+    const char *lastdot = strrchr(name, '.');
     return strtol(lastdot+1, NULL, 10);
 }
 
