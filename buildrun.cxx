@@ -508,6 +508,7 @@ compile_pass (systemtap_session& s)
   output_exportconf(s, o2, "signal_wake_up_state", "STAPCONF_SIGNAL_WAKE_UP_STATE_EXPORTED");
   output_exportconf(s, o2, "signal_wake_up", "STAPCONF_SIGNAL_WAKE_UP_EXPORTED");
   output_exportconf(s, o2, "__lock_task_sighand", "STAPCONF___LOCK_TASK_SIGHAND_EXPORTED");
+  output_exportconf(s, o2, "atomic_dec_and_lock", "STAPCONF_ATOMIC_DEC_AND_LOCK_EXPORTED_PR33978");
 
   output_autoconf(s, o, cs, "autoconf-pagefault_disable.c", "STAPCONF_PAGEFAULT_DISABLE", NULL);
   output_exportconf(s, o2, "kallsyms_lookup_name", "STAPCONF_KALLSYMS_LOOKUP_NAME_EXPORTED");

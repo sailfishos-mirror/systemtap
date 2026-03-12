@@ -313,7 +313,15 @@ typedef typeof(&signal_wake_up) signal_wake_up_fn;
 #define signal_wake_up (* (signal_wake_up_fn)kallsyms_signal_wake_up)
 #endif
 
-#if !defined(STAPCONF___LOCK_TASK_SIGHAND_EXPORTED)
+// Before kernel commit e4588c25c9d122b5847b88e18b184404b6959160, there was
+// static inline struct sighand_struct *lock_task_sighand() which used to call
+// extern struct sighand_struct *__lock_task_sighand(().  After the mentioned
+// commit however, there is extern struct sighand_struct *lock_task_sighand()
+// which we can directly use.  STAPCONF_ATOMIC_DEC_AND_LOCK_EXPORTED_PR33978
+// simply indicates that mentioned commit is present in the running kernel.
+// That seems more robust than gating this on the kernel version, which may
+// have unexpected values in various distribution kernels.
+#if !defined(STAPCONF___LOCK_TASK_SIGHAND_EXPORTED) && !defined(STAPCONF_ATOMIC_DEC_AND_LOCK_EXPORTED_PR33978)
 // First typedef from the original decl, then #define as typecasted call.
 typedef typeof(&__lock_task_sighand) __lock_task_sighand_fn;
 #define __lock_task_sighand(a,b) ibt_wrapper(struct sighand_struct *, (* (__lock_task_sighand_fn)kallsyms___lock_task_sighand)((a), (b)))
