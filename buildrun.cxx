@@ -146,6 +146,10 @@ make_any_make_cmd(systemtap_session& s, const string& dir, const string& target)
   make_cmd.push_back("CC_VERSION_TEXT=foo");
   make_cmd.push_back("CONFIG_CC_VERSION_TEXT=foo");
 
+  // Suppress pahole version warning
+  make_cmd.push_back("PAHOLE_VERSION=0");
+  make_cmd.push_back("CONFIG_PAHOLE_VERSION=0");
+
   // Add any custom kbuild flags
   make_cmd.insert(make_cmd.end(), s.kbuildflags.begin(), s.kbuildflags.end());
 
