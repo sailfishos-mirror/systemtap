@@ -277,6 +277,9 @@ static void *kallsyms_signal_wake_up_state;
 #if !defined(STAPCONF_SIGNAL_WAKE_UP_EXPORTED)
 static void *kallsyms_signal_wake_up;
 #endif
+#if !defined(STAPCONF_LOCK_TASK_SIGHAND_EXPORTED)
+static void *kallsyms_lock_task_sighand;
+#endif
 #if !defined(STAPCONF___LOCK_TASK_SIGHAND_EXPORTED)
 static void *kallsyms___lock_task_sighand;
 #endif
