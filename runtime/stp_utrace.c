@@ -321,7 +321,12 @@ typedef typeof(&signal_wake_up) signal_wake_up_fn;
 // simply indicates that mentioned commit is present in the running kernel.
 // That seems more robust than gating this on the kernel version, which may
 // have unexpected values in various distribution kernels.
-#if !defined(STAPCONF___LOCK_TASK_SIGHAND_EXPORTED) && !defined(STAPCONF_ATOMIC_DEC_AND_LOCK_EXPORTED_PR33978)
+#if defined(STAPCONF_LOCK_TASK_SIGHAND_EXPORTED)
+#define stp_lock_task_sighand lock_task_sighand
+#elif defined(STAPCONF_ATOMIC_DEC_AND_LOCK_EXPORTED_PR33978)
+typedef typeof(&lock_task_sighand) lock_task_sighand_fn;
+#define stp_lock_task_sighand(a,b) ibt_wrapper(struct sighand_struct *, (* (lock_task_sighand_fn)kallsyms_lock_task_sighand)((a), (b)))
+#elif !defined(STAPCONF___LOCK_TASK_SIGHAND_EXPORTED)
 // First typedef from the original decl, then #define as typecasted call.
 typedef typeof(&__lock_task_sighand) __lock_task_sighand_fn;
 #define __lock_task_sighand(a,b) ibt_wrapper(struct sighand_struct *, (* (__lock_task_sighand_fn)kallsyms___lock_task_sighand)((a), (b)))
@@ -415,7 +420,13 @@ static int utrace_init(void)
 		goto error;
         }
 #endif
-#if !defined(STAPCONF___LOCK_TASK_SIGHAND_EXPORTED)
+#if !defined(STAPCONF_LOCK_TASK_SIGHAND_EXPORTED) && defined(STAPCONF_ATOMIC_DEC_AND_LOCK_EXPORTED_PR33978)
+        kallsyms_lock_task_sighand = (void *)kallsyms_lookup_name("lock_task_sighand");
+        if (kallsyms_lock_task_sighand == NULL) {
+		_stp_error("Can't resolve lock_task_sighand!");
+		goto error;
+        }
+#elif !defined(STAPCONF___LOCK_TASK_SIGHAND_EXPORTED)
 	/* The __lock_task_sighand() function isn't exported. Look up
 	 * that function address. */
         kallsyms___lock_task_sighand = (void *)kallsyms_lookup_name("__lock_task_sighand");
