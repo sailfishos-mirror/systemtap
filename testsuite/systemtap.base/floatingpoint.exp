@@ -1,0 +1,18 @@
+# Test floating point conversions and math
+set test "floatingpoint"
+
+if {![installtest_p]} {
+    untested $test
+    return
+}
+
+set result_string "--- START ---
+0.00001000
+-0.00001000
+3.14159
+898982983234234624.0000000000e17
+-898982983234234624.0000000000e17
+922337203685477760e1
+--- END ---"
+
+stap_run3 $test $srcdir/$subdir/$test.stp

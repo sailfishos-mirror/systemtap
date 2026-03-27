@@ -614,23 +614,24 @@ uint_fast64_t
 |Converting a fp to a str 
 *------------------------------------------------------------------------*/
 
-char* itoa(uint64_t val);
-char* itoa(uint64_t val)
+static void itoa_local(uint64_t val, char *out)
 {
-    int base = 10;
-    static char buf[32] = {0};
-
-    int i = 30;
-    while (i != 0)
-    {
-
-        buf[i] = "0123456789abcdef"[val % base];
-        val /= base;
-        i--;
-        if (!(val && i)) break;
+    char buf[32];
+    int i = 0;
+    int j = 0;
+    if (val == 0) {
+        out[0] = '0';
+        out[1] = '\0';
+        return;
     }
-
-    return &buf[i+1];
+    while (val > 0) {
+        buf[i++] = "0123456789"[val % 10];
+        val /= 10;
+    }
+    while (i > 0) {
+        out[j++] = buf[--i];
+    }
+    out[j] = '\0';
 }
 
 void f64_to_str( char *result, int outlen, float64_t a, int precision )
@@ -639,61 +640,86 @@ void f64_to_str( char *result, int outlen, float64_t a, int precision )
     uint_fast64_t uiA;
     bool sign;
     uint_fast32_t exp;
-    uint_fast64_t sig;
- 
-    char *iPart;
-    char *fTemp;
-    uint64_t fPart;
-    uint64_t base;
-    uint64_t temp;
     
-    int lastNum;
-    int numAfterLast;
-    int i; 
+    char buf[32];
+    float64_t ten = i64_to_f64(10);
+    float64_t posA;
+    int_fast64_t iPart;
+    float64_t fPart_f64;
+    int i;
+    int_fast64_t lastNum;
+    int_fast64_t numAfterLast;
+    int_fast64_t d;
+
     /*------------------------------------------------------------------------
     *------------------------------------------------------------------------*/
     uA.f = a;
     uiA = uA.ui;
     sign = signF64UI( uiA );
     exp  = expF64UI( uiA );
-    sig  = fracF64UI( uiA );
     /*------------------------------------------------------------------------
     *------------------------------------------------------------------------*/
 
-    if ( exp ) sig |= UINT64_C( 0x0010000000000000 );
-    exp = exp - 1023;
-    memset(result, '\0', outlen);
-    if (sign) strcat(result, "-");
-    iPart = itoa(sig >> (52 - exp));
-    strcat(result, iPart);
-    strcat(result, ".");
-    fPart = sig & (((uint64_t)1 << (52 - exp)) - 1);
-    base = (uint64_t)1 << (52 - exp);
-    temp = 0;
-    i = 0;
-    while (i++ < precision-1)
-    {
-        fPart *= 10;
-        fTemp = itoa(fPart/base);
-        strcat(result, fTemp);
-        fPart %= base;
+    if (outlen <= 0) return;
+    result[0] = '\0';
+
+    if (exp == 0x7FF) {
+        if (fracF64UI(uiA) == 0) {
+            strlcat(result, sign ? "-Infinity" : "Infinity", outlen);
+        } else {
+            strlcat(result, "NaN", outlen);
+        }
+        return;
     }
 
-    fPart *= 10;
-    lastNum = fPart/base;
-    fPart %= base;
+    if (sign) strlcat(result, "-", outlen);
 
-    numAfterLast = 0;
+    uA.ui &= ~UINT64_C(0x8000000000000000);
+    posA = uA.f;
 
-    if (fPart != 0)
-    {
-        fPart*= 10;
-        numAfterLast = fPart/base;
+    int e10 = 0;
+    float64_t limit = i64_to_f64(1000000000000000000LL); // 1e18
+    while (f64_le(limit, posA)) {
+        posA = f64_div(posA, ten);
+        e10++;
     }
 
-    if (numAfterLast >= 5) lastNum++;
-    fTemp = itoa(lastNum);
-    strcat(result, fTemp);
+    iPart = f64_to_i64(posA, softfloat_round_minMag, false);
+    fPart_f64 = f64_sub(posA, i64_to_f64(iPart));
+
+    itoa_local((uint64_t)iPart, buf);
+    strlcat(result, buf, outlen);
+
+    if (precision > 0) {
+        strlcat(result, ".", outlen);
+        i = 0;
+        while (i < precision - 1) {
+            fPart_f64 = f64_mul(fPart_f64, ten);
+            d = f64_to_i64(fPart_f64, softfloat_round_minMag, false);
+            itoa_local((uint64_t)d, buf);
+            strlcat(result, buf, outlen);
+            fPart_f64 = f64_sub(fPart_f64, i64_to_f64(d));
+            i++;
+        }
+
+        fPart_f64 = f64_mul(fPart_f64, ten);
+        lastNum = f64_to_i64(fPart_f64, softfloat_round_minMag, false);
+        fPart_f64 = f64_sub(fPart_f64, i64_to_f64(lastNum));
+
+        fPart_f64 = f64_mul(fPart_f64, ten);
+        numAfterLast = f64_to_i64(fPart_f64, softfloat_round_minMag, false);
+
+        if (numAfterLast >= 5) lastNum++;
+
+        itoa_local((uint64_t)lastNum, buf);
+        strlcat(result, buf, outlen);
+    }
+
+    if (e10 != 0) {
+        strlcat(result, "e", outlen);
+        itoa_local((uint64_t)e10, buf);
+        strlcat(result, buf, outlen);
+    }
 }
 
 /*------------------------------------------------------------------------

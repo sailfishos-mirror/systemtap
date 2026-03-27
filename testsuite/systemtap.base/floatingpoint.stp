@@ -1,0 +1,16 @@
+probe begin {
+    println("--- START ---")
+    // small number
+    println(fp_to_string(string_to_fp("0.00001"), 8))
+    // negative
+    println(fp_to_string(string_to_fp("-0.00001"), 8))
+    // normal
+    println(fp_to_string(string_to_fp("3.14159"), 5))
+    // large number (causes scientific notation in our fix)
+    println(fp_to_string(string_to_fp("89898298323423423423987293485342893.00000001"), 10))
+    println(fp_to_string(string_to_fp("-89898298323423423423987293485342893.00000001"), 10))
+    // Max int
+    println(fp_to_string(string_to_fp("9223372036854775807"), 0))
+    println("--- END ---")
+    exit()
+}
