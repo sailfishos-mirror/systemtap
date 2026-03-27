@@ -88,7 +88,8 @@ _stp_map_init(MAP m, unsigned max_entries, unsigned hash_table_mask, int wrap, i
 
 	INIT_MLIST_HEAD(&m->pool);
 	INIT_MLIST_HEAD(&m->head);
-        m->hash_table_mask = hash_table_mask;
+	m->hash_table_mask = hash_table_mask;
+	m->hash_table_size = hash_table_mask + 1;
 	for (i = 0; i <= m->hash_table_mask; i++)
 		INIT_MHLIST_HEAD(&m->hashes[i]);
 

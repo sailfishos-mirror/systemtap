@@ -112,8 +112,9 @@ struct map_root {
 
 	/* the hash table for this array */
         unsigned hash_table_mask;
+        unsigned hash_table_size;
         /* dynamically allocated at tail */
-        struct mhlist_head hashes[] __counted_by(maxnum);
+        struct mhlist_head hashes[] __counted_by(hash_table_size);
 };
 
 /** All maps are of this type. */
