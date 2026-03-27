@@ -727,10 +727,34 @@ proc environment_sanity_test {} {
     catch {exec rm -rf $tmpdir}
 }
 
+proc setup_dmesg_monitor {} {
+    global dmesg_spawn_id
+    if {[info exists dmesg_spawn_id]} {
+        return
+    }
+    set effective_uid [exec /usr/bin/id -u]
+    set cmd "dmesg -W"
+    if {$effective_uid != 0} {
+        send_log "DMESG: skipping dmesg relay without euid=0"
+        return
+    }
+    eval spawn -noecho $cmd
+    # NB: dmesg will die automatically with SIGPIPE when dejagnu/expect exit
+    set dmesg_spawn_id $spawn_id
+    expect_background {
+        -i $dmesg_spawn_id
+        -re "(\[^\r\n]*\r?\n)" {
+            exp_continue
+        }
+    }
+}
+
 if {! [setup_systemtap_environment]} then {
     cleanup
     exit 1
 }
+
+setup_dmesg_monitor
 
 print_systemtap_version
 get_system_info
