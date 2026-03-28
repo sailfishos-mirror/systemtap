@@ -4,6 +4,12 @@ load_lib "compile_flags.exp"
 # include server_ns.exp here.
 load_lib "server_ns.exp"
 
+proc bgerror { msg } {
+    if {$msg != ""} {
+        send_log "BGERROR CAUGHT: $msg\n"
+    }
+}
+
 proc installtest_p {} {
     global TOOL_OPTIONS
     if {[info exists TOOL_OPTIONS] && [string match "*install*" $TOOL_OPTIONS]} {

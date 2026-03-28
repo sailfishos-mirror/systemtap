@@ -1,5 +1,0 @@
-proc bgerror { msg } {
-    if {$msg != ""} {
-        send_log "BGERROR CAUGHT: $msg\n"
-    }
-}
