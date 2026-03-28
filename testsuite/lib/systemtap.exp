@@ -733,10 +733,16 @@ proc setup_dmesg_monitor {} {
         return
     }
     set effective_uid [exec /usr/bin/id -u]
-    set cmd "dmesg -W"
     if {$effective_uid != 0} {
         send_log "DMESG: skipping dmesg relay without euid=0"
         return
+    }
+    # Check if dmesg supports -W option
+    if {[catch {exec dmesg --help | grep -q -- "-W"} err] == 0} {
+        set cmd "dmesg -W"
+    } else {
+        exec dmesg --clear
+        set cmd "dmesg -w"
     }
     eval spawn -noecho $cmd
     # NB: dmesg will die automatically with SIGPIPE when dejagnu/expect exit
