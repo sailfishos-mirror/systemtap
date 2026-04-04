@@ -2821,27 +2821,33 @@ bpf_unparser::visit_concatenation (concatenation* e)
   if (this_prog.target == target_kernel_bpf)
     throw SEMANTIC_ERROR(_("unsupported in bpf kernel probe"), e->tok);
 
+  if (e->operands.empty())
+    throw SEMANTIC_ERROR(_("empty concatenation"), e->tok);
+
   // We make use of many temporary registers because intermediate strings 
   // can arise from function calls which may clobber registers that hold data.
- 
-  value *l = emit_expr (e->left);
-  value* placeholder_l = this_prog.new_reg();
-  this_prog.mk_mov(this_ins, placeholder_l, l); 
 
-  value *r = emit_expr (e->right);
-  value* placeholder_r = this_prog.new_reg();
-  this_prog.mk_mov(this_ins, placeholder_r, r);
+  value* result_str = emit_expr (e->operands[0]);
 
-  this_prog.mk_mov(this_ins, this_prog.lookup_reg(BPF_REG_1), placeholder_l);
-  this_prog.mk_mov(this_ins, this_prog.lookup_reg(BPF_REG_2), placeholder_r);
+  for (size_t i = 1; i < e->operands.size(); ++i)
+    {
+      value *next = emit_expr (e->operands[i]);
+      value* placeholder_result = this_prog.new_reg();
+      this_prog.mk_mov(this_ins, placeholder_result, result_str);
+      value* placeholder_next = this_prog.new_reg();
+      this_prog.mk_mov(this_ins, placeholder_next, next);
 
-  // Call function to concatenate. 
-  this_prog.mk_call(this_ins, BPF_FUNC_str_concat, 2);
+      this_prog.mk_mov(this_ins, this_prog.lookup_reg(BPF_REG_1), placeholder_result);
+      this_prog.mk_mov(this_ins, this_prog.lookup_reg(BPF_REG_2), placeholder_next);
 
-  value* str = this_prog.new_reg();
-  this_prog.mk_mov(this_ins, str, this_prog.lookup_reg(BPF_REG_0)); 
+      // Call function to concatenate. 
+      this_prog.mk_call(this_ins, BPF_FUNC_str_concat, 2);
 
-  result = str;
+      result_str = this_prog.new_reg();
+      this_prog.mk_mov(this_ins, result_str, this_prog.lookup_reg(BPF_REG_0));
+    }
+
+  result = result_str;
 }
 
 void

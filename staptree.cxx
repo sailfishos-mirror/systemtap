@@ -453,6 +453,17 @@ void binary_expression::print (ostream& o) const
     << " (" << *right << ")";
 }
 
+void concatenation::print (ostream& o) const
+{
+  o << "(";
+  for (size_t i = 0; i < operands.size(); ++i)
+    {
+      if (i > 0) o << " . ";
+      o << *operands[i];
+    }
+  o << ")";
+}
+
 void regex_query::print (ostream& o) const
 {
   // NB: we need a custom printer, because the parser does not accept
@@ -2133,8 +2144,8 @@ traversing_visitor::visit_comparison (comparison* e)
 void
 traversing_visitor::visit_concatenation (concatenation* e)
 {
-  e->left->visit (this);
-  e->right->visit (this);
+  for (auto operand : e->operands)
+    operand->visit (this);
 }
 
 void
@@ -3617,8 +3628,8 @@ update_visitor::visit_comparison (comparison* e)
 void
 update_visitor::visit_concatenation (concatenation* e)
 {
-  replace (e->left);
-  replace (e->right);
+  for (auto& operand : e->operands)
+    replace (operand);
   provide (e);
 }
 

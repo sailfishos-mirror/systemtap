@@ -3651,24 +3651,28 @@ parser::parse_shift ()
 expression*
 parser::parse_concatenation ()
 {
-  expression* op1 = parse_additive ();
+  std::vector<expression*> operands;
+  operands.push_back(parse_additive());
 
   const token* t = peek ();
   // XXX: the actual awk string-concatenation operator is *whitespace*.
   // I don't know how to easily to model that here.
   while (t && t->type == tok_operator && t->content == ".")
     {
-      concatenation* e = new concatenation;
-      e->left = op1;
-      e->op = t->content;
-      e->tok = t;
       next ();
-      e->right = parse_additive ();
-      op1 = e;
+      operands.push_back(parse_additive());
       t = peek ();
     }
 
-  return op1;
+  if (operands.size() == 1)
+    return operands[0];
+  else
+    {
+      concatenation* e = new concatenation;
+      e->operands = operands;
+      e->tok = operands[0]->tok;  // Use the token from the first operand
+      return e;
+    }
 }
 
 

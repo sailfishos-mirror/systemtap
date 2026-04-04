@@ -271,8 +271,10 @@ struct comparison: public binary_expression
   void visit (visitor* u);
 };
 
-struct concatenation: public binary_expression
+struct concatenation: public expression
 {
+  std::vector<expression*> operands;
+  void print (std::ostream& o) const;
   void visit (visitor* u);
 };
 

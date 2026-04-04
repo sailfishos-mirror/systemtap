@@ -4358,7 +4358,27 @@ void_statement_reducer::visit_comparison (comparison* e)
 void
 void_statement_reducer::visit_concatenation (concatenation* e)
 {
-  visit_binary_expression(e);
+  // When the result of a concatenation isn't needed, it's just as good to
+  // evaluate the operands as sequential statements in a block.
+
+  if (session.verbose>2)
+    clog << _("Eliding unused concatenation ") << *e->tok << endl;
+
+  block *b = new block;
+  b->tok = e->tok;
+
+  for (auto operand : e->operands)
+    {
+      expr_statement *es = new expr_statement;
+      es->value = operand;
+      es->tok = es->value->tok;
+      b->statements.push_back(es);
+    }
+
+  b->visit(this);
+  relaxed_p = false;
+  e = 0;
+  provide (e);
 }
 
 void
@@ -5029,27 +5049,87 @@ const_folder::visit_comparison (comparison* e)
 void
 const_folder::visit_concatenation (concatenation* e)
 {
-  literal_string* left = get_string (e->left);
-  literal_string* right = get_string (e->right);
+  std::vector<expression*> optimized_operands;
 
-  if (left && right)
+  // Merge consecutive literal strings and remove empty strings
+  std::string current_concat;
+  const token* concat_tok = NULL;
+
+  for (auto operand : e->operands)
     {
-      if (session.verbose>2)
-        clog << _("Collapsing constant concatenation ") << *e->tok << endl;
-      relaxed_p = false;
+      literal_string* lit = get_string (operand);
+      if (lit)
+        {
+          if (lit->value.empty())
+            {
+              // Skip empty strings, but if we have accumulated literals, add them first
+              if (!current_concat.empty())
+                {
+                  literal_string* n = new literal_string (interned_string(current_concat));
+                  n->tok = concat_tok ? concat_tok : e->tok;
+                  optimized_operands.push_back (n);
+                  current_concat.clear();
+                  concat_tok = NULL;
+                }
+              // Skip the empty string
+            }
+          else
+            {
+              current_concat += (string)lit->value;
+              if (!concat_tok)
+                concat_tok = lit->tok;
+            }
+        }
+      else
+        {
+          // Non-literal: first flush any accumulated literals
+          if (!current_concat.empty())
+            {
+              literal_string* n = new literal_string (interned_string(current_concat));
+              n->tok = concat_tok ? concat_tok : e->tok;
+              optimized_operands.push_back (n);
+              current_concat.clear();
+              concat_tok = NULL;
+            }
+          // Add the non-literal operand
+          optimized_operands.push_back (operand);
+        }
+    }
 
-      literal_string* n = new literal_string (*left);
+  // Flush any remaining accumulated literals
+  if (!current_concat.empty())
+    {
+      literal_string* n = new literal_string (interned_string(current_concat));
+      n->tok = concat_tok ? concat_tok : e->tok;
+      optimized_operands.push_back (n);
+    }
+
+  if (optimized_operands.empty())
+    {
+      // All were empty strings, result is empty string
+      if (session.verbose>2)
+        clog << _("Collapsing empty concatenation ") << *e->tok << endl;
+      relaxed_p = false;
+      literal_string* n = new literal_string (interned_string(""));
       n->tok = e->tok;
-      n->value = (string)n->value + (string)right->value;
       n->visit (this);
     }
-  else if ((left && left->value.empty()) ||
-           (right && right->value.empty()))
+  else if (optimized_operands.size() == 1)
     {
       if (session.verbose>2)
         clog << _("Collapsing identity concatenation ") << *e->tok << endl;
       relaxed_p = false;
-      provide(left ? e->right : e->left);
+      provide (optimized_operands[0]);
+    }
+  else if (optimized_operands.size() != e->operands.size())
+    {
+      if (session.verbose>2)
+        clog << _("Collapsing constant concatenation ") << *e->tok << endl;
+      relaxed_p = false;
+      concatenation* n = new concatenation;
+      n->operands = optimized_operands;
+      n->tok = e->tok;
+      n->visit (this);
     }
   else
     provide (e);
@@ -6417,9 +6497,8 @@ typeresolution_info::visit_concatenation (concatenation *e)
     invalid (e->tok, t);
 
   t = pe_string;
-  e->left->visit (this);
-  t = pe_string;
-  e->right->visit (this);
+  for (auto operand : e->operands)
+    operand->visit (this);
 
   if (e->type == pe_unknown)
     {

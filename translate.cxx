@@ -5563,21 +5563,24 @@ c_unparser::visit_comparison (comparison* e)
 void
 c_unparser::visit_concatenation (concatenation* e)
 {
-  if (e->op != ".")
-    throw SEMANTIC_ERROR (_("unexpected concatenation operator"), e->tok);
+  if (e->operands.empty())
+    throw SEMANTIC_ERROR (_("empty concatenation"), e->tok);
 
-  if (e->type != pe_string ||
-      e->left->type != pe_string ||
-      e->right->type != pe_string)
-    throw SEMANTIC_ERROR (_("expected string types"), e->tok);
+  for (auto operand : e->operands)
+    if (operand->type != pe_string)
+      throw SEMANTIC_ERROR (_("expected string types"), e->tok);
+
+  if (e->type != pe_string)
+    throw SEMANTIC_ERROR (_("expected string type"), e->tok);
 
   tmpvar t = gensym (e->type);
 
   o->line() << "({ ";
   o->indent(1);
   // o->newline() << "c->last_stmt = " << lex_cast_qstring(*e->tok) << ";";
-  c_assign (t.value(), e->left, "assignment");
-  c_strcat (t.value(), e->right);
+  c_assign (t.value(), e->operands[0], "assignment");
+  for (size_t i = 1; i < e->operands.size(); ++i)
+    c_strcat (t.value(), e->operands[i]);
   o->newline() << t << ";";
   o->newline(-1) << "})";
 }
