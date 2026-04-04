@@ -1215,8 +1215,12 @@ make_typequery_kmod(systemtap_session& s, const vector<string>& headers, string&
       const string& h = headers[i];
       if (h == string("vmlinux.h")) // PR33428: vmlinux.h special case
         {
-          omf << " -include " << lex_cast_qstring(s.kernel_build_tree) << "/" << lex_cast_qstring("vmlinux.h");
-          no_vmlinux_h = false;
+          string vmlinux_path = s.kernel_build_tree + "/vmlinux.h";
+          if (access(vmlinux_path.c_str(), R_OK) == 0)
+            {
+              omf << " -include " << lex_cast_qstring(s.kernel_build_tree) << "/" << lex_cast_qstring("vmlinux.h");
+              no_vmlinux_h = false;
+            }
         }
       else
         omf << " -include " << lex_cast_qstring(h); // XXX right quoting?
