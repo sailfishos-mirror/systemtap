@@ -2948,6 +2948,7 @@ struct dwarf_var_expanding_visitor: public var_expanding_visitor
   void visit_cast_op (cast_op* e);
   void visit_entry_op (entry_op* e);
   void visit_perf_op (perf_op* e);
+  void visit_enum_op (enum_op* e);
 
 private:
   vector<Dwarf_Die>& getscopes(target_symbol *e);
@@ -3187,6 +3188,8 @@ public:
   { context_op_p = true; traversing_visitor::visit_autocast_op(e); }
   void visit_perf_op (perf_op* e)
   { context_op_p = true; traversing_visitor::visit_perf_op(e); }
+  void visit_enum_op (enum_op* e)
+  { context_op_p = true; traversing_visitor::visit_enum_op(e); }
 };
 
 
@@ -4965,6 +4968,35 @@ dwarf_var_expanding_visitor::visit_perf_op (perf_op *e)
     }
   else
     throw SEMANTIC_ERROR(_F("perf counter '%s' not defined", e_lit_val.c_str()));
+}
+
+
+void
+dwarf_var_expanding_visitor::visit_enum_op (enum_op *e)
+{
+  string enum_name = e->operand->value;
+
+  // Look up the enum in DWARF
+  if (scopes.empty())
+    {
+      if(!null_die(scope_die))
+        scopes = q.dw.getscopes(scope_die);
+    }
+  Dwarf_Sword value;
+  if (q.dw.get_enum_value (&scopes[0], scopes.size(), enum_name.c_str(), &value) != 0)
+    {
+      // Collect available enum constants for suggestions
+      set<string> enums;
+      q.dw.get_enums(scopes, enums);
+      string sugs = levenshtein_suggest(enum_name, enums, 5);
+      throw SEMANTIC_ERROR(_F("enumeration constant '%s' not found%s", enum_name.c_str(),
+                              sugs.empty() ? "" : (_(" (did you mean ") + sugs + "?)").c_str()), e->tok);
+    }
+
+  // Replace with literal_number
+  literal_number* ln = new literal_number(value);
+  ln->tok = e->tok;
+  provide (ln);
 }
 
 

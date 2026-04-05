@@ -537,6 +537,9 @@ struct dwflpp
                                        Dwarf_Die *funcdie,
                                        Dwarf_Addr pc);
 
+  int get_enum_value (Dwarf_Die *scopes, int nscopes, const char *name, Dwarf_Sword *value);
+  void get_enums(std::vector<Dwarf_Die>& scopes, std::set<std::string>& enums);
+
 private:
   Dwfl * dwfl;
 

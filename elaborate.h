@@ -178,6 +178,7 @@ struct typeresolution_info: public visitor
   void visit_probewrite_op(probewrite_op* e);
   void visit_entry_op (entry_op* e);
   void visit_perf_op (perf_op* e);
+  void visit_enum_op (enum_op* e);
 
   // PR24199 NB: above functions should NOT throw exceptions on a
   // routine type resolution failure.  Instead, session.print_error()

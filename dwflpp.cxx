@@ -2818,6 +2818,40 @@ dwflpp::get_locals_die(Dwarf_Die& die, set<string>& locals)
     }
 }
 
+void
+dwflpp::get_enums(vector<Dwarf_Die>& scopes, set<string>& enums)
+{
+  // Walk through scopes and collect enumerator names
+  for (size_t i = 0; i < scopes.size(); ++i)
+    {
+      Dwarf_Die child;
+      if (dwarf_child (&scopes[i], &child) == 0)
+        {
+          do
+            {
+              if (dwarf_tag (&child) == DW_TAG_enumeration_type)
+                {
+                  Dwarf_Die enumerator;
+                  if (dwarf_child (&child, &enumerator) == 0)
+                    {
+                      do
+                        {
+                          if (dwarf_tag (&enumerator) == DW_TAG_enumerator)
+                            {
+                              const char *name = dwarf_diename (&enumerator);
+                              if (name)
+                                enums.insert(name);
+                            }
+                        }
+                      while (dwarf_siblingof (&enumerator, &enumerator) == 0);
+                    }
+                }
+            }
+          while (dwarf_siblingof (&child, &child) == 0);
+        }
+    }
+}
+
 
 int
 dwflpp::dwarf_get_enum (Dwarf_Die *scopes, int nscopes,
@@ -2854,6 +2888,19 @@ dwflpp::dwarf_get_enum (Dwarf_Die *scopes, int nscopes,
       while (dwarf_siblingof (result, result) == 0);
 
   return -1;
+}
+
+int
+dwflpp::get_enum_value (Dwarf_Die *scopes, int nscopes, const char *name, Dwarf_Sword *value)
+{
+  Dwarf_Die result, enum_type;
+  if (dwarf_get_enum (scopes, nscopes, name, &result, &enum_type) < 0)
+    return -1;
+  Dwarf_Attribute attr_mem;
+  Dwarf_Attribute *attr = dwarf_attr_integrate (&result, DW_AT_const_value, &attr_mem);
+  if (!attr) return -1;
+  if (dwarf_formsdata (attr, value) != 0) return -1;
+  return 0;
 }
 
 

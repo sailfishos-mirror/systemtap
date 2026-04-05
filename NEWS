@@ -1,3 +1,10 @@
+* What's new in version 5.5
+
+- New @enum() operator for accessing enumeration constants from
+  DWARF debug information.
+
+- Optimized chained string-concatenation expressions.
+
 * What's new in version 5.4, 2025-10-31
 
 - The kernel-context @cast operator now implicitly searches a kernel's

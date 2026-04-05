@@ -6138,6 +6138,8 @@ struct initial_typeresolution_info : public typeresolution_info
   void visit_defined_op (defined_op*) {}
   void visit_probewrite_op (probewrite_op*) {}
   void visit_entry_op (entry_op*) {}
+  void visit_perf_op (perf_op*) {}
+  void visit_enum_op (enum_op*) {}
   void visit_cast_op (cast_op*) {}
 };
 
@@ -7018,8 +7020,17 @@ typeresolution_info::visit_perf_op (perf_op* e)
   // (There is no real need to visit our operand - by parser
   // construction, it's always a string literal, with its type already
   // set.)
-  t = pe_string;
-  e->operand->visit (this);
+}
+
+
+void
+typeresolution_info::visit_enum_op (enum_op* e)
+{
+  // An enum_op should already be resolved to a literal_number
+  if (t == pe_stats || t == pe_string)
+    invalid (e->tok, t);
+
+  e->type = pe_long;
 }
 
 

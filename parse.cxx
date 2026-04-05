@@ -234,6 +234,7 @@ private: // nonterminals
   expression* parse_defined_op (const token* t);
   expression* parse_probewrite_op(const token* t);
   expression* parse_const_op (const token* t);
+  expression* parse_enum_op (const token* t);
   expression* parse_perf_op (const token* t);
   expression* parse_target_register (const token* t);
   expression* parse_target_deref (const token* t);
@@ -3954,6 +3955,9 @@ expression* parser::parse_symbol ()
       if (name == "@const")
         return parse_const_op (t);
 
+      if (name == "@enum")
+        return parse_enum_op (t);
+
       if (name == "@entry")
         return parse_entry_op (t);
 
@@ -4314,6 +4318,24 @@ expression* parser::parse_const_op (const token* t)
   expect_op(")");
   ee->code = string("/* pure */ /* unprivileged */ /* stable */ ") + string(cnst);
   return ee;
+}
+
+
+// Parse a @enum().  Given head token has already been consumed.
+expression* parser::parse_enum_op (const token* t)
+{
+  if (strverscmp(session.compatible.c_str(), "5.5") < 0)
+    throw PARSE_ERROR (_("using @enum operator requires --compatible=5.5 or higher"),
+                       false /* don't skip tokens for parse resumption */);
+
+  enum_op *eop = new enum_op;
+  eop->tok = t;
+  expect_op("(");
+  eop->operand = parse_literal_string ();
+  if (eop->operand->value == "")
+    throw PARSE_ERROR (_("expected non-empty string"));
+  expect_op(")");
+  return eop;
 }
 
 

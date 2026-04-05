@@ -625,6 +625,12 @@ void perf_op::print (ostream& o) const
 }
 
 
+void enum_op::print (ostream& o) const
+{
+  o << "@enum(" << *operand << ")";
+}
+
+
 void vardecl::print (ostream& o) const
 {
   o << ((unmangled_name != "") ? unmangled_name : name); // unmangled_name empty for some synthesized vardecls
@@ -712,6 +718,11 @@ void embedded_tags_visitor::visit_embedded_expr (embedded_expr *e)
   for (auto tag = available_tags.begin(); tag != available_tags.end(); ++tag)
     if (e->tagged_p(*tag))
       tags.insert(*tag);
+}
+
+void embedded_tags_visitor::visit_enum_op (enum_op* e)
+{
+  traversing_visitor::visit_enum_op(e);
 }
 
 void functiondecl::printsigtags (ostream& o, bool all_tags) const
@@ -1852,6 +1863,13 @@ perf_op::visit (visitor* u)
 
 
 void
+enum_op::visit (visitor* u)
+{
+  u->visit_enum_op(this);
+}
+
+
+void
 arrayindex::visit (visitor* u)
 {
   u->visit_arrayindex (this);
@@ -2240,6 +2258,13 @@ traversing_visitor::visit_perf_op (perf_op* e)
 
 
 void
+traversing_visitor::visit_enum_op (enum_op* e)
+{
+  e->operand->visit (this);
+}
+
+
+void
 traversing_visitor::visit_arrayindex (arrayindex* e)
 {
   for (unsigned i=0; i<e->indexes.size(); i++)
@@ -2504,6 +2529,14 @@ expression_visitor::visit_perf_op (perf_op* e)
 
 
 void
+expression_visitor::visit_enum_op (enum_op* e)
+{
+  traversing_visitor::visit_enum_op (e);
+  visit_expression (e);
+}
+
+
+void
 functioncall_traversing_visitor::visit_functioncall (functioncall* e)
 {
   traversing_visitor::visit_functioncall (e);
@@ -2611,6 +2644,16 @@ symuse_collecting_visitor::visit_symbol(symbol* e)
 void
 symuse_collecting_visitor::visit_probewrite_op(probewrite_op*)
 {
+}
+
+void
+symuse_collecting_visitor::visit_enum_op (enum_op* e)
+{
+  // Visit the operand
+  e->operand->visit(this);
+
+  // Treat enum constants as read symbols
+  read_names.insert(e->operand->value);
 }
 
 
@@ -2874,6 +2917,13 @@ void
 varuse_collecting_visitor::visit_perf_op (perf_op *e)
 {
   functioncall_traversing_visitor::visit_perf_op (e);
+}
+
+
+void
+varuse_collecting_visitor::visit_enum_op (enum_op *e)
+{
+  functioncall_traversing_visitor::visit_enum_op (e);
 }
 
 
@@ -3398,6 +3448,13 @@ throwing_visitor::visit_perf_op (perf_op* e)
 
 
 void
+throwing_visitor::visit_enum_op (enum_op* e)
+{
+  throwone (e->tok);
+}
+
+
+void
 throwing_visitor::visit_arrayindex (arrayindex* e)
 {
   throwone (e->tok);
@@ -3733,6 +3790,14 @@ update_visitor::visit_perf_op (perf_op* e)
   provide (e);
 }
 
+
+void
+update_visitor::visit_enum_op (enum_op* e)
+{
+  replace (e->operand);
+  provide (e);
+}
+
 void
 update_visitor::visit_arrayindex (arrayindex* e)
 {
@@ -4022,6 +4087,13 @@ void
 deep_copy_visitor::visit_perf_op (perf_op* e)
 {
   update_visitor::visit_perf_op(new perf_op(*e));
+}
+
+
+void
+deep_copy_visitor::visit_enum_op (enum_op* e)
+{
+  update_visitor::visit_enum_op(new enum_op(*e));
 }
 
 void

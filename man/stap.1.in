@@ -1103,6 +1103,13 @@ embedded C pragma comments setting.
 .SAMPLE
 @const("STP_SKIP_BADVARS")
 .ESAMPLE
+.PP
+Enumeration constants from debugged programs can be accessed using the
+built-in @enum() operator.  This operator looks up the enumeration constant
+name in DWARF debug information and replaces it with its integer value.
+.SAMPLE
+@enum("MY_ENUM_CONSTANT")
+.ESAMPLE
 
 .SS VARIABLES
 Identifiers for variables and functions are an alphanumeric sequence,
