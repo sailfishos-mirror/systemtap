@@ -130,7 +130,7 @@ f /var/log/stap-server/log 0644 stap-server stap-server -
 
 Name: systemtap
 # PRERELEASE
-Version: 5.4
+Version: 5.5
 Release: 1%{?release_override}%{?dist}
 # for version, see also configure.ac
 
