@@ -101,8 +101,7 @@ pkglibexec_PROGRAMS = stapio$(EXEEXT)
 @HAVE_NSS_TRUE@am__append_4 = $(nss_CFLAGS)
 @HAVE_NSS_TRUE@am__append_5 = $(nss_CFLAGS)
 @HAVE_NSS_TRUE@am__append_6 = $(nss_LIBS)
-@HAVE_HTTP_SUPPORT_TRUE@am__append_7 = $(openssl_LIBS)
-@HAVE_MONITOR_LIBS_TRUE@am__append_8 = $(jsonc_LIBS) -lpanel $(ncurses_LIBS)
+@HAVE_MONITOR_LIBS_TRUE@am__append_7 = $(jsonc_LIBS) -lpanel $(ncurses_LIBS)
 subdir = staprun
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_check_compile_flag.m4 \
@@ -159,10 +158,8 @@ am_staprun_OBJECTS = staprun-staprun.$(OBJEXT) \
 	$(am__objects_1)
 staprun_OBJECTS = $(am_staprun_OBJECTS)
 @HAVE_NSS_TRUE@am__DEPENDENCIES_3 = $(am__DEPENDENCIES_1)
-@HAVE_HTTP_SUPPORT_TRUE@am__DEPENDENCIES_4 = $(am__DEPENDENCIES_1)
 staprun_DEPENDENCIES = libstrfloctime.a $(am__DEPENDENCIES_1) \
-	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_3) \
-	$(am__DEPENDENCIES_4)
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_3)
 staprun_LINK = $(CXXLD) $(staprun_CXXFLAGS) $(CXXFLAGS) \
 	$(staprun_LDFLAGS) $(LDFLAGS) -o $@
 am_stapsh_OBJECTS = stapsh-stapsh.$(OBJEXT)
@@ -436,12 +433,8 @@ infodir = @infodir@
 install_sh = @install_sh@
 jsonc_CFLAGS = @jsonc_CFLAGS@
 jsonc_LIBS = @jsonc_LIBS@
-libcurl_CFLAGS = @libcurl_CFLAGS@
-libcurl_LIBS = @libcurl_LIBS@
 libdir = @libdir@
 libexecdir = @libexecdir@
-libmicrohttpd_CFLAGS = @libmicrohttpd_CFLAGS@
-libmicrohttpd_LIBS = @libmicrohttpd_LIBS@
 libvirt_CFLAGS = @libvirt_CFLAGS@
 libvirt_LIBS = @libvirt_LIBS@
 libxml2_CFLAGS = @libxml2_CFLAGS@
@@ -492,8 +485,6 @@ target_vendor = @target_vendor@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-uuid_CFLAGS = @uuid_CFLAGS@
-uuid_LIBS = @uuid_LIBS@
 AUTOMAKE_OPTIONS = subdir-objects
 AM_CFLAGS = -Wall -Wextra -Wunused -W -Wformat=2 $(am__append_1) \
 	@PIECFLAGS@ $(am__empty)
@@ -519,10 +510,10 @@ staprun_CXXFLAGS = $(AM_CXXFLAGS) -DSINGLE_THREADED \
 	$(debuginfod_CFLAGS) $(am__append_5)
 staprun_CPPFLAGS = $(AM_CPPFLAGS)
 staprun_LDADD = libstrfloctime.a $(staprun_LIBS) $(debuginfod_LIBS) \
-	$(am__append_6) $(am__append_7)
+	$(am__append_6)
 staprun_LDFLAGS = $(AM_LDFLAGS) -Wl,--whole-archive,libstrfloctime.a,--no-whole-archive $(debuginfod_LDFLAGS)
 stapio_SOURCES = stapio.c mainloop.c common.c start_cmd.c ctl.c relay.c monitor.c
-stapio_LDADD = libstrfloctime.a -lpthread $(am__append_8)
+stapio_LDADD = libstrfloctime.a -lpthread $(am__append_7)
 stapio_LDFLAGS = -Wl,--whole-archive,libstrfloctime.a,--no-whole-archive
 man_MANS = staprun.8
 stap_merge_SOURCES = stap_merge.c

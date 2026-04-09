@@ -653,14 +653,6 @@ pkglibexecdir
 STAP_PREFIX
 NEED_BASE_CLIENT_CODE_FALSE
 NEED_BASE_CLIENT_CODE_TRUE
-HAVE_HTTP_SUPPORT_FALSE
-HAVE_HTTP_SUPPORT_TRUE
-libcurl_LIBS
-libcurl_CFLAGS
-uuid_LIBS
-uuid_CFLAGS
-libmicrohttpd_LIBS
-libmicrohttpd_CFLAGS
 STAP_EXTRA_VERSION
 LOCALEDIR
 ENABLE_NLS
@@ -967,7 +959,6 @@ with_bpf
 with_selinux
 with_java
 with_extra_version
-enable_http
 enable_year2038
 '
       ac_precious_vars='build_alias
@@ -1005,13 +996,7 @@ jsonc_LIBS
 ncurses_CFLAGS
 ncurses_LIBS
 selinux_CFLAGS
-selinux_LIBS
-libmicrohttpd_CFLAGS
-libmicrohttpd_LIBS
-uuid_CFLAGS
-uuid_LIBS
-libcurl_CFLAGS
-libcurl_LIBS'
+selinux_LIBS'
 ac_subdirs_all='testsuite'
 
 # Initialize some variables set by options.
@@ -1673,8 +1658,6 @@ Optional Features:
                           libvirt etc. found).
   --disable-libvirt       Do not use libvirt even if present
   --disable-monitor       Disable monitor
-  --enable-http           Enable building http web compilation service, if
-                          possible
   --enable-year2038       support timestamps after 2038
 
 Optional Packages:
@@ -1767,16 +1750,6 @@ Some influential environment variables:
               C compiler flags for selinux, overriding pkg-config
   selinux_LIBS
               linker flags for selinux, overriding pkg-config
-  libmicrohttpd_CFLAGS
-              C compiler flags for libmicrohttpd, overriding pkg-config
-  libmicrohttpd_LIBS
-              linker flags for libmicrohttpd, overriding pkg-config
-  uuid_CFLAGS C compiler flags for uuid, overriding pkg-config
-  uuid_LIBS   linker flags for uuid, overriding pkg-config
-  libcurl_CFLAGS
-              C compiler flags for libcurl, overriding pkg-config
-  libcurl_LIBS
-              linker flags for libcurl, overriding pkg-config
 
 Use these variables to override the choices made by 'configure' or to help
 it to find libraries and programs with nonstandard names/locations.
@@ -15050,260 +15023,7 @@ printf "%s\n" "#define STAP_EXTRA_VERSION \"$stap_extra_version\"" >>confdefs.h
 STAP_EXTRA_VERSION="$stap_extra_version"
 
 
-# Check whether --enable-http was given.
-if test ${enable_http+y}
-then :
-  enableval=$enable_http;
-fi
-
-have_http_support=no
-if test "x$enable_http" = "xyes"
-then :
-
-pkg_failed=no
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for libmicrohttpd" >&5
-printf %s "checking for libmicrohttpd... " >&6; }
-
-if test -n "$libmicrohttpd_CFLAGS"; then
-    pkg_cv_libmicrohttpd_CFLAGS="$libmicrohttpd_CFLAGS"
- elif test -n "$PKG_CONFIG"; then
-    if test -n "$PKG_CONFIG" && \
-    { { printf "%s\n" "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libmicrohttpd > 0.9.0\""; } >&5
-  ($PKG_CONFIG --exists --print-errors "libmicrohttpd > 0.9.0") 2>&5
-  ac_status=$?
-  printf "%s\n" "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
-  test $ac_status = 0; }; then
-  pkg_cv_libmicrohttpd_CFLAGS=`$PKG_CONFIG --cflags "libmicrohttpd > 0.9.0" 2>/dev/null`
-		      test "x$?" != "x0" && pkg_failed=yes
-else
-  pkg_failed=yes
-fi
- else
-    pkg_failed=untried
-fi
-if test -n "$libmicrohttpd_LIBS"; then
-    pkg_cv_libmicrohttpd_LIBS="$libmicrohttpd_LIBS"
- elif test -n "$PKG_CONFIG"; then
-    if test -n "$PKG_CONFIG" && \
-    { { printf "%s\n" "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libmicrohttpd > 0.9.0\""; } >&5
-  ($PKG_CONFIG --exists --print-errors "libmicrohttpd > 0.9.0") 2>&5
-  ac_status=$?
-  printf "%s\n" "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
-  test $ac_status = 0; }; then
-  pkg_cv_libmicrohttpd_LIBS=`$PKG_CONFIG --libs "libmicrohttpd > 0.9.0" 2>/dev/null`
-		      test "x$?" != "x0" && pkg_failed=yes
-else
-  pkg_failed=yes
-fi
- else
-    pkg_failed=untried
-fi
-
-
-
-if test $pkg_failed = yes; then
-   	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
-
-if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
-        _pkg_short_errors_supported=yes
-else
-        _pkg_short_errors_supported=no
-fi
-        if test $_pkg_short_errors_supported = yes; then
-	        libmicrohttpd_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors --cflags --libs "libmicrohttpd > 0.9.0" 2>&1`
-        else
-	        libmicrohttpd_PKG_ERRORS=`$PKG_CONFIG --print-errors --cflags --libs "libmicrohttpd > 0.9.0" 2>&1`
-        fi
-	# Put the nasty error message in config.log where it belongs
-	echo "$libmicrohttpd_PKG_ERRORS" >&5
-
-	have_libmicrohttpd=false
-elif test $pkg_failed = untried; then
-     	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
-	have_libmicrohttpd=false
-else
-	libmicrohttpd_CFLAGS=$pkg_cv_libmicrohttpd_CFLAGS
-	libmicrohttpd_LIBS=$pkg_cv_libmicrohttpd_LIBS
-        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
-	have_libmicrohttpd=true
-fi
-
-
-pkg_failed=no
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for uuid" >&5
-printf %s "checking for uuid... " >&6; }
-
-if test -n "$uuid_CFLAGS"; then
-    pkg_cv_uuid_CFLAGS="$uuid_CFLAGS"
- elif test -n "$PKG_CONFIG"; then
-    if test -n "$PKG_CONFIG" && \
-    { { printf "%s\n" "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"uuid >= 2.17.0\""; } >&5
-  ($PKG_CONFIG --exists --print-errors "uuid >= 2.17.0") 2>&5
-  ac_status=$?
-  printf "%s\n" "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
-  test $ac_status = 0; }; then
-  pkg_cv_uuid_CFLAGS=`$PKG_CONFIG --cflags "uuid >= 2.17.0" 2>/dev/null`
-		      test "x$?" != "x0" && pkg_failed=yes
-else
-  pkg_failed=yes
-fi
- else
-    pkg_failed=untried
-fi
-if test -n "$uuid_LIBS"; then
-    pkg_cv_uuid_LIBS="$uuid_LIBS"
- elif test -n "$PKG_CONFIG"; then
-    if test -n "$PKG_CONFIG" && \
-    { { printf "%s\n" "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"uuid >= 2.17.0\""; } >&5
-  ($PKG_CONFIG --exists --print-errors "uuid >= 2.17.0") 2>&5
-  ac_status=$?
-  printf "%s\n" "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
-  test $ac_status = 0; }; then
-  pkg_cv_uuid_LIBS=`$PKG_CONFIG --libs "uuid >= 2.17.0" 2>/dev/null`
-		      test "x$?" != "x0" && pkg_failed=yes
-else
-  pkg_failed=yes
-fi
- else
-    pkg_failed=untried
-fi
-
-
-
-if test $pkg_failed = yes; then
-   	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
-
-if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
-        _pkg_short_errors_supported=yes
-else
-        _pkg_short_errors_supported=no
-fi
-        if test $_pkg_short_errors_supported = yes; then
-	        uuid_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors --cflags --libs "uuid >= 2.17.0" 2>&1`
-        else
-	        uuid_PKG_ERRORS=`$PKG_CONFIG --print-errors --cflags --libs "uuid >= 2.17.0" 2>&1`
-        fi
-	# Put the nasty error message in config.log where it belongs
-	echo "$uuid_PKG_ERRORS" >&5
-
-	have_libuuid=false
-elif test $pkg_failed = untried; then
-     	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
-	have_libuuid=false
-else
-	uuid_CFLAGS=$pkg_cv_uuid_CFLAGS
-	uuid_LIBS=$pkg_cv_uuid_LIBS
-        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
-	have_libuuid=true
-fi
-
-
-pkg_failed=no
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for libcurl" >&5
-printf %s "checking for libcurl... " >&6; }
-
-if test -n "$libcurl_CFLAGS"; then
-    pkg_cv_libcurl_CFLAGS="$libcurl_CFLAGS"
- elif test -n "$PKG_CONFIG"; then
-    if test -n "$PKG_CONFIG" && \
-    { { printf "%s\n" "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libcurl >= 7.19.7\""; } >&5
-  ($PKG_CONFIG --exists --print-errors "libcurl >= 7.19.7") 2>&5
-  ac_status=$?
-  printf "%s\n" "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
-  test $ac_status = 0; }; then
-  pkg_cv_libcurl_CFLAGS=`$PKG_CONFIG --cflags "libcurl >= 7.19.7" 2>/dev/null`
-		      test "x$?" != "x0" && pkg_failed=yes
-else
-  pkg_failed=yes
-fi
- else
-    pkg_failed=untried
-fi
-if test -n "$libcurl_LIBS"; then
-    pkg_cv_libcurl_LIBS="$libcurl_LIBS"
- elif test -n "$PKG_CONFIG"; then
-    if test -n "$PKG_CONFIG" && \
-    { { printf "%s\n" "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libcurl >= 7.19.7\""; } >&5
-  ($PKG_CONFIG --exists --print-errors "libcurl >= 7.19.7") 2>&5
-  ac_status=$?
-  printf "%s\n" "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
-  test $ac_status = 0; }; then
-  pkg_cv_libcurl_LIBS=`$PKG_CONFIG --libs "libcurl >= 7.19.7" 2>/dev/null`
-		      test "x$?" != "x0" && pkg_failed=yes
-else
-  pkg_failed=yes
-fi
- else
-    pkg_failed=untried
-fi
-
-
-
-if test $pkg_failed = yes; then
-   	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
-
-if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
-        _pkg_short_errors_supported=yes
-else
-        _pkg_short_errors_supported=no
-fi
-        if test $_pkg_short_errors_supported = yes; then
-	        libcurl_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors --cflags --libs "libcurl >= 7.19.7" 2>&1`
-        else
-	        libcurl_PKG_ERRORS=`$PKG_CONFIG --print-errors --cflags --libs "libcurl >= 7.19.7" 2>&1`
-        fi
-	# Put the nasty error message in config.log where it belongs
-	echo "$libcurl_PKG_ERRORS" >&5
-
-	have_libcurl=false
-elif test $pkg_failed = untried; then
-     	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
-	have_libcurl=false
-else
-	libcurl_CFLAGS=$pkg_cv_libcurl_CFLAGS
-	libcurl_LIBS=$pkg_cv_libcurl_LIBS
-        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
-	have_libcurl=true
-fi
-
-            if test "x$have_libmicrohttpd" = "xtrue" -a "x$have_libuuid" = "xtrue" -a "x$have_libcurl" = "xtrue" -a "x$have_jsonc" = "xyes" -a "x$have_nss" = "xyes" -a "x$have_openssl" = "xyes" -a "x$have_cxx0x" = "xno"
-then :
-  have_http_support=yes
-fi
-fi
-
-if test "x$have_http_support" = "xyes"
-then :
-
-printf "%s\n" "#define HAVE_HTTP_SUPPORT 1" >>confdefs.h
-
-else case e in #(
-  e) if test "x$enable_http" = "xyes"
-then :
-  as_fn_error $? "http service support requested but not found" "$LINENO" 5
-fi
- ;;
-esac
-fi
- if test "x$have_http_support" = "xyes"; then
-  HAVE_HTTP_SUPPORT_TRUE=
-  HAVE_HTTP_SUPPORT_FALSE='#'
-else
-  HAVE_HTTP_SUPPORT_TRUE='#'
-  HAVE_HTTP_SUPPORT_FALSE=
-fi
-
-
- if test "x$have_http_support" = "xyes" -o "x$have_nss" = "xyes"; then
+ if test "x$have_nss" = "xyes"; then
   NEED_BASE_CLIENT_CODE_TRUE=
   NEED_BASE_CLIENT_CODE_FALSE='#'
 else
@@ -15311,7 +15031,7 @@ else
   NEED_BASE_CLIENT_CODE_FALSE=
 fi
 
-if test "x$have_http_support" = "xyes" -o "x$have_nss" = "xyes"
+if test "x$have_nss" = "xyes"
 then :
 
 
@@ -15369,8 +15089,6 @@ ac_config_files="$ac_config_files interactive-notebook/stap-jupyter-install"
 ac_config_files="$ac_config_files staprun/Makefile"
 
 ac_config_files="$ac_config_files stapbpf/Makefile"
-
-ac_config_files="$ac_config_files httpd/Makefile httpd/docker/Makefile"
 
 ac_config_files="$ac_config_files staprun/run-staprun"
 
@@ -15670,10 +15388,6 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${HAVE_JAVA_TRUE}" && test -z "${HAVE_JAVA_FALSE}"; then
   as_fn_error $? "conditional \"HAVE_JAVA\" was never defined.
-Usually this means the macro was only invoked conditionally." "$LINENO" 5
-fi
-if test -z "${HAVE_HTTP_SUPPORT_TRUE}" && test -z "${HAVE_HTTP_SUPPORT_FALSE}"; then
-  as_fn_error $? "conditional \"HAVE_HTTP_SUPPORT\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${NEED_BASE_CLIENT_CODE_TRUE}" && test -z "${NEED_BASE_CLIENT_CODE_FALSE}"; then
@@ -16313,8 +16027,6 @@ do
     "interactive-notebook/stap-jupyter-install") CONFIG_FILES="$CONFIG_FILES interactive-notebook/stap-jupyter-install" ;;
     "staprun/Makefile") CONFIG_FILES="$CONFIG_FILES staprun/Makefile" ;;
     "stapbpf/Makefile") CONFIG_FILES="$CONFIG_FILES stapbpf/Makefile" ;;
-    "httpd/Makefile") CONFIG_FILES="$CONFIG_FILES httpd/Makefile" ;;
-    "httpd/docker/Makefile") CONFIG_FILES="$CONFIG_FILES httpd/docker/Makefile" ;;
     "staprun/run-staprun") CONFIG_FILES="$CONFIG_FILES staprun/run-staprun" ;;
     "staprun/guest/stapshd") CONFIG_FILES="$CONFIG_FILES staprun/guest/stapshd" ;;
     "staprun/guest/stapsh-daemon") CONFIG_FILES="$CONFIG_FILES staprun/guest/stapsh-daemon" ;;

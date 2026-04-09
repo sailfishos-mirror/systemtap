@@ -325,12 +325,8 @@ infodir = @infodir@
 install_sh = @install_sh@
 jsonc_CFLAGS = @jsonc_CFLAGS@
 jsonc_LIBS = @jsonc_LIBS@
-libcurl_CFLAGS = @libcurl_CFLAGS@
-libcurl_LIBS = @libcurl_LIBS@
 libdir = @libdir@
 libexecdir = @libexecdir@
-libmicrohttpd_CFLAGS = @libmicrohttpd_CFLAGS@
-libmicrohttpd_LIBS = @libmicrohttpd_LIBS@
 libvirt_CFLAGS = @libvirt_CFLAGS@
 libvirt_LIBS = @libvirt_LIBS@
 libxml2_CFLAGS = @libxml2_CFLAGS@
@@ -381,8 +377,6 @@ target_vendor = @target_vendor@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-uuid_CFLAGS = @uuid_CFLAGS@
-uuid_LIBS = @uuid_LIBS@
 AUTOMAKE_OPTIONS = subdir-objects
 
 # Note that we have to use absolute directores here since we change

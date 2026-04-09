@@ -973,40 +973,10 @@ AS_IF([test "x$with_extra_version" != "xno"], [
 AC_DEFINE_UNQUOTED(STAP_EXTRA_VERSION, "$stap_extra_version", [extra stap version code])
 AC_SUBST(STAP_EXTRA_VERSION, "$stap_extra_version")
 
-dnl Handle the option to build httpd web compilation service
-AC_ARG_ENABLE([http],
-  AS_HELP_STRING([--enable-http],
-    [Enable building http web compilation service, if possible]))
-have_http_support=no
-dnl (default off)
-AS_IF([test "x$enable_http" = "xyes"],
-  [dnl Do we have the microhttpd library?
-   PKG_CHECK_MODULES([libmicrohttpd], [libmicrohttpd > 0.9.0], [have_libmicrohttpd=true], [have_libmicrohttpd=false])
-
-   dnl Do we have the uuid library?
-   PKG_CHECK_MODULES([uuid], [uuid >= 2.17.0], [have_libuuid=true], [have_libuuid=false])
-
-   dnl Do we have the curl library?
-   PKG_CHECK_MODULES([libcurl], [libcurl >= 7.19.7], [have_libcurl=true], [have_libcurl=false])
-
-   dnl If we have all of the libraries, the json-c and nss libraries,
-   dnl and full C++11 support, we could build the httpd web
-   dnl compilation service.
-   AS_IF([test "x$have_libmicrohttpd" = "xtrue" -a "x$have_libuuid" = "xtrue" -a "x$have_libcurl" = "xtrue" -a "x$have_jsonc" = "xyes" -a "x$have_nss" = "xyes" -a "x$have_openssl" = "xyes" -a "x$have_cxx0x" = "xno"], [have_http_support=yes])])
-
-AS_IF([test "x$have_http_support" = "xyes"],
-  [AC_DEFINE([HAVE_HTTP_SUPPORT], [1],
-    [Define to 1 to enable http web service support in systemtap.])],
-  [AS_IF([test "x$enable_http" = "xyes"],
-    [AC_MSG_ERROR([http service support requested but not found])])
-])
-AM_CONDITIONAL([HAVE_HTTP_SUPPORT], [test "x$have_http_support" = "xyes"])
-
-dnl NEED_BASE_CLIENT_CODE is defined when we have either HAVE_NSS
-dnl or HAVE_HTTP_SUPPORT.
+dnl NEED_BASE_CLIENT_CODE is defined when we have HAVE_NSS
 AM_CONDITIONAL([NEED_BASE_CLIENT_CODE],
-  [test "x$have_http_support" = "xyes" -o "x$have_nss" = "xyes"])
-AS_IF([test "x$have_http_support" = "xyes" -o "x$have_nss" = "xyes"], [
+  [test "x$have_nss" = "xyes"])
+AS_IF([test "x$have_nss" = "xyes"], [
   AC_DEFINE([NEED_BASE_CLIENT_CODE], [1],
 	    [Define to 1 if the base client code is needed.])
 ])
@@ -1056,7 +1026,6 @@ AC_CONFIG_FILES([interactive-notebook/stap-jupyter-container], [chmod +x interac
 AC_CONFIG_FILES([interactive-notebook/stap-jupyter-install], [chmod +x interactive-notebook/stap-jupyter-install])
 AC_CONFIG_FILES(staprun/Makefile)
 AC_CONFIG_FILES(stapbpf/Makefile)
-AC_CONFIG_FILES([httpd/Makefile httpd/docker/Makefile])
 AC_CONFIG_FILES([staprun/run-staprun], [chmod +x staprun/run-staprun])
 AC_CONFIG_FILES([staprun/guest/stapshd], [chmod +x staprun/guest/stapshd])
 AC_CONFIG_FILES([staprun/guest/stapsh-daemon], [chmod +x staprun/guest/stapsh-daemon])
