@@ -655,14 +655,14 @@ maybe_collect_kprobe(const char *name, unsigned name_idx,
 }
 
 static void
-collect_procfsprobe(const char *name, Elf_Data* prog) 
+collect_procfsprobe(const char *name, Elf_Data* prog)
 {
-  unsigned long umask; 
+  unsigned long umask;
   unsigned long maxsize_val;
   char type;
-  char fifoname[PATH_MAX];
+  char fifoname[4095+1];
 
-  int res = sscanf(name, "procfsprobe/%lu/%c/%lu/%s", &umask, &type, &maxsize_val, fifoname);
+  int res = sscanf(name, "procfsprobe/%lu/%c/%lu/%4095s", &umask, &type, &maxsize_val, fifoname);
 
   if (res != 4)
     fatal("unable to parse name of probe: %s", name);
