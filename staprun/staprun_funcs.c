@@ -295,7 +295,7 @@ rename_module(void* module_file, const __off_t st_size)
 	   */
 	for (p = data->d_buf; p < (char *)data->d_buf + data->d_size - strlen(modname); p++) {
 		if (memcmp(p, modname, strlen(modname)) == 0) {
-			strncpy(p, newname, strlen(p)); /* Actually replace the oldname in memory with the newname */
+			strncpy(p, newname, strlen(modname)); /* Actually replace the oldname in memory with the newname */
 			modname = strdup(newname); /* This is just to update the global variable containing the current module name */
 			if (modname == NULL) {
 				_perr("allocating memory failed");
