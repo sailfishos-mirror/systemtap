@@ -1043,8 +1043,10 @@ bpf_interpret(size_t ninsns, const struct bpf_insn insns[],
 	    {
 	    case BPF_FUNC_map_lookup_elem:
 	      {
+                if (regs[1] >= ctx->map_fds->size()) stapbpf_abort("invalid map index");
                 // allocate correctly sized buffer and store it in map_values
                 uint64_t *lookup_tmp = (uint64_t *)malloc(map_attrs[regs[1]].value_size);
+                if (!lookup_tmp) stapbpf_abort("map value allocation failed");
                 map_values.push_back(lookup_tmp);
 
 	        int res = bpf_lookup_elem(map_fds[regs[1]], as_ptr(regs[2]),
