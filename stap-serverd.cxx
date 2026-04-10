@@ -2281,7 +2281,11 @@ accept_connections (PRFileDesc *listenSocket, CERTCertificate *cert)
        * (or directly to handle_connection if max_threads == 0 */
       t_arg = (thread_arg *)malloc(sizeof(*t_arg));
       if (!t_arg)
-        fatal(_("No memory available for new thread arg!"));
+        {
+          server_error(_("No memory available for new thread arg!"));
+          PR_Close(tcpSocket);
+          continue;
+        }
       t_arg->tcpSocket = tcpSocket;
       t_arg->cert = cert;
       t_arg->privKey = SECKEY_CopyPrivateKey(privKey); /* pass by value */

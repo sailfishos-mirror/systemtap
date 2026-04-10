@@ -469,11 +469,8 @@ generate_private_key (const string &db_path, PK11SlotInfo *slot, SECKEYPublicKey
     }
 
   // Do some random-number initialization.
-  // TODO: We can do better.
-  srand (time (NULL));
   char randbuf[64];
-  for (unsigned i = 0; i < sizeof (randbuf); ++i)
-    randbuf[i] = rand ();
+  PK11_GenerateRandom ((unsigned char *)randbuf, sizeof (randbuf));
   PK11_RandomUpdate (randbuf, sizeof (randbuf));
   memset (randbuf, 0, sizeof (randbuf));
 
