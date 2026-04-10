@@ -30,14 +30,27 @@ proc stap_run3 { TEST_NAME args } {
 
     set cmd [concat stap $args]
     send_log "executing: $cmd\n"
-    catch {eval exec $cmd} res
+
+    # Use pipe with explicit UTF-8 encoding for reliable UTF-8 handling
+    # The exec command in dejagnu/expect context treats UTF-8 bytes as Latin-1,
+    # so we always use a pipe with fconfigure -encoding utf-8
+    if {[catch {set fd [open "|$cmd 2>@1" r]} err]} {
+        set res $err
+    } else {
+        fconfigure $fd -encoding utf-8
+        set res [read $fd]
+        catch {close $fd}
+        # Remove trailing newline to match exec behavior
+        set res [string trimright $res "\n"]
+    }
 
     set n 0
     set expected [split $::result_string "\n"]
     foreach line [split $res "\n"] {
 	if {![string equal $line [lindex $expected $n]]} {
 	    fail "$TEST_NAME"
-	    send_log "line [expr $n + 1]: expected \"[lindex $expected $n]\"\n"
+	    set exp_line [lindex $expected $n]
+	    send_log "line [expr $n + 1]: expected \"$exp_line\"\n"
 	    send_log "Got \"$line\"\n"
             set m 0
             foreach line2 [split $res "\n"] {
