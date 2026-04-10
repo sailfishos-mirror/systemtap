@@ -2332,7 +2332,7 @@ server_main (PRFileDesc *listenSocket)
   SECStatus secStatus;
 
   // Initialize NSS.
-  context = nssInitContext (cert_db_path.c_str ());
+  context = nssInitContext (cert_db_path.c_str (), 0, 1, 0);
   if (context == NULL)
     {
       // Message already issued.

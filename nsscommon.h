@@ -39,7 +39,7 @@ char *nssPasswordCallback (PK11SlotInfo *info __attribute ((unused)),
 			   void *arg __attribute ((unused)));
 
 SECStatus nssInit (const char *db_path, INIT (int readWrite, 0), INIT (int issueMessage, 1));
-NSSInitContext * nssInitContext (const char *db_path, INIT (int readWrite, 0), INIT (int issueMessage, 1));
+NSSInitContext * nssInitContext (const char *db_path, INIT (int readWrite, 0), INIT (int issueMessage, 1), INIT (int checkPermissions, 0));
 void nssCleanup (const char *db_path, NSSInitContext *context);
 
 void nsscommon_error (const char *msg, INIT(int logit, 1));

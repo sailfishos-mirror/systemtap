@@ -699,7 +699,7 @@ get_server_info_from_db (
   s.NSPR_init ();
 
   // Initialize the NSS libraries -- readonly
-  context = nssInitContext (cert_db_path.c_str (), 0 /* readWrite */, 0 /* issueMessage */);
+  context = nssInitContext (cert_db_path.c_str (), 0 /* readWrite */, 0 /* issueMessage */, 0);
   if (context == NULL)
     {
       // Message already issued.

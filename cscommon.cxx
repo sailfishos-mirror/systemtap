@@ -324,7 +324,7 @@ sign_module(const string &tmpdir, const string &module_filename,
                    server_cert_db_path().c_str())) << endl;
     }
 
-  NSSInitContext *context = nssInitContext (server_cert_db_path().c_str());
+  NSSInitContext *context = nssInitContext (server_cert_db_path().c_str(), 0, 1, 0);
   if (!context)
     cerr << "nssInitContext failed for " << server_cert_db_path();
 

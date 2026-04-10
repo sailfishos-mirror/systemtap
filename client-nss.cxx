@@ -859,7 +859,7 @@ nss_client_backend::compile_using_server (
 
       // Initialize the NSS libraries.
       const char *cert_dir = i->c_str ();
-      context = nssInitContext (cert_dir);
+      context = nssInitContext (cert_dir, 0, 1, 0);
       if (context == NULL)
 	{
 	  // Message already issued.
