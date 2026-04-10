@@ -1042,6 +1042,7 @@ program::generate()
   reg_alloc(*this);
   zero_spilled(*this);
   post_alloc_cleanup(*this);
+  lower_str_values(*this);
 
 #ifdef DEBUG_CODEGEN
   std::cerr << "DEBUG AFTER OPT " << *this << std::endl;

@@ -846,14 +846,7 @@ program::new_reg()
 value *
 program::new_imm(int64_t i)
 {
-  auto old = imm_map.find(i);
-  if (old != imm_map.end())
-    return old->second;
-
-  value *v = new value(value::mk_imm(i));
-  auto ok = imm_map.insert(std::pair<int64_t, value *>(i, v));
-  assert(ok.second);
-  return v;
+  return new value(value::mk_imm(i));
 }
 
 value *

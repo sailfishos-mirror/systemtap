@@ -99,7 +99,6 @@ init_block::init_block(globals &glob)
 
       if (v->init && v->type == pe_long)
         {
-          struct literal_number *num = static_cast<literal_number *>(v->init);
           struct symbol *sym = new symbol;
           struct assignment *asgn = new assignment;
           struct expr_statement *stmt = new expr_statement;
@@ -108,7 +107,7 @@ init_block::init_block(globals &glob)
           asgn->type = pe_long;
           asgn->op = "=";
           asgn->left = sym;
-          asgn->right = num;
+          asgn->right = v->init;
           stmt->value = asgn;
           this->statements.push_back(stmt);
         }
@@ -5098,8 +5097,15 @@ output_probe(BPF_Output &eo, program &prog,
 		{
 		  if (s->is_reg())
 		    buf[i].src_reg = s->reg();
-		  else
+		  else if (s->is_imm())
 		    buf[i].imm = s->imm();
+		  else
+		    {
+		      buf[i].imm = 0;
+		      // for instructions that use src_reg
+		      if ((code & 0xf) == BPF_ALU || (code & 0xf) == BPF_STX || (code & 0xf) == BPF_LDX)
+			buf[i].src_reg = 0;
+		    }
 		}
 	      buf[i].off = j->off;
 	      i += 1;

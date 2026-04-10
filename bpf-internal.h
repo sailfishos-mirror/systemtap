@@ -151,7 +151,7 @@ struct value
   bool is_str() const { return type == STR; }
   bool is_format() const { assert(is_str()); return format_str; }
 
-  regno reg() const { assert(is_reg()); return reg_val; }
+  regno reg() const { return reg_val; }
   int64_t imm() const { assert(is_imm()); return imm_val; }
   std::string str() const { assert(is_str()); return str_val; }
 
