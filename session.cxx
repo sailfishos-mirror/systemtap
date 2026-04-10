@@ -2946,8 +2946,8 @@ systemtap_session::get_mok_info()
     // we can't get the list of MOKs. Quit.
     throw runtime_error(_F("Failed to get list of machine owner keys (MOK) for module signing: rc %d", rc));
 
-  string state = "SHA1";
-  
+  string state = "FINGERPRINT";
+
   string line, fingerprint;
   while (! out.eof())
     {
@@ -2960,18 +2960,18 @@ systemtap_session::get_mok_info()
 
       if (verbose > 3)
         clog << "MOK parse state: " << state << " line: " << line << endl;
-      
-      if (state == "SHA1") { // look for a new key fingerprint
-	if (! regexp_match(line, "^SHA1 Fingerprint: ([0-9a-f:]+)$", matches))
+
+      if (state == "FINGERPRINT") { // look for a new key fingerprint
+	if (! regexp_match(line, "^(SHA1|SHA256) Fingerprint: ([0-9a-f:]+)$", matches))
 	  {
-	    // matches[0] is the entire line, matches[1] is the first
-	    // submatch, in this case the actual fingerprint
-	    fingerprint = matches[1];
+	    // matches[0] is the entire line, matches[1] is the algorithm (SHA1 or SHA256),
+	    // matches[2] is the fingerprint
+	    fingerprint = matches[2];
 	    if (verbose > 2)
 	      clog << "MOK fingerprint found: " << fingerprint << endl;
 	    state = "Issuer";
 	  }
-	// else stay in SHA1 state
+	// else stay in FINGERPRINT state
       } else if (state == "Issuer") { // validate issuer
 	if (! regexp_match(line, "^[ \t]*Issuer: [A-Z]*=(.*)$", matches)) {
 	  if (verbose > 2)
@@ -2981,7 +2981,7 @@ systemtap_session::get_mok_info()
               clog << "Recognized Systemtap MOK fingerprint: " << fingerprint << endl;
 	    mok_fingerprints.push_back(fingerprint);
           }
-	  state = "SHA1"; // start looking for another key
+	  state = "FINGERPRINT"; // start looking for another key
 	}
       } else { // some other line in mokutil output ... there are plenty
 	; // carry on searching

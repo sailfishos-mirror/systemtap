@@ -5,6 +5,9 @@
 
 - Optimized chained string-concatenation expressions.
 
+- Module signing now uses SHA256 instead of SHA1 for improved security.
+  Existing SHA1-signed modules remain verifiable for backward compatibility.
+
 * What's new in version 5.4, 2025-10-31
 
 - The kernel-context @cast operator now implicitly searches a kernel's

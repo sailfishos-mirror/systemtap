@@ -221,16 +221,25 @@ verify_it (const char *signatureName, const SECItem *signature,
   SECStatus secStatus;
   int rc = MODULE_OK;
 
-  /* Create a verification context.  */
+  /* Try SHA256 first (preferred), then SHA1 for backward compatibility.
+     This restricts verification to only these two algorithms. */
+
+  /* Create a verification context with SHA256.  */
   vfy = VFY_CreateContextDirect (pubKey, signature, SEC_OID_PKCS1_RSA_ENCRYPTION,
-				 SEC_OID_UNKNOWN, NULL, NULL);
+				 SEC_OID_SHA256, NULL, NULL);
   if (! vfy)
     {
-      /* The key does not match the signature. This is not an error. It just
-	 means we are currently trying the wrong certificate/key. i.e. the
-	 module remains untrusted for now.  */
-      rc = MODULE_UNTRUSTED;
-      goto done;
+      /* Try SHA1 for backward compatibility. */
+      vfy = VFY_CreateContextDirect (pubKey, signature, SEC_OID_PKCS1_RSA_ENCRYPTION,
+				     SEC_OID_SHA1, NULL, NULL);
+      if (! vfy)
+	{
+	  /* The key does not match the signature, or unsupported algorithm.
+	     This is not an error. It just means we are currently trying the
+	     wrong certificate/key. i.e. the module remains untrusted for now.  */
+	  rc = MODULE_UNTRUSTED;
+	  goto done;
+	}
     }
 
   /* Begin the verification process.  */

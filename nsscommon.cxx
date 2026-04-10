@@ -1582,7 +1582,7 @@ void sign_file (
 
   /* Sign the file. */
   /* Set up the signing context.  */
-  sgn = SGN_NewContext (SEC_OID_PKCS1_SHA1_WITH_RSA_ENCRYPTION, privKey);
+  sgn = SGN_NewContext (SEC_OID_PKCS1_SHA256_WITH_RSA_ENCRYPTION, privKey);
   if (! sgn) 
     {
       nsscommon_error (_("Could not create signing context"));
@@ -1791,12 +1791,12 @@ read_cert_info_from_file (const string &certPath, string &fingerprint)
     }
 
   // Get the fingerprint from the signature.
-  unsigned char fingerprint_buf[SHA1_LENGTH];
+  unsigned char fingerprint_buf[32]; // SHA256_LENGTH
   SECItem fpItem;
-  rv = PK11_HashBuf(SEC_OID_SHA1, fingerprint_buf, derCert.data, derCert.len);
+  rv = PK11_HashBuf(SEC_OID_SHA256, fingerprint_buf, derCert.data, derCert.len);
   if (rv)
     {
-      nsscommon_error (_F("Could not decode SHA1 fingerprint from file %s",
+      nsscommon_error (_F("Could not decode SHA256 fingerprint from file %s",
 			  certPath.c_str ()));
       goto done;
     }
@@ -1805,7 +1805,7 @@ read_cert_info_from_file (const string &certPath, string &fingerprint)
   str = CERT_Hexify(&fpItem, 1);
   if (! str)
   {
-      nsscommon_error (_F("Could not hexify SHA1 fingerprint from file %s",
+      nsscommon_error (_F("Could not hexify SHA256 fingerprint from file %s",
 			  certPath.c_str ()));
       goto done;
   }
