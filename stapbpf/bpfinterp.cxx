@@ -805,6 +805,7 @@ bpf_handle_transport_msg(void *buf, size_t size,
       if (!ctx->in_printf)
         stapbpf_abort("printf not started");
       arg = malloc(msg_size);
+      if (!arg) stapbpf_abort("malloc failed for printf argument");
       memcpy(arg, msg_content, msg_size);
       ctx->printf_args.push_back(arg);
       ctx->printf_arg_types.push_back(msg_type);
