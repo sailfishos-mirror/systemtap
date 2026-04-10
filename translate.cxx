@@ -6833,6 +6833,8 @@ static void create_debug_frame_hdr (const unsigned char e_ident[],
       *debug_frame_off = (*it).first - first_addr;
     }
 
+  if (fdes.size() > SIZE_MAX / (2 * size))
+    throw SEMANTIC_ERROR(_("integer overflow in debug frame header size calculation"));
   size_t total_size = 4 + (2 * size) + (2 * size * fdes.size());
   uint8_t *hdr = (uint8_t *) malloc(total_size);
   *debug_frame_hdr = hdr;
