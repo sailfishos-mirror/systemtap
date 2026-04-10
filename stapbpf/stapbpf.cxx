@@ -1852,6 +1852,8 @@ perf_event_loop(pthread_t main_thread)
     = map_attrs[bpf::globals::perf_event_map_idx].max_entries;
   unsigned n_active_cpus
     = count_active_cpus();
+  if (n_active_cpus > (size_t)-1 / sizeof(struct pollfd))
+    fatal("Too many active CPUs for pollfd allocation\n");
   struct pollfd *pmu_fds
     = (struct pollfd *)malloc(n_active_cpus * sizeof(struct pollfd));
   vector<unsigned> cpuids;
