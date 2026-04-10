@@ -98,6 +98,7 @@ jsonrpc_request *jsonrpc_connection::get_request()
     _read_header(h);
 
     char *jsonrpc_payload = (char *)malloc(h.content_length + 1);
+    if (!jsonrpc_payload) throw jsonrpc_error(LSPErrCode.InternalError, "Failed to allocate memory for JSON-RPC payload");
     for(int bytes_read = 0, n; bytes_read < (ssize_t)h.content_length; bytes_read += n){
         n = read(IN_FILNO, jsonrpc_payload + bytes_read, h.content_length - bytes_read);
         if(n <= 0) throw jsonrpc_error(LSPErrCode.InternalError, "The was an issue reading the request payload");
