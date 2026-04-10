@@ -111,7 +111,7 @@ int insert_module(
 
 	/* Open the module file. Work with the open file descriptor from this
 	   point on to avoid TOCTOU problems. */
-	module_fd = open(module_realpath, O_RDONLY);
+	module_fd = open(module_realpath, O_RDONLY | O_NOFOLLOW);
 	if (module_fd < 0) {
 		perr("Couldn't open '%s'", module_realpath);
 		free(opts);
@@ -456,6 +456,7 @@ check_stap_module_path(const char *module_path, int module_fd)
 {
 	char staplib_dir_path[PATH_MAX];
 	char staplib_dir_realpath[PATH_MAX];
+	char module_realpath[PATH_MAX];
 	struct utsname utsbuf;
 	struct stat sb;
 	int rc = 1;
@@ -489,10 +490,8 @@ check_stap_module_path(const char *module_path, int module_fd)
 		return -1;
 	}
 
-	/* Validate /lib/modules/KVER/systemtap. No need to use fstat on
-	   an open file descriptor to avoid TOCTOU, since the path will
-	   not be used to access the file system.  */
-	if (stat(staplib_dir_path, &sb) < 0) {
+	/* Validate /lib/modules/KVER/systemtap. Use the canonical path to avoid TOCTOU. */
+	if (stat(staplib_dir_realpath, &sb) < 0) {
 		perr("Members of the \"stapusr\" and \"stapsys\" groups can only use unsigned modules within\n"
 		     "  the \"%s\" directory.\n"
 		     "  Error getting information on that directory",
@@ -524,9 +523,15 @@ check_stap_module_path(const char *module_path, int module_fd)
 		return -1;
 	}
 
+	/* Canonicalize the module path. */
+	if (realpath(module_path, module_realpath) == NULL) {
+		perr("Unable to canonicalize module path \"%s\"", module_path);
+		return -1;
+	}
+
 	/* Now we've got two canonicalized paths.  Make sure
-	 * module_path starts with staplib_dir_realpath. */
-	if (strncmp(staplib_dir_realpath, module_path,
+	 * module_realpath starts with staplib_dir_realpath. */
+	if (strncmp(staplib_dir_realpath, module_realpath,
 		    strlen(staplib_dir_realpath)) != 0) {
 		err("Members of the \"stapusr\" and \"stapsys\" groups can only use unsigned modules within\n"
 		    "  the \"%s\" directory.\n"
