@@ -2343,18 +2343,10 @@ server_main (PRFileDesc *listenSocket)
   CERTCertificate *cert = NULL;
   bool serverCacheConfigured = false;
 
-  // Enable all cipher suites.
-  // NB: The NSS docs say that SSL_ClearSessionCache is required for the new settings to take
-  // effect, however, calling it puts NSS in a state where it will not shut down cleanly.
-  // We need to be able to shut down NSS cleanly if we are to generate a new certificate when
-  // ours expires. It should be noted however, thet SSL_ClearSessionCache only clears the
-  // client cache, and we are a server.
-  /* Some NSS versions don't do this correctly in NSS_SetDomesticPolicy. */
-  do {
-    const PRUint16 *cipher;
-    for (cipher = SSL_GetImplementedCiphers(); *cipher != 0; ++cipher)
-      SSL_CipherPolicySet(*cipher, SSL_ALLOWED);
-  } while (0);
+  // Enable domestic (strong) cipher suites policy.
+  // Previously enabled ALL cipher suites including weak ones like DES, RC4, export ciphers.
+  // Now use NSS domestic policy which enables strong cipher suites only.
+  NSS_SetDomesticPolicy();
   //      SSL_ClearSessionCache ();
 
   // Configure the SSL session cache for a single process server with the default settings.

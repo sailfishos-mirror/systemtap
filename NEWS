@@ -8,6 +8,9 @@
 - Module signing now uses SHA256 instead of SHA1 for improved security.
   Existing SHA1-signed modules remain verifiable for backward compatibility.
 
+- SSL/TLS connections now use only strong cipher suites, preventing
+  downgrade attacks that could force use of weak encryption.
+
 * What's new in version 5.4, 2025-10-31
 
 - The kernel-context @cast operator now implicitly searches a kernel's
