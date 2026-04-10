@@ -963,6 +963,15 @@ readDataFromSocket(PRFileDesc *sslSocket, const char *requestFileName)
   /* Convert numBytesExpected from network byte order to host byte order.  */
   numBytesExpected = ntohl (numBytesExpected);
 
+  /* Reject negative sizes to prevent potential issues with signed integer comparisons.
+     Although the code handles negative values safely by not reading and then erroring,
+     we explicitly check to quiet static analysis tools. */
+  if (numBytesExpected < 0)
+    {
+      server_error (_("Invalid request size: negative value"));
+      goto done;
+    }
+
   /* If 0 bytes are expected, then we were contacted only to obtain our certificate.
      There is no client request. */
   if (numBytesExpected == 0)
