@@ -6837,6 +6837,8 @@ static void create_debug_frame_hdr (const unsigned char e_ident[],
     throw SEMANTIC_ERROR(_("integer overflow in debug frame header size calculation"));
   size_t total_size = 4 + (2 * size) + (2 * size * fdes.size());
   uint8_t *hdr = (uint8_t *) malloc(total_size);
+  if (!hdr)
+    throw SEMANTIC_ERROR(_("out of memory allocating debug frame header"));
   *debug_frame_hdr = hdr;
   *debug_frame_hdr_len = total_size;
 
@@ -7706,8 +7708,8 @@ dump_unwindsym_cxt (Dwfl_Module *m,
       c->output << "};\n";
 
       /* For now output debug_frame index only in "magic" sections. */
-      if (secname == ".dynamic" || secname == ".absolute"
-	  || secname == ".text" || secname == "_stext")
+      if (debug_frame_hdr && (secname == ".dynamic" || secname == ".absolute"
+	  || secname == ".text" || secname == "_stext"))
 	{
 	  dump_unwindsym_cxt_table(c->session, c->output, modname, stpmod_idx, secname, secidx,
 				   "debug_frame_hdr", debug_frame_hdr, debug_frame_hdr_len);
