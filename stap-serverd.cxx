@@ -2280,7 +2280,7 @@ accept_connections (PRFileDesc *listenSocket, CERTCertificate *cert)
       /* Create the argument structure to pass to pthread_create
        * (or directly to handle_connection if max_threads == 0 */
       t_arg = (thread_arg *)malloc(sizeof(*t_arg));
-      if (t_arg == 0)
+      if (!t_arg)
         fatal(_("No memory available for new thread arg!"));
       t_arg->tcpSocket = tcpSocket;
       t_arg->cert = cert;
