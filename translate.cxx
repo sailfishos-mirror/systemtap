@@ -7574,6 +7574,9 @@ dump_unwindsym_cxt_table(systemtap_session& session, ostream& output,
 			 const string& secname, unsigned secindex,
 			 const string& table, void*& data, size_t& len)
 {
+  if (data == NULL || len == 0)
+    return;
+
   if (len > MAX_UNWIND_TABLE_SIZE)
     {
       if (secname.empty())
