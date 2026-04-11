@@ -322,8 +322,8 @@ int mountfs(void)
 
 	/* If DEBUGFSDIR exists (and is a directory), try to mount
 	 * DEBUGFSDIR. */
-	rc = stat(DEBUGFSDIR, &sb);
-	if (rc == 0 && S_ISDIR(sb.st_mode)) {
+	rc = lstat(DEBUGFSDIR, &sb);
+	if (rc == 0 && S_ISDIR(sb.st_mode) && !S_ISLNK(sb.st_mode)) {
 		/* If we can mount the debugfs dir correctly, we're done. */
           	rc = mount ("debugfs", DEBUGFSDIR, "debugfs", 0, NULL);
 		if (rc == 0)
@@ -345,7 +345,7 @@ int mountfs(void)
 		return 0;
 
 	/* Ensure that RELAYFSDIR exists and is a directory. */
-	rc = stat(RELAYFSDIR, &sb);
+	rc = lstat(RELAYFSDIR, &sb);
 	if (rc == 0 && ! S_ISDIR(sb.st_mode)) {
 		err("%s exists but isn't a directory.\n", RELAYFSDIR);
 		return -1;
