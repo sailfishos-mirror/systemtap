@@ -34,14 +34,27 @@ proc stap_run3 { TEST_NAME args } {
     # Use pipe with explicit UTF-8 encoding for reliable UTF-8 handling
     # The exec command in dejagnu/expect context treats UTF-8 bytes as Latin-1,
     # so we always use a pipe with fconfigure -encoding utf-8
-    if {[catch {set fd [open "|$cmd 2>@1" r]} err]} {
-        set res $err
-    } else {
+    # Separate stdout and stderr to match exec behavior (stdout first, then stderr)
+    if {[catch {
+        set tmpfile [exec mktemp]
+        set fd [open "|$cmd 2>$tmpfile" r]
         fconfigure $fd -encoding utf-8
-        set res [read $fd]
+        set stdout_res [read $fd]
         catch {close $fd}
-        # Remove trailing newline to match exec behavior
-        set res [string trimright $res "\n"]
+
+        # Read stderr from temp file
+        set fd_err [open $tmpfile r]
+        fconfigure $fd_err -encoding utf-8
+        set stderr_res [read $fd_err]
+        close $fd_err
+        exec rm -f $tmpfile
+
+        # Concatenate stdout first, then stderr
+        set res "${stdout_res}${stderr_res}"
+        # Remove trailing newline to match exec behavior (only one newline)
+        regsub {\n$} $res {} res
+    } err]} {
+        set res $err
     }
 
     set n 0
