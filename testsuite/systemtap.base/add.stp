@@ -8,7 +8,7 @@ global x3
 global x1
 global x2
 
-probe begin
+prSYNTAX_ERRORobe begin
 {
 	println("systemtap starting probe")
 	x1 = 42; x2 = 53;
