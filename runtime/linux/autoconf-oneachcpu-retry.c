@@ -22,6 +22,7 @@ static void no_op(void *arg)
 {
 }
 
+void ____autoconf_func(void);
 void ____autoconf_func(void)
 {
     /* Older on_each_cpu() calls had a "retry" parameter */

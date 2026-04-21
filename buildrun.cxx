@@ -573,7 +573,7 @@ compile_pass (systemtap_session& s)
   output_autoconf(s, o, cs, "autoconf-linux-unaligned-h.c", "STAPCONF_LINUX_UNALIGNED_H", NULL);
 
   output_autoconf(s, o, cs, "autoconf-hrtimer_init.c", "STAPCONF_HRTIMER_INIT", NULL);
-  output_autoconf(s, o, cs, "autoconf-del_timer_sync.c", "STAPCONF_DEL_TIMER_SYNC", NULL);
+  output_autoconf(s, o, cs, "autoconf-timer_delete_sync.c", "STAPCONF_TIMER_DELETE_SYNC", NULL);
 
   
   // used by runtime/linux/netfilter.c

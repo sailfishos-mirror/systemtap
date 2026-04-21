@@ -8,10 +8,10 @@
 #  include <linux/relay.h>
 #endif
 
-#ifdef STAPCONF_DEL_TIMER_SYNC
-#define STP_TIMER_DELETE_SYNC(a) del_timer_sync(a)
-#else
+#ifdef STAPCONF_TIMER_DELETE_SYNC
 #define STP_TIMER_DELETE_SYNC(a) timer_delete_sync(a)
+#else
+#define STP_TIMER_DELETE_SYNC(a) del_timer_sync(a)
 #endif
 
 #ifdef STAPCONF_RELAY_BUF_PER_CPU_PTR
