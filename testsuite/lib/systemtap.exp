@@ -657,16 +657,20 @@ proc get_system_info {} {
 
 proc environment_sanity_test {} {
     # PR11798: die if kernel-devel is not sufficient to build any modules
-    if {[catch {exec stap -p4 -e {probe begin {exit()}} 2>@ stdout} result]} {
+    # Run this with --poison-cache and --vp 0005 tracing so the runtime/autoconf-*
+    # compilation attempts are captured in the logs.
+    verbose -log "systemtap kernel-devel smoke test"
+    if {[catch {exec stap --poison-cache --vp 0005 -p4 -e {probe begin {exit()}} 2>@ stdout} result]} {
         puts "\n\n\n**** failed systemtap kernel-devel smoke test:\n"
-        puts $result
+        verbose -log "$result"
     #    puts "****\n"
     #    puts $options
         puts "\n**** aborting testing.\n"
         cleanup
         exit 1
     }
-
+    verbose -log "$result"
+    
     # PR11798: die also if kernel-debuginfo is not available
     # NB: if one introduced a [kernel_debuginfo_p] proc like the
     # ones for uprobes/utrace above, and sprinkled it throughout,
