@@ -10,10 +10,10 @@ struct hlist_head *h;
 void foo (void);
 void foo (void)
 {
-        struct hlist_node *n;
-        struct foo *fooptr;
-
+        __attribute__((unused)) struct hlist_node *n;
+        __attribute__((unused)) struct foo *fooptr;
+        
         hlist_for_each_entry(fooptr, n, h, foo_a) {
-                (void) fooptr;
+                ;
         }
 }

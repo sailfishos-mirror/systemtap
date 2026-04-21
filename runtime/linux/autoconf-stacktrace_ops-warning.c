@@ -6,7 +6,6 @@ void foo (void);
 
 void foo (void)
 {
-  struct stacktrace_ops t;
+  __attribute__((unused)) struct stacktrace_ops t;
   t.warning = 0;
-  (void) t;
 }

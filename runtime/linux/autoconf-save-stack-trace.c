@@ -7,7 +7,7 @@ void foo(struct task_struct *foo);
 
 void foo(struct task_struct *foo)
 {
-  struct stack_trace trace;
+  __attribute__((unused)) struct stack_trace trace;
   unsigned long backtrace[20];
   memset(&trace, 0, sizeof(trace));
   trace.entries = &backtrace[0];

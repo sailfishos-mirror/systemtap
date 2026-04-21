@@ -6,7 +6,7 @@ void __autoconf_func(void);
 
 void __autoconf_func(void)
 {
-	struct task_work work;
+	__attribute__((unused)) struct task_work work;
 
 	init_task_work(&work, NULL, NULL);
 }
