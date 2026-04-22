@@ -384,10 +384,10 @@ proc setup_systemtap_environment {} {
 
     # There are some kill executables that had issues with -SIG -PID, thinking
     # that the -PID was an option (procps-ng v3.3.2 and v3.3.3) and thus require
-    # a -- before -PID. So check for those, otherwise, just assume that no -- is
-    # needed.
+    # a -- before -PID.  Err on the side of using double-dashes, regardless of
+    # exact procps-ng version.
     if {![catch {exec kill --version 2>@1} killver]} {
-      if {[string match "*procps-ng 3.3.\[23\]" $killver]} {
+      if {[string match "*procps-ng*" $killver]} {
          set kill_needs_doubledash 1
       } else {
          # any other procps versions support the standard convention
