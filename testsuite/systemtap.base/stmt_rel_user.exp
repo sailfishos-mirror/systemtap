@@ -53,11 +53,6 @@ for {set i 0} {$i < [all_compile_flags]} {incr i} {
 	}
 	catch {close}; catch {wait}
 	
-	# PR13430 when optimizing we fail to set probes on all inlined lines.
-	if { [string first "O" $extra_name] != -1 } {
-	    setup_kfail 13430 "*-*-*" 
-	}
-	
 	# A hanoi tower needs 2^n - 1 moves (n == 14 in the test program)
 	if { $ok == 16383 } {
 	    pass "$test_name"
