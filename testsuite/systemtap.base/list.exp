@@ -94,4 +94,4 @@ test_list copy_signal-statement {kernel.statement("copy_*@kernel/fork.c:*")} \
 
 # PR10208: ensure we can probe weak symbols
 test_uprobes_list function-weak {process("/lib*/libc.so.*").function("chmod")} \
-    {process.*.function."chmod".\r\n}
+    {process.*.function."_*chmod(@.*chmod.c:\d+)?".\r\n}
