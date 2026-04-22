@@ -2,7 +2,7 @@
 set kvr [exec uname -r]
 set kv [exec uname -r | cut -f1 -d-]
 # a pattern bound to match
-set kr {[23456]?[0-9]*}
+set kr {[1-9]?[0-9]*}
 # a pattern bound to mismatch
 set krx {?noSuchKernel*}
 
@@ -32,20 +32,20 @@ foreach runtime [get_runtime_list] {
     %( kernel_v != \"$kv\"          %? ERROR %: %)
     %( kernel_v != \"$kr\"          %? ERROR %: %)
     %( kernel_v != \"$krx\"         %? %: ERROR %)
-    %( kernel_v < \"9.9999\"        %? %: ERROR %)
-    %( kernel_v <= \"9.9999\"       %? %: ERROR %)
-    %( kernel_v > \"9.9999\"        %? ERROR %: %)
-    %( kernel_v >= \"9.9999\"       %? ERROR %: %)
+    %( kernel_v < \"9999.9999\"     %? %: ERROR %)
+    %( kernel_v <= \"9999.9999\"    %? %: ERROR %)
+    %( kernel_v > \"9999.9999\"     %? ERROR %: %)
+    %( kernel_v >= \"9999.9999\"    %? ERROR %: %)
     %( kernel_vr == \"$kvr\"        %? %: ERROR %)
     %( kernel_vr == \"$kr\"         %? %: ERROR %)
     %( kernel_vr == \"$krx\"        %? ERROR %: %)
     %( kernel_vr != \"$kvr\"        %? ERROR %: %)
     %( kernel_vr != \"$kr\"         %? ERROR %: %)
     %( kernel_vr != \"$krx\"        %? %: ERROR %)
-    %( kernel_vr < \"9.9999\"       %? %: ERROR %)
-    %( kernel_vr <= \"9.9999\"      %? %: ERROR %)
-    %( kernel_vr > \"9.9999\"       %? ERROR %: %)
-    %( kernel_vr >= \"9.9999\"      %? ERROR %: %)
+    %( kernel_vr < \"9999.9999\"    %? %: ERROR %)
+    %( kernel_vr <= \"9999.9999\"   %? %: ERROR %)
+    %( kernel_vr > \"9999.9999\"    %? ERROR %: %)
+    %( kernel_vr >= \"9999.9999\"   %? ERROR %: %)
     %( arch == \"$arch\"            %? %: ERROR %)
     %( arch == \"$ar\"              %? %: ERROR %)
     %( arch == \"$arx\"             %? ERROR %: %)
