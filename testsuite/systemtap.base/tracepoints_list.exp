@@ -37,7 +37,7 @@ expect {
 		# Skip ppc64-specific tracepoints on the blocklist.
 		exp_continue
 	    }
-	    {^(u|k)probes:$} {
+	    {^(u|k)probes:.*$} {
 		# Skip active probes
 		exp_continue
 	    }
@@ -56,15 +56,23 @@ expect {
 }
 catch {close}; catch {wait}
 if ([llength $perf_tracepoints]) {
-    pass "$test perf list ([llength $perf_tracepoints])"
+    verbose -log "$test perf list ([llength $perf_tracepoints])"
+    pass "$test perf list"
 } else {
     fail "$test perf list"
     return
 }    
 
+# Get systemtap to enumerate tracepoints, but collect detailed logs for
+# later analysis
+catch {exec stap --poison-cache --vp 04 -l {kernel.trace("*")} 2>@ stdout} result
+verbose -log "$result"
+pass "$test verbose listing tracepoints"
+    
+
 # Now gather stap's tracepoint list.
 set stap_tracepoints {}
-spawn stap --disable-cache -l {kernel.trace("*")}
+spawn stap -l {kernel.trace("*")}
 expect {
     -timeout 180
     -re {^kernel.trace\("([^\r\n]+:[^\r\n]+)"\)\r\n} {
@@ -93,20 +101,21 @@ set tp_found 0
 foreach ptp $perf_tracepoints {
     if {[lsearch -exact -sorted -increasing $stap_tracepoints $ptp] >= 0} {
 	incr tp_found
+	fail "$test: finding perf tracepoint $ptp"
     } else {
-	fail "$test: perf tracepoint $ptp not found by systemtap"
+	fail "$test: finding perf tracepoint $ptp"
     }
 }
 if {$tp_found > 0} {
-    pass "$test: $tp_found common tracepoints found by perf and systemtap"
+    pass "$test: some common tracepoints"
 } else {
-    fail "$test: no common tracepoints found by perf and systemtap"
+    fail "$test: some common tracepoints"
 }
 
 #
 # Now test the first tracepoint in each group, to make sure compile
 # requirements for each group is sufficient in itself.
-#
+
 # First, we'll populate the cache directory with the result of
 # building the entire tracepoint query module.
 catch { exec stap -l {kernel.trace("*")} }

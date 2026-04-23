@@ -7,18 +7,18 @@ if {![installtest_p]} { untested $test; return }
 proc proc_read_value {test path} {
     set value "<unknown>"
     if [catch {exec timeout 1 cat $path} value] {
-	      fail "$test read $path $value"
+        fail "$test read [file tail $path] $value"
     } else {
-	      pass "$test read $path $value"
+        pass "$test read [file tail $path] $value"
     }
     return $value
 }
 
 proc proc_write_value {test path value} {
     if [catch {exec timeout 1 sh -c "echo $value > $path"} msg] {
-        fail "$test write $path $msg"
+        fail "$test write [file tail $path] $msg"
     } else {
-        pass "$test write $path $value"
+        pass "$test write [file tail $path] $value"
     }
 }
 
