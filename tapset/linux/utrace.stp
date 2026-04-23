@@ -17,7 +17,9 @@ function _utrace_syscall_arg:long (n:long) %{	/* pure */ /* myproc-unprivileged 
     if (! CONTEXT->uregs || ! CONTEXT->user_mode_p) {
        CONTEXT->last_error = "invalid call without context registers";
     } else {
-       syscall_get_arguments(current, CONTEXT->uregs, (int)STAP_ARG_n, 1, &arg);
+       unsigned long args[6];
+       _stp_syscall_get_arguments(current, CONTEXT->uregs, 0, 6, args);
+       arg = args[(int)STAP_ARG_n];
     }
     STAP_RETVALUE = arg;
 %}
