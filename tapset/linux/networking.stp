@@ -307,8 +307,15 @@ probe netdev.change_mac
 			  $dev->dev_addr[4], $dev->dev_addr[5])
 
 	// New MAC Address
-	new_mac = sprintf("%02x:%02x:%02x:%02x:%02x:%02x",
-			  $sa->sa_data[0], $sa->sa_data[1],
-			  $sa->sa_data[2], $sa->sa_data[3],
-			  $sa->sa_data[4], $sa->sa_data[5])
+	if (@defined($sa)) {
+	  new_mac = sprintf("%02x:%02x:%02x:%02x:%02x:%02x",
+			    $sa->sa_data[0], $sa->sa_data[1],
+			    $sa->sa_data[2], $sa->sa_data[3],
+			    $sa->sa_data[4], $sa->sa_data[5])
+	} else {
+	  new_mac = sprintf("%02x:%02x:%02x:%02x:%02x:%02x",
+			    $ss->__data[0], $ss->__data[1],
+			    $ss->__data[2], $ss->__data[3],
+			    $ss->__data[4], $ss->__data[5])
+	}
 }
