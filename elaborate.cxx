@@ -6498,9 +6498,10 @@ typeresolution_info::visit_concatenation (concatenation *e)
   if (t != pe_unknown && t != pe_string)
     invalid (e->tok, t);
 
-  t = pe_string;
-  for (auto operand : e->operands)
+  for (auto operand : e->operands) {
+    t = pe_string;
     operand->visit (this);
+  }
 
   if (e->type == pe_unknown)
     {
