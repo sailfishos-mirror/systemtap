@@ -72,7 +72,7 @@ probe kprocess.start = kernel.function("schedule_tail") { }
  */
 %(systemtap_v <= "2.4" %?
 probe kprocess.exec = 
-    kernel.function("do_execve"),
+    kernel.function("do_execve") !, kernel.function("bprm_execve") ?,
     kernel.function("compat_do_execve") ?
 {
     filename = kernel_string($filename)
@@ -108,7 +108,7 @@ probe kprocess.exec = syscall.execve
  */
 %(systemtap_v <= "2.4" %?
 probe kprocess.exec_complete =
-    kernel.function("do_execve").return,
+    kernel.function("do_execve").return !, kernel.function("bprm_execve").return ?,
     kernel.function("compat_do_execve").return ?
 %:
 probe kprocess.exec_complete = syscall.execve.return

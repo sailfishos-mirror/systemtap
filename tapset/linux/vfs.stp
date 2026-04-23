@@ -642,7 +642,8 @@ probe generic.fop.write.return = kernel.function("generic_file_write").return ?
 }
 
 /* generic_writepages calls mpage_writepages(mapping, wbc, NULL) */
-probe generic.aop.writepages = kernel.function("mpage_writepages")
+probe generic.aop.writepages = kernel.function("mpage_writepages") !,
+                               kernel.function("__mpage_writepages")
 {
 	dev = $mapping->host->i_sb->s_dev
 	devname = __find_bdevname(dev, $mapping->host->i_sb->s_bdev)
@@ -656,7 +657,8 @@ probe generic.aop.writepages = kernel.function("mpage_writepages")
 	size = $wbc->nr_to_write
 	units = "pages"
 }
-probe generic.aop.writepages.return = kernel.function("mpage_writepages").return
+probe generic.aop.writepages.return = kernel.function("mpage_writepages").return !,
+                                      kernel.function("__mpage_writepages").return
 {
 	name = "generic_writepages"
 	retstr = sprintf("%d", $return)
