@@ -1131,6 +1131,13 @@ make_tracequeries(systemtap_session& s, const map<string,string>& contents)
       string srcname = dir + "/" + sbasename + ".c";
       string src = it->second;
       ofstream osrc(srcname.c_str());
+      
+      // this is mandated by linux kbuild as of 5.11+
+      osrc << "#include <linux/module.h>" << endl;
+      osrc << "MODULE_LICENSE(\"GPL\");" << endl;
+      osrc << "MODULE_DESCRIPTION(\"" << basename << "\");" << endl;
+      // NB: when/if we bring <vmlinux.h> processing here, this will need a change, see PR33428
+      
       osrc << src;
       osrc.close();
 
