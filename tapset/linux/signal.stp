@@ -70,7 +70,8 @@ probe __signal.send.signal_generate = kernel.trace("signal_generate") ?
 %)
 }
 
-probe __signal.send.send_sigqueue = kernel.function("send_sigqueue")
+probe __signal.send.send_sigqueue = kernel.function("send_sigqueue") !,
+                                    kernel.function("posixtimer_send_sigqueue") ?
 {
     name = "send_sigqueue"
     task = @choose_defined($t, $p)
@@ -144,7 +145,7 @@ probe __signal.send.specific_send_sig_info =
 %( systemtap_v <= "2.1" %?
 /**
  * probe signal.send.return - Signal being sent to a process completed (deprecated in SystemTap 2.1)
- * @retstr: The return value to either __group_send_sig_info, specific_send_sig_info, or send_sigqueue
+ * @retstr: The return value to either __group_send_sig_info, specific_send_sig_info, send_sigqueue, or posixtimer_send_sigqueue
  * @shared: Indicates whether the sent signal is shared by the thread group.
  * @send2queue: Indicates whether the sent signal was sent to an existing sigqueue
  * @name: The name of the function used to send out the signal
@@ -164,8 +165,8 @@ probe __signal.send.specific_send_sig_info =
  * overflowing, the signal was RT, and the signal was sent by a user using something other
  * than kill().
  *
- * Possible send_group_sigqueue and
- * send_sigqueue return values are as follows;
+ * Possible send_group_sigqueue, send_sigqueue, and
+ * posixtimer_send_sigqueue return values are as follows;
  *
  * 0 -- The signal was either successfully added into the
  * sigqueue of the receiving process, or a SI_TIMER entry is already
@@ -173,7 +174,7 @@ probe __signal.send.specific_send_sig_info =
  *
  * 1 -- The signal was ignored by the receiving process.
  *
- * -1 -- (send_sigqueue only) The task was marked
+ * -1 -- (send_sigqueue / posixtimer_send_sigqueue only) The task was marked
  * exiting, allowing * posix_timer_event to redirect it to the group
  * leader.
  *
@@ -200,7 +201,8 @@ probe signal.send.return = __signal.send.send_sigqueue.return,
 //   can redirect it to the group leader
 
 probe __signal.send.send_sigqueue.return =
-		kernel.function("send_sigqueue").return ?
+		kernel.function("send_sigqueue").return !,
+		kernel.function("posixtimer_send_sigqueue").return ?
 {
     name = "send_sigqueue"
     shared = 0
@@ -559,7 +561,8 @@ probe signal.systgkill.return = syscall.tgkill.return
  * @sigqueue_addr: The address of the signal queue
  */
 probe signal.send_sig_queue =
-        kernel.function("send_sigqueue"),
+        kernel.function("send_sigqueue") ?,
+        kernel.function("posixtimer_send_sigqueue") ?,
         kernel.function("send_group_sigqueue") ?
 {
     name = "send_sig_queue"
@@ -588,7 +591,8 @@ probe signal.send_sig_queue =
  * @retstr: Return value as a string
  */
 probe signal.send_sig_queue.return =
-        kernel.function("send_sigqueue").return,
+        kernel.function("send_sigqueue").return ?,
+        kernel.function("posixtimer_send_sigqueue").return ?,
         kernel.function("send_group_sigqueue").return ?
 {
     name = "send_sig_queue"
