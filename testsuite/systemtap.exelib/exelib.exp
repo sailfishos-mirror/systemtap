@@ -46,7 +46,13 @@ switch -regexp $::tcl_platform(machine) {
 #    {^s390x$} { lappend arches "-m31" }
 #}
 switch -regexp $::tcl_platform(machine) {
-    {x86_64} { lappend arches "-m32" }
+    {x86_64} {
+        if {[arch_compile_flags] > 1} {
+            lappend arches "-m32"
+        } else {
+            untested "uprobes 32-bit (m32) compile"
+        }
+    }
 }
 
 foreach arch $arches {

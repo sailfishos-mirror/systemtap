@@ -21,7 +21,7 @@ int
 __attribute__((noinline))
 main_func (int foo)
 {
-  asm ("");
+  asm volatile ("" : : "r" (foo));
   STAP_PROBE1(test, main_count, foo);
   if (foo - bar > 0)
     bar = main_func (foo - bar);

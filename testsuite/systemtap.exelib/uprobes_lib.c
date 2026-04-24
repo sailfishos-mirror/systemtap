@@ -18,7 +18,7 @@ int
 __attribute__((noinline))
 lib_func (int bar)
 {
-  asm ("");
+  asm volatile ("" : : "r" (bar));
   STAP_PROBE1(test, func_count, bar);
   if (bar - foo > 0)
     foo = lib_func (bar - foo);
