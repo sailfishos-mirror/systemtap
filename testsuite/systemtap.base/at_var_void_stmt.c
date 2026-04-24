@@ -22,6 +22,8 @@ int
 main (int argc, char **argv)
 {
   foo.bar[0] = 41 + argc; /* 42 */
+  /* Prevent compiler from delaying or optimizing away the memory write */
+  asm volatile ("" : : "m" (foo.bar));
   sub(argv[0]);
   return 0;
 }

@@ -40,10 +40,14 @@ expect {
 }
 catch { close }; catch { wait }
 
-if {$ok == 1 && $logs == 2} {
-    pass "$test ($ok, $logs)"
+# We expect at least two eliding messages (one for each regex).
+# Newer GCC versions with -O2 can result in multiple resolved probe points
+# (e.g. inline vs out-of-line instances) due to DWARF differences, causing
+# the translator to emit eliding messages multiple times.
+if {$ok == 1 && $logs >= 2} {
+    pass "$test"
 } {
-    fail "$test ($ok, $logs)"
+    fail "$test"
 }
 
 # Cleanup
