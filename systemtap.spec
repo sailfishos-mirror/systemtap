@@ -336,6 +336,9 @@ Summary: Programmable system-wide instrumentation system - runtime
 License: GPL-2.0-or-later
 URL: https://sourceware.org/systemtap/
 Requires(pre): shadow-utils
+%if 0%{?fedora} >= 45 || 0%{?rhel} >= 11
+Recommends: yama-ptrace-enable
+%endif
 Conflicts: systemtap-devel < %{version}-%{release}
 Conflicts: systemtap-server < %{version}-%{release}
 Conflicts: systemtap-client < %{version}-%{release}
