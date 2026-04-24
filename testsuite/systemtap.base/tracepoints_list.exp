@@ -101,7 +101,7 @@ set tp_found 0
 foreach ptp $perf_tracepoints {
     if {[lsearch -exact -sorted -increasing $stap_tracepoints $ptp] >= 0} {
 	incr tp_found
-	fail "$test: finding perf tracepoint $ptp"
+	pass "$test: finding perf tracepoint $ptp"
     } else {
 	fail "$test: finding perf tracepoint $ptp"
     }
