@@ -1,0 +1,80 @@
+# Tests uaddr in function call and return probes. For a call probe we
+# expect the address to be in the function; for a return probe it
+# should be in the function's caller.
+
+set test "uprobe_uaddr"
+
+set test_name "uprobe_backtrace"
+
+# Only run on make installcheck and uprobes present.
+if {! [installtest_p]} { untested "$test_name"; return }
+if {! [uretprobes_p]} { untested "$test_name"; return }
+
+set testpath  "$srcdir/$subdir"
+set testsrc   "$testpath/uprobe_stmt_num.c"
+set testexe   "[pwd]/$test"
+
+# We want debug info and no optimization (every line counts).
+set testflags "additional_flags=-g additional_flags=-O0"
+set teststp   "$testpath/$test_name.stp"
+
+set res [target_compile $testsrc $testexe executable $testflags]
+if { $res != "" } {
+    verbose "target_compile failed: $res" 2
+    fail "unable to compile $testsrc"
+    return
+}
+
+set cmd [concat stap --ldd -d $testexe -c $testexe $teststp]
+send_log "cmd: $cmd\n"
+catch {eval exec $cmd} output
+send_log "cmd output:\n $output\n"
+
+# Only save the lines with backtraces.
+set output_lines {}
+foreach line [split $output "\n"] {
+    if {[regexp {0x[0-9a-f]+} $line]} {
+        lappend output_lines "$line"
+    }
+}
+
+# The first 5 backtraces should match uprobe_uaddr.
+set lines [llength $output_lines]
+if { $lines >= 6 } {
+    pass "$test_name"
+} else {
+    fail "$test_name ($lines)"
+}
+
+set result_funcs [list " *0x\[0-9a-f\]+ : main\\+*" " *0x\[0-9a-f\]+ : func\\+*" " *0x\[0-9a-f\]+ : func2\\+*" " *0x\[0-9a-f\]+ : func\\+*" " *0x\[0-9a-f\]+ : main\\+*"]
+set lnr 0
+# we match every 2nd line because of the user space stack pointer
+foreach expected $result_funcs {
+    set output [lindex $output_lines [expr $lnr * 2]]
+    if {$expected != ""} {
+        if [regexp $expected $output] {
+            pass "$test_name match line $lnr $expected"
+        } else {
+            fail "$test_name match line $lnr $expected $output"
+        }
+        incr lnr;
+    } else {
+        break;
+    }
+}
+
+# The last backtrace is on the return from main, it should include libc stuff
+set last_bt_start [expr $lnr * 2]
+set found_libc 0
+for {set i $last_bt_start} {$i < [llength $output_lines]} {incr i} {
+    if {[regexp "libc" [lindex $output_lines $i]]} {
+        set found_libc 1
+        break
+    }
+}
+
+if {$found_libc} {
+    pass "$test_name libc in backtrace"
+} else {
+    fail "$test_name libc in backtrace"
+}

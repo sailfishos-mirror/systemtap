@@ -65,7 +65,8 @@ void_ibt_wrapper((* (uprobe_unregister_fn)kallsyms_uprobe_unregister)((a),(b),(c
 // uprobes started setting REG_IP itself starting in kernel commit 74e59dfc.
 // There's no direct indicator of this, but commit da1816b1 in the same patch
 // series defines UPROBE_HANDLER_MASK, so that's a decent trigger for us.
-#ifndef UPROBE_HANDLER_MASK
+// The macro was removed in Linux 6.13, so we check kernel version too.
+#if !defined(UPROBE_HANDLER_MASK) && LINUX_VERSION_CODE < KERNEL_VERSION(3, 10, 0)
 #define STAPIU_NEEDS_REG_IP 1
 #if !defined(STAPCONF_UPROBE_GET_SWBP_ADDR_EXPORTED)
 // First typedef from the original decl, then #define it as a typecasted call.
