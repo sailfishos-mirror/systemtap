@@ -149,7 +149,7 @@ expect {
 }
 catch { close }; catch { wait }
 
-set uname [exec uname -i]
+set uname [exec uname -m]
 # normalize arch
 set uname [normalize_arch $uname]
 
