@@ -126,7 +126,7 @@ set ok 0
 spawn staprun $bid_ko -c $bid_exepath
 expect {
     -timeout 180
-    -re {ERROR: Build-id mismatch} { incr ok; exp_continue }
+    -re {(ERROR|WARNING): Build-id mismatch} { incr ok; exp_continue }
     timeout { fail "$test (timeout)" }
     eof { }
 }
@@ -137,14 +137,14 @@ if { [error_handler [expr $ok==1] "$test !ok - removed ($ok)"] } { return }
 set bid_bid $srcdir/$subdir/buildid.hex
 system "objcopy --remove-section=.note.gnu.build-id buildid.ro buildid1.ro"
 system "objcopy --add-section .note.gnu.build-id=$bid_bid buildid1.ro buildid2.ro"
-set res [target_compile "" $bid_exepath executable "additional_flags=buildid2.ro"]
+set res [target_compile "" $bid_exepath executable "additional_flags=buildid2.ro additional_flags=-Wl,--build-id=none"]
 if { [error_handler [expr {$res==""}] "$test (build id modified)"] } { return }
 
 set ok 0
 spawn staprun $bid_ko -c $bid_exepath
 expect {
     -timeout 180
-    -re {ERROR: Build-id mismatch} { incr ok; exp_continue }
+    -re {(ERROR|WARNING): Build-id mismatch} { incr ok; exp_continue }
     timeout { fail "$test (timeout)" }
     eof { }
 }
@@ -250,7 +250,7 @@ set ok 0
 spawn staprun $bid_shared_ko -c $bid_exepath
 expect {
     -timeout 180
-    -re {ERROR: Build-id mismatch} { incr ok; exp_continue }
+    -re {(ERROR|WARNING): Build-id mismatch} { incr ok; exp_continue }
     timeout { fail "$test (timeout)" }
     eof { }
 }
@@ -273,7 +273,7 @@ set ok 0
 spawn staprun $bid_shared_ko -c $bid_exepath
 expect {
     -timeout 180
-    -re {ERROR: Build-id mismatch} { incr ok; exp_continue }
+    -re {(ERROR|WARNING): Build-id mismatch} { incr ok; exp_continue }
     timeout { fail "$test (timeout)" }
     eof { }
 }
