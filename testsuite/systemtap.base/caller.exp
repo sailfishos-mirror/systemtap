@@ -27,6 +27,6 @@ set test_script {
 if {[string match ppc* $::tcl_platform(machine)]} {
     set output {([Ss]y[Ss]_write|system_call) 0x[0-9a-f]+\r\n}
 } else {
-    set output {[Ss]y[Ss]_write 0x[0-9a-f]+\r\n}
+    set output {[Kk]?[Ss]y[Ss]_write 0x[0-9a-f]+\r\n}
 }
 stap_run $test no_load $output -e $test_script -c "echo hi > /dev/null"
