@@ -19,10 +19,6 @@ proc sdt_stap_run { TEST_NAME TEST_FILE FAIL args } {
     foreach runtime [get_runtime_list] {
 	set full_test_name $TEST_NAME
 	if {$runtime != ""} {
-            if {$runtime == "dyninst" && [regexp "\-pie" $TEST_NAME]} {
-                setup_kfail 15052 "*-*-*"
-            }
-
 	    lappend full_test_name "($runtime)"
 	    set cmd [concat stap --runtime=$runtime $TEST_FILE $args]
 	} elseif {[uprobes_p]} {
