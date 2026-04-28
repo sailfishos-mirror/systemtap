@@ -4,6 +4,15 @@ load_lib "compile_flags.exp"
 # include server_ns.exp here.
 load_lib "server_ns.exp"
 
+# Intercept dejagnu's record_test to emit a precise timestamp to the .log file.
+if { [info procs saved_record_test] == "" } {
+    rename record_test saved_record_test
+    proc record_test { type message args } {
+        send_log "TIMESTAMP_MS: [clock milliseconds]\n"
+        eval [list saved_record_test $type $message] $args
+    }
+}
+
 proc bgerror { msg } {
     if {$msg != ""} {
         send_log "BGERROR CAUGHT: $msg\n"
