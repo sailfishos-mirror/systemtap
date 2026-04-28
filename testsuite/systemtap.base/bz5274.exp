@@ -1,6 +1,6 @@
 set test "./bz5274"
 set tpath "$srcdir/$subdir/$test"
-set arch [exec uname -i]
+set arch [exec uname -m]
 
 if {! [installtest_p]} {
     untested "$test -p5"

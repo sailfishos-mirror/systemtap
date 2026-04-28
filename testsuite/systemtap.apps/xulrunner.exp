@@ -111,7 +111,7 @@ for P in glib-devel gtk+ ORBit-devel \$JAVA ; do
          exit
     fi
 done
-JAVA_HOME=/usr/lib/jvm/\$JAVA.`uname -i` \
+JAVA_HOME=/usr/lib/jvm/\$JAVA.`uname -m` \
 CXXFLAGS='-g -I$env(SYSTEMTAP_INCLUDES)' \
 CFLAGS='-g -I$env(SYSTEMTAP_INCLUDES)' \
 PATH=$env(SYSTEMTAP_PATH)/:\$PATH \

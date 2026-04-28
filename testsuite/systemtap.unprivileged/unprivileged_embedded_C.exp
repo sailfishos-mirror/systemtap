@@ -1,5 +1,5 @@
 set test "unprivileged embedded C"
-set arch [exec uname -i]
+set arch [exec uname -m]
 # normalize arch; PR4186
 set arch [normalize_arch $arch]
 
@@ -177,12 +177,12 @@ proc test_embedded_C { privilege test_fraction { transitive_test 0 } } {
 set tapsetdir "$srcdir/../tapset"
 verbose -log "Looking for tapset scripts in $tapsetdir"
 set files [glob -nocomplain $tapsetdir/*.stp]
-verbose -log "Looking for tapset scripts in $tapsetdir/[exec uname -i]"
-set files [concat $files [glob -nocomplain $tapsetdir/[exec uname -i]/*.stp]]
+verbose -log "Looking for tapset scripts in $tapsetdir/[exec uname -m]"
+set files [concat $files [glob -nocomplain $tapsetdir/[exec uname -m]/*.stp]]
 verbose -log "Looking for tapset scripts in $tapsetdir/linux"
 set files [glob -nocomplain $tapsetdir/linux/*.stp]
-verbose -log "Looking for tapset scripts in $tapsetdir/linux/[exec uname -i]"
-set files [concat $files [glob -nocomplain $tapsetdir/linux/[exec uname -i]/*.stp]]
+verbose -log "Looking for tapset scripts in $tapsetdir/linux/[exec uname -m]"
+set files [concat $files [glob -nocomplain $tapsetdir/linux/[exec uname -m]/*.stp]]
 
 verbose -log "eval exec $srcdir/$subdir/embeddedc.awk [join $files]"
 catch {eval exec $srcdir/$subdir/embeddedc.awk [join $files]} res_stap

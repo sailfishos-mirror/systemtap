@@ -7,7 +7,7 @@ if test -z "$variant"; then
   exit 1
 fi
 version=`echo $releasever | tr -cd "[:digit:]"`
-base=`uname -i`
+base=`uname -m`
 echo "rhel-$base-$variant-$version"
 echo "rhel-$base-$variant-$version-debuginfo"
 echo "rhel-$base-$variant-optional-$version-debuginfo"

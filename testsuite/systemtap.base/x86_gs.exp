@@ -1,6 +1,6 @@
 set test "x86_gs"
 if {![installtest_p]} { untested $test; return }
-set arch [exec uname -i]
+set arch [exec uname -m]
 if {$arch!="i386"} { untested $test; return }
 spawn stap $srcdir/$subdir/x86_gs.stp
 expect {

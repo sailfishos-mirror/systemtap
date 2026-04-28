@@ -1395,7 +1395,7 @@ escaped_literal_string (const string& str)
 string
 normalize_machine(const string& machine)
 {
-  // PR4186: Copy logic from coreutils uname (uname -i) to squash
+  // PR4186: Copy logic from coreutils uname (uname -m) to squash
   // i?86->i386.  Actually, copy logic from linux top-level Makefile
   // to squash uname -m -> $(SUBARCH).
   //
