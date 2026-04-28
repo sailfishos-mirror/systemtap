@@ -112,7 +112,7 @@ sub add_meta_html(*;$) {
     my $txt = $name;
     $txt =~ s/.stp$/.txt/;
     if (-e $txt) { # prefer .txt file link
-        print $file "<p><i><a href=\"$txt\">sample usage in $txt</i></font>";
+        print $file "<p><i><a href=\"$txt\">sample usage in $txt</a></i>";
     } else {
         $Text::Wrap::separator = " \\\n";
         my $usage = wrap('', '', $scripts{$meta}{test_installcheck});

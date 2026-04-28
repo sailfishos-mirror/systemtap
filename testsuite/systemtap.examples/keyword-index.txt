@@ -2,7 +2,7 @@ SYSTEMTAP EXAMPLES INDEX BY KEYWORD
 (see also index.txt)
 
 
-For systemtap version 5.4.
+For systemtap version 5.5.
 
 = _BEST =
 
