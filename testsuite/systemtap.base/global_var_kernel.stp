@@ -5,7 +5,7 @@ function f()
   printf("f: %s\n", @var("sys_tz@time.c")$$);
 }
 
-probe syscall.open, syscall.openat
+probe kernel.function("do_fcntl")?
 {
   log("systemtap starting probe");
   log("systemtap ending probe");
