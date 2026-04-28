@@ -64,6 +64,7 @@ proc stap_run { TEST_NAME {LOAD_GEN_FUNCTION ""} {OUTPUT_CHECK_STRING ""} args }
 	    }
 
 	    kill -INT -$mypid
+	    kill -INT $mypid
 
 	    # check the output to see if it is sane
 	    set output "^systemtap ending probe\r\n$OUTPUT_CHECK_STRING"
@@ -104,23 +105,26 @@ proc stap_run { TEST_NAME {LOAD_GEN_FUNCTION ""} {OUTPUT_CHECK_STRING ""} args }
 		default {
 		    fail "$TEST_NAME unexpected output"
 		}
-		timeout { 
+		timeout {
                     fail "$TEST_NAME shutdown (timeout)"
                     kill -INT -$mypid
+                    kill -INT $mypid
                 }
 		eof { fail "$TEST_NAME shutdown (eof)" }
 	    }
 	    exp_internal $origexpinternal
 	}
 	-re "semantic error:" { fail "$TEST_NAME compilation" }
-	timeout { 
+	timeout {
             fail "$TEST_NAME startup (timeout)"
             kill -INT -$mypid
+            kill -INT $mypid
         }
 	eof { fail "$TEST_NAME startup (eof)" }
     }
   # again for good measure with KILL after 3s
   kill -INT -$mypid 3
+  kill -INT $mypid 3
   catch close
   wait
 }

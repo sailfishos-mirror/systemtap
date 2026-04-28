@@ -451,10 +451,12 @@ Conflicts: systemtap-testsuite = %{version}-%{release}.x86_64
 Requires: gcc gcc-c++ make glibc-devel
 # testsuite/systemtap.base/ptrace.exp needs strace
 Requires: strace
-# testsuite/systemtap.base/ipaddr.exp needs nc. Unfortunately, the rpm
+# testsuite/systemtap.base/ipaddr.exp needs nc or ncat. Unfortunately, the rpm
 # that provides nc has changed over time (from 'nc' to
-# 'nmap-ncat'). So, we'll do a file-based require.
-Requires: /usr/bin/nc
+# 'nmap-ncat'). So, we'll do a file-based recommend.
+Recommends: /usr/bin/nc
+# Suggest nmap-ncat for /usr/bin/ncat
+Recommends: /usr/bin/ncat
 %ifnarch ia64 ppc64le aarch64
 %if 0%{?fedora} >= 21 || 0%{?rhel} >= 8
 # no prelink
