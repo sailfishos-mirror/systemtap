@@ -12,7 +12,7 @@ foreach runtime [get_runtime_list] {
         set runtime "kernel"
     }
     set test_name "$test: $subtest1 ($runtime)"
-    set stp_opts "-g -k"
+    set stp_opts "-g"
     set cmd "stap $stp_opts --runtime=$runtime '$srcdir/$subdir/${test}_1.stp'"
     set exit_code [run_cmd_2way $cmd out stderr]
     set exp_out "res: 32
