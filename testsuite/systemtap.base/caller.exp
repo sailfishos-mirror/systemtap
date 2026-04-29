@@ -26,8 +26,8 @@ set test_script {
 # vfs_write() can get inlined. So, we expect system_call() or
 # vfs_write() on ppc64.
 if {[string match ppc* $::tcl_platform(machine)]} {
-    set output {((__x64_sys|ksys|[Ss]y[Ss])_write|system_call) 0x[0-9a-f]+\r\n}
+    set output {(__x64_|)[Kk]?[Ss]y[Ss]_write|system_call) 0x[0-9a-f]+\r\n}
 } else {
-    set output {(__x64_sys|ksys|[Ss]y[Ss])_write 0x[0-9a-f]+\r\n}
+    set output {(__x64_|)[Kk]?[Ss]y[Ss]_write 0x[0-9a-f]+\r\n}
 }
 stap_run $test no_load $output -e $test_script -c "echo hi > /dev/null"
