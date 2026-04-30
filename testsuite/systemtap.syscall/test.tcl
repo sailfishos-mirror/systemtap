@@ -20,10 +20,14 @@ proc syscall_cleanup_and_exit {} {
     exit 0
 }
 
-proc bgerror {error} {
-    puts "ERROR: $error"
-    syscall_cleanup
-}
+# PR34119: don't override bgerror from elsewhere; definitely don't
+# proactively run syscall_cleanup() which can remove tmp dirs while
+# they're still being used.
+#proc bgerror {error} {
+#    puts "ERROR: $error"
+#    syscall_cleanup
+#}
+
 trap {syscall_cleanup_and_exit} SIGINT
 
 proc run_one_test {filename flags bits suite} {
