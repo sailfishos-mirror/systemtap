@@ -2,7 +2,7 @@
 
 probe begin {
 	mdelay(100);
-	udelay(-1);
+	udelay(1);
 	panic("yo");
         raise(%{ SIGINT %});
 }
