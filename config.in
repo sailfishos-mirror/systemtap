@@ -63,9 +63,6 @@
 /* Define if the GNU gettext() function is already present or preinstalled. */
 #undef HAVE_GETTEXT
 
-/* Define to 1 to enable http web service support in systemtap. */
-#undef HAVE_HTTP_SUPPORT
-
 /* Define if you have the iconv() function and it works. */
 #undef HAVE_ICONV
 
