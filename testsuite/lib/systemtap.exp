@@ -8,6 +8,11 @@ load_lib "server_ns.exp"
 if { [info procs saved_record_test] == "" } {
     rename record_test saved_record_test
     proc record_test { type message args } {
+        # Let the DMESG expect_background soak up all pent-up input
+        global dmesg_spawn_id
+        if {$dmesg_spawn_id != ""} {
+            expect -i $dmesg_spawn_id -timeout 0
+        }
         send_log "TIMESTAMP_MS: [clock milliseconds]\n"
         eval [list saved_record_test $type $message] $args
     }
@@ -758,19 +763,19 @@ proc setup_dmesg_monitor {} {
     }
     # Check if dmesg supports -W option
     if {[catch {exec dmesg --help | grep -q -- "-W"} err] == 0} {
-        set cmd "dmesg -W"
+        set cmd {sh -c "dmesg -W | sed -u 's/^/DMESG: /'"}
     } else {
         exec dmesg --clear
-        set cmd "dmesg -w"
+        set cmd {sh -c "dmesg -w | sed -u 's/^/DMESG: /'"}
     }
     eval spawn -noecho $cmd
     # NB: dmesg will die automatically with SIGPIPE when dejagnu/expect exit
     set dmesg_spawn_id $spawn_id
+    # turn off input side buffering as much as possible
+    fconfigure $dmesg_spawn_id -buffering none -blocking 0
     expect_background {
         -i $dmesg_spawn_id
-        -re "(\[^\r\n]*\r?\n)" {
-            exp_continue
-        }
+        -re ".*" { exp_continue }
     }
 }
 
