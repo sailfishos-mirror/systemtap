@@ -1,4 +1,4 @@
-* What's new in version 5.5
+* What's new in version 5.5, 2026-05-01
 
 - New @enum() operator for accessing enumeration constants from
   DWARF debug information.

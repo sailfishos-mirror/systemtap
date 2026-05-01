@@ -2,12 +2,12 @@
 .\"     Title: probe::signal.handle
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: October 2025
+.\"      Date: May 2026
 .\"    Manual: Signal Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "PROBE::SIGNAL\&.HAND" "3stap" "October 2025" "SystemTap Tapset Reference" "Signal Tapset"
+.TH "PROBE::SIGNAL\&.HAND" "3stap" "May 2026" "SystemTap Tapset Reference" "Signal Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -36,19 +36,9 @@ signal\&.handle
 .fi
 .SH "VALUES"
 .PP
-\fIsig_code\fR
-.RS 4
-The si_code value of the siginfo signal
-.RE
-.PP
 \fIsig_name\fR
 .RS 4
 A string representation of the signal
-.RE
-.PP
-\fIsinfo\fR
-.RS 4
-The address of the siginfo table
 .RE
 .PP
 \fIsig\fR
@@ -61,19 +51,29 @@ The signal number that invoked the signal handler
 Indicates whether the signal was a user\-mode or kernel\-mode signal
 .RE
 .PP
+\fIsinfo\fR
+.RS 4
+The address of the siginfo table
+.RE
+.PP
 \fIname\fR
 .RS 4
 Name of the probe point
 .RE
 .PP
-\fIoldset_addr\fR
-.RS 4
-The address of the bitmask array of blocked signals (deprecated in SystemTap 2\&.1)
-.RE
-.PP
 \fIka_addr\fR
 .RS 4
 The address of the k_sigaction table associated with the signal
+.RE
+.PP
+\fIsig_code\fR
+.RS 4
+The si_code value of the siginfo signal
+.RE
+.PP
+\fIoldset_addr\fR
+.RS 4
+The address of the bitmask array of blocked signals (deprecated in SystemTap 2\&.1)
 .RE
 .PP
 \fIregs\fR

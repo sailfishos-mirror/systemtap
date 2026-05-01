@@ -2,12 +2,12 @@
 .\"     Title: probe::workqueue.insert
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: October 2025
+.\"      Date: May 2026
 .\"    Manual: Interrupt Request (IRQ) Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "PROBE::WORKQUEUE\&.I" "3stap" "October 2025" "SystemTap Tapset Reference" "Interrupt Request (IRQ) Tapset"
+.TH "PROBE::WORKQUEUE\&.I" "3stap" "May 2026" "SystemTap Tapset Reference" "Interrupt Request (IRQ) Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -36,14 +36,14 @@ workqueue\&.insert
 .fi
 .SH "VALUES"
 .PP
-\fIwq_thread\fR
-.RS 4
-task_struct of the workqueue thread
-.RE
-.PP
 \fIwork\fR
 .RS 4
 work_struct* being queued
+.RE
+.PP
+\fIwq_thread\fR
+.RS 4
+task_struct of the workqueue thread
 .RE
 .PP
 \fIwork_func\fR

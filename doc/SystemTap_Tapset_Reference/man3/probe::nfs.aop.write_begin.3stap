@@ -2,12 +2,12 @@
 .\"     Title: probe::nfs.aop.write_begin
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: October 2025
+.\"      Date: May 2026
 .\"    Manual: Network File Storage Tapsets
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "PROBE::NFS\&.AOP\&.W" "3stap" "October 2025" "SystemTap Tapset Reference" "Network File Storage Tapsets"
+.TH "PROBE::NFS\&.AOP\&.W" "3stap" "May 2026" "SystemTap Tapset Reference" "Network File Storage Tapsets"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -36,16 +36,6 @@ nfs\&.aop\&.write_begin
 .fi
 .SH "VALUES"
 .PP
-\fIto\fR
-.RS 4
-end address of this write operation
-.RE
-.PP
-\fIpage_index\fR
-.RS 4
-offset within mapping, can used a page identifier and position identifier in the page frame
-.RE
-.PP
 \fIoffset\fR
 .RS 4
 start address of this write operation
@@ -56,9 +46,19 @@ start address of this write operation
 inode number
 .RE
 .PP
-\fIdev\fR
+\fIsize\fR
 .RS 4
-device identifier
+write bytes
+.RE
+.PP
+\fIpage_index\fR
+.RS 4
+offset within mapping, can used a page identifier and position identifier in the page frame
+.RE
+.PP
+\fIto\fR
+.RS 4
+end address of this write operation
 .RE
 .PP
 \fI__page\fR
@@ -66,9 +66,9 @@ device identifier
 the address of page
 .RE
 .PP
-\fIsize\fR
+\fIdev\fR
 .RS 4
-write bytes
+device identifier
 .RE
 .SH "DESCRIPTION"
 .PP

@@ -2,12 +2,12 @@
 .\"     Title: probe::netdev.transmit
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: October 2025
+.\"      Date: May 2026
 .\"    Manual: Networking Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "PROBE::NETDEV\&.TRAN" "3stap" "October 2025" "SystemTap Tapset Reference" "Networking Tapset"
+.TH "PROBE::NETDEV\&.TRAN" "3stap" "May 2026" "SystemTap Tapset Reference" "Networking Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -46,14 +46,14 @@ The size of the data to be transmitted\&.
 The name of the device\&. e\&.g: eth0, ath1\&.
 .RE
 .PP
-\fIprotocol\fR
-.RS 4
-The protocol of this packet(defined in include/linux/if_ether\&.h)\&.
-.RE
-.PP
 \fIlength\fR
 .RS 4
 The length of the transmit buffer\&.
+.RE
+.PP
+\fIprotocol\fR
+.RS 4
+The protocol of this packet(defined in include/linux/if_ether\&.h)\&.
 .RE
 .SH SEE ALSO\n 
 .IR tapset::networking (3stap)

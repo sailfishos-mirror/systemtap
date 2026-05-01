@@ -2,12 +2,12 @@
 .\"     Title: function::callers
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: October 2025
+.\"      Date: May 2026
 .\"    Manual: Context Functions
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "FUNCTION::CALLERS" "3stap" "October 2025" "SystemTap Tapset Reference" "Context Functions"
+.TH "FUNCTION::CALLERS" "3stap" "May 2026" "SystemTap Tapset Reference" "Context Functions"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------

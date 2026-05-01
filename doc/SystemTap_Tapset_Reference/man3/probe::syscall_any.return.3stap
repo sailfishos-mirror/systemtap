@@ -2,12 +2,12 @@
 .\"     Title: probe::syscall_any.return
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: October 2025
+.\"      Date: May 2026
 .\"    Manual: Syscall Any Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "PROBE::SYSCALL_ANY\&" "3stap" "October 2025" "SystemTap Tapset Reference" "Syscall Any Tapset"
+.TH "PROBE::SYSCALL_ANY\&" "3stap" "May 2026" "SystemTap Tapset Reference" "Syscall Any Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------

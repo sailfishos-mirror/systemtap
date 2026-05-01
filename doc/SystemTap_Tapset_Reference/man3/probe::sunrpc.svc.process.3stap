@@ -2,12 +2,12 @@
 .\"     Title: probe::sunrpc.svc.process
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: October 2025
+.\"      Date: May 2026
 .\"    Manual: Networking Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "PROBE::SUNRPC\&.SVC\" "3stap" "October 2025" "SystemTap Tapset Reference" "Networking Tapset"
+.TH "PROBE::SUNRPC\&.SVC\" "3stap" "May 2026" "SystemTap Tapset Reference" "Networking Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -41,21 +41,6 @@ sunrpc\&.svc\&.process
 the service name
 .RE
 .PP
-\fIsv_nrthreads\fR
-.RS 4
-the number of concurrent threads
-.RE
-.PP
-\fIpeer_ip\fR
-.RS 4
-the peer address where the request is from
-.RE
-.PP
-\fIrq_prog\fR
-.RS 4
-the program number in the request
-.RE
-.PP
 \fIsv_prog\fR
 .RS 4
 the number of the program
@@ -71,14 +56,29 @@ the IP protocol of the reqeust
 the procedure number in the request
 .RE
 .PP
+\fIrq_prog\fR
+.RS 4
+the program number in the request
+.RE
+.PP
 \fIrq_xid\fR
 .RS 4
 the transmission id in the request
 .RE
 .PP
+\fIpeer_ip\fR
+.RS 4
+the peer address where the request is from
+.RE
+.PP
 \fIrq_vers\fR
 .RS 4
 the program version in the request
+.RE
+.PP
+\fIsv_nrthreads\fR
+.RS 4
+the number of concurrent threads
 .RE
 .SH SEE ALSO\n 
 .IR tapset::rpc (3stap)

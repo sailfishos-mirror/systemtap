@@ -2,12 +2,12 @@
 .\"     Title: probe::signal.send.return
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: October 2025
+.\"      Date: May 2026
 .\"    Manual: Signal Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "PROBE::SIGNAL\&.SEND" "3stap" "October 2025" "SystemTap Tapset Reference" "Signal Tapset"
+.TH "PROBE::SIGNAL\&.SEND" "3stap" "May 2026" "SystemTap Tapset Reference" "Signal Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -36,14 +36,9 @@ signal\&.send\&.return
 .fi
 .SH "VALUES"
 .PP
-\fIshared\fR
+\fIname\fR
 .RS 4
-Indicates whether the sent signal is shared by the thread group\&.
-.RE
-.PP
-\fIretstr\fR
-.RS 4
-The return value to either __group_send_sig_info, specific_send_sig_info, or send_sigqueue
+The name of the function used to send out the signal
 .RE
 .PP
 \fIsend2queue\fR
@@ -51,9 +46,14 @@ The return value to either __group_send_sig_info, specific_send_sig_info, or sen
 Indicates whether the sent signal was sent to an existing sigqueue
 .RE
 .PP
-\fIname\fR
+\fIshared\fR
 .RS 4
-The name of the function used to send out the signal
+Indicates whether the sent signal is shared by the thread group\&.
+.RE
+.PP
+\fIretstr\fR
+.RS 4
+The return value to either __group_send_sig_info, specific_send_sig_info, send_sigqueue, or posixtimer_send_sigqueue
 .RE
 .SH "CONTEXT"
 .PP
@@ -67,12 +67,12 @@ Possible __group_send_sig_info and specific_send_sig_info return values are as f
 \-EAGAIN \-\- The sigqueue of the receiving process is overflowing, the signal was RT, and the signal was sent by a user using something other than
 \fBkill\fR\&.
 .PP
-Possible send_group_sigqueue and send_sigqueue return values are as follows;
+Possible send_group_sigqueue, send_sigqueue, and posixtimer_send_sigqueue return values are as follows;
 .PP
 0 \-\- The signal was either successfully added into the sigqueue of the receiving process, or a SI_TIMER entry is already queued (in which case, the overrun count will be simply incremented)\&.
 .PP
 1 \-\- The signal was ignored by the receiving process\&.
 .PP
-\-1 \-\- (send_sigqueue only) The task was marked exiting, allowing * posix_timer_event to redirect it to the group leader\&.
+\-1 \-\- (send_sigqueue / posixtimer_send_sigqueue only) The task was marked exiting, allowing * posix_timer_event to redirect it to the group leader\&.
 .SH SEE ALSO\n 
 .IR tapset::signal (3stap)

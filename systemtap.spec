@@ -1375,6 +1375,10 @@ exit 0
 
 # PRERELEASE
 %changelog
+* Fri May 01 2026 Frank Ch. Eigler <fche@redhat.com> - 5.5-1
+- Upstream release, see wiki page below for detailed notes.
+  https://sourceware.org/systemtap/wiki/SystemTapReleases
+
 * Fri Oct 31 2025 Frank Ch. Eigler <fche@redhat.com> - 5.4-1
 - Upstream release, see wiki page below for detailed notes.
   https://sourceware.org/systemtap/wiki/SystemTapReleases

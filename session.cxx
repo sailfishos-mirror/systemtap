@@ -514,7 +514,7 @@ void
 systemtap_session::version ()
 {
   cout << _F("Systemtap translator/driver (version %s)\n"
-             "Copyright (C) 2005-2025 Red Hat, Inc. and others\n"   // PRERELEASE
+             "Copyright (C) 2005-2026 Red Hat, Inc. and others\n"   // PRERELEASE
              "This is free software; see the source for copying conditions.\n",
              version_string().c_str());
   auto vr = kernel_version_range();

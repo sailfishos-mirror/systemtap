@@ -2,12 +2,12 @@
 .\"     Title: function::user_buffer_quoted_error
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: October 2025
+.\"      Date: May 2026
 .\"    Manual: String and data retrieving functions Tapset
 .\"    Source: SystemTap Tapset Reference
 .\"  Language: English
 .\"
-.TH "FUNCTION::USER_BUFFE" "3stap" "October 2025" "SystemTap Tapset Reference" "String and data retrieving fun"
+.TH "FUNCTION::USER_BUFFE" "3stap" "May 2026" "SystemTap Tapset Reference" "String and data retrieving fun"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
