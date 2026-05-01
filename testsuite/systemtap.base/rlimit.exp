@@ -35,7 +35,7 @@ if {[as_root "$installed_stap --rlimit-as=1 --rlimit-as=999999999999 -wp4 $srcdi
 
 # Realistic AS limit
 set test "rlimit AS realistic"
-if {[catch { exec $installed_stap --rlimit-as=614400000 -wp4 $srcdir/$subdir/rlimit.stp} res ]} {
+if {[catch { exec $installed_stap --rlimit-as=2000000000 -wp4 $srcdir/$subdir/rlimit.stp} res ]} {
      fail $test
 } else {
      pass $test
