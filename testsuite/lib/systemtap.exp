@@ -762,11 +762,12 @@ proc setup_dmesg_monitor {} {
         return
     }
     # Check if dmesg supports -W option
+    # Prefix DMESG: and omit the timestamp stuff.  The prefix is self-identifying enough.
     if {[catch {exec dmesg --help | grep -q -- "-W"} err] == 0} {
-        set cmd {sh -c "dmesg -W | sed -u 's/^/DMESG: /'"}
+        set cmd {sh -c "dmesg -t -W | sed -u 's/^/DMESG: /'"}
     } else {
         exec dmesg --clear
-        set cmd {sh -c "dmesg -w | sed -u 's/^/DMESG: /'"}
+        set cmd {sh -c "dmesg -t -w | sed -u 's/^/DMESG: /'"}
     }
     eval spawn -noecho $cmd
     # NB: dmesg will die automatically with SIGPIPE when dejagnu/expect exit
