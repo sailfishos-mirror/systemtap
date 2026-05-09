@@ -150,9 +150,11 @@ static unsigned last_sequence_number = 0; // last processed sequential message n
 #ifdef HAVE_STDATOMIC_H
 static atomic_ulong lost_message_count = 0; // how many sequence numbers we know we missed
 static atomic_ulong lost_byte_count = 0; // how many bytes were skipped during resync
+static atomic_ulong unexpected_sequence_count = 0; // how many unexpected sequence errors occurred
 #else
 static unsigned long lost_message_count = 0; // how many sequence numbers we know we missed
 static unsigned long lost_byte_count = 0; // how many bytes were skipped during resync
+static unsigned long unexpected_sequence_count = 0; // how many unexpected sequence errors occurred
 #endif
 
 // concurrency control for the buffer_heap
@@ -298,7 +300,11 @@ static void* reader_thread_serialmode (void *data)
                 if (message.bufhdr.sequence < last_sequence_number) {
                         // whoa! is this some old message that we've assumed lost?
                         // or are we wrapping around the uint_32 sequence numbers?
-                        _perr("unexpected sequence=%u", message.bufhdr.sequence);
+#ifdef HAVE_STDATOMIC_H
+                        atomic_fetch_add(&unexpected_sequence_count, 1);
+#else
+                        unexpected_sequence_count++;
+#endif
                 }
                         
                 // is it large enough?  if not, realloc
@@ -833,9 +839,9 @@ void close_relayfs(void)
                 // threads for the buffer_heap are dead.
                 reader_serialized_flush();
 
-                if (lost_message_count > 0 || lost_byte_count > 0)
-                        eprintf("WARNING: There were %u lost messages and %u lost bytes.\n",
-                                lost_message_count, lost_byte_count); 
+                if (lost_message_count > 0 || lost_byte_count > 0 || unexpected_sequence_count > 0)
+                        eprintf("WARNING: There were %u lost messages, %u lost bytes, and %u unexpected sequences.\n",
+                                lost_message_count, lost_byte_count, unexpected_sequence_count); 
         }
 
 	for (i = 0; i < ncpus; i++) {
