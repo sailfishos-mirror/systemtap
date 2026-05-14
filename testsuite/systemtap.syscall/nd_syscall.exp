@@ -9,15 +9,14 @@
 #    make installcheck RUNTESTFLAGS=nd_syscall.exp CHECK_ONLY="readwrite accept"
 
 set test_script "nd_sys.stp"
-set test_module_name "nd_syscall_longlonglong"
+set test_module_name "nd_syscall_longlonglong_[pid]"
 set wd [pwd]
 set test_module "${wd}/${test_module_name}.ko"
 
 source $srcdir/$subdir/test.tcl
 
 proc test_procedure {} {
-    global env srcdir subdir test_script test_module test_module_name
-    set wd [pwd]
+    global env srcdir subdir test_script test_module test_module_name wd stap_output_log staprun_spawn_id
     set flags ""
 
     set patterns []
@@ -56,7 +55,8 @@ proc test_procedure {} {
     # compiling the syscall module. This tends to hide errors and not
     # give errors when we expect them.
     set script "$srcdir/$subdir/${test_script}"
-    set cmd "stap -g --suppress-time-limits -p4 -s 64 -m ${test_module_name} ${script}"
+    # --suppress-handler-errors to keep going on arg-access errors
+    set cmd "stap -g --suppress-time-limits --suppress-handler-errors -p4 -s 64 -m ${test_module_name} ${script}"
     exec /bin/rm -f ${test_module}
 
     # Remember any set value of SYSTEMTAP_DEBUGINFO_PATH
@@ -88,6 +88,24 @@ proc test_procedure {} {
 	return
     }
 
+    # DRAFT: launch staprun as an ordinary expect spawn child (still
+    # redirecting >> to the log file).  Use expect_background on its
+    # spawn_id (like the DMESG helper) to keep output flowing.
+    set stap_output_log "${wd}/nd_syscall_longlonglong.out"
+    file delete $stap_output_log
+
+    spawn sh -c "staprun ${test_module} >> $stap_output_log 2>&1"
+    set staprun_spawn_id $spawn_id
+    fconfigure $staprun_spawn_id -buffering none -blocking 0
+    expect_background -i $staprun_spawn_id -re ".*" { exp_continue }
+
+    # Wait for procfs file to appear (module loaded and ready)
+    verbose -log "Waiting for procfs control"
+    while {! [file exists /proc/systemtap/${test_module_name}/target_pid]} {
+        after 1000
+    }
+    verbose -log "Started ${test_module}"
+
     for {set i 0} {$i < [arch_compile_flags]} {incr i} {
 	set flags [arch_compile_flag $i]
 	set arch [arch_compile_flag_name $i]
@@ -104,8 +122,12 @@ proc test_procedure {} {
 	}
     }
 
-    # Cleeanup
-    exec /bin/rm -f ${test_module}
+    # DRAFT cleanup: close the spawned staprun child the expect way
+    if {[info exists staprun_spawn_id]} {
+        catch { close -i $staprun_spawn_id }
+        unset staprun_spawn_id
+    }
+    exec /bin/rm -f ${test_module} $stap_output_log
 }
 
 test_procedure
