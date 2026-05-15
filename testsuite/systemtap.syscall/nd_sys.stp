@@ -2,6 +2,7 @@ global target_pid = 0
 
 probe procfs("target_pid").write {
 	target_pid = strtol($value, 10)
+        printf("resetting target_pid = %d\n", target_pid)        
 }
 
 probe nd_syscall.* ? {
