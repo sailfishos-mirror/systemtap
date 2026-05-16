@@ -6,9 +6,11 @@ probe procfs("target_pid").write {
 }
 
 probe nd_syscall.* ? {
-	if (pid() == target_pid && execname() != "bash") {
-		printf("%s: %s (%s) = ", execname(), name, argstr)
-	}
+        if (pid() == target_pid && execname() != "bash") {
+                printf("%s: %s (%s) = ", execname(), name, argstr)
+                if (name == "exit_group" || name == "exit")
+                        printf("?\n")
+        }
 }
 
 probe nd_syscall.*.return ? {
