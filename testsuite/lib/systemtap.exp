@@ -10,8 +10,10 @@ if { [info procs saved_record_test] == "" } {
     proc record_test { type message args } {
         # Let the DMESG expect_background soak up all pent-up input
         global dmesg_spawn_id
-        if {$dmesg_spawn_id != ""} {
-            expect -i $dmesg_spawn_id -timeout 0
+        if {[info exists dmesg_spawn_id]} {
+            if {$dmesg_spawn_id != ""} {
+                expect -i $dmesg_spawn_id -timeout 0
+            }
         }
         send_log "TIMESTAMP_MS: [clock milliseconds]\n"
         eval [list saved_record_test $type $message] $args
