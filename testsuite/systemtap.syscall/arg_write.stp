@@ -5,7 +5,7 @@ global target_pid = 0
 
 probe procfs("target_pid").write {
 	target_pid = strtol($value, 10)
-        printf("resetting target_pid = %d\n", target_pid)
+        printf("resetting target_pid = %d", target_pid)
 }
 
 probe nd2_syscall.* ? {
@@ -13,8 +13,6 @@ probe nd2_syscall.* ? {
   // .exp matching regexps pass, but not clear why.
 	if (pid() == target_pid && execname() != "bash") {
 		printf("\n%s: %s (%s) = ", execname(), name, argstr)
-		if (name == "exit_group" || name == "exit")
-			printf("?\n")
 	}
 }
 

@@ -11,8 +11,6 @@ probe syscall.* ? {
 		syscall_nr = _stp_syscall_nr()
 		if (! syscall_map(syscall_name(syscall_nr), name))
 			printf(" [ ERROR: Unmatched syscalls %s vs. %s (%d) ] ", syscall_name(syscall_nr), name, syscall_nr)
-		if (name == "exit_group" || name == "exit")
-			printf("?\n")
 	}
 }
 
