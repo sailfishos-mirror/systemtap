@@ -26,7 +26,7 @@ probe syscall.read { c=1; printf("%d\n", c) }
 probe syscall.read { c=2; printf("%d\n", c) }
 %)
 
-# With conditions
+# With conditions - these should NOT be combined (different conditions)
 global g
 probe timer.ms(400) if (g==1) { d=1; printf("%d\n", d) }
 probe timer.ms(400) if (g==2) { d=2; printf("%d\n", d) }

@@ -6014,7 +6014,8 @@ void semantic_pass_opt8(systemtap_session& s)
     {
       derived_probe* p = *it;
       probe_point* pp = p->sole_location();
-      if (pp)
+      // Skip probes with conditions - don't merge handlers with different conditions
+      if (pp && !pp->condition)
         {
           string pp_str = pp->str(false); // get probe point string without extras
           probe_point_map[pp_str].push_back(p);
