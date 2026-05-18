@@ -21,8 +21,10 @@ probe timer.ms(300) { b=1; error("test"); printf("skip\n") }
 probe timer.ms(300) { b=2; printf("%d\n", b) }
 
 # Complex probe points (syscall aliases expand to multiple points)
+%( runtime != "dyninst" %?
 probe syscall.read { c=1; printf("%d\n", c) }
 probe syscall.read { c=2; printf("%d\n", c) }
+%)
 
 # With conditions
 global g
