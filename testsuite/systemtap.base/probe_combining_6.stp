@@ -1,0 +1,15 @@
+# TEST 6: Verify optimization actually occurs
+# This is a simple script for checking verbose output
+
+probe begin {
+    printf("1\n")
+}
+
+probe begin {
+    printf("2\n")
+}
+
+probe begin {
+    printf("3\n")
+    exit()
+}

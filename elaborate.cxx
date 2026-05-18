@@ -5874,6 +5874,418 @@ void semantic_pass_opt7(systemtap_session& s)
     }
 }
 
+// Visitor to replace 'next' statements with error() calls using a sentinel value
+// This allows 'next' to exit one handler without affecting subsequent handlers
+struct next_statement_replacer: public update_visitor
+{
+  const token* tok;
+  systemtap_session& session;
+  static const char* NEXT_SENTINEL;
+
+  next_statement_replacer(const token* t, systemtap_session& s) : tok(t), session(s) {}
+
+  void visit_next_statement (next_statement* s)
+    {
+      // Replace 'next' with embedded C that sets CONTEXT->last_error to sentinel and jumps out
+      // This uses embedded_expr which can appear in probe bodies
+      block* b = new block();
+      b->tok = s->tok;
+
+      // Set c->last_error = "__SYSTEMTAP_NEXT__"
+      embedded_expr* set_error = new embedded_expr();
+      set_error->tok = s->tok;
+      set_error->code = string("(c->last_error = \"") + NEXT_SENTINEL + "\") /* string */";
+
+      expr_statement* set_error_stmt = new expr_statement();
+      set_error_stmt->value = set_error;
+      set_error_stmt->tok = s->tok;
+
+      b->statements.push_back(set_error_stmt);
+
+      // Keep the next statement to jump out
+      next_statement* next_stmt = new next_statement(*s);
+      b->statements.push_back(next_stmt);
+
+      provide(b);
+    }
+};
+
+const char* next_statement_replacer::NEXT_SENTINEL = "__SYSTEMTAP_NEXT__";
+
+// Visitor to restore symbol referents after deep_copy and optionally rename locals
+// deep_copy_visitor sets symbol->referent to NULL, so we need to restore them
+struct symbol_referent_restorer: public update_visitor
+{
+  systemtap_session& session;
+  derived_probe* probe;
+  map<interned_string, vardecl*>* renaming_map; // optional: for renaming locals
+
+  symbol_referent_restorer(systemtap_session& s, derived_probe* p,
+                           map<interned_string, vardecl*>* rmap = NULL)
+    : session(s), probe(p), renaming_map(rmap) {}
+
+  void visit_symbol (symbol* e)
+    {
+      // Symbol referent was cleared by deep_copy, restore it
+      if (!e->referent)
+        {
+          // Check if it's a local variable that needs renaming
+          if (renaming_map && renaming_map->find(e->name) != renaming_map->end())
+            {
+              symbol* n = new symbol(*e);
+              n->referent = (*renaming_map)[e->name];
+              n->name = n->referent->name;
+              provide(n);
+              return;
+            }
+
+          // Look up the symbol in the current context to restore referent
+          // Check locals first (including renamed ones in probe->locals)
+          for (unsigned i = 0; i < probe->locals.size(); i++)
+            {
+              if (probe->locals[i]->name == e->name)
+                {
+                  symbol* n = new symbol(*e);
+                  n->referent = probe->locals[i];
+                  provide(n);
+                  return;
+                }
+            }
+
+          // Check globals
+          for (unsigned i = 0; i < session.globals.size(); i++)
+            {
+              if (session.globals[i]->name == e->name)
+                {
+                  symbol* n = new symbol(*e);
+                  n->referent = session.globals[i];
+                  provide(n);
+                  return;
+                }
+            }
+
+          // If we can't find it, it might be OK (e.g., not used in this particular path)
+          // Just leave it as-is and let later passes handle it
+        }
+
+      update_visitor::visit_symbol(e);
+    }
+
+  void visit_functioncall (functioncall* e)
+    {
+      // Restore function referents if they were cleared
+      if (e->referents.empty() && !e->function.empty())
+        {
+          functioncall* n = new functioncall(*e);
+
+          // Look up the function
+          if (session.functions.find(e->function) != session.functions.end())
+            n->referents.push_back(session.functions[e->function]);
+
+          // Visit args
+          for (unsigned i = 0; i < e->args.size(); i++)
+            replace(n->args[i]);
+
+          provide(n);
+          return;
+        }
+
+      update_visitor::visit_functioncall(e);
+    }
+};
+
+// Combine multiple probe handlers that share the same probe point
+// into a single handler with their bodies concatenated in sequence.
+// Each original probe body is wrapped in a try-catch block to isolate
+// errors and 'next' statements so they don't affect subsequent handlers.
+void semantic_pass_opt8(systemtap_session& s)
+{
+  // Map from probe point string to list of probes with that point
+  map<string, vector<derived_probe*> > probe_point_map;
+
+  // Group probes by their probe point
+  for (vector<derived_probe*>::iterator it = s.probes.begin();
+       it != s.probes.end(); ++it)
+    {
+      derived_probe* p = *it;
+      probe_point* pp = p->sole_location();
+      if (pp)
+        {
+          string pp_str = pp->str(false); // get probe point string without extras
+          probe_point_map[pp_str].push_back(p);
+        }
+    }
+
+  // Track probes to remove
+  set<derived_probe*> probes_to_remove;
+
+  // Combine bodies for each probe point with multiple handlers
+  for (map<string, vector<derived_probe*> >::iterator it = probe_point_map.begin();
+       it != probe_point_map.end(); ++it)
+    {
+      vector<derived_probe*>& probes = it->second;
+
+      // Only combine if there are multiple probes with the same point
+      if (probes.size() > 1)
+        {
+          if (s.verbose > 1)
+            clog << _F("Combining %zu probe handlers for probe point: %s",
+                       probes.size(), it->first.c_str()) << endl;
+
+          // Create a new block to hold all the combined statements
+          block* combined = new block();
+          combined->tok = probes[0]->body ? probes[0]->body->tok : probes[0]->tok;
+
+          // Create an error tracking variable to re-throw errors at the end
+          vardecl* error_var = new vardecl();
+          error_var->name = "__combined_probe_error__";
+          error_var->tok = probes[0]->tok;
+          error_var->type = pe_string;
+          error_var->set_arity(0, probes[0]->tok);
+          error_var->synthetic = true;
+          probes[0]->locals.push_back(error_var);
+
+          // Initialize error var to empty string
+          symbol* error_sym_init = new symbol();
+          error_sym_init->name = error_var->name;
+          error_sym_init->referent = error_var;
+          error_sym_init->tok = probes[0]->tok;
+          error_sym_init->type = pe_string;
+
+          literal_string* empty_str = new literal_string("");
+          empty_str->tok = probes[0]->tok;
+          empty_str->type = pe_string;
+
+          assignment* error_init = new assignment();
+          error_init->left = error_sym_init;
+          error_init->op = "=";
+          error_init->right = empty_str;
+          error_init->tok = probes[0]->tok;
+          error_init->type = pe_string;
+
+          expr_statement* error_init_stmt = new expr_statement();
+          error_init_stmt->value = error_init;
+          error_init_stmt->tok = probes[0]->tok;
+          combined->statements.push_back(error_init_stmt);
+
+          // Merge locals from all probes and add wrapped bodies
+          unsigned probe_index = 0;
+          for (vector<derived_probe*>::iterator pit = probes.begin();
+               pit != probes.end(); ++pit, ++probe_index)
+            {
+              derived_probe* p = *pit;
+              statement* body_to_use = p->body;
+
+              // For subsequent probes (index > 0), we need to:
+              // 1. Deep copy the body (to avoid sharing AST nodes)
+              // 2. Rename local variables to avoid conflicts
+              // 3. Restore symbol referents that were cleared by deep_copy
+              if (probe_index > 0 && body_to_use && !p->locals.empty())
+                {
+                  // Deep copy the body
+                  body_to_use = deep_copy_visitor::deep_copy(p->body);
+
+                  // Create renamed vardecls for this probe's locals
+                  map<interned_string, vardecl*> renaming_map;
+
+                  for (vector<vardecl*>::iterator vit = p->locals.begin();
+                       vit != p->locals.end(); ++vit)
+                    {
+                      vardecl* old_var = *vit;
+
+                      // Create a new vardecl with renamed name
+                      vardecl* new_var = new vardecl();
+                      new_var->name = old_var->name + "_" + lex_cast(probe_index);
+                      new_var->tok = old_var->tok;
+                      new_var->type = old_var->type;
+                      new_var->arity = old_var->arity;
+                      new_var->maxsize = old_var->maxsize;
+                      new_var->index_types = old_var->index_types;
+                      new_var->synthetic = old_var->synthetic;
+                      new_var->wrap = old_var->wrap;
+
+                      renaming_map[old_var->name] = new_var;
+                      probes[0]->locals.push_back(new_var);
+                    }
+
+                  // Restore symbol referents (cleared by deep_copy) and apply renaming
+                  symbol_referent_restorer restorer(s, probes[0], &renaming_map);
+                  body_to_use = restorer.require(body_to_use);
+                }
+
+              // Replace 'next' statements with embedded C that sets CONTEXT->last_error
+              if (body_to_use)
+                {
+                  next_statement_replacer nsr(body_to_use->tok, s);
+                  body_to_use = nsr.require(body_to_use);
+                }
+
+              if (body_to_use)
+                {
+                  // Wrap body in try-catch to isolate errors and 'next' statements
+
+                  // Create catch error variable
+                  symbol* error_sym_catch = new symbol();
+                  error_sym_catch->name = "__error__";
+                  error_sym_catch->tok = body_to_use->tok;
+                  error_sym_catch->type = pe_string;
+
+                  vardecl* catch_var = new vardecl();
+                  catch_var->name = "__error_" + lex_cast(probe_index) + "__";
+                  catch_var->tok = body_to_use->tok;
+                  catch_var->type = pe_string;
+                  catch_var->set_arity(0, body_to_use->tok);
+                  catch_var->synthetic = true;
+                  error_sym_catch->referent = catch_var;
+                  probes[0]->locals.push_back(catch_var);
+
+                  // Build catch block: if (__error__ != NEXT_SENTINEL) save error
+                  symbol* error_check = new symbol();
+                  error_check->name = "__error__";
+                  error_check->referent = catch_var;
+                  error_check->tok = body_to_use->tok;
+                  error_check->type = pe_string;
+
+                  literal_string* sentinel = new literal_string(next_statement_replacer::NEXT_SENTINEL);
+                  sentinel->tok = body_to_use->tok;
+                  sentinel->type = pe_string;
+
+                  comparison* is_not_next = new comparison();
+                  is_not_next->left = error_check;
+                  is_not_next->op = "!=";
+                  is_not_next->right = sentinel;
+                  is_not_next->tok = body_to_use->tok;
+                  is_not_next->type = pe_long;
+
+                  // Assignment: __combined_probe_error__ = __error__
+                  symbol* error_save_lhs = new symbol();
+                  error_save_lhs->name = error_var->name;
+                  error_save_lhs->referent = error_var;
+                  error_save_lhs->tok = body_to_use->tok;
+                  error_save_lhs->type = pe_string;
+
+                  symbol* error_save_rhs = new symbol();
+                  error_save_rhs->name = "__error__";
+                  error_save_rhs->referent = catch_var;
+                  error_save_rhs->tok = body_to_use->tok;
+                  error_save_rhs->type = pe_string;
+
+                  assignment* save_error = new assignment();
+                  save_error->left = error_save_lhs;
+                  save_error->op = "=";
+                  save_error->right = error_save_rhs;
+                  save_error->tok = body_to_use->tok;
+                  save_error->type = pe_string;
+
+                  expr_statement* save_error_stmt = new expr_statement();
+                  save_error_stmt->value = save_error;
+                  save_error_stmt->tok = body_to_use->tok;
+
+                  // Wrap in if statement
+                  if_statement* catch_if = new if_statement();
+                  catch_if->condition = is_not_next;
+                  catch_if->thenblock = save_error_stmt;
+                  catch_if->elseblock = 0;
+                  catch_if->tok = body_to_use->tok;
+
+                  // Create try-catch block
+                  try_block* tb = new try_block();
+                  tb->try_block = body_to_use;
+                  tb->catch_block = catch_if;
+                  tb->catch_error_var = error_sym_catch;
+                  tb->tok = body_to_use->tok;
+
+                  combined->statements.push_back(tb);
+                }
+            }
+
+          // Re-throw error if one was caught
+          // Check if the error tracking variable is not empty
+          symbol* error_check_final = new symbol();
+          error_check_final->name = error_var->name;
+          error_check_final->referent = error_var;
+          error_check_final->tok = probes[0]->tok;
+          error_check_final->type = pe_string;
+
+          literal_string* empty_check = new literal_string("");
+          empty_check->tok = probes[0]->tok;
+          empty_check->type = pe_string;
+
+          comparison* has_error = new comparison();
+          has_error->left = error_check_final;
+          has_error->op = "!=";
+          has_error->right = empty_check;
+          has_error->tok = probes[0]->tok;
+          has_error->type = pe_long;
+
+          // Re-throw by setting c->last_error using embedded C
+          block* rethrow_block = new block();
+          rethrow_block->tok = probes[0]->tok;
+
+          // Set c->last_error to the saved error string
+          // In the generated C, local variables are accessed via l->l_<name>
+          embedded_expr* set_last_error = new embedded_expr();
+          set_last_error->tok = probes[0]->tok;
+          set_last_error->code = string("(c->last_error = l->l_") + string(error_var->name) + ") /* string */";
+
+          expr_statement* set_error_stmt = new expr_statement();
+          set_error_stmt->value = set_last_error;
+          set_error_stmt->tok = probes[0]->tok;
+
+          rethrow_block->statements.push_back(set_error_stmt);
+
+          // Jump to out to exit the probe with the error
+          next_statement* goto_out = new next_statement();
+          goto_out->tok = probes[0]->tok;
+
+          rethrow_block->statements.push_back(goto_out);
+
+          if_statement* error_if = new if_statement();
+          error_if->condition = has_error;
+          error_if->thenblock = rethrow_block;
+          error_if->elseblock = 0;
+          error_if->tok = probes[0]->tok;
+
+          combined->statements.push_back(error_if);
+
+          probes[0]->body = combined;
+
+          // Mark other probes for removal
+          for (size_t i = 1; i < probes.size(); ++i)
+            probes_to_remove.insert(probes[i]);
+
+        }
+    }
+
+  // Remove duplicate probes from s.probes
+  if (!probes_to_remove.empty())
+    {
+      if (s.verbose > 1)
+        clog << _F("Removing %zu duplicate probes", probes_to_remove.size()) << endl;
+
+      vector<derived_probe*> new_probes;
+      for (vector<derived_probe*>::iterator it = s.probes.begin();
+           it != s.probes.end(); ++it)
+        {
+          if (probes_to_remove.find(*it) == probes_to_remove.end())
+            {
+              new_probes.push_back(*it);
+              if (s.verbose > 2)
+                clog << _F("  Keeping probe at %s", lex_cast((*it)->tok->location).c_str()) << endl;
+            }
+          else
+            {
+              if (s.verbose > 2)
+                clog << _F("  Removing probe at %s", lex_cast((*it)->tok->location).c_str()) << endl;
+            }
+        }
+      s.probes = new_probes;
+
+      if (s.verbose > 1)
+        clog << _F("After combining: %zu probes remain", s.probes.size()) << endl;
+    }
+}
+
 static int
 semantic_pass_optimize1 (systemtap_session& s)
 {
@@ -5935,10 +6347,15 @@ semantic_pass_optimize1 (systemtap_session& s)
       iterations ++;
     }
 
+  // BEFORE joining groups, combine probes with identical probe points
+  // This must happen before join_group() so groups only see the combined probes
+  if (!s.unoptimized)
+    semantic_pass_opt8(s);
+
   // We will now remove probes that have empty handlers and join the remaining probes
   // with their groups. Do not elide probes when the unoptimization flag is set, or
   // synthetic probes (such as PR18115 probe-conditional synthetic-begin).
-  
+
   vector<derived_probe*> non_empty_probes;
 
   for (unsigned i = 0; i < s.probes.size(); i++)

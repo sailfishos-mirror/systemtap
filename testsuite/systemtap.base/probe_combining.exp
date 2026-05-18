@@ -1,0 +1,156 @@
+set test "probe_combining"
+set testpath "$srcdir/$subdir"
+
+if {! [installtest_p]} { untested "$test"; return }
+
+# --- TEST 1 ---
+
+set subtest1 "TEST 1: basic probe combining"
+foreach runtime [get_runtime_list] {
+    if {$runtime eq ""} {
+        set runtime "kernel"
+    }
+    set test_name "$test: $subtest1 ($runtime)"
+
+    set exit_code [run_cmd_2way "stap --runtime=$runtime '$srcdir/$subdir/${test}_1.stp'" out stderr]
+
+    set exp_out "handler 1: x=1
+handler 2: x=2
+handler 3: x=3
+"
+    is "${test_name}: stdout" $out $exp_out
+
+    is "${test_name}: exit code" $exit_code 0
+    if {$stderr ne ""} {
+        send_log "stderr:\n$stderr"
+    }
+}
+
+# --- TEST 2 ---
+
+set subtest2 "TEST 2: variable type conflicts"
+foreach runtime [get_runtime_list] {
+    if {$runtime eq ""} {
+        set runtime "kernel"
+    }
+    set test_name "$test: $subtest2 ($runtime)"
+
+    set exit_code [run_cmd_2way "stap --runtime=$runtime '$srcdir/$subdir/${test}_2.stp'" out stderr]
+
+    set exp_out "1: x=1 y=a
+2: x=b y=2
+3: x=3 y=c
+4: x=d y=4
+"
+    is "${test_name}: stdout" $out $exp_out
+
+    is "${test_name}: exit code" $exit_code 0
+    if {$stderr ne ""} {
+        send_log "stderr:\n$stderr"
+    }
+}
+
+# --- TEST 3 ---
+
+set subtest3 "TEST 3: next statement isolation"
+foreach runtime [get_runtime_list] {
+    if {$runtime eq ""} {
+        set runtime "kernel"
+    }
+    set test_name "$test: $subtest3 ($runtime)"
+
+    set exit_code [run_cmd_2way "stap --runtime=$runtime '$srcdir/$subdir/${test}_3.stp'" out stderr]
+
+    set exp_out "handler 1: before next
+handler 2: runs despite next in handler 1
+handler 3: before next
+handler 4: runs despite next in handler 3
+"
+    is "${test_name}: stdout" $out $exp_out
+
+    is "${test_name}: exit code" $exit_code 0
+    if {$stderr ne ""} {
+        send_log "stderr:\n$stderr"
+    }
+}
+
+# --- TEST 4 ---
+
+set subtest4 "TEST 4: error isolation and re-throw"
+foreach runtime [get_runtime_list] {
+    if {$runtime eq ""} {
+        set runtime "kernel"
+    }
+    set test_name "$test: $subtest4 ($runtime)"
+
+    set exit_code [run_cmd_2way "stap --runtime=$runtime '$srcdir/$subdir/${test}_4.stp'" out stderr]
+
+    # All handlers should run despite errors
+    set exp_out "handler 1: before error
+handler 2: runs despite error in handler 1
+handler 3: before error
+handler 4: runs despite error in handler 3
+"
+    is "${test_name}: stdout" $out $exp_out
+
+    # Exit code should be non-zero due to error re-throw
+    isnt "${test_name}: exit code" $exit_code 0
+
+    # Should see the first error that was caught
+    # (The optimization saves and re-throws the first non-next error)
+    set stderr_pat "ERROR:.*intentional error.*"
+    like "${test_name}: stderr" $stderr $stderr_pat "-lineanchor"
+}
+
+# --- TEST 5 ---
+
+set subtest5 "TEST 5: comprehensive test (all features)"
+foreach runtime [get_runtime_list] {
+    if {$runtime eq ""} {
+        set runtime "kernel"
+    }
+    set test_name "$test: $subtest5 ($runtime)"
+
+    set exit_code [run_cmd_2way "stap --runtime=$runtime '$srcdir/$subdir/${test}_5.stp'" out stderr]
+
+    # All handlers should run, with next and error not preventing subsequent handlers
+    set exp_out "1: x=1 y=a
+2: x=b y=2
+3: x=3 y=c
+4: x=d y=4
+5: x=5 y=e
+"
+    is "${test_name}: stdout" $out $exp_out
+
+    # Exit code should be non-zero due to error re-throw
+    isnt "${test_name}: exit code" $exit_code 0
+
+    # Should see the error from handler 4
+    set stderr_pat "ERROR:.*intentional error.*"
+    like "${test_name}: stderr" $stderr $stderr_pat "-lineanchor"
+}
+
+# --- TEST 6 ---
+
+set subtest6 "TEST 6: verify optimization occurs"
+foreach runtime [get_runtime_list] {
+    if {$runtime eq ""} {
+        set runtime "kernel"
+    }
+    set test_name "$test: $subtest6 ($runtime)"
+
+    # Run with -vv to see optimization messages
+    set exit_code [run_cmd_2way "stap -vv --runtime=$runtime '$srcdir/$subdir/${test}_6.stp'" out stderr]
+
+    set exp_out "1
+2
+3
+"
+    is "${test_name}: stdout" $out $exp_out
+
+    is "${test_name}: exit code" $exit_code 0
+
+    # Check that the optimization message appears
+    set stderr_pat "Combining 3 probe handlers for probe point: begin"
+    like "${test_name}: stderr optimization message" $stderr $stderr_pat "-lineanchor"
+}

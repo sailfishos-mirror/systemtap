@@ -1,0 +1,27 @@
+# TEST 2: Variable type conflicts
+# Same variable names with different types should work
+
+probe begin {
+    x = 1
+    y = "a"
+    printf("1: x=%d y=%s\n", x, y)
+}
+
+probe begin {
+    x = "b"
+    y = 2
+    printf("2: x=%s y=%d\n", x, y)
+}
+
+probe begin {
+    x = 3
+    y = "c"
+    printf("3: x=%d y=%s\n", x, y)
+}
+
+probe begin {
+    x = "d"
+    y = 4
+    printf("4: x=%s y=%d\n", x, y)
+    exit()
+}

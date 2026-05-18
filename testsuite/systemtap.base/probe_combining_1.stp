@@ -1,0 +1,18 @@
+# TEST 1: Basic probe combining
+# Multiple handlers should execute in order
+
+probe begin {
+    x = 1
+    printf("handler 1: x=%d\n", x)
+}
+
+probe begin {
+    x = 2
+    printf("handler 2: x=%d\n", x)
+}
+
+probe begin {
+    x = 3
+    printf("handler 3: x=%d\n", x)
+    exit()
+}

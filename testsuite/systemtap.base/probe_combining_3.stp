@@ -1,0 +1,23 @@
+# TEST 3: Next statement isolation
+# Next in one handler should not affect subsequent handlers
+
+probe begin {
+    printf("handler 1: before next\n")
+    next
+    printf("handler 1: after next (should not print)\n")
+}
+
+probe begin {
+    printf("handler 2: runs despite next in handler 1\n")
+}
+
+probe begin {
+    printf("handler 3: before next\n")
+    next
+    printf("handler 3: after next (should not print)\n")
+}
+
+probe begin {
+    printf("handler 4: runs despite next in handler 3\n")
+    exit()
+}

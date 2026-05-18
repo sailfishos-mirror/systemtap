@@ -1,0 +1,31 @@
+#! stap -p4
+
+# Test probe combining optimization - verify compilation
+# Multiple probe handlers with same probe point should be combined
+
+# Basic combining
+probe begin { x=1; printf("%d\n", x) }
+probe begin { x=2; printf("%d\n", x) }
+probe begin { exit() }
+
+# Variable type conflicts
+probe timer.ms(100) { y=1; z="a"; printf("%d %s\n", y, z) }
+probe timer.ms(100) { y="b"; z=2; printf("%s %d\n", y, z) }
+
+# With next statements
+probe timer.ms(200) { a=1; next; printf("skip\n") }
+probe timer.ms(200) { a=2; printf("%d\n", a) }
+
+# With error handling
+probe timer.ms(300) { b=1; error("test"); printf("skip\n") }
+probe timer.ms(300) { b=2; printf("%d\n", b) }
+
+# Complex probe points (syscall aliases expand to multiple points)
+probe syscall.read { c=1; printf("%d\n", c) }
+probe syscall.read { c=2; printf("%d\n", c) }
+
+# With conditions
+global g
+probe timer.ms(400) if (g==1) { d=1; printf("%d\n", d) }
+probe timer.ms(400) if (g==2) { d=2; printf("%d\n", d) }
+probe timer.ms(400) { g=3; printf("%d\n", g) }
