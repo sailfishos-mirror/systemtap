@@ -6000,6 +6000,11 @@ struct symbol_referent_restorer: public update_visitor
 // errors and 'next' statements so they don't affect subsequent handlers.
 void semantic_pass_opt8(systemtap_session& s)
 {
+  // Skip this optimization for BPF runtime - it uses embedded C code
+  // for next/error handling which BPF cannot handle
+  if (s.runtime_mode == systemtap_session::bpf_runtime)
+    return;
+
   // Map from probe point string to list of probes with that point
   map<string, vector<derived_probe*> > probe_point_map;
 

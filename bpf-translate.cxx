@@ -2046,6 +2046,11 @@ bpf_unparser::visit_try_block (try_block* s)
       value* catch_var = j->second;
 
       // This message is stored during jump_to_catch.
+      // If catch_msg is empty, the try-catch was constructed in a way
+      // that BPF cannot handle (e.g., using embedded C instead of BPF asm).
+      if (catch_msg.empty())
+        throw SEMANTIC_ERROR(_("try-catch block requires BPF-compatible error handling (no embedded C code allowed)"), s->tok);
+
       value* error_var = catch_msg.back();
       catch_msg.pop_back();
 
