@@ -6005,10 +6005,15 @@ void semantic_pass_opt8(systemtap_session& s)
   if (s.runtime_mode == systemtap_session::bpf_runtime)
     return;
 
-  // Map from probe point string to list of probes with that point
+  // Map from probe point signature to list of probes with that point
+  // Use printsig() which includes the resolved binary-level address (PC),
+  // not just str() which only has the source-level probe point.
+  // This ensures we only combine probes that are at the exact same
+  // binary address, not just probes with the same source-level specification
+  // that may have different DWARF contexts or variable scopes.
   map<string, vector<derived_probe*> > probe_point_map;
 
-  // Group probes by their probe point
+  // Group probes by their probe point signature
   for (vector<derived_probe*>::iterator it = s.probes.begin();
        it != s.probes.end(); ++it)
     {
@@ -6017,7 +6022,9 @@ void semantic_pass_opt8(systemtap_session& s)
       // Skip probes with conditions - don't merge handlers with different conditions
       if (pp && !pp->condition)
         {
-          string pp_str = pp->str(false); // get probe point string without extras
+          ostringstream pp_sig;
+          p->printsig(pp_sig);
+          string pp_str = pp_sig.str();
           probe_point_map[pp_str].push_back(p);
         }
     }
