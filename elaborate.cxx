@@ -6006,11 +6006,11 @@ void semantic_pass_opt8(systemtap_session& s)
     return;
 
   // Map from probe point signature to list of probes with that point
-  // Use printsig() which includes the resolved binary-level address (PC),
-  // not just str() which only has the source-level probe point.
-  // This ensures we only combine probes that are at the exact same
-  // binary address, not just probes with the same source-level specification
-  // that may have different DWARF contexts or variable scopes.
+  // Use printsig_nonest() which includes the resolved binary-level address (PC)
+  // but not the derivation chain. This ensures we:
+  // - Combine probes at the same binary address (e.g., trace probes from aliases)
+  // - Don't combine probes at different binary addresses (e.g., different DWARF contexts)
+  // - Don't distinguish probes just because they came through different alias chains
   map<string, vector<derived_probe*> > probe_point_map;
 
   // Group probes by their probe point signature
@@ -6023,7 +6023,7 @@ void semantic_pass_opt8(systemtap_session& s)
       if (pp && !pp->condition)
         {
           ostringstream pp_sig;
-          p->printsig(pp_sig);
+          p->printsig_nonest(pp_sig);
           string pp_str = pp_sig.str();
           probe_point_map[pp_str].push_back(p);
         }
@@ -6033,60 +6033,79 @@ void semantic_pass_opt8(systemtap_session& s)
   set<derived_probe*> probes_to_remove;
 
   // Combine bodies for each probe point with multiple handlers
+  // Process in batches to avoid OOM when combining hundreds of handlers
+  const size_t MAX_COMBINE = 20;
+
   for (map<string, vector<derived_probe*> >::iterator it = probe_point_map.begin();
        it != probe_point_map.end(); ++it)
     {
       vector<derived_probe*>& probes = it->second;
 
       // Only combine if there are multiple probes with the same point
-      if (probes.size() > 1)
-        {
-          if (s.verbose > 1)
-            clog << _F("Combining %zu probe handlers for probe point: %s",
-                       probes.size(), it->first.c_str()) << endl;
+      if (probes.size() <= 1)
+        continue;
 
-          // Create a new block to hold all the combined statements
+      // Process in batches of up to MAX_COMBINE probes
+      for (size_t batch_start = 0; batch_start < probes.size(); batch_start += MAX_COMBINE)
+        {
+          size_t batch_end = min(batch_start + MAX_COMBINE, probes.size());
+          size_t batch_size = batch_end - batch_start;
+
+          // Only combine if this batch has multiple probes
+          if (batch_size <= 1)
+            continue;
+
+          if (s.verbose > 1)
+            {
+              if (probes.size() > MAX_COMBINE)
+                clog << _F("Combining batch %zu-%zu of %zu probe handlers for probe point: %s",
+                           batch_start, batch_end - 1, probes.size(), it->first.c_str()) << endl;
+              else
+                clog << _F("Combining %zu probe handlers for probe point: %s",
+                           probes.size(), it->first.c_str()) << endl;
+            }
+
+          // Create a new block to hold all the combined statements for this batch
           block* combined = new block();
-          combined->tok = probes[0]->body ? probes[0]->body->tok : probes[0]->tok;
+          combined->tok = probes[batch_start]->body ? probes[batch_start]->body->tok : probes[batch_start]->tok;
 
           // Create an error tracking variable to re-throw errors at the end
           vardecl* error_var = new vardecl();
           error_var->name = "__combined_probe_error__";
-          error_var->tok = probes[0]->tok;
+          error_var->tok = probes[batch_start]->tok;
           error_var->type = pe_string;
-          error_var->set_arity(0, probes[0]->tok);
+          error_var->set_arity(0, probes[batch_start]->tok);
           error_var->synthetic = true;
-          probes[0]->locals.push_back(error_var);
+          probes[batch_start]->locals.push_back(error_var);
 
           // Initialize error var to empty string
           symbol* error_sym_init = new symbol();
           error_sym_init->name = error_var->name;
           error_sym_init->referent = error_var;
-          error_sym_init->tok = probes[0]->tok;
+          error_sym_init->tok = probes[batch_start]->tok;
           error_sym_init->type = pe_string;
 
           literal_string* empty_str = new literal_string("");
-          empty_str->tok = probes[0]->tok;
+          empty_str->tok = probes[batch_start]->tok;
           empty_str->type = pe_string;
 
           assignment* error_init = new assignment();
           error_init->left = error_sym_init;
           error_init->op = "=";
           error_init->right = empty_str;
-          error_init->tok = probes[0]->tok;
+          error_init->tok = probes[batch_start]->tok;
           error_init->type = pe_string;
 
           expr_statement* error_init_stmt = new expr_statement();
           error_init_stmt->value = error_init;
-          error_init_stmt->tok = probes[0]->tok;
+          error_init_stmt->tok = probes[batch_start]->tok;
           combined->statements.push_back(error_init_stmt);
 
-          // Merge locals from all probes and add wrapped bodies
+          // Merge locals from all probes in this batch and add wrapped bodies
           unsigned probe_index = 0;
-          for (vector<derived_probe*>::iterator pit = probes.begin();
-               pit != probes.end(); ++pit, ++probe_index)
+          for (size_t i = batch_start; i < batch_end; ++i, ++probe_index)
             {
-              derived_probe* p = *pit;
+              derived_probe* p = probes[i];
               statement* body_to_use = p->body;
 
               // For subsequent probes (index > 0), we need to:
@@ -6118,11 +6137,11 @@ void semantic_pass_opt8(systemtap_session& s)
                       new_var->wrap = old_var->wrap;
 
                       renaming_map[old_var->name] = new_var;
-                      probes[0]->locals.push_back(new_var);
+                      probes[batch_start]->locals.push_back(new_var);
                     }
 
                   // Restore symbol referents (cleared by deep_copy) and apply renaming
-                  symbol_referent_restorer restorer(s, probes[0], &renaming_map);
+                  symbol_referent_restorer restorer(s, probes[batch_start], &renaming_map);
                   body_to_use = restorer.require(body_to_use);
                 }
 
@@ -6150,7 +6169,7 @@ void semantic_pass_opt8(systemtap_session& s)
                   catch_var->set_arity(0, body_to_use->tok);
                   catch_var->synthetic = true;
                   error_sym_catch->referent = catch_var;
-                  probes[0]->locals.push_back(catch_var);
+                  probes[batch_start]->locals.push_back(catch_var);
 
                   // Build catch block: if (__error__ != NEXT_SENTINEL) save error
                   symbol* error_check = new symbol();
@@ -6217,39 +6236,39 @@ void semantic_pass_opt8(systemtap_session& s)
           symbol* error_check_final = new symbol();
           error_check_final->name = error_var->name;
           error_check_final->referent = error_var;
-          error_check_final->tok = probes[0]->tok;
+          error_check_final->tok = probes[batch_start]->tok;
           error_check_final->type = pe_string;
 
           literal_string* empty_check = new literal_string("");
-          empty_check->tok = probes[0]->tok;
+          empty_check->tok = probes[batch_start]->tok;
           empty_check->type = pe_string;
 
           comparison* has_error = new comparison();
           has_error->left = error_check_final;
           has_error->op = "!=";
           has_error->right = empty_check;
-          has_error->tok = probes[0]->tok;
+          has_error->tok = probes[batch_start]->tok;
           has_error->type = pe_long;
 
           // Re-throw by setting c->last_error using embedded C
           block* rethrow_block = new block();
-          rethrow_block->tok = probes[0]->tok;
+          rethrow_block->tok = probes[batch_start]->tok;
 
           // Set c->last_error to the saved error string
           // In the generated C, local variables are accessed via l->l_<name>
           embedded_expr* set_last_error = new embedded_expr();
-          set_last_error->tok = probes[0]->tok;
+          set_last_error->tok = probes[batch_start]->tok;
           set_last_error->code = string("(c->last_error = l->l_") + string(error_var->name) + ") /* string */";
 
           expr_statement* set_error_stmt = new expr_statement();
           set_error_stmt->value = set_last_error;
-          set_error_stmt->tok = probes[0]->tok;
+          set_error_stmt->tok = probes[batch_start]->tok;
 
           rethrow_block->statements.push_back(set_error_stmt);
 
           // Jump to out to exit the probe with the error
           next_statement* goto_out = new next_statement();
-          goto_out->tok = probes[0]->tok;
+          goto_out->tok = probes[batch_start]->tok;
 
           rethrow_block->statements.push_back(goto_out);
 
@@ -6257,14 +6276,14 @@ void semantic_pass_opt8(systemtap_session& s)
           error_if->condition = has_error;
           error_if->thenblock = rethrow_block;
           error_if->elseblock = 0;
-          error_if->tok = probes[0]->tok;
+          error_if->tok = probes[batch_start]->tok;
 
           combined->statements.push_back(error_if);
 
-          probes[0]->body = combined;
+          probes[batch_start]->body = combined;
 
-          // Mark other probes for removal
-          for (size_t i = 1; i < probes.size(); ++i)
+          // Mark other probes in this batch for removal
+          for (size_t i = batch_start + 1; i < batch_end; ++i)
             probes_to_remove.insert(probes[i]);
 
         }
