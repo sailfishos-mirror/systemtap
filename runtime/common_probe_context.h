@@ -153,13 +153,6 @@ union {
     int pi_longs;
   } krp;
 
-  /* State for mark_derived_probes.  */
-  struct {
-    va_list *mark_va_list;
-    const char *marker_name;
-    const char *marker_format;
-  } kmark;
-
   /* State for tracepoint probes. */
   struct {
      const char *tracepoint_system;
