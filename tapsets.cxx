@@ -13419,7 +13419,6 @@ void
 register_standard_tapsets(systemtap_session & s)
 {
   register_tapset_been(s);
-  register_tapset_mark(s);
   register_tapset_procfs(s);
   register_tapset_timers(s);
   register_tapset_netfilter(s);
@@ -13520,7 +13519,6 @@ all_session_groups(systemtap_session& s)
   DOONE(uprobe);
   DOONE(timer);
   DOONE(profile);
-  DOONE(mark);
   DOONE(tracepoint);
   DOONE(hwbkpt);
   DOONE(perf);

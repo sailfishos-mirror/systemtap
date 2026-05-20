@@ -5370,8 +5370,6 @@ translate_bpf_pass (systemtap_session& s)
         warn_for_bpf(s, s.netfilter_derived_probes, "netfilter probe");
       if (s.profile_derived_probes)
         warn_for_bpf(s, s.profile_derived_probes, "timer.profile probe");
-      if (s.mark_derived_probes)
-        warn_for_bpf(s, s.mark_derived_probes, "static marker probe");
       if (s.python_derived_probes)
         warn_for_bpf(s, s.python_derived_probes, "python probe");
       // s.task_finder_derived_probes -- synthetic

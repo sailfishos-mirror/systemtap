@@ -50,7 +50,6 @@ struct utrace_derived_probe_group;
 struct itrace_derived_probe_group;
 struct netfilter_derived_probe_group;
 struct profile_derived_probe_group;
-struct mark_derived_probe_group;
 struct python_derived_probe_group;
 
 typedef std::vector<std::pair<derived_probe *, std::string> >
@@ -94,15 +93,11 @@ void warn_for_bpf(systemtap_session& s,
                   profile_derived_probe_group *dpg,
                   const std::string& kind);
 void warn_for_bpf(systemtap_session& s,
-                  mark_derived_probe_group *dpg,
-                  const std::string& kind);
-void warn_for_bpf(systemtap_session& s,
                   python_derived_probe_group *dpg,
                   const std::string& kind);
 
 void register_tapset_been(systemtap_session& sess);
 void register_tapset_itrace(systemtap_session& sess);
-void register_tapset_mark(systemtap_session& sess);
 void register_tapset_procfs(systemtap_session& sess);
 void register_tapset_timers(systemtap_session& sess);
 void register_tapset_netfilter(systemtap_session& sess);
