@@ -6034,6 +6034,7 @@ void semantic_pass_opt8(systemtap_session& s)
 
   // Combine bodies for each probe point with multiple handlers
   // Process in batches to avoid OOM when combining hundreds of handlers
+  // XXX: Temporarily reduced to 2 for debugging
   const size_t MAX_COMBINE = 20;
 
   for (map<string, vector<derived_probe*> >::iterator it = probe_point_map.begin();
@@ -6110,38 +6111,72 @@ void semantic_pass_opt8(systemtap_session& s)
 
               // For subsequent probes (index > 0), we need to:
               // 1. Deep copy the body (to avoid sharing AST nodes)
-              // 2. Rename local variables to avoid conflicts
+              // 2. Rename local variables to avoid conflicts (if any locals exist)
               // 3. Restore symbol referents that were cleared by deep_copy
-              if (probe_index > 0 && body_to_use && !p->locals.empty())
+              if (probe_index > 0 && body_to_use)
                 {
-                  // Deep copy the body
+                  // Always deep copy to avoid AST node sharing between handlers
                   body_to_use = deep_copy_visitor::deep_copy(p->body);
 
-                  // Create renamed vardecls for this probe's locals
+                  // Create renaming map and rename locals if this probe has any
                   map<interned_string, vardecl*> renaming_map;
 
-                  for (vector<vardecl*>::iterator vit = p->locals.begin();
-                       vit != p->locals.end(); ++vit)
+                  if (!p->locals.empty())
                     {
-                      vardecl* old_var = *vit;
+                      for (vector<vardecl*>::iterator vit = p->locals.begin();
+                           vit != p->locals.end(); ++vit)
+                        {
+                          vardecl* old_var = *vit;
 
-                      // Create a new vardecl with renamed name
-                      vardecl* new_var = new vardecl();
-                      new_var->name = old_var->name + "_" + lex_cast(probe_index);
-                      new_var->tok = old_var->tok;
-                      new_var->type = old_var->type;
-                      new_var->arity = old_var->arity;
-                      new_var->maxsize = old_var->maxsize;
-                      new_var->index_types = old_var->index_types;
-                      new_var->synthetic = old_var->synthetic;
-                      new_var->wrap = old_var->wrap;
+                          // Skip renaming context variables that are initialized from outside the probe body
+                          // These are shared across all combined handlers and initialized by probe entry code:
+                          // - __tracepoint_arg_* (tracepoint context: $regs, $id, $ret, etc.)
+                          // - __nf_* (netfilter context: hooknum, skb, in, out, verdict)
+                          // - __mark_arg* (marker context)
+                          if (old_var->name.starts_with("__tracepoint_arg_") ||
+                              old_var->name.starts_with("__nf_") ||
+                              old_var->name.starts_with("__mark_arg"))
+                            {
+                              // Check if this variable is already in probes[batch_start]->locals
+                              bool already_exists = false;
+                              for (unsigned j = 0; j < probes[batch_start]->locals.size(); j++)
+                                {
+                                  if (probes[batch_start]->locals[j]->name == old_var->name)
+                                    {
+                                      already_exists = true;
+                                      break;
+                                    }
+                                }
 
-                      renaming_map[old_var->name] = new_var;
-                      probes[batch_start]->locals.push_back(new_var);
+                              if (!already_exists)
+                                {
+                                  // Add the variable without renaming (shared across all handlers)
+                                  probes[batch_start]->locals.push_back(old_var);
+                                }
+
+                              // Don't add to renaming_map (no renaming for context variables)
+                              continue;
+                            }
+
+                          // Create a new vardecl with renamed name
+                          vardecl* new_var = new vardecl();
+                          new_var->name = old_var->name + "_" + lex_cast(probe_index);
+                          new_var->tok = old_var->tok;
+                          new_var->type = old_var->type;
+                          new_var->arity = old_var->arity;
+                          new_var->maxsize = old_var->maxsize;
+                          new_var->index_types = old_var->index_types;
+                          new_var->synthetic = old_var->synthetic;
+                          new_var->wrap = old_var->wrap;
+
+                          renaming_map[old_var->name] = new_var;
+                          probes[batch_start]->locals.push_back(new_var);
+                        }
                     }
 
                   // Restore symbol referents (cleared by deep_copy) and apply renaming
-                  symbol_referent_restorer restorer(s, probes[batch_start], &renaming_map);
+                  // This is needed even if renaming_map is empty, to restore globals/functions
+                  symbol_referent_restorer restorer(s, probes[batch_start], renaming_map.empty() ? NULL : &renaming_map);
                   body_to_use = restorer.require(body_to_use);
                 }
 
