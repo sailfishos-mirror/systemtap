@@ -6033,9 +6033,8 @@ void semantic_pass_opt8(systemtap_session& s)
   set<derived_probe*> probes_to_remove;
 
   // Combine bodies for each probe point with multiple handlers
-  // Process in batches to avoid OOM when combining hundreds of handlers
-  // XXX: Temporarily reduced to 2 for debugging
-  const size_t MAX_COMBINE = 20;
+  // Process in batches to keep compilation time reasonable
+  const size_t MAX_COMBINE = 32;
 
   for (map<string, vector<derived_probe*> >::iterator it = probe_point_map.begin();
        it != probe_point_map.end(); ++it)
