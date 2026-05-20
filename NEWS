@@ -11,6 +11,10 @@
 - SSL/TLS connections now use only strong cipher suites, preventing
   downgrade attacks that could force use of weak encryption.
 
+- Removed support for kernel.mark() probes. This facility was based on
+  an old kernel marker prototype that hasn't existed in any kernel in
+  living memory. R.I.P. kernel.mark(), 2007-2026.
+
 * What's new in version 5.4, 2025-10-31
 
 - The kernel-context @cast operator now implicitly searches a kernel's
