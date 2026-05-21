@@ -46,6 +46,12 @@ make check RUNTESTFLAGS="test_name.exp"
 sudo -E make installcheck RUNTESTFLAGS="test_name.exp"
 ```
 
+To run individual subtests within an `.exp` file (like `check.exp`), use the `CHECK_ONLY` variable along with `RUNTESTFLAGS`:
+
+```bash
+make check RUNTESTFLAGS="check.exp" CHECK_ONLY="badname fntimes"
+```
+
 ## Debugging Quirks
 
 ### Compilation Phases
