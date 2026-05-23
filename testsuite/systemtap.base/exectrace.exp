@@ -1,0 +1,28 @@
+set test "exectrace"
+set testpath "$srcdir/$subdir"
+
+if {! [installtest_p]} { untested "$test"; return }
+
+foreach runtime [get_runtime_list] {
+    if {$runtime eq ""} {
+        set runtime "kernel"
+    }
+    
+    # The exectrace feature is implemented for kernel and dyninst runtimes
+    if {$runtime ne "kernel" && $runtime ne "dyninst"} {
+        continue
+    }
+    
+    set test_name "$test ($runtime)"
+    
+    set cmd "stap --runtime=$runtime -D STP_EXECTRACE $testpath/$test.stp"
+    set exit_code [run_cmd_2way $cmd out stderr]
+
+    if {$exit_code == 0} {
+        pass "$test_name"
+    } else {
+        fail "$test_name"
+        send_log "out:\n$out\n"
+        send_log "stderr:\n$stderr\n"
+    }
+}

@@ -1,3 +1,9 @@
+* What's new in version 5.6
+
+- Added a new option to trace execution of systemtap scripts
+  statement-by-statement. Not yet  available with --bpf backend.
+  Enable it with stap -D STP_EXECTRACE
+
 * What's new in version 5.5, 2026-05-01
 
 - New @enum() operator for accessing enumeration constants from

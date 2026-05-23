@@ -29,6 +29,16 @@
 #include <unistd.h>
 #include <sys/syscall.h>
 
+#ifndef _STRINGIFY
+#define __STRINGIFY(x) #x
+#define _STRINGIFY(x) __STRINGIFY(x)
+#endif
+
+static inline void __stp_exectrace(const char* msg) {
+    if (write(STDERR_FILENO, msg, strlen(msg)) < 0) { /* ignore */ }
+    if (write(STDERR_FILENO, "\n", 1) < 0) { /* ignore */ }
+}
+
 #include "loc2c-runtime.h"
 #include "stapdyn.h"
 

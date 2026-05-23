@@ -11,6 +11,15 @@
 #ifndef _LINUX_RUNTIME_H_
 #define _LINUX_RUNTIME_H_
 
+#ifndef _STRINGIFY
+#define __STRINGIFY(x) #x
+#define _STRINGIFY(x) __STRINGIFY(x)
+#endif
+
+static inline void __stp_exectrace(const char* msg) {
+    printk(KERN_INFO "%s\n", msg);
+}
+
 #include <linux/module.h>
 #include <linux/ctype.h>
 #include <linux/kernel.h>

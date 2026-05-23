@@ -2526,6 +2526,11 @@ somewhat larger than the number of user-space probe points named in the script.
 This pool needs to be potentially large because individual uprobe objects (about
 64 bytes each) are allocated for each process for each matching script-level probe.
 .TP
+STP_EXECTRACE
+Enable execution tracing of systemtap scripts. When defined, the generated code
+will emit a detailed trace of every statement executed in the script to the kernel 
+log (or stderr in dyninst mode). Note: this may generate a massive amount of output.
+.TP
 STP_MAXMEMORY
 Maximum amount of memory (in kilobytes) that the systemtap module
 should use, default unlimited.  The memory size includes the size of

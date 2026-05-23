@@ -4038,6 +4038,12 @@ c_unparser::record_actions (unsigned actions, const token* tok, bool update)
 void
 c_unparser::visit_block (block *s)
 {
+  if (s->tok) {
+    o->newline() << "#ifdef STP_EXECTRACE";
+    o->newline() << "__stp_exectrace(__FILE__ \":\" _STRINGIFY(__LINE__) \" "
+                 << s->tok->location.file->name << ":" << lex_cast(s->tok->location.line) << ":" << lex_cast(s->tok->location.column) << "\");";
+    o->newline() << "#endif";
+  }
   // Key insight: individual statements of a block can reuse
   // temporary variable slots, since temporaries don't survive
   // statement boundaries.  So we use gcc's anonymous union/struct
@@ -4114,6 +4120,12 @@ c_unparser::visit_block (block *s)
 
 void c_unparser::visit_try_block (try_block *s)
 {
+  if (s->tok) {
+    o->newline() << "#ifdef STP_EXECTRACE";
+    o->newline() << "__stp_exectrace(__FILE__ \":\" _STRINGIFY(__LINE__) \" "
+                 << s->tok->location.file->name << ":" << lex_cast(s->tok->location.line) << ":" << lex_cast(s->tok->location.column) << "\");";
+    o->newline() << "#endif";
+  }
   record_actions(0, s->tok, true); // flush prior actions
 
   start_compound_statement ("try_block", s);
@@ -4183,6 +4195,12 @@ void c_unparser::visit_try_block (try_block *s)
 void
 c_unparser::visit_embeddedcode (embeddedcode *s)
 {
+  if (s->tok) {
+    o->newline() << "#ifdef STP_EXECTRACE";
+    o->newline() << "__stp_exectrace(__FILE__ \":\" _STRINGIFY(__LINE__) \" "
+                 << s->tok->location.file->name << ":" << lex_cast(s->tok->location.line) << ":" << lex_cast(s->tok->location.column) << "\");";
+    o->newline() << "#endif";
+  }
   // Automatically add a call to assert_is_myproc to any code tagged with
   // /* myproc-unprivileged */
   if (s->tagged_p ("/* myproc-unprivileged */"))
@@ -4241,6 +4259,12 @@ c_unparser::visit_embeddedcode (embeddedcode *s)
 void
 c_unparser::visit_null_statement (null_statement *s)
 {
+  if (s->tok) {
+    o->newline() << "#ifdef STP_EXECTRACE";
+    o->newline() << "__stp_exectrace(__FILE__ \":\" _STRINGIFY(__LINE__) \" "
+                 << s->tok->location.file->name << ":" << lex_cast(s->tok->location.line) << ":" << lex_cast(s->tok->location.column) << "\");";
+    o->newline() << "#endif";
+  }
   o->newline() << "/* null */;";
   locks_not_needed_argh(s);
 }
@@ -4249,6 +4273,12 @@ c_unparser::visit_null_statement (null_statement *s)
 void
 c_unparser::visit_expr_statement (expr_statement *s)
 {
+  if (s->tok) {
+    o->newline() << "#ifdef STP_EXECTRACE";
+    o->newline() << "__stp_exectrace(__FILE__ \":\" _STRINGIFY(__LINE__) \" "
+                 << s->tok->location.file->name << ":" << lex_cast(s->tok->location.line) << ":" << lex_cast(s->tok->location.column) << "\");";
+    o->newline() << "#endif";
+  }
   bool ln = locks_needed_p(s);
   
   if (!ln)
@@ -4345,6 +4375,12 @@ c_tmpcounter::close_compound_statement (const char*, statement *)
 void
 c_unparser::visit_if_statement (if_statement *s)
 {
+  if (s->tok) {
+    o->newline() << "#ifdef STP_EXECTRACE";
+    o->newline() << "__stp_exectrace(__FILE__ \":\" _STRINGIFY(__LINE__) \" "
+                 << s->tok->location.file->name << ":" << lex_cast(s->tok->location.line) << ":" << lex_cast(s->tok->location.column) << "\");";
+    o->newline() << "#endif";
+  }
   record_actions(1, s->tok, true);
 
   start_compound_statement ("if_statement", s);
@@ -4416,6 +4452,12 @@ c_unparser::visit_if_statement (if_statement *s)
 void
 c_unparser::visit_for_loop (for_loop *s)
 {
+  if (s->tok) {
+    o->newline() << "#ifdef STP_EXECTRACE";
+    o->newline() << "__stp_exectrace(__FILE__ \":\" _STRINGIFY(__LINE__) \" "
+                 << s->tok->location.file->name << ":" << lex_cast(s->tok->location.line) << ":" << lex_cast(s->tok->location.column) << "\");";
+    o->newline() << "#endif";
+  }
   string ctr = lex_cast (label_counter++);
   string toplabel = "top_" + ctr;
   string contlabel = "continue_" + ctr;
@@ -4573,6 +4615,12 @@ c_unparser::get_foreach_loop_value (arrayindex* ai, string& value)
 void
 c_unparser::visit_foreach_loop (foreach_loop *s)
 {
+  if (s->tok) {
+    o->newline() << "#ifdef STP_EXECTRACE";
+    o->newline() << "__stp_exectrace(__FILE__ \":\" _STRINGIFY(__LINE__) \" "
+                 << s->tok->location.file->name << ":" << lex_cast(s->tok->location.line) << ":" << lex_cast(s->tok->location.column) << "\");";
+    o->newline() << "#endif";
+  }
   symbol *array;
   hist_op *hist;
   classify_indexable (s->base, array, hist);
@@ -4878,6 +4926,12 @@ c_unparser::visit_foreach_loop (foreach_loop *s)
 void
 c_unparser::visit_return_statement (return_statement* s)
 {
+  if (s->tok) {
+    o->newline() << "#ifdef STP_EXECTRACE";
+    o->newline() << "__stp_exectrace(__FILE__ \":\" _STRINGIFY(__LINE__) \" "
+                 << s->tok->location.file->name << ":" << lex_cast(s->tok->location.line) << ":" << lex_cast(s->tok->location.column) << "\");";
+    o->newline() << "#endif";
+  }
   if (current_function == 0)
     throw SEMANTIC_ERROR (_("cannot 'return' from probe"), s->tok);
 
@@ -4908,6 +4962,12 @@ c_unparser::visit_return_statement (return_statement* s)
 void
 c_unparser::visit_next_statement (next_statement* s)
 {
+  if (s->tok) {
+    o->newline() << "#ifdef STP_EXECTRACE";
+    o->newline() << "__stp_exectrace(__FILE__ \":\" _STRINGIFY(__LINE__) \" "
+                 << s->tok->location.file->name << ":" << lex_cast(s->tok->location.line) << ":" << lex_cast(s->tok->location.column) << "\");";
+    o->newline() << "#endif";
+  }
   /* Set next flag to indicate to caller to call next alternative function */
   if (current_function != 0)
     {
@@ -5109,6 +5169,12 @@ delete_statement_operand_visitor::visit_arrayindex (arrayindex* e)
 void
 c_unparser::visit_delete_statement (delete_statement* s)
 {
+  if (s->tok) {
+    o->newline() << "#ifdef STP_EXECTRACE";
+    o->newline() << "__stp_exectrace(__FILE__ \":\" _STRINGIFY(__LINE__) \" "
+                 << s->tok->location.file->name << ":" << lex_cast(s->tok->location.line) << ":" << lex_cast(s->tok->location.column) << "\");";
+    o->newline() << "#endif";
+  }
   bool ln = locks_needed_p (s);
 
   if (!ln) // unlikely, as delete usually operates on globals
@@ -5130,6 +5196,12 @@ c_unparser::visit_delete_statement (delete_statement* s)
 void
 c_unparser::visit_break_statement (break_statement* s)
 {
+  if (s->tok) {
+    o->newline() << "#ifdef STP_EXECTRACE";
+    o->newline() << "__stp_exectrace(__FILE__ \":\" _STRINGIFY(__LINE__) \" "
+                 << s->tok->location.file->name << ":" << lex_cast(s->tok->location.line) << ":" << lex_cast(s->tok->location.column) << "\");";
+    o->newline() << "#endif";
+  }
   locks_not_needed_argh(s);
 
   if (loop_break_labels.empty())
@@ -5143,6 +5215,12 @@ c_unparser::visit_break_statement (break_statement* s)
 void
 c_unparser::visit_continue_statement (continue_statement* s)
 {
+  if (s->tok) {
+    o->newline() << "#ifdef STP_EXECTRACE";
+    o->newline() << "__stp_exectrace(__FILE__ \":\" _STRINGIFY(__LINE__) \" "
+                 << s->tok->location.file->name << ":" << lex_cast(s->tok->location.line) << ":" << lex_cast(s->tok->location.column) << "\");";
+    o->newline() << "#endif";
+  }
   locks_not_needed_argh(s);
 
   if (loop_continue_labels.empty())
