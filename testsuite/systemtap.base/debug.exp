@@ -1,0 +1,144 @@
+# debug.exp
+#
+# Test that "stap --debug -p4" produces the expected build artifacts
+# for debugging (saved .i/.s from -save-temps, .pahole if available,
+# and DWARF debuginfo in the final .ko/.so).
+#
+# Covers both kernel and dyninst runtimes.
+
+set test "debug"
+
+# Note: no installtest_p guard.  The test only runs to -p4 (compilation),
+# so it is safe to execute unprivileged when the necessary kernel-devel /
+# dyninst build dependencies are present on the machine.
+
+# Helper to check for presence of pahole at runtime (not configure time).
+proc have_pahole_p {} {
+    return [expr {[catch {exec sh -c "command -v pahole >/dev/null 2>&1"}] == 0}]
+}
+
+foreach runtime [get_runtime_list] {
+    set rname [expr {$runtime eq "" ? "kernel" : $runtime}]
+    set test_base "debug artifacts ($rname)"
+
+    set mytmp "/tmp/stap-debug-test-[pid]-[clock seconds]"
+    catch {exec rm -rf $mytmp}
+    file mkdir $mytmp
+    set preserve_tmp 0
+
+    # Write the probe script to a .stp file to avoid shell quoting hell
+    # when passing complex -e text through run_cmd_2way's sh -c wrapper.
+    set stpfile "$mytmp/test.stp"
+    set f [open $stpfile w]
+    puts $f "probe begin { exit(); }"
+    close $f
+
+    # Defeat ccache (seen in the test harness as /usr/lib64/ccache/gcc) so that
+    # -save-temps=obj actually produces the .i/.s companions next to the
+    # generated *_src.c files for the dyninst runtime (kbuild path is less
+    # affected).  The env var is inherited by the gcc invocations that stap
+    # spawns for --debug builds.
+    set cmd "env CCACHE_DISABLE=1 stap --debug -v --vp 0003 -p4 $stpfile --tmpdir=$mytmp"
+    if {$runtime ne ""} {
+        append cmd " --runtime=$runtime"
+    }
+
+    send_log "executing: $cmd\n"
+    set exit_code [run_cmd_2way $cmd out stderr]
+
+    if {$exit_code != 0} {
+        fail "$test_base (build rc=$exit_code)"
+        send_log "stdout:\n$out\n"
+        send_log "stderr:\n$stderr\n"
+        set preserve_tmp 1
+        verbose -log "Preserving $mytmp after build failure (high-verbosity --vp 0003 traces are in captured stderr above)"
+        continue
+    }
+
+    # Build succeeded with --debug.  Log the (verbose) build output so that
+    # the actual gcc command(s) for -save-temps=obj are captured in the
+    # test log.  Also snapshot the temps that were actually saved.
+    send_log "stdout:\n$out\n"
+    send_log "stderr:\n$stderr\n"
+    verbose -log "Saved -save-temps files + generated sources under $mytmp:"
+    catch {exec sh -c "ls -l $mytmp/*.[is] $mytmp/*src*.c $mytmp/stap_symbols.* $mytmp/*.so $mytmp/*.ko 2>&1 || true"} tempsnap
+    verbose -log $tempsnap
+
+    # Now assert artifacts.
+
+    # 1. *_src.c files must be accompanied by .i and .s (from -save-temps=obj).
+    # Use aggregate, stable messages (no transient stap_XXXX numbers or paths)
+    # so the PASS/FAIL strings are useful for regression comparison across runs.
+    set src_cs [glob -nocomplain -directory $mytmp *src*.c */*src*.c */*/*src*.c]
+    if {[llength $src_cs] == 0} {
+        set preserve_tmp 1
+        fail "$test_base (no *src*.c files generated)"
+    } else {
+        pass "$test_base (*src*.c files present)"
+        set missing 0
+        foreach src $src_cs {
+            set base [file rootname $src]
+            set stem [file tail $base]
+            set dir  [file dirname $src]
+            foreach ext {i s} {
+                set companion "$base.$ext"
+                # For dyninst (direct gcc link of multiple .c files with
+                # -save-temps=obj -o foo.so), gcc names the temps after the
+                # output module, producing "foo.so-stap_XXXX_src.i" etc.
+                # Accept either the simple name or the <module>-prefixed form.
+                set alts [glob -nocomplain -directory $dir "*${stem}.$ext"]
+                if {[file exists $companion] || [llength $alts] > 0} {
+                    set actual [expr {[file exists $companion] ? $companion : [lindex $alts 0]}]
+                    verbose -log "present: $actual"
+                } else {
+                    incr missing
+                    verbose -log "MISSING: $companion (or *${stem}.$ext next to $src; dyninst uses <module>- prefix for temps)"
+                }
+            }
+        }
+        if {[is "$test_base (*src*.c have .i/.s companions)" $missing 0] == 0} {
+            set preserve_tmp 1
+        }
+    }
+
+    # 2. The final module (.ko or .so) must exist and contain DWARF debuginfo.
+    set mod_pattern [expr {$runtime eq "dyninst" ? "*.so" : "*.ko"}]
+    set mods [glob -nocomplain -directory $mytmp $mod_pattern */$mod_pattern */*/$mod_pattern]
+    set nmods [llength $mods]
+    if {[is "$test_base (module .ko/.so present)" $nmods 1] == 0} {
+        set preserve_tmp 1
+    } else {
+        set mod [lindex $mods 0]
+
+        # Check for DWARF sections (any .debug_* is sufficient).  Try the common
+        # tools in case the test machine has elfutils but not binutils, etc.
+        set dwarf_cmd "readelf -S '$mod' 2>/dev/null | grep -q '\\.debug_' || eu-readelf -S '$mod' 2>/dev/null | grep -q '\\.debug_' || objdump -h '$mod' 2>/dev/null | grep -q '\\.debug_'"
+        set has_dwarf [expr {[catch {exec sh -c $dwarf_cmd}] == 0}]
+        if {[is "$test_base (DWARF debuginfo in module)" $has_dwarf 1] == 0} {
+            set preserve_tmp 1
+        }
+    }
+
+    # 3. If pahole is present on the test machine at runtime, a .pahole file
+    #    must have been produced by the post-build step.  If pahole is not
+    #    installed, emit UNTESTED using a stable name so the same text can
+    #    appear as PASS on machines that have pahole.
+    if {[have_pahole_p]} {
+        set paholes [glob -nocomplain -directory $mytmp *.pahole */*.pahole */*/*.pahole]
+        if {[llength $paholes] > 0} {
+            pass "$test_base (.pahole output present)"
+        } else {
+            set preserve_tmp 1
+            fail "$test_base (expected .pahole file since pahole is installed)"
+        }
+    } else {
+        untested "$test_base (pahole)"
+        # normal case on this machine: do not preserve
+    }
+
+    if {$preserve_tmp} {
+        verbose -log "Preserving $mytmp for post-mortem inspection (contains --debug artifacts, -save-temps outputs, stap temp subdirs, and --vp 0003 traces)"
+    } else {
+        catch {exec rm -rf $mytmp}
+    }
+}

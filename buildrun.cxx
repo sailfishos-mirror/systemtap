@@ -87,6 +87,35 @@ run_make_cmd(systemtap_session& s, vector<string>& make_cmd,
   return rc;
 }
 
+/* If debug_build, and pahole(1) is available, run it on the generated
+   module (.ko or .so) and save the output in the tmpdir for later
+   analysis of debuginfo / code generation.  Never fails the build. */
+static void
+run_pahole (systemtap_session& s)
+{
+  if (! s.debug_build)
+    return;
+
+  const string module = s.tmpdir + "/" + s.module_filename();
+  string pahole_out = s.tmpdir + "/" + s.module_name + ".pahole";
+
+  // Use sh -c so we can conditionalize on pahole presence without
+  // failing if it's not installed.
+  vector<string> cmd {
+    "sh", "-c",
+    "command -v pahole >/dev/null 2>&1 && "
+    "pahole '" + module + "' > '" + pahole_out + "' 2>&1 || true"
+  };
+
+  if (s.verbose > 1)
+    clog << _("Pass 4: running pahole on ") << module << endl;
+
+  // Run quietly unless very verbose; ignore rc.
+  (void) stap_system (s.verbose, cmd,
+                      /* null_out */ (s.verbose < 3),
+                      /* null_err */ (s.verbose < 3));
+}
+
 static vector<string>
 make_any_make_cmd(systemtap_session& s, const string& dir, const string& target)
 {
@@ -152,6 +181,17 @@ make_any_make_cmd(systemtap_session& s, const string& dir, const string& target)
 
   // Add any custom kbuild flags
   make_cmd.insert(make_cmd.end(), s.kbuildflags.begin(), s.kbuildflags.end());
+
+  if (s.debug_build)
+    {
+      // Override the default suppression of debuginfo (PR13847).
+      // Request -g and -save-temps artifacts via the standard kbuild
+      // mechanism only (ccflags-y/EXTRA_CFLAGS in the generated Makefile
+      // below, plus CONFIG_DEBUG_INFO=y).  KBUILD_CFLAGS is too blunt
+      // and interacts badly with the kernel build's C dialect/warning
+      // setup on picky environments (rawhide gcc-15 + 7.x kernels).
+      make_cmd.push_back("CONFIG_DEBUG_INFO=y");
+    }
 
   return make_cmd;
 }
@@ -263,12 +303,22 @@ compile_dyninst (systemtap_session& s)
   if (s.verbose > 3)
     cmd.insert(cmd.end(), { "-ftime-report", "-Q" });
 
+  if (s.debug_build)
+    {
+      // Maximize debug info and preserve temps for misgeneration analysis.
+      cmd.push_back("-g");
+      cmd.push_back("-save-temps=obj");
+      cmd.push_back("-fverbose-asm");
+    }
+
   // Add any custom kbuild flags
   cmd.insert(cmd.end(), s.kbuildflags.begin(), s.kbuildflags.end());
 
   int rc = stap_system (s.verbose, cmd);
   if (rc)
     s.set_try_server ();
+  else
+    run_pahole (s);
   return rc;
 }
 
@@ -620,11 +670,14 @@ compile_pass (systemtap_session& s)
   if (s.verbose > 3)
     o << extra_cflags << " += -ftime-report -Q" << endl;
 
-  // XXX: unfortunately, -save-temps can't work since linux kbuild cwd
-  // is not writable.
-  //
-  // if (s.keep_tmpdir)
-  // o << "CFLAGS += -fverbose-asm -save-temps" << endl;
+  if (s.debug_build)
+    {
+      // Add debug flags via the standard kbuild per-module mechanism
+      // (same "where" as kernel_extra_cflags, c_macros, -Werror etc.).
+      // This is the careful way that avoids perturbing kbuild's base
+      // CFLAGS setup.  -save-temps=obj gives us .i/.s intermediates.
+      o << extra_cflags << " += -g -save-temps=obj -fverbose-asm" << endl;
+    }
 
   // Kernels can be compiled with CONFIG_CC_OPTIMIZE_FOR_SIZE to select
   // -Os, otherwise -O2 is the default.
@@ -767,6 +820,8 @@ compile_pass (systemtap_session& s)
   rc = run_make_cmd(s, make_cmd);
   if (rc)
     s.set_try_server ();
+  else
+    run_pahole (s);
   return rc;
 }
 

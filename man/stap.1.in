@@ -267,6 +267,16 @@ for building the dyninst shared library.  For example, use
 .ESAMPLE
 to add debugging information.
 .TP
+.B \-\-debug
+Build the generated kernel module (.ko) or dyninst module (.so) with
+maximum debugging information for diagnosing code generation problems.
+This enables CONFIG_DEBUG_INFO=y (kernel mode), passes -g to the
+compiler, uses -save-temps=obj to preserve intermediate .i/.s files,
+and (if available) runs pahole(1) on the resulting module, saving its
+output as $module.pahole in the temporary directory.  Implies -k
+(keep temporary directory).  The option is disallowed when
+--client-options is used.
+.TP
 .BI \-a " ARCH"
 Use a cross-compilation mode for the given target architecture.  This requires
 access to the cross-compiler and the kernel build tree, and goes along

@@ -147,6 +147,7 @@ systemtap_session::systemtap_session ():
   save_uprobes = false;
   modname_given = false;
   keep_tmpdir = false;
+  debug_build = false;
   cmd = "";
   target_pid = 0;
   use_cache = true;
@@ -351,6 +352,7 @@ systemtap_session::systemtap_session (const systemtap_session& other,
   save_uprobes = other.save_uprobes;
   modname_given = other.modname_given;
   keep_tmpdir = other.keep_tmpdir;
+  debug_build = other.debug_build;
   cmd = other.cmd;
   target_pid = other.target_pid; // XXX almost surely nonsense for multiremote
   use_cache = other.use_cache;
@@ -645,6 +647,8 @@ systemtap_session::usage (int exitcode)
   cout
     << _F("   -D NM=VAL  emit macro definition into generated C code\n"
     "   -B NM=VAL  pass option to kbuild make\n"
+    "   --debug    build module with extra debugging info\n"
+    "              (CONFIG_DEBUG_INFO=y, -g, -save-temps, run pahole)\n"
     "   --modinfo NM=VAL\n"
     "              include a MODULE_INFO(NM,VAL) in the generated C code\n"
     "   -G VAR=VAL set global variable to value\n"
@@ -1102,6 +1106,14 @@ systemtap_session::parse_cmdline (int argc, char * const argv [])
           assert(optarg);
 	  server_args.push_back (string ("-") + (char)grc + optarg);
           kbuildflags.push_back (string (optarg));
+	  break;
+
+	case LONG_OPT_DEBUG:
+          if (client_options) { cerr << _F("ERROR: %s invalid with %s", "--debug", "--client-options") << endl; return 1; } 
+	  server_args.push_back ("--debug");
+          debug_build = true;
+          keep_tmpdir = true; /* --debug implies -k so .i/.s/.pahole etc. are not nuked */
+          use_script_cache = false; /* analogous to -k, for usable build tree with temps */
 	  break;
 
 	case LONG_OPT_VERSION:
@@ -2752,7 +2764,10 @@ systemtap_session::remove_tmp_dir()
     return;
 
   // Remove temporary directory
-  if (keep_tmpdir && !tmpdir_opt_set)
+  // --debug implies keep (like -k) so that build artifacts (.i/.s from
+  // -save-temps, .pahole, etc.) are not automatically nuked.
+  bool keep = keep_tmpdir || debug_build;
+  if (keep && !tmpdir_opt_set)
       clog << _F("Keeping temporary directory \"%s\"", tmpdir.c_str()) << endl;
   else if (!tmpdir_opt_set)
     {

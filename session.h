@@ -223,6 +223,7 @@ public:
   bool modname_given;
   bool keep_tmpdir;
   bool guru_mode;
+  bool debug_build;
   bool bulk_mode;
   bool unoptimized;
   bool suppress_warnings;

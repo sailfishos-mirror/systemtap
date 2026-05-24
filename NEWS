@@ -4,6 +4,11 @@
   statement-by-statement. Not yet  available with --bpf backend.
   Enable it with stap -D STP_EXECTRACE
 
+- New --debug option.  This builds the generated kernel module (.ko)
+  or dyninst module (.so) with maximum debugging information:
+  CONFIG_DEBUG_INFO=y (for .ko), -g, gcc -save-temps=obj (preserving
+  .i/.s temporaries), and runs pahole(1) on the result (if available).
+
 * What's new in version 5.5, 2026-05-01
 
 - New @enum() operator for accessing enumeration constants from

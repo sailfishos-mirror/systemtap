@@ -70,6 +70,7 @@ enum {
   LONG_OPT_RUN_EXAMPLE,
   LONG_OPT_NO_GLOBAL_VAR_DISPLAY,
   LONG_OPT_LANGUAGE_SERVER,
+  LONG_OPT_DEBUG,
 };
 
 // NB: when adding new options, consider very carefully whether they
