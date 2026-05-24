@@ -12449,6 +12449,24 @@ tracepoint_derived_probe_group::emit_module_decls (systemtap_session& s)
           tpop->newline() << "#include <" << header << ">";
         }
 
+      // Recompute the 'used' flag: probe combining can create shared context variables
+      // that exist in probe locals even when not directly referenced (used=false) in
+      // a particular combined probe's handler. Mark any arg as used if it has a
+      // corresponding variable in this probe's locals, to ensure proper initialization
+      // and avoid uninitialized garbage addresses that can cause kernel crashes.
+      for (unsigned j = 0; j < p->args.size(); ++j)
+        {
+          p->args[j].used = false;  // Reset first
+          for (unsigned k = 0; k < p->locals.size(); ++k)
+            {
+              if (p->locals[k]->unmangled_name == "__tracepoint_arg_" + p->args[j].name)
+                {
+                  p->args[j].used = true;
+                  break;
+                }
+            }
+        }
+
       // collect the args that are actually in use
       vector<const tracepoint_arg*> used_args;
       for (unsigned j = 0; j < p->args.size(); ++j)
