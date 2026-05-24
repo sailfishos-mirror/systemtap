@@ -72,9 +72,9 @@ foreach runtime [get_runtime_list] {
     set src_cs [glob -nocomplain -directory $mytmp *src*.c */*src*.c */*/*src*.c]
     if {[llength $src_cs] == 0} {
         set preserve_tmp 1
-        fail "$test_base (no *src*.c files generated)"
+        fail "$test_base (*src*.c files)"
     } else {
-        pass "$test_base (*src*.c files present)"
+        pass "$test_base (*src*.c files)"
         set missing 0
         foreach src $src_cs {
             set base [file rootname $src]
@@ -126,10 +126,10 @@ foreach runtime [get_runtime_list] {
     if {[have_pahole_p]} {
         set paholes [glob -nocomplain -directory $mytmp *.pahole */*.pahole */*/*.pahole]
         if {[llength $paholes] > 0} {
-            pass "$test_base (.pahole output present)"
+            pass "$test_base (pahole)"
         } else {
             set preserve_tmp 1
-            fail "$test_base (expected .pahole file since pahole is installed)"
+            fail "$test_base (pahole)"
         }
     } else {
         untested "$test_base (pahole)"
