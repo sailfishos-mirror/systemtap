@@ -1,4 +1,4 @@
-* What's new in version 5.6
+* What's new in version 5.6, PRERELEASE
 
 - Added a new option to trace execution of systemtap scripts
   statement-by-statement. Not yet  available with --bpf backend.
