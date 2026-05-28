@@ -1,0 +1,122 @@
+.\" -*- nroff -*-
+.TH STAP-ONBOOT 8
+.SH NAME
+stap-onboot \- Embed SystemTap scripts into initramfs for early-boot execution
+
+.SH SYNOPSIS
+.B stap-onboot
+.RI [ OPTIONS ] " " [ SCRIPT ...]
+
+.SH DESCRIPTION
+The
+.B stap-onboot
+command compiles SystemTap scripts and uses dracut to embed them into an
+initramfs, allowing the scripts to run during early boot before the root
+filesystem is mounted. This is useful for debugging early-boot issues or
+applying CVE band-aid scripts that need to run as early as possible.
+
+Scripts are read from
+.BR @sysconfdir@/systemtap/script.d/ .
+Compiled modules are cached in
+.BR @localstatedir@/cache/systemtap/\fIKERNEL\fR/ .
+
+.SH OPTIONS
+.TP
+.B \-b
+Backup the existing initramfs before overwriting it. The backup is saved with a
+.I .bak
+extension.
+
+.TP
+.BI \-c " configfile"
+Specify an alternate configuration file instead of the default
+.BR @sysconfdir@/systemtap/config .
+
+.TP
+.BI \-o " path.img"
+Specify the output initramfs file path. By default, the initramfs for the
+current kernel is updated at
+.BR /boot/initramfs-\fIKERNEL\fR.img .
+
+.TP
+.BI \-r " kernelrelease"
+Specify the kernel release to build the initramfs for. Defaults to the
+currently running kernel
+.RB ( "uname \-r" ).
+
+.SH ARGUMENTS
+.TP
+.I SCRIPT
+One or more script names (without the
+.I .stp
+extension) to compile and embed in the initramfs. Scripts must exist in
+.BR @sysconfdir@/systemtap/script.d/ .
+If no scripts are specified, a clean initramfs without SystemTap scripts
+is created.
+
+.SH EXAMPLES
+Compile and embed
+.I myScript.stp
+into the initramfs, backing up the original:
+.SAMPLE
+# stap-onboot -b myScript
+.ESAMPLE
+
+Create an initramfs for a different kernel:
+.SAMPLE
+# stap-onboot -r 6.1.0-1.fc37.x86_64 earlyDebug
+.ESAMPLE
+
+Create a custom initramfs in a specific location:
+.SAMPLE
+# stap-onboot -o /tmp/test-initramfs.img bandaid
+.ESAMPLE
+
+Remove all SystemTap scripts from the initramfs:
+.SAMPLE
+# stap-onboot
+.ESAMPLE
+
+.SH FILES
+.TP
+.B @sysconfdir@/systemtap/script.d/\fISCRIPT\fR.stp
+Source SystemTap scripts to be embedded.
+
+.TP
+.B @sysconfdir@/systemtap/config
+Configuration file for script options. Each script can have options defined
+as
+.IR SCRIPTNAME _OPT= "..." .
+
+.TP
+.B @localstatedir@/cache/systemtap/\fIKERNEL\fR/
+Directory where compiled
+.I .ko
+modules are cached.
+
+.TP
+.B /boot/initramfs-\fIKERNEL\fR.img
+Default output location for the generated initramfs.
+
+.TP
+.B @dracutstap@
+Dracut module directory for SystemTap integration.
+
+.SH SEE ALSO
+.IR stap (1),
+.IR staprun (8),
+.IR dracut (8),
+.IR systemd.service (5)
+
+.\" macros
+.de SAMPLE
+.br
+.RS
+.nf
+.nh
+..
+.de ESAMPLE
+.hy
+.fi
+.RE
+..

@@ -1,0 +1,312 @@
+#!/bin/bash
+#
+# stap-onboot - Compile SystemTap scripts and embed them into initramfs
+#
+# This script compiles SystemTap scripts and uses dracut to create an
+# initramfs containing the compiled modules, allowing them to run at
+# early boot time.
+#
+# Usage: stap-onboot [OPTIONS] [SCRIPTS]
+#
+
+prog=stap-onboot
+
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+
+# Commands
+STAP=@bindir@/stap
+STAPRUN=@bindir@/staprun
+UNAME=/bin/uname
+DRACUT=`which dracut`
+
+# Not actually used directly, but needed by stap dracut module for inclusion in initramfs
+STAPIO=@libexecdir@/systemtap/stapio
+
+# Path setup
+SCRIPT_PATH=@sysconfdir@/systemtap/script.d
+CONFIG_PATH=@sysconfdir@/systemtap/conf.d
+CACHE_PATH=@localstatedir@/cache/systemtap
+STAT_PATH=@localstatedir@/run/systemtap
+
+# NB: this path is also used in 99stap/module-setup.sh
+DRACUT_SRC=@dracutstap@/params.conf
+
+# Optional settings
+CONFIG=@sysconfdir@/systemtap/config
+SCRIPTS=
+KRELEASE=`uname -r`
+OPT_SCRIPTS=
+INITRAMFS=
+BACKUP_INITRAMFS=
+EXPLICIT_INITRAMFS=
+
+echo_usage () {
+  echo $"Usage: $prog [OPTIONS] [SCRIPTS]"
+  echo $"Options:"
+  echo $"	-b		: backup initramfs before overwriting"
+  echo $"	-c configfile	: specify config file"
+  echo $"	-o path.img	: specify initramfs output file"
+  echo $"	-r kernelrelease: specify kernel release version"
+  echo $"	script(s)	: specify systemtap scripts"
+}
+
+#-----------------------------------------------------------------
+# Helper functions
+#-----------------------------------------------------------------
+log () { # message
+  logger -t stap-onboot "$1"
+}
+do_failure () { # message
+  log "Error: $1"
+  echo "Error: $1" >&2
+}
+do_success () { # message
+  log "$1"
+  echo "$1"
+}
+
+#------------------------------------------------------------------
+# Parameter parsing and setup options
+#------------------------------------------------------------------
+parse_args () { # arguments
+  while [ -n "$1" ]; do
+    case "$1" in
+      -c)
+        CONFIG=$2
+        shift 1
+        ;;
+      -r)
+        KRELEASE=$2
+        shift 1
+        ;;
+      -o)
+        INITRAMFS=$2
+        shift 1
+        ;;
+      -b)
+        BACKUP_INITRAMFS=1
+        ;;
+      --)
+        ;;
+      *)
+        OPT_SCRIPTS=$OPT_SCRIPTS\ $1
+        ;;
+    esac
+    shift 1
+  done
+}
+
+OPTS=`getopt -s bash -u -o 'r:c:o:b' -- $@`
+if [ $? -ne 0 ]; then
+  slog "Error: Argument parse error: $@"
+  echo_usage
+  exit 3
+fi
+parse_args $OPTS
+
+# Set default output file if not given as an option
+if [ ! "$INITRAMFS" ]; then
+  INITRAMFS=/boot/initramfs-$KRELEASE.img
+else
+  # User explicitly specified an img file to output to
+  EXPLICIT_INITRAMFS=1
+fi
+
+# Include config if it exists
+if [ -f "$CONFIG" ]; then
+  . "$CONFIG"
+fi
+
+CACHE_PATH="$CACHE_PATH/$KRELEASE"
+
+#------------------------------------------------------------------
+# Script compilation
+#------------------------------------------------------------------
+prepare_cache_dir () {
+  if [ ! -d "$CACHE_PATH" ]; then
+    mkdir -p "$CACHE_PATH"
+    [ $? -ne 0 ] && return 1
+  fi
+  return 0
+}
+
+compile_script () { # script
+  local opts f ret
+  local s=$1
+
+  f="$SCRIPT_PATH/$s.stp"
+  if [ ! -f "$f" ]; then
+    echo "Error: no script file($f)."
+    return 1
+  fi
+
+  # Get options from config if they exist
+  eval opts=\$${s}_OPT
+
+  echo -n " Compiling $s ... "
+  cd "$CACHE_PATH"
+  $STAP -p4 -m "$s" $opts "$f" >/dev/null 2>&1
+  ret=$?
+  if [ $ret -ne 0 ]; then
+    log "Failed to compile script($s)."
+  fi
+  [ $ret -eq 0 ] && echo "done" || echo "error"
+  return $ret
+}
+
+# Writes info to $DRACUT_SRC, which the stap dracut module will source.
+update_dracut() { # scripts
+  local s opts
+
+  if [ -f "$DRACUT_SRC" ]; then
+    rm -f "$DRACUT_SRC"
+  fi
+
+  echo      "STAPRUN=\"$STAPRUN\""      >> "$DRACUT_SRC"
+  echo       "STAPIO=\"$STAPIO\""       >> "$DRACUT_SRC"
+  echo   "CACHE_PATH=\"$CACHE_PATH\""   >> "$DRACUT_SRC"
+  echo    "STAT_PATH=\"$STAT_PATH\""    >> "$DRACUT_SRC"
+  echo     "KRELEASE=\"$KRELEASE\""     >> "$DRACUT_SRC"
+
+  echo -n "ONBOOT_SCRIPTS=\"" >> "$DRACUT_SRC"
+  for s in $*; do
+    echo -n "$s " >> "$DRACUT_SRC"
+  done
+  echo "\"" >> "$DRACUT_SRC"
+
+  for s in $*; do
+    eval opts=\$${s}_OPT
+    echo -n "$s" >> "$DRACUT_SRC"
+    echo "_OPT=\"$opts\"" >> "$DRACUT_SRC"
+  done
+}
+
+backup_initramfs() {
+  # does target file exist?
+  if [ -f "$INITRAMFS" ]; then
+    echo
+    # don't overwrite an existing backup
+    if [ ! -f "$INITRAMFS.bak" ]; then
+      mv "$INITRAMFS" "$INITRAMFS.bak"
+      echo "  Renamed $INITRAMFS"
+      echo -n "       to $INITRAMFS.bak ... "
+      RESTORE_INITRAMFS_ON_FAIL=1
+    else
+      echo -n "  Backup already exists: $INITRAMFS.bak ... "
+    fi
+  fi
+}
+
+#------------------------------------------------------------------
+# Main
+#------------------------------------------------------------------
+main () {
+  local s ret ss
+
+  if [ ! -f "$DRACUT" ]; then
+    do_failure "$DRACUT not found"
+    return 1
+  fi
+
+  if [ ! -d "$(dirname $DRACUT_SRC)" ]; then
+    do_failure "SystemTap dracut module $(dirname $DRACUT_SRC) not found"
+    return 1
+  fi
+
+  prepare_cache_dir
+  if [ $? -ne 0 ]; then
+    do_failure "Failed to make cache directory ($CACHE_PATH)"
+    return 1
+  fi
+
+  # Compile requested scripts
+  for s in $OPT_SCRIPTS; do
+    compile_script $s
+    ret=$?
+    if [ $ret -eq 0 ]; then
+      ss="$ss$s "
+    else
+      echo "Warning: Could not compile $s ($ret)"
+    fi
+  done
+
+  # User specified script(s) but they were all skipped
+  if [ -n "$OPT_SCRIPTS" ] && [ -z "$ss" ]; then
+    do_failure "No scripts left to operate on"
+    return 1
+  fi
+
+  if [ ! "$ss" ]; then
+    echo -n " Creating initramfs without scripts ... "
+  else
+    echo -n " Creating initramfs with $ss... "
+  fi
+
+  update_dracut $ss
+  if [ $? -ne 0 ]; then
+    do_failure "Call to update_dracut failed"
+    return 1
+  fi
+
+  if [ "$BACKUP_INITRAMFS" ]; then
+    backup_initramfs
+  fi
+
+  dir=`dirname $INITRAMFS` && TMPINITRAMFS=`mktemp --tmpdir=$dir`
+  if [ $? -ne 0 ]; then
+    do_failure "Failed to make temporary file in $dir"
+    return 1
+  fi
+
+  if [ ! "$ss" ]; then
+    # Create the initramfs image without stap module enabled.
+    out=$($DRACUT --force $TMPINITRAMFS $KRELEASE 2>&1)
+  else
+    # Create the initramfs image with stap module enabled.
+    out=$($DRACUT --add stap --force $TMPINITRAMFS $KRELEASE 2>&1)
+  fi
+
+  # dracut will report success even if some modules (e.g. stap) failed
+  # to install some files, so we need to be a bit more involved in
+  # checking for errors
+  if [ $? -ne 0 ] || \
+      [[ "$out" == *ERROR* ]] || \
+      ( [ -n "$ss" ] && ! lsinitrd "$TMPINITRAMFS" | grep -q ${STAPRUN:1} ); then
+    do_failure "The initramfs creation is unsuccessful"
+    if [ -f /var/log/dracut.log ]; then
+      do_failure "See /var/log/dracut.log for more info"
+    else
+      do_failure "See dracut log for more info"
+    fi
+    echo
+    if [ -f "$TMPINITRAMFS" ]; then
+      rm "$TMPINITRAMFS"
+    fi
+    # Put back the initramfs if we moved it
+    if [ "$RESTORE_INITRAMFS_ON_FAIL" ]; then
+      mv "$INITRAMFS.bak" "$INITRAMFS"
+      echo "  Renamed $INITRAMFS.bak"
+      echo "       to $INITRAMFS"
+    fi
+    return 1
+  fi
+
+  mv "$TMPINITRAMFS" "$INITRAMFS"
+
+  # The initramfs is in place. If the user explicitly specified an
+  # output file using -o, then we should skip updating the bootloader
+  # (the output file may not even be in /boot/).
+  if [ "$EXPLICIT_INITRAMFS" ]; then
+    do_success "initramfs created"
+    echo
+    echo -n "NB: bootloader was not updated"
+    return 0
+  fi
+
+  echo "done"
+  return 0
+}
+
+main
+exit $?

@@ -25,7 +25,9 @@ AM_CXXFLAGS += -Werror
 endif
 
 bin_SCRIPTS = stap-report stap-profile-annotate stap-prep
+nodist_bin_SCRIPTS = initscript/stap-onboot
 pkglibexec_SCRIPTS = stap-env
+nodist_pkglibexec_SCRIPTS = initscript/stap-service-prepare
 oldinclude_HEADERS = includes/sys/sdt.h includes/sys/sdt-config.h
 
 bin_PROGRAMS =

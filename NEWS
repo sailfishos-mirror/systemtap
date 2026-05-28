@@ -9,6 +9,18 @@
   CONFIG_DEBUG_INFO=y (for .ko), -g, gcc -save-temps=obj (preserving
   .i/.s temporaries), and runs pahole(1) on the result (if available).
 
+- REMOVED old systemtap initscript infrastructure. The legacy
+  systemtap-service command and systemtap.service have been replaced with
+  modern systemd service templates:
+  * stap@.service - compiles and runs .stp scripts from /etc/systemtap/script.d/
+  * staprun@.service - runs precompiled .ko modules
+  Both support per-script options via .options files. Compiled modules are
+  cached in /lib/modules/$(uname -r)/systemtap/ and reused across restarts.
+  Use: systemctl start stap@myScript.service
+
+  The old "systemtap-service onboot" functionality has been extracted into
+  a new standalone stap-onboot command for embedding scripts into initramfs.
+
 * What's new in version 5.5, 2026-05-01
 
 - New @enum() operator for accessing enumeration constants from

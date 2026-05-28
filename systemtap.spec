@@ -379,17 +379,10 @@ Summary: Systemtap Initscripts
 License: GPL-2.0-or-later
 URL: https://sourceware.org/systemtap/
 Requires: systemtap = %{version}-%{release}
-%if %{with_systemd}
 Requires: systemd
-%else
-Requires(post): chkconfig
-Requires(preun): chkconfig
-Requires(preun): initscripts
-Requires(postun): initscripts
-%endif
 
 %description initscript
-This package includes a SysVinit script to launch selected systemtap
+This package includes systemd service templates to launch systemtap
 scripts at system startup, along with a dracut module for early
 boot-time probing if supported.
 
@@ -792,28 +785,15 @@ mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/run/systemtap
 mkdir -p $RPM_BUILD_ROOT%{_sysconfdir}/logrotate.d
 install -m 644 initscript/logrotate.stap-server $RPM_BUILD_ROOT%{_sysconfdir}/logrotate.d/stap-server
 
-# If using systemd systemtap.service file, retain the old init script in %{_libexecdir} as a helper.
-%if %{with_systemd}
 mkdir -p $RPM_BUILD_ROOT%{_unitdir}
-touch $RPM_BUILD_ROOT%{_unitdir}/systemtap.service
-# RHBZ2070857
-mkdir -p $RPM_BUILD_ROOT%{_presetdir}
-echo 'enable systemtap.service' > $RPM_BUILD_ROOT%{_presetdir}/42-systemtap.preset
-install -m 644 initscript/systemtap.service $RPM_BUILD_ROOT%{_unitdir}/systemtap.service
-mkdir -p $RPM_BUILD_ROOT%{_sbindir}
-install -m 755 initscript/systemtap $RPM_BUILD_ROOT%{_sbindir}/systemtap-service
-%else
-mkdir -p $RPM_BUILD_ROOT%{initdir}
-install -m 755 initscript/systemtap $RPM_BUILD_ROOT%{initdir}
-mkdir -p $RPM_BUILD_ROOT%{_sbindir}
-ln -sf %{initdir}/systemtap $RPM_BUILD_ROOT%{_sbindir}/systemtap-service
-# TODO CHECK CORRECTNESS: symlink %{_sbindir}/systemtap-service to %{initdir}/systemtap
-%endif
+install -m 644 initscript/stap@.service $RPM_BUILD_ROOT%{_unitdir}/stap@.service
+install -m 644 initscript/staprun@.service $RPM_BUILD_ROOT%{_unitdir}/staprun@.service
+mkdir -p $RPM_BUILD_ROOT%{_libexecdir}/systemtap
+install -m 755 initscript/stap-service-prepare $RPM_BUILD_ROOT%{_libexecdir}/systemtap/stap-service-prepare
 
 mkdir -p $RPM_BUILD_ROOT%{_sysconfdir}/systemtap
 mkdir -p $RPM_BUILD_ROOT%{_sysconfdir}/systemtap/conf.d
 mkdir -p $RPM_BUILD_ROOT%{_sysconfdir}/systemtap/script.d
-install -m 644 initscript/config.systemtap $RPM_BUILD_ROOT%{_sysconfdir}/systemtap/config
 
 %if %{with_systemd}
 mkdir -p $RPM_BUILD_ROOT%{_unitdir}
@@ -1006,38 +986,13 @@ fi
 exit 0
 
 %post initscript
-%if %{with_systemd}
-    # RHBZ2070857 - use systemd presets instead
-    # /bin/systemctl enable systemtap.service >/dev/null 2>&1 || :
-%else
-    /sbin/chkconfig --add systemtap
-%endif
+# Nothing to do - systemd templates are instantiated on demand
 exit 0
 
 %preun initscript
-# Check that this is the actual deinstallation of the package, as opposed to
-# just removing the old package on upgrade.
-if [ $1 = 0 ] ; then
-    %if %{with_systemd}
-        /bin/systemctl --no-reload disable systemtap.service >/dev/null 2>&1 || :
-        /bin/systemctl stop systemtap.service >/dev/null 2>&1 || :
-    %else
-        /sbin/service systemtap stop >/dev/null 2>&1
-        /sbin/chkconfig --del systemtap
-    %endif
-fi
 exit 0
 
 %postun initscript
-# Check whether this is an upgrade of the package.
-# If so, restart the service if it's running
-if [ "$1" -ge "1" ] ; then
-    %if %{with_systemd}
-        /bin/systemctl condrestart systemtap.service >/dev/null 2>&1 || :
-    %else
-        /sbin/service systemtap condrestart >/dev/null 2>&1 || :
-    %endif
-fi
 exit 0
 
 %post runtime-virtguest
@@ -1265,21 +1220,16 @@ exit 0
 
 
 %files initscript
-%if %{with_systemd}
-%{_presetdir}/42-systemtap.preset
-%{_unitdir}/systemtap.service
-%{_sbindir}/systemtap-service
-%else
-%{initdir}/systemtap
-%{_sbindir}/systemtap-service
-%endif
+%{_unitdir}/stap@.service
+%{_unitdir}/staprun@.service
+%{_libexecdir}/systemtap/stap-service-prepare
+%{_bindir}/stap-onboot
+%{_mandir}/man8/stap-onboot.8*
 %dir %{_sysconfdir}/systemtap
 %dir %{_sysconfdir}/systemtap/conf.d
 %dir %{_sysconfdir}/systemtap/script.d
-%config(noreplace) %{_sysconfdir}/systemtap/config
 %dir %{_localstatedir}/cache/systemtap
 %ghost %{_localstatedir}/run/systemtap
-%{_mandir}/man8/systemtap-service.8*
 %if %{with_dracut}
    %dir %{dracutstap}
    %{dracutstap}/*

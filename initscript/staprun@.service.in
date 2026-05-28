@@ -1,0 +1,15 @@
+[Unit]
+Description=SystemTap module %i
+Documentation=man:staprun(8)
+After=local-fs.target
+
+[Service]
+Type=simple
+EnvironmentFile=-/etc/systemtap/script.d/%i.options
+ExecStart=/bin/sh -c '@prefix@/bin/staprun $STAPRUN_OPTIONS /lib/modules/`uname -r`/systemtap/%i.ko'
+Restart=on-failure
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

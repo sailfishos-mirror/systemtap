@@ -147,8 +147,9 @@ am__CONFIG_DISTCLEAN_FILES = config.status config.cache config.log \
 mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = config.h
 CONFIG_CLEAN_FILES = includes/sys/sdt-config.h \
-	initscript/config.systemtap initscript/config.stap-server \
-	initscript/systemtap initscript/stap-server \
+	initscript/config.stap-server initscript/stap-server \
+	initscript/stap-service-prepare initscript/stap-onboot \
+	initscript/stap@.service initscript/staprun@.service \
 	initscript/99stap/module-setup.sh initscript/99stap/install \
 	initscript/99stap/check run-stap dtrace \
 	java/org/systemtap/byteman/helper/HelperSDT.java \
@@ -159,7 +160,8 @@ CONFIG_CLEAN_VPATH_FILES =
 @BUILD_TRANSLATOR_TRUE@@BUILD_VIRT_TRUE@am__EXEEXT_2 =  \
 @BUILD_TRANSLATOR_TRUE@@BUILD_VIRT_TRUE@	stapvirt$(EXEEXT)
 am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(pkglibexecdir)" \
-	"$(DESTDIR)$(bindir)" "$(DESTDIR)$(pkglibexecdir)" \
+	"$(DESTDIR)$(bindir)" "$(DESTDIR)$(bindir)" \
+	"$(DESTDIR)$(pkglibexecdir)" "$(DESTDIR)$(pkglibexecdir)" \
 	"$(DESTDIR)$(oldincludedir)"
 @BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@am__EXEEXT_3 = stap-sign-module$(EXEEXT) \
 @BUILD_TRANSLATOR_TRUE@@HAVE_NSS_TRUE@	stap-authorize-cert$(EXEEXT)
@@ -303,7 +305,8 @@ am__uninstall_files_from_dir = { \
   || { echo " ( cd '$$dir' && rm -f" $$files ")"; \
        $(am__cd) "$$dir" && echo $$files | $(am__xargs_n) 40 $(am__rm_f); }; \
   }
-SCRIPTS = $(bin_SCRIPTS) $(pkglibexec_SCRIPTS)
+SCRIPTS = $(bin_SCRIPTS) $(nodist_bin_SCRIPTS) \
+	$(nodist_pkglibexec_SCRIPTS) $(pkglibexec_SCRIPTS)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -671,7 +674,9 @@ AM_CFLAGS = -D_GNU_SOURCE -fexceptions -Wall -Wextra -Wunused \
 AM_CXXFLAGS = -Wall -Wextra $(am__append_2)
 bin_SCRIPTS = stap-report stap-profile-annotate stap-prep \
 	$(am__append_4) $(am__append_7)
+nodist_bin_SCRIPTS = initscript/stap-onboot
 pkglibexec_SCRIPTS = stap-env $(am__append_8)
+nodist_pkglibexec_SCRIPTS = initscript/stap-service-prepare
 oldinclude_HEADERS = includes/sys/sdt.h includes/sys/sdt-config.h
 @BUILD_TRANSLATOR_TRUE@stap_SOURCES = main.cxx session.cxx parse.cxx \
 @BUILD_TRANSLATOR_TRUE@	staptree.cxx elaborate.cxx \
@@ -837,13 +842,17 @@ distclean-hdr:
 	-rm -f config.h stamp-h1
 includes/sys/sdt-config.h: $(top_builddir)/config.status $(top_srcdir)/includes/sys/sdt-config.h.in
 	cd $(top_builddir) && $(SHELL) ./config.status $@
-initscript/config.systemtap: $(top_builddir)/config.status $(top_srcdir)/initscript/config.systemtap.in
-	cd $(top_builddir) && $(SHELL) ./config.status $@
 initscript/config.stap-server: $(top_builddir)/config.status $(top_srcdir)/initscript/config.stap-server.in
 	cd $(top_builddir) && $(SHELL) ./config.status $@
-initscript/systemtap: $(top_builddir)/config.status $(top_srcdir)/initscript/systemtap.in
-	cd $(top_builddir) && $(SHELL) ./config.status $@
 initscript/stap-server: $(top_builddir)/config.status $(top_srcdir)/initscript/stap-server.in
+	cd $(top_builddir) && $(SHELL) ./config.status $@
+initscript/stap-service-prepare: $(top_builddir)/config.status $(top_srcdir)/initscript/stap-service-prepare.in
+	cd $(top_builddir) && $(SHELL) ./config.status $@
+initscript/stap-onboot: $(top_builddir)/config.status $(top_srcdir)/initscript/stap-onboot.in
+	cd $(top_builddir) && $(SHELL) ./config.status $@
+initscript/stap@.service: $(top_builddir)/config.status $(top_srcdir)/initscript/stap@.service.in
+	cd $(top_builddir) && $(SHELL) ./config.status $@
+initscript/staprun@.service: $(top_builddir)/config.status $(top_srcdir)/initscript/staprun@.service.in
 	cd $(top_builddir) && $(SHELL) ./config.status $@
 initscript/99stap/module-setup.sh: $(top_builddir)/config.status $(top_srcdir)/initscript/99stap/module-setup.sh.in
 	cd $(top_builddir) && $(SHELL) ./config.status $@
@@ -1023,6 +1032,76 @@ uninstall-binSCRIPTS:
 	files=`for p in $$list; do echo "$$p"; done | \
 	       sed -e 's,.*/,,;$(transform)'`; \
 	dir='$(DESTDIR)$(bindir)'; $(am__uninstall_files_from_dir)
+install-nodist_binSCRIPTS: $(nodist_bin_SCRIPTS)
+	@$(NORMAL_INSTALL)
+	@list='$(nodist_bin_SCRIPTS)'; test -n "$(bindir)" || list=; \
+	if test -n "$$list"; then \
+	  echo " $(MKDIR_P) '$(DESTDIR)$(bindir)'"; \
+	  $(MKDIR_P) "$(DESTDIR)$(bindir)" || exit 1; \
+	fi; \
+	for p in $$list; do \
+	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
+	  if test -f "$$d$$p"; then echo "$$d$$p"; echo "$$p"; else :; fi; \
+	done | \
+	sed -e 'p;s,.*/,,;n' \
+	    -e 'h;s|.*|.|' \
+	    -e 'p;x;s,.*/,,;$(transform)' | sed 'N;N;N;s,\n, ,g' | \
+	$(AWK) 'BEGIN { files["."] = ""; dirs["."] = 1; } \
+	  { d=$$3; if (dirs[d] != 1) { print "d", d; dirs[d] = 1 } \
+	    if ($$2 == $$4) { files[d] = files[d] " " $$1; \
+	      if (++n[d] == $(am__install_max)) { \
+		print "f", d, files[d]; n[d] = 0; files[d] = "" } } \
+	    else { print "f", d "/" $$4, $$1 } } \
+	  END { for (d in files) print "f", d, files[d] }' | \
+	while read type dir files; do \
+	     if test "$$dir" = .; then dir=; else dir=/$$dir; fi; \
+	     test -z "$$files" || { \
+	       echo " $(INSTALL_SCRIPT) $$files '$(DESTDIR)$(bindir)$$dir'"; \
+	       $(INSTALL_SCRIPT) $$files "$(DESTDIR)$(bindir)$$dir" || exit $$?; \
+	     } \
+	; done
+
+uninstall-nodist_binSCRIPTS:
+	@$(NORMAL_UNINSTALL)
+	@list='$(nodist_bin_SCRIPTS)'; test -n "$(bindir)" || exit 0; \
+	files=`for p in $$list; do echo "$$p"; done | \
+	       sed -e 's,.*/,,;$(transform)'`; \
+	dir='$(DESTDIR)$(bindir)'; $(am__uninstall_files_from_dir)
+install-nodist_pkglibexecSCRIPTS: $(nodist_pkglibexec_SCRIPTS)
+	@$(NORMAL_INSTALL)
+	@list='$(nodist_pkglibexec_SCRIPTS)'; test -n "$(pkglibexecdir)" || list=; \
+	if test -n "$$list"; then \
+	  echo " $(MKDIR_P) '$(DESTDIR)$(pkglibexecdir)'"; \
+	  $(MKDIR_P) "$(DESTDIR)$(pkglibexecdir)" || exit 1; \
+	fi; \
+	for p in $$list; do \
+	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
+	  if test -f "$$d$$p"; then echo "$$d$$p"; echo "$$p"; else :; fi; \
+	done | \
+	sed -e 'p;s,.*/,,;n' \
+	    -e 'h;s|.*|.|' \
+	    -e 'p;x;s,.*/,,;$(transform)' | sed 'N;N;N;s,\n, ,g' | \
+	$(AWK) 'BEGIN { files["."] = ""; dirs["."] = 1; } \
+	  { d=$$3; if (dirs[d] != 1) { print "d", d; dirs[d] = 1 } \
+	    if ($$2 == $$4) { files[d] = files[d] " " $$1; \
+	      if (++n[d] == $(am__install_max)) { \
+		print "f", d, files[d]; n[d] = 0; files[d] = "" } } \
+	    else { print "f", d "/" $$4, $$1 } } \
+	  END { for (d in files) print "f", d, files[d] }' | \
+	while read type dir files; do \
+	     if test "$$dir" = .; then dir=; else dir=/$$dir; fi; \
+	     test -z "$$files" || { \
+	       echo " $(INSTALL_SCRIPT) $$files '$(DESTDIR)$(pkglibexecdir)$$dir'"; \
+	       $(INSTALL_SCRIPT) $$files "$(DESTDIR)$(pkglibexecdir)$$dir" || exit $$?; \
+	     } \
+	; done
+
+uninstall-nodist_pkglibexecSCRIPTS:
+	@$(NORMAL_UNINSTALL)
+	@list='$(nodist_pkglibexec_SCRIPTS)'; test -n "$(pkglibexecdir)" || exit 0; \
+	files=`for p in $$list; do echo "$$p"; done | \
+	       sed -e 's,.*/,,;$(transform)'`; \
+	dir='$(DESTDIR)$(pkglibexecdir)'; $(am__uninstall_files_from_dir)
 install-pkglibexecSCRIPTS: $(pkglibexec_SCRIPTS)
 	@$(NORMAL_INSTALL)
 	@list='$(pkglibexec_SCRIPTS)'; test -n "$(pkglibexecdir)" || list=; \
@@ -2255,7 +2334,7 @@ check: $(BUILT_SOURCES)
 all-am: Makefile $(PROGRAMS) $(SCRIPTS) $(HEADERS) config.h all-local
 installdirs: installdirs-recursive
 installdirs-am:
-	for dir in "$(DESTDIR)$(bindir)" "$(DESTDIR)$(pkglibexecdir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(pkglibexecdir)" "$(DESTDIR)$(oldincludedir)"; do \
+	for dir in "$(DESTDIR)$(bindir)" "$(DESTDIR)$(pkglibexecdir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(pkglibexecdir)" "$(DESTDIR)$(pkglibexecdir)" "$(DESTDIR)$(oldincludedir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
 install-exec: $(BUILT_SOURCES)
@@ -2390,7 +2469,8 @@ install-dvi: install-dvi-recursive
 install-dvi-am:
 
 install-exec-am: install-binPROGRAMS install-binSCRIPTS \
-	install-exec-local install-pkglibexecPROGRAMS \
+	install-exec-local install-nodist_binSCRIPTS \
+	install-nodist_pkglibexecSCRIPTS install-pkglibexecPROGRAMS \
 	install-pkglibexecSCRIPTS
 
 install-html: install-html-recursive
@@ -2500,7 +2580,8 @@ ps: ps-recursive
 ps-am:
 
 uninstall-am: uninstall-binPROGRAMS uninstall-binSCRIPTS \
-	uninstall-local uninstall-oldincludeHEADERS \
+	uninstall-local uninstall-nodist_binSCRIPTS \
+	uninstall-nodist_pkglibexecSCRIPTS uninstall-oldincludeHEADERS \
 	uninstall-pkglibexecPROGRAMS uninstall-pkglibexecSCRIPTS
 
 .MAKE: $(am__recursive_targets) all check check-am install install-am \
@@ -2517,6 +2598,7 @@ uninstall-am: uninstall-binPROGRAMS uninstall-binSCRIPTS \
 	install-data-local install-dvi install-dvi-am install-exec \
 	install-exec-am install-exec-local install-html \
 	install-html-am install-info install-info-am install-man \
+	install-nodist_binSCRIPTS install-nodist_pkglibexecSCRIPTS \
 	install-oldincludeHEADERS install-pdf install-pdf-am \
 	install-pkglibexecPROGRAMS install-pkglibexecSCRIPTS \
 	install-ps install-ps-am install-strip installcheck \
@@ -2524,7 +2606,8 @@ uninstall-am: uninstall-binPROGRAMS uninstall-binSCRIPTS \
 	maintainer-clean-generic mostlyclean mostlyclean-compile \
 	mostlyclean-generic pdf pdf-am ps ps-am tags tags-am uninstall \
 	uninstall-am uninstall-binPROGRAMS uninstall-binSCRIPTS \
-	uninstall-local uninstall-oldincludeHEADERS \
+	uninstall-local uninstall-nodist_binSCRIPTS \
+	uninstall-nodist_pkglibexecSCRIPTS uninstall-oldincludeHEADERS \
 	uninstall-pkglibexecPROGRAMS uninstall-pkglibexecSCRIPTS
 
 .PRECIOUS: Makefile
