@@ -909,6 +909,24 @@ AC_CHECK_DECLS([BPF_PROG_TYPE_RAW_TRACEPOINT],
                [],
                [#include <linux/bpf.h>])
 
+AC_CHECK_DECLS([BPF_PROG_TYPE_LSM],
+               [AC_DEFINE([HAVE_BPF_PROG_TYPE_LSM], [1], [Define to 1 if you have BPF LSM support in bpf.h])],
+               [],
+               [#include <linux/bpf.h>])
+
+dnl Optional libbpf support for LSM hook BTF ID resolution
+AC_ARG_WITH([libbpf],
+  AS_HELP_STRING([--without-libbpf],
+    [Do not use libbpf even if present]))
+
+AS_IF([test "x$with_libbpf" != "xno"], [
+  PKG_CHECK_MODULES([libbpf], [libbpf >= 1.0],
+    [have_libbpf=yes
+     AC_DEFINE([HAVE_LIBBPF], [1], [Define to 1 if you have libbpf])],
+    [have_libbpf=no])
+])
+AM_CONDITIONAL([HAVE_LIBBPF], [test "x$have_libbpf" = "xyes"])
+
 dnl Optional libselinux support allows stapdyn to check
 dnl for booleans that would prevent Dyninst from working.
 AC_ARG_WITH([selinux],

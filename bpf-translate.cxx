@@ -366,6 +366,9 @@ bpf_unparser::get_exit_block()
 
   set_block(exit);
   add_epilogue();
+  // LSM and other probes that need a return value require R0 to be set
+  // before exit. Set it to 0 (success/allow) by default.
+  this_prog.mk_mov(this_ins, this_prog.lookup_reg(BPF_REG_0), this_prog.new_imm(0));
   this_prog.mk_exit(this_ins);
 
   set_block(cont);
@@ -4939,10 +4942,60 @@ translate_probe(program &prog, globals &glob, derived_probe *dp)
 
   u.add_prologue();
 
+  // Initialize __lsm_return to 0 (allow) if present
+  for (auto v : dp->locals)
+    {
+      if (v->name == "__lsm_return")
+        {
+          auto i = u.this_locals->find(v);
+          if (i != u.this_locals->end())
+            prog.mk_mov(u.this_ins, i->second, prog.new_imm(0));
+          break;
+        }
+    }
+
   dp->body->visit (&u);
 
   if (u.in_block())
-    u.emit_jmp(u.get_ret0_block());
+    {
+      // Check if this is an LSM probe with a return value
+      bool has_lsm_return = false;
+      vardecl *lsm_return_var = NULL;
+      for (auto v : dp->locals)
+        {
+          if (v->name == "__lsm_return")
+            {
+              has_lsm_return = true;
+              lsm_return_var = v;
+              break;
+            }
+        }
+
+      if (has_lsm_return)
+        {
+          // Load __lsm_return into R0 and exit directly (don't use get_exit_block
+          // because it would overwrite R0 with 0)
+          auto i = u.this_locals->find(lsm_return_var);
+          if (i != u.this_locals->end())
+            {
+              value *ret_val = i->second;
+              prog.mk_mov(u.this_ins, prog.lookup_reg(BPF_REG_0), ret_val);
+            }
+          else
+            {
+              // If not found, default to 0 (allow)
+              prog.mk_mov(u.this_ins, prog.lookup_reg(BPF_REG_0), prog.new_imm(0));
+            }
+          // Exit directly with our return value in R0
+          u.add_epilogue();
+          prog.mk_exit(u.this_ins);
+        }
+      else
+        {
+          // Normal probes return 0
+          u.emit_jmp(u.get_ret0_block());
+        }
+    }
 }
 
 static void
@@ -5334,6 +5387,21 @@ translate_bpf_pass (systemtap_session& s)
           sort_for_bpf(s, s.tracepoint_derived_probes, trace_v);
 
           for (auto i = trace_v.begin(); i != trace_v.end(); ++i)
+            {
+              t = i->first->tok;
+              program p(target_kernel_bpf);
+              translate_probe(p, glob, i->first);
+              p.generate();
+              output_probe(eo, p, i->second, SHF_ALLOC);
+            }
+        }
+
+      if (s.lsm_derived_probes)
+        {
+          sort_for_bpf_probe_arg_vector lsm_v;
+          sort_for_bpf(s, s.lsm_derived_probes, lsm_v);
+
+          for (auto i = lsm_v.begin(); i != lsm_v.end(); ++i)
             {
               t = i->first->tok;
               program p(target_kernel_bpf);

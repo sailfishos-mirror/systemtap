@@ -1,0 +1,23 @@
+#!/usr/bin/env stap
+
+global socket_count = 0
+
+probe lsm.socket_create
+{
+    socket_count++
+    printf("Socket created\n")
+}
+
+probe begin
+{
+    println("BEGIN")
+}
+
+probe timer.s(3)
+{
+    if (socket_count > 0)
+        println("END PASS")
+    else
+        println("END FAIL")
+    exit()
+}

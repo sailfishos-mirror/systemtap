@@ -1,0 +1,23 @@
+#!/usr/bin/env stap
+
+global file_opens = 0
+
+probe lsm.file_open
+{
+    file_opens++
+    printf("Opened file\n")
+}
+
+probe begin
+{
+    println("BEGIN")
+}
+
+probe timer.s(3)
+{
+    if (file_opens > 0)
+        println("END PASS")
+    else
+        println("END FAIL")
+    exit()
+}

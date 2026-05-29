@@ -24,11 +24,24 @@ man_MANS = stapbpf.8
 
 stapbpf_SOURCES = stapbpf.cxx bpfinterp.cxx libbpf.c ../staputil.cxx \
 	../staprun/start_cmd.c
+if HAVE_LIBBPF
+stapbpf_SOURCES += lsm-btf.cxx
+endif
 stapbpf_CPPFLAGS = $(AM_CPPFLAGS)
 stapbpf_CFLAGS = $(AM_CFLAGS) $(debuginfod_CFLAGS)
 stapbpf_CXXFLAGS = $(AM_CXXFLAGS) $(debuginfod_CFLAGS)
+if HAVE_LIBBPF
+stapbpf_CFLAGS += $(libbpf_CFLAGS)
+stapbpf_CXXFLAGS += $(libbpf_CFLAGS)
+endif
 stapbpf_LDFLAGS = $(AM_LDFLAGS) $(debuginfod_LDFLAGS)
+if HAVE_LIBBPF
+stapbpf_LDFLAGS += $(libbpf_LDFLAGS)
+endif
 stapbpf_LDADD = $(stapbpf_LIBS) -lpthread $(debuginfod_LIBS)
+if HAVE_LIBBPF
+stapbpf_LDADD += $(libbpf_LIBS)
+endif
 
 BUILT_SOURCES =
 CLEANFILES =

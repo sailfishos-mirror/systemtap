@@ -22,6 +22,9 @@
 /* Define to 1 if you have the necessary declarations in bpf.h */
 #undef HAVE_BPF_DECLS
 
+/* Define to 1 if you have BPF LSM support in bpf.h */
+#undef HAVE_BPF_PROG_TYPE_LSM
+
 /* Define to 1 if you have the necessary declarations in bpf.h */
 #undef HAVE_BPF_PROG_TYPE_RAW_TRACEPOINT
 
@@ -42,6 +45,10 @@
 /* Define if the GNU dcgettext() function is already present or preinstalled.
    */
 #undef HAVE_DCGETTEXT
+
+/* Define to 1 if you have the declaration of 'BPF_PROG_TYPE_LSM', and to 0 if
+   you don't. */
+#undef HAVE_DECL_BPF_PROG_TYPE_LSM
 
 /* Define to 1 if you have the declaration of 'BPF_PROG_TYPE_PERF_EVENT', and
    to 0 if you don't. */
@@ -78,6 +85,9 @@
 
 /* Define to 1 if the language server is supported */
 #undef HAVE_LANGUAGE_SERVER_SUPPORT
+
+/* Define to 1 if you have libbpf */
+#undef HAVE_LIBBPF
 
 /* Define to 1 if debuginfod is enabled. */
 #undef HAVE_LIBDEBUGINFOD

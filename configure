@@ -649,6 +649,10 @@ HAVE_SELINUX_FALSE
 HAVE_SELINUX_TRUE
 selinux_LIBS
 selinux_CFLAGS
+HAVE_LIBBPF_FALSE
+HAVE_LIBBPF_TRUE
+libbpf_LIBS
+libbpf_CFLAGS
 HAVE_BPF_DECLS_FALSE
 HAVE_BPF_DECLS_TRUE
 support_section_retain
@@ -940,6 +944,7 @@ with_python2_probes
 with_python3_probes
 enable_monitor
 with_bpf
+with_libbpf
 with_selinux
 with_java
 with_extra_version
@@ -979,6 +984,8 @@ jsonc_CFLAGS
 jsonc_LIBS
 ncurses_CFLAGS
 ncurses_LIBS
+libbpf_CFLAGS
+libbpf_LIBS
 selinux_CFLAGS
 selinux_LIBS'
 ac_subdirs_all='testsuite'
@@ -1675,6 +1682,7 @@ Optional Packages:
                           Disable building python version 3 probe support,
                           even if it is available
   --without-bpf           Do not try to build BPF components
+  --without-libbpf        Do not use libbpf even if present
   --without-selinux       Do not use libselinux even if present
   --with-java=DIRECTORY   Specify JDK directory to compile libHelperSDT.so
                           against (default is /usr/lib/jvm/java)
@@ -1730,6 +1738,9 @@ Some influential environment variables:
               C compiler flags for ncurses, overriding pkg-config
   ncurses_LIBS
               linker flags for ncurses, overriding pkg-config
+  libbpf_CFLAGS
+              C compiler flags for libbpf, overriding pkg-config
+  libbpf_LIBS linker flags for libbpf, overriding pkg-config
   selinux_CFLAGS
               C compiler flags for selinux, overriding pkg-config
   selinux_LIBS
@@ -14690,6 +14701,120 @@ printf '%s\n' "#define HAVE_BPF_PROG_TYPE_RAW_TRACEPOINT 1" >>confdefs.h
 fi
 
 
+ac_fn_check_decl "$LINENO" "BPF_PROG_TYPE_LSM" "ac_cv_have_decl_BPF_PROG_TYPE_LSM" "#include <linux/bpf.h>
+" "$ac_c_undeclared_builtin_options$ac_c_future_darwin_options" "CFLAGS"
+if test "x$ac_cv_have_decl_BPF_PROG_TYPE_LSM" = xyes
+then :
+  ac_have_decl=1
+else case e in #(
+  e) ac_have_decl=0 ;;
+esac
+fi
+printf '%s\n' "#define HAVE_DECL_BPF_PROG_TYPE_LSM $ac_have_decl" >>confdefs.h
+if test $ac_have_decl = 1
+then :
+
+printf '%s\n' "#define HAVE_BPF_PROG_TYPE_LSM 1" >>confdefs.h
+
+fi
+
+
+
+# Check whether --with-libbpf was given.
+if test ${with_libbpf+y}
+then :
+  withval=$with_libbpf;
+fi
+
+
+if test "x$with_libbpf" != "xno"
+then :
+
+
+pkg_failed=no
+{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: checking for libbpf" >&5
+printf %s "checking for libbpf... " >&6; }
+
+if test -n "$libbpf_CFLAGS"; then
+    pkg_cv_libbpf_CFLAGS="$libbpf_CFLAGS"
+ elif test -n "$PKG_CONFIG"; then
+    if test -n "$PKG_CONFIG" && \
+    { { printf '%s\n' "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libbpf >= 1.0\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "libbpf >= 1.0") 2>&5
+  ac_status=$?
+  printf '%s\n' "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_libbpf_CFLAGS=`$PKG_CONFIG --cflags "libbpf >= 1.0" 2>/dev/null`
+		      test "x$?" != "x0" && pkg_failed=yes
+else
+  pkg_failed=yes
+fi
+ else
+    pkg_failed=untried
+fi
+if test -n "$libbpf_LIBS"; then
+    pkg_cv_libbpf_LIBS="$libbpf_LIBS"
+ elif test -n "$PKG_CONFIG"; then
+    if test -n "$PKG_CONFIG" && \
+    { { printf '%s\n' "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libbpf >= 1.0\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "libbpf >= 1.0") 2>&5
+  ac_status=$?
+  printf '%s\n' "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_libbpf_LIBS=`$PKG_CONFIG --libs "libbpf >= 1.0" 2>/dev/null`
+		      test "x$?" != "x0" && pkg_failed=yes
+else
+  pkg_failed=yes
+fi
+ else
+    pkg_failed=untried
+fi
+
+
+
+if test $pkg_failed = yes; then
+   	{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf '%s\n' "no" >&6; }
+
+if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
+        _pkg_short_errors_supported=yes
+else
+        _pkg_short_errors_supported=no
+fi
+        if test $_pkg_short_errors_supported = yes; then
+	        libbpf_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors --cflags --libs "libbpf >= 1.0" 2>&1`
+        else
+	        libbpf_PKG_ERRORS=`$PKG_CONFIG --print-errors --cflags --libs "libbpf >= 1.0" 2>&1`
+        fi
+	# Put the nasty error message in config.log where it belongs
+	echo "$libbpf_PKG_ERRORS" >&5
+
+	have_libbpf=no
+elif test $pkg_failed = untried; then
+     	{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf '%s\n' "no" >&6; }
+	have_libbpf=no
+else
+	libbpf_CFLAGS=$pkg_cv_libbpf_CFLAGS
+	libbpf_LIBS=$pkg_cv_libbpf_LIBS
+        { printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+printf '%s\n' "yes" >&6; }
+	have_libbpf=yes
+
+printf '%s\n' "#define HAVE_LIBBPF 1" >>confdefs.h
+
+fi
+
+fi
+ if test "x$have_libbpf" = "xyes"; then
+  HAVE_LIBBPF_TRUE=
+  HAVE_LIBBPF_FALSE='#'
+else
+  HAVE_LIBBPF_TRUE='#'
+  HAVE_LIBBPF_FALSE=
+fi
+
+
 
 # Check whether --with-selinux was given.
 if test ${with_selinux+y}
@@ -15284,6 +15409,10 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${HAVE_BPF_DECLS_TRUE}" && test -z "${HAVE_BPF_DECLS_FALSE}"; then
   as_fn_error $? "conditional \"HAVE_BPF_DECLS\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${HAVE_LIBBPF_TRUE}" && test -z "${HAVE_LIBBPF_FALSE}"; then
+  as_fn_error $? "conditional \"HAVE_LIBBPF\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${HAVE_SELINUX_TRUE}" && test -z "${HAVE_SELINUX_FALSE}"; then

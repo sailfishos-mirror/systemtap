@@ -1,0 +1,22 @@
+#!/usr/bin/env stap
+
+global exec_count = 0
+
+probe lsm.bprm_check_security
+{
+    exec_count++
+}
+
+probe begin
+{
+    println("BEGIN")
+}
+
+probe timer.s(3)
+{
+    if (exec_count > 0)
+        println("END PASS")
+    else
+        println("END FAIL")
+    exit()
+}

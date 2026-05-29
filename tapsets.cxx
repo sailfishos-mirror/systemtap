@@ -495,6 +495,7 @@ static const string TOK_PROCESS("process");
 static const string TOK_PROVIDER("provider");
 static const string TOK_MARK("mark");
 static const string TOK_TRACE("trace");
+static const string TOK_LSM("lsm");
 static const string TOK_LABEL("label");
 static const string TOK_LIBRARY("library");
 static const string TOK_PLT("plt");
@@ -11216,6 +11217,33 @@ struct tracepoint_derived_probe_group: public generic_dpg<tracepoint_derived_pro
 };
 
 
+struct lsm_derived_probe: public derived_probe
+{
+  lsm_derived_probe (systemtap_session& s,
+                     const string& lsm_hook_name,
+                     probe* base_probe, probe_point* location);
+
+  systemtap_session& sess;
+  string hook_name;
+
+  void getargs (std::list<std::string> &arg_set) const;
+  void join_group (systemtap_session& s);
+  void print_dupe_stamp(ostream& o);
+};
+
+
+struct lsm_derived_probe_group: public generic_dpg<lsm_derived_probe>
+{
+  friend bool sort_for_bpf(systemtap_session& s,
+                           lsm_derived_probe_group *l,
+                           sort_for_bpf_probe_arg_vector &v);
+
+  void emit_module_decls (systemtap_session& s);
+  void emit_module_init (systemtap_session& s);
+  void emit_module_exit (systemtap_session& s);
+};
+
+
 struct tracepoint_var_expanding_visitor: public var_expanding_visitor
 {
   tracepoint_var_expanding_visitor(dwflpp& dw,
@@ -11806,6 +11834,140 @@ tracepoint_derived_probe::print_dupe_stamp(ostream& o)
   for (unsigned i = 0; i < args.size(); i++)
     if (args[i].used)
       o << "__tracepoint_arg_" << args[i].name << endl;
+}
+
+
+struct lsm_var_expanding_visitor: public var_expanding_visitor
+{
+  lsm_var_expanding_visitor(systemtap_session& s):
+    var_expanding_visitor (s) {}
+
+  void visit_target_symbol (target_symbol* e);
+};
+
+
+void
+lsm_var_expanding_visitor::visit_target_symbol (target_symbol* e)
+{
+  string argname = e->sym_name();
+
+  // Handle $ctx and $return - all other target symbols pass through to parent
+  if (argname == "ctx")
+    {
+      if (!e->components.empty())
+        throw SEMANTIC_ERROR(_("cannot dereference $ctx directly; use @cast($ctx, \"type\", \"kernel\") instead"), e->tok);
+
+      if (e->addressof)
+        throw SEMANTIC_ERROR(_("cannot take address of $ctx"), e->tok);
+
+      // Replace $ctx with reference to __lsm_arg_ctx
+      symbol* sym = new symbol;
+      sym->tok = e->tok;
+      sym->name = "__lsm_arg_ctx";
+      sym->type = pe_long;
+
+      provide (sym);
+    }
+  else if (argname == "return")
+    {
+      if (!e->components.empty())
+        throw SEMANTIC_ERROR(_("cannot dereference $return"), e->tok);
+
+      if (e->addressof)
+        throw SEMANTIC_ERROR(_("cannot take address of $return"), e->tok);
+
+      // Replace $return with reference to __lsm_return
+      symbol* sym = new symbol;
+      sym->tok = e->tok;
+      sym->name = "__lsm_return";
+      sym->type = pe_long;
+
+      provide (sym);
+    }
+  else
+    {
+      // Pass through to parent for other variables
+      provide (e);
+    }
+}
+
+
+lsm_derived_probe::lsm_derived_probe (systemtap_session& s,
+                                      const string& lsm_hook_name,
+                                      probe* base, probe_point* loc):
+  derived_probe (base, loc, true /* .components soon rewritten */), sess (s),
+  hook_name (lsm_hook_name)
+{
+  // create synthetic probe point name
+  vector<probe_point::component*> comps;
+  comps.push_back (new probe_point::component (TOK_KERNEL));
+  comps.push_back (new probe_point::component (TOK_LSM,
+                                               new literal_string(hook_name)));
+  this->sole_location()->components = comps;
+
+  // LSM hooks are BPF-only
+  if (s.runtime_mode != systemtap_session::bpf_runtime)
+    throw SEMANTIC_ERROR (_("LSM probes require --runtime=bpf"), this->tok);
+
+  // For BPF runtime, create $ctx as a context variable
+  // $ctx is the raw context pointer (offset 0 from context struct)
+  bpf_context_vardecl* v = new bpf_context_vardecl;
+  v->name = "__lsm_arg_ctx";
+  v->tok = this->tok;
+  v->set_arity(0, this->tok);
+  v->type = pe_long;
+  v->synthetic = true;
+  v->size = 8;  // pointer size
+  v->offset = 0;  // raw pointer, no offset
+  v->is_signed = false;
+
+  this->locals.push_back(v);
+
+  // Add $return as a writable variable for controlling LSM hook decision
+  // Initialize to 0 (allow) by default
+  bpf_context_vardecl* ret = new bpf_context_vardecl;
+  ret->name = "__lsm_return";
+  ret->tok = this->tok;
+  ret->set_arity(0, this->tok);
+  ret->type = pe_long;
+  ret->synthetic = true;
+  ret->size = 8;
+  ret->offset = 0;
+  ret->is_signed = true;  // return values can be negative (-errno)
+
+  this->locals.push_back(ret);
+
+  // Expand $ctx and $return in the probe body
+  lsm_var_expanding_visitor lv (s);
+  var_expand_const_fold_loop (s, this->body, lv);
+}
+
+
+void
+lsm_derived_probe::join_group (systemtap_session& s)
+{
+  if (! s.lsm_derived_probes)
+    s.lsm_derived_probes = new lsm_derived_probe_group ();
+  s.lsm_derived_probes->enroll (this);
+  this->group = s.lsm_derived_probes;
+}
+
+
+void
+lsm_derived_probe::print_dupe_stamp(ostream& o)
+{
+  o << "lsm_" << hook_name << endl;
+}
+
+
+void
+lsm_derived_probe::getargs(std::list<std::string> &arg_set) const
+{
+  // LSM probes expose $ctx as the raw context pointer
+  // Tapset code can use @cast($ctx, "type", "kernel") to access fields
+  arg_set.push_back("$ctx:long");
+  // LSM probes can set $return to control hook decision (0=allow, -errno=deny)
+  arg_set.push_back("$return:long");
 }
 
 
@@ -12639,6 +12801,33 @@ tracepoint_derived_probe_group::emit_module_exit (systemtap_session& s)
 }
 
 
+void
+lsm_derived_probe_group::emit_module_decls (systemtap_session& s)
+{
+  // LSM probes are BPF-only, no kernel module code needed
+  if (s.runtime_mode != systemtap_session::bpf_runtime)
+    return;
+}
+
+
+void
+lsm_derived_probe_group::emit_module_init (systemtap_session &s)
+{
+  // LSM probes are BPF-only, no kernel module code needed
+  if (s.runtime_mode != systemtap_session::bpf_runtime)
+    return;
+}
+
+
+void
+lsm_derived_probe_group::emit_module_exit (systemtap_session& s)
+{
+  // LSM probes are BPF-only, no kernel module code needed
+  if (s.runtime_mode != systemtap_session::bpf_runtime)
+    return;
+}
+
+
 struct tracepoint_query : public base_query
 {
   probe * base_probe;
@@ -13429,6 +13618,105 @@ sort_for_bpf(systemtap_session& s,
   return true;
 }
 
+bool
+sort_for_bpf(systemtap_session& s __attribute__ ((unused)),
+             lsm_derived_probe_group *l,
+             sort_for_bpf_probe_arg_vector &v)
+{
+  if (!l)
+    return false;
+
+  for (auto i = l->probes.begin(); i != l->probes.end(); ++i)
+    {
+      lsm_derived_probe *p = *i;
+      v.push_back(std::pair<derived_probe *, std::string>
+                  (p, "lsm/" + p->hook_name));
+    }
+
+  return true;
+}
+
+struct lsm_builder: public derived_probe_builder
+{
+  lsm_builder() {}
+
+  virtual void build(systemtap_session& s,
+                     probe* base, probe_point* location,
+                     literal_map_t const& parameters,
+                     vector<derived_probe*>& finished_results);
+
+  virtual string name() { return "lsm builder"; }
+};
+
+void
+lsm_builder::build(systemtap_session& s,
+                   probe* base, probe_point* location,
+                   literal_map_t const& parameters,
+                   vector<derived_probe*>& finished_results)
+{
+  interned_string hook_name;
+  assert(get_param(parameters, TOK_LSM, hook_name));
+
+  // List of supported LSM hooks
+  // Note: This is a curated subset of commonly useful hooks
+  static const set<string> supported_hooks = {
+    // Binary execution hooks
+    "bprm_check_security",
+    "bprm_creds_for_exec",
+
+    // File operation hooks
+    "file_open",
+    "file_permission",
+    "file_ioctl",
+    "file_lock",
+    "file_receive",
+
+    // Inode operation hooks
+    "inode_permission",
+    "inode_create",
+    "inode_unlink",
+    "inode_mkdir",
+    "inode_rmdir",
+    "inode_rename",
+    "inode_setattr",
+    "inode_getattr",
+
+    // Path operation hooks (if CONFIG_SECURITY_PATH)
+    "path_unlink",
+    "path_mkdir",
+    "path_rmdir",
+    "path_rename",
+    "path_chmod",
+    "path_chown",
+
+    // Socket hooks
+    "socket_create",
+    "socket_connect",
+    "socket_bind",
+    "socket_listen",
+    "socket_accept",
+    "socket_sendmsg",
+    "socket_recvmsg",
+
+    // Task/process hooks
+    "task_alloc",
+    "task_free",
+
+    // Memory mapping hooks
+    "mmap_file",
+    "file_mprotect"
+  };
+
+  if (supported_hooks.find(hook_name) == supported_hooks.end())
+    {
+      string sugg = "Supported hooks: bprm_check_security, file_open, inode_permission, socket_connect, task_alloc, ...";
+      throw SEMANTIC_ERROR (_F("LSM hook '%s' not yet supported. %s",
+                              hook_name.to_string().c_str(), sugg.c_str()));
+    }
+
+  finished_results.push_back(new lsm_derived_probe(s, hook_name, base, location));
+}
+
 // ------------------------------------------------------------------------
 //  Standard tapset registry.
 // ------------------------------------------------------------------------
@@ -13459,6 +13747,11 @@ register_standard_tapsets(systemtap_session & s)
   // kernel tracepoint probes
   s.pattern_root->bind(TOK_KERNEL)->bind_str(TOK_TRACE)
     ->bind(new tracepoint_builder());
+
+  // LSM hook probes (BPF runtime only, check in builder)
+  s.pattern_root->bind(TOK_KERNEL)->bind_str(TOK_LSM)
+    ->bind_privilege(pr_privileged)
+    ->bind(new lsm_builder());
 
   // Kprobe based probe
   s.pattern_root->bind(TOK_KPROBE)->bind_str(TOK_FUNCTION)
@@ -13538,6 +13831,7 @@ all_session_groups(systemtap_session& s)
   DOONE(timer);
   DOONE(profile);
   DOONE(tracepoint);
+  DOONE(lsm);
   DOONE(hwbkpt);
   DOONE(perf);
   DOONE(hrtimer);

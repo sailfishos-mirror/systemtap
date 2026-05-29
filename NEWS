@@ -9,6 +9,14 @@
   CONFIG_DEBUG_INFO=y (for .ko), -g, gcc -save-temps=obj (preserving
   .i/.s temporaries), and runs pahole(1) on the result (if available).
 
+- NEW: LSM (Linux Security Module) hook support for BPF runtime.
+  Attach to kernel security hooks like lsm.bprm_check_security, lsm.file_open,
+  lsm.socket_create, and 35 others. Use $ctx with @cast() to access context.
+  Example: stap -g --runtime=bpf -e 'probe lsm.bprm_check_security {
+    filename = kernel_string(@cast($ctx, "linux_binprm")->filename)
+    if (filename =~ "forbidden") $return = -13 }'  # deny with EACCES
+  Requires kernel 5.7+, CONFIG_BPF_LSM=y. (PR#34126)
+
 - REMOVED old systemtap initscript infrastructure. The legacy
   systemtap-service command and systemtap.service have been replaced with
   modern systemd service templates:

@@ -95,6 +95,11 @@ target_triplet = @target@
 @Werror_TRUE@am__append_1 = -Werror
 @Werror_TRUE@am__append_2 = -Werror
 @HAVE_BPF_DECLS_TRUE@bin_PROGRAMS = stapbpf$(EXEEXT)
+@HAVE_BPF_DECLS_TRUE@@HAVE_LIBBPF_TRUE@am__append_3 = lsm-btf.cxx
+@HAVE_BPF_DECLS_TRUE@@HAVE_LIBBPF_TRUE@am__append_4 = $(libbpf_CFLAGS)
+@HAVE_BPF_DECLS_TRUE@@HAVE_LIBBPF_TRUE@am__append_5 = $(libbpf_CFLAGS)
+@HAVE_BPF_DECLS_TRUE@@HAVE_LIBBPF_TRUE@am__append_6 = $(libbpf_LDFLAGS)
+@HAVE_BPF_DECLS_TRUE@@HAVE_LIBBPF_TRUE@am__append_7 = $(libbpf_LIBS)
 subdir = stapbpf
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_check_compile_flag.m4 \
@@ -115,15 +120,20 @@ CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(man8dir)"
 PROGRAMS = $(bin_PROGRAMS)
 am__dirstamp = $(am__leading_dot)dirstamp
+@HAVE_BPF_DECLS_TRUE@@HAVE_LIBBPF_TRUE@am__objects_1 = stapbpf-lsm-btf.$(OBJEXT)
 @HAVE_BPF_DECLS_TRUE@am_stapbpf_OBJECTS = stapbpf-stapbpf.$(OBJEXT) \
 @HAVE_BPF_DECLS_TRUE@	stapbpf-bpfinterp.$(OBJEXT) \
 @HAVE_BPF_DECLS_TRUE@	stapbpf-libbpf.$(OBJEXT) \
 @HAVE_BPF_DECLS_TRUE@	../stapbpf-staputil.$(OBJEXT) \
-@HAVE_BPF_DECLS_TRUE@	../staprun/stapbpf-start_cmd.$(OBJEXT)
+@HAVE_BPF_DECLS_TRUE@	../staprun/stapbpf-start_cmd.$(OBJEXT) \
+@HAVE_BPF_DECLS_TRUE@	$(am__objects_1)
 stapbpf_OBJECTS = $(am_stapbpf_OBJECTS)
 am__DEPENDENCIES_1 =
+@HAVE_BPF_DECLS_TRUE@@HAVE_LIBBPF_TRUE@am__DEPENDENCIES_2 =  \
+@HAVE_BPF_DECLS_TRUE@@HAVE_LIBBPF_TRUE@	$(am__DEPENDENCIES_1)
 @HAVE_BPF_DECLS_TRUE@stapbpf_DEPENDENCIES = $(am__DEPENDENCIES_1) \
-@HAVE_BPF_DECLS_TRUE@	$(am__DEPENDENCIES_1)
+@HAVE_BPF_DECLS_TRUE@	$(am__DEPENDENCIES_1) \
+@HAVE_BPF_DECLS_TRUE@	$(am__DEPENDENCIES_2)
 stapbpf_LINK = $(CXXLD) $(stapbpf_CXXFLAGS) $(CXXFLAGS) \
 	$(stapbpf_LDFLAGS) $(LDFLAGS) -o $@
 AM_V_P = $(am__v_P_@AM_V@)
@@ -144,7 +154,7 @@ am__maybe_remake_depfiles = depfiles
 am__depfiles_remade = ../$(DEPDIR)/stapbpf-staputil.Po \
 	../staprun/$(DEPDIR)/stapbpf-start_cmd.Po \
 	./$(DEPDIR)/stapbpf-bpfinterp.Po ./$(DEPDIR)/stapbpf-libbpf.Po \
-	./$(DEPDIR)/stapbpf-stapbpf.Po
+	./$(DEPDIR)/stapbpf-lsm-btf.Po ./$(DEPDIR)/stapbpf-stapbpf.Po
 am__mv = mv -f
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -383,6 +393,8 @@ infodir = @infodir@
 install_sh = @install_sh@
 jsonc_CFLAGS = @jsonc_CFLAGS@
 jsonc_LIBS = @jsonc_LIBS@
+libbpf_CFLAGS = @libbpf_CFLAGS@
+libbpf_LIBS = @libbpf_LIBS@
 libdir = @libdir@
 libexecdir = @libexecdir@
 libvirt_CFLAGS = @libvirt_CFLAGS@
@@ -446,14 +458,18 @@ AM_CPPFLAGS = -D_GNU_SOURCE -I$(srcdir)/../includes \
 	-DPKGLIBDIR='"$(pkglibexecdir)"' -DLOCALEDIR='"$(localedir)"'
 AM_LDFLAGS = @PIELDFLAGS@
 @HAVE_BPF_DECLS_TRUE@man_MANS = stapbpf.8
-@HAVE_BPF_DECLS_TRUE@stapbpf_SOURCES = stapbpf.cxx bpfinterp.cxx libbpf.c ../staputil.cxx \
-@HAVE_BPF_DECLS_TRUE@	../staprun/start_cmd.c
-
+@HAVE_BPF_DECLS_TRUE@stapbpf_SOURCES = stapbpf.cxx bpfinterp.cxx \
+@HAVE_BPF_DECLS_TRUE@	libbpf.c ../staputil.cxx \
+@HAVE_BPF_DECLS_TRUE@	../staprun/start_cmd.c $(am__append_3)
 @HAVE_BPF_DECLS_TRUE@stapbpf_CPPFLAGS = $(AM_CPPFLAGS)
-@HAVE_BPF_DECLS_TRUE@stapbpf_CFLAGS = $(AM_CFLAGS) $(debuginfod_CFLAGS)
-@HAVE_BPF_DECLS_TRUE@stapbpf_CXXFLAGS = $(AM_CXXFLAGS) $(debuginfod_CFLAGS)
-@HAVE_BPF_DECLS_TRUE@stapbpf_LDFLAGS = $(AM_LDFLAGS) $(debuginfod_LDFLAGS)
-@HAVE_BPF_DECLS_TRUE@stapbpf_LDADD = $(stapbpf_LIBS) -lpthread $(debuginfod_LIBS)
+@HAVE_BPF_DECLS_TRUE@stapbpf_CFLAGS = $(AM_CFLAGS) \
+@HAVE_BPF_DECLS_TRUE@	$(debuginfod_CFLAGS) $(am__append_4)
+@HAVE_BPF_DECLS_TRUE@stapbpf_CXXFLAGS = $(AM_CXXFLAGS) \
+@HAVE_BPF_DECLS_TRUE@	$(debuginfod_CFLAGS) $(am__append_5)
+@HAVE_BPF_DECLS_TRUE@stapbpf_LDFLAGS = $(AM_LDFLAGS) \
+@HAVE_BPF_DECLS_TRUE@	$(debuginfod_LDFLAGS) $(am__append_6)
+@HAVE_BPF_DECLS_TRUE@stapbpf_LDADD = $(stapbpf_LIBS) -lpthread \
+@HAVE_BPF_DECLS_TRUE@	$(debuginfod_LIBS) $(am__append_7)
 
 # Arrange for the top-level git_version.h to be regenerated at every "make".
 @HAVE_BPF_DECLS_TRUE@BUILT_SOURCES = git_version.stamp
@@ -567,6 +583,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@../staprun/$(DEPDIR)/stapbpf-start_cmd.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stapbpf-bpfinterp.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stapbpf-libbpf.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stapbpf-lsm-btf.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stapbpf-stapbpf.Po@am__quote@ # am--include-marker
 
 $(am__depfiles_remade):
@@ -676,6 +693,20 @@ stapbpf-bpfinterp.obj: bpfinterp.cxx
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='../staputil.cxx' object='../stapbpf-staputil.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(stapbpf_CPPFLAGS) $(CPPFLAGS) $(stapbpf_CXXFLAGS) $(CXXFLAGS) -c -o ../stapbpf-staputil.obj `if test -f '../staputil.cxx'; then $(CYGPATH_W) '../staputil.cxx'; else $(CYGPATH_W) '$(srcdir)/../staputil.cxx'; fi`
+
+stapbpf-lsm-btf.o: lsm-btf.cxx
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(stapbpf_CPPFLAGS) $(CPPFLAGS) $(stapbpf_CXXFLAGS) $(CXXFLAGS) -MT stapbpf-lsm-btf.o -MD -MP -MF $(DEPDIR)/stapbpf-lsm-btf.Tpo -c -o stapbpf-lsm-btf.o `test -f 'lsm-btf.cxx' || echo '$(srcdir)/'`lsm-btf.cxx
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/stapbpf-lsm-btf.Tpo $(DEPDIR)/stapbpf-lsm-btf.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lsm-btf.cxx' object='stapbpf-lsm-btf.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(stapbpf_CPPFLAGS) $(CPPFLAGS) $(stapbpf_CXXFLAGS) $(CXXFLAGS) -c -o stapbpf-lsm-btf.o `test -f 'lsm-btf.cxx' || echo '$(srcdir)/'`lsm-btf.cxx
+
+stapbpf-lsm-btf.obj: lsm-btf.cxx
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(stapbpf_CPPFLAGS) $(CPPFLAGS) $(stapbpf_CXXFLAGS) $(CXXFLAGS) -MT stapbpf-lsm-btf.obj -MD -MP -MF $(DEPDIR)/stapbpf-lsm-btf.Tpo -c -o stapbpf-lsm-btf.obj `if test -f 'lsm-btf.cxx'; then $(CYGPATH_W) 'lsm-btf.cxx'; else $(CYGPATH_W) '$(srcdir)/lsm-btf.cxx'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/stapbpf-lsm-btf.Tpo $(DEPDIR)/stapbpf-lsm-btf.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lsm-btf.cxx' object='stapbpf-lsm-btf.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(stapbpf_CPPFLAGS) $(CPPFLAGS) $(stapbpf_CXXFLAGS) $(CXXFLAGS) -c -o stapbpf-lsm-btf.obj `if test -f 'lsm-btf.cxx'; then $(CYGPATH_W) 'lsm-btf.cxx'; else $(CYGPATH_W) '$(srcdir)/lsm-btf.cxx'; fi`
 install-man8: $(man_MANS)
 	@$(NORMAL_INSTALL)
 	@list1=''; \
@@ -827,6 +858,7 @@ distclean: distclean-am
 	-rm -f ../staprun/$(DEPDIR)/stapbpf-start_cmd.Po
 	-rm -f ./$(DEPDIR)/stapbpf-bpfinterp.Po
 	-rm -f ./$(DEPDIR)/stapbpf-libbpf.Po
+	-rm -f ./$(DEPDIR)/stapbpf-lsm-btf.Po
 	-rm -f ./$(DEPDIR)/stapbpf-stapbpf.Po
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
@@ -878,6 +910,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ../staprun/$(DEPDIR)/stapbpf-start_cmd.Po
 	-rm -f ./$(DEPDIR)/stapbpf-bpfinterp.Po
 	-rm -f ./$(DEPDIR)/stapbpf-libbpf.Po
+	-rm -f ./$(DEPDIR)/stapbpf-lsm-btf.Po
 	-rm -f ./$(DEPDIR)/stapbpf-stapbpf.Po
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic

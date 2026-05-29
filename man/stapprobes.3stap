@@ -175,6 +175,7 @@ debuginfod	kernel.statement.absolute
 	kernel.data
 \fBAUTO-GENERATED-DWARF\fP	kprobe.function
 kernel.trace	process.statement.absolute
+kernel.lsm
 	process.begin, .end
 	netfilter
 	java
@@ -1427,6 +1428,100 @@ The subsystem and name of the tracepoint are available in
 and a string of name=value pairs for all parameters of the tracepoint
 is available in
 .BR $$vars " or " $$parms .
+
+.SS LSM (LINUX SECURITY MODULE) HOOKS
+
+This family of probe points, available with the BPF runtime
+.RB ( --runtime=bpf ),
+allows attaching to Linux Security Module hooks in the kernel.
+LSM hooks are called during security-sensitive operations and can be used
+to monitor or control access to files, sockets, processes, and other
+kernel resources. Requires Linux kernel 5.7 or later with
+.BR CONFIG_BPF_LSM=y
+and kernel headers for type information.
+
+LSM hook probes look like:
+.BR kernel.lsm("hook_name")
+or use the tapset aliases:
+.BR kernel.lsm.hook_name .
+The hook name specifies which security hook to attach to, such as
+.BR bprm_check_security " (program execution),"
+.BR file_open " (file opening),"
+.BR socket_create " (socket creation), etc."
+
+The tapset library provides typed pointer variables for each hook,
+accessible via
+.BR @cast()
+in guru mode. For example,
+.BR lsm.bprm_check_security
+provides
+.BR bprm
+(pointer to struct linux_binprm), while
+.BR lsm.file_open
+provides
+.BR file
+(pointer to struct file). All probes also provide
+.BR $ctx
+for raw context access.
+
+LSM probes can return values to allow or deny operations. In guru mode
+.RB ( -g ),
+set
+.BR $return " to 0"
+to allow the operation (default), or set it to a negative error code like
+.BR -EPERM " or " -EACCES
+to deny it. The kernel validates return values and uses them to enforce
+security policy.
+
+Example uses:
+.PP
+.nf
+# Monitor program execution
+probe lsm.bprm_check_security {
+  filename = kernel_string(bprm->filename)
+  printf("Executing: %s\\n", filename)
+}
+
+# Monitor file opening
+probe lsm.file_open {
+  pathname = d_path(&file->f_path)
+  printf("Opening: %s\\n", pathname)
+}
+
+# Block socket bind operations (guru mode)
+probe lsm.socket_bind {
+  $return = -1  # EPERM - deny all binds
+}
+.fi
+.PP
+
+Supported hook categories include:
+.IP \(bu 4
+Binary execution:
+.BR bprm_check_security ", " bprm_creds_for_exec
+.IP \(bu 4
+File operations:
+.BR file_open ", " file_permission ", " file_ioctl ", " file_lock
+.IP \(bu 4
+Inode operations:
+.BR inode_permission ", " inode_create ", " inode_unlink ", " inode_mkdir ", " inode_rmdir
+.IP \(bu 4
+Socket operations:
+.BR socket_create ", " socket_connect ", " socket_bind ", " socket_listen
+.IP \(bu 4
+Path operations:
+.BR path_unlink ", " path_mkdir ", " path_chmod ", " path_chown
+.IP \(bu 4
+Process/task:
+.BR task_alloc ", " task_free
+.IP \(bu 4
+Memory mapping:
+.BR mmap_file ", " file_mprotect
+.PP
+
+See
+.I tapset/bpf/lsm.stp
+for a complete list of available hooks and their typed pointer variables.
 
 .SS KERNEL MARKERS (OBSOLETE)
 

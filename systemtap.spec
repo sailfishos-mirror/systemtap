@@ -180,6 +180,9 @@ BuildRequires: pkgconfig(avahi-client)
 BuildRequires: pkgconfig(libdebuginfod)
 BuildRequires: pkgconfig(json-c)
 %endif
+%if %{with_bpf}
+BuildRequires: pkgconfig(libbpf) >= 1.0
+%endif
 %if %{with_dyninst}
 BuildRequires: dyninst-devel >= 10.0
 BuildRequires: pkgconfig(libselinux)

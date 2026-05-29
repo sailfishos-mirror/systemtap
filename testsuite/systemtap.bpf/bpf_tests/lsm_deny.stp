@@ -1,0 +1,31 @@
+#!/usr/bin/env stap
+
+# Based on the NEWS example - demonstrates LSM security monitoring
+# Reports when programs with "forbidden" in the path are executed
+
+global allowed_count
+global forbidden_count
+
+probe lsm.bprm_check_security {
+    filename = kernel_string(@cast($ctx, "linux_binprm", "kernel")->filename)
+    if (filename =~ "forbidden") {
+        forbidden_count++
+        printf("FORBIDDEN: %s\n", filename)
+    } else if (filename =~ "allowed") {
+        allowed_count++
+        printf("ALLOWED: %s\n", filename)
+    }
+}
+
+probe begin {
+    println("BEGIN")
+}
+
+probe timer.s(5) {
+    printf("Allowed: %d, Forbidden: %d\n", allowed_count, forbidden_count)
+    if (forbidden_count > 0)
+        println("END PASS")
+    else
+        println("END FAIL")
+    exit()
+}

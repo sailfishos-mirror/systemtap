@@ -1,0 +1,170 @@
+// LSM (Linux Security Module) hook probes for BPF runtime
+// Copyright (C) 2026 Red Hat Inc.
+
+/**
+ * Kernel Requirements for all LSM probes:
+ *   - Linux kernel 5.7 or later
+ *   - CONFIG_BPF_LSM=y
+ *   - Kernel headers for type information
+ *   - Available in BPF runtime only (--runtime=bpf)
+ *
+ * Return value semantics:
+ *   - Return 0 to allow the operation (default)
+ *   - Return -EPERM, -EACCES, or other -errno to deny
+ *   - Returning non-zero requires guru mode (-g)
+ *
+ * Context variable access:
+ *   - All LSM probes provide $ctx as a pointer to the hook-specific context
+ *   - Use @cast($ctx, "type", "kernel") to access context structure fields
+ *   - Requires guru mode (-g) for @cast usage
+ *
+ * Example:
+ *   probe lsm.bprm_check_security {
+ *     filename = kernel_string(@cast($ctx, "linux_binprm", "kernel")->filename)
+ *     printf("Executing: %s\n", filename)
+ *   }
+ *
+ * Note: Use the function form kernel.lsm("hook_name") directly for programmatic
+ * hook selection, or use the probe aliases defined below.
+ */
+
+// Execution hooks
+probe lsm.bprm_check_security = kernel.lsm("bprm_check_security") {
+    bprm = &@cast($ctx, "linux_binprm", "kernel")
+}
+probe lsm.bprm_creds_for_exec = kernel.lsm("bprm_creds_for_exec") {
+    bprm = &@cast($ctx, "linux_binprm", "kernel")
+}
+
+// File operation hooks
+probe lsm.file_open = kernel.lsm("file_open") {
+    file = &@cast($ctx, "file", "kernel")
+}
+probe lsm.file_permission = kernel.lsm("file_permission") {
+    file = &@cast($ctx, "file", "kernel")
+    // mask = user_int($ctx + 8)
+}
+probe lsm.file_ioctl = kernel.lsm("file_ioctl") {
+    file = &@cast($ctx, "file", "kernel")
+}
+probe lsm.file_lock = kernel.lsm("file_lock") {
+    file = &@cast($ctx, "file", "kernel")
+}
+probe lsm.file_receive = kernel.lsm("file_receive") {
+    file = &@cast($ctx, "file", "kernel")
+}
+probe lsm.file_mprotect = kernel.lsm("file_mprotect") {
+    vma = &@cast($ctx, "vm_area_struct", "kernel")
+}
+
+// Inode operation hooks
+probe lsm.inode_permission = kernel.lsm("inode_permission") {
+    inode = &@cast($ctx, "inode", "kernel")
+}
+probe lsm.inode_create = kernel.lsm("inode_create") {
+    dir = &@cast($ctx, "inode", "kernel")
+    dentry = &@cast(user_long($ctx + 8), "dentry", "kernel")
+}
+probe lsm.inode_unlink = kernel.lsm("inode_unlink") {
+    dir = &@cast($ctx, "inode", "kernel")
+    dentry = &@cast(user_long($ctx + 8), "dentry", "kernel")
+}
+probe lsm.inode_mkdir = kernel.lsm("inode_mkdir") {
+    dir = &@cast($ctx, "inode", "kernel")
+    dentry = &@cast(user_long($ctx + 8), "dentry", "kernel")
+}
+probe lsm.inode_rmdir = kernel.lsm("inode_rmdir") {
+    dir = &@cast($ctx, "inode", "kernel")
+    dentry = &@cast(user_long($ctx + 8), "dentry", "kernel")
+}
+probe lsm.inode_rename = kernel.lsm("inode_rename") {
+    old_dir = &@cast($ctx, "inode", "kernel")
+    old_dentry = &@cast(user_long($ctx + 8), "dentry", "kernel")
+}
+probe lsm.inode_setattr = kernel.lsm("inode_setattr") {
+    dentry = &@cast(user_long($ctx + 8), "dentry", "kernel")
+}
+probe lsm.inode_getattr = kernel.lsm("inode_getattr") {
+    path = &@cast($ctx, "path", "kernel")
+}
+
+// Socket operation hooks
+probe lsm.socket_create = kernel.lsm("socket_create") {
+    family = user_int($ctx)
+    type = user_int($ctx + 8)
+}
+probe lsm.socket_connect = kernel.lsm("socket_connect") {
+    sock = &@cast($ctx, "socket", "kernel")
+    address = user_long($ctx + 8)
+}
+probe lsm.socket_bind = kernel.lsm("socket_bind") {
+    sock = &@cast($ctx, "socket", "kernel")
+    address = user_long($ctx + 8)
+}
+probe lsm.socket_listen = kernel.lsm("socket_listen") {
+    sock = &@cast($ctx, "socket", "kernel")
+}
+probe lsm.socket_accept = kernel.lsm("socket_accept") {
+    sock = &@cast($ctx, "socket", "kernel")
+    newsock = &@cast(user_long($ctx + 8), "socket", "kernel")
+}
+probe lsm.socket_sendmsg = kernel.lsm("socket_sendmsg") {
+    sock = &@cast($ctx, "socket", "kernel")
+    msg = &@cast(user_long($ctx + 8), "msghdr", "kernel")
+}
+probe lsm.socket_recvmsg = kernel.lsm("socket_recvmsg") {
+    sock = &@cast($ctx, "socket", "kernel")
+    msg = &@cast(user_long($ctx + 8), "msghdr", "kernel")
+}
+probe lsm.socket_getsockopt = kernel.lsm("socket_getsockopt") {
+    sock = &@cast($ctx, "socket", "kernel")
+}
+
+// Path operation hooks (require CONFIG_SECURITY_PATH)
+probe lsm.path_unlink = kernel.lsm("path_unlink") {
+    dir = &@cast($ctx, "path", "kernel")
+    dentry = &@cast(user_long($ctx + 8), "dentry", "kernel")
+}
+probe lsm.path_mkdir = kernel.lsm("path_mkdir") {
+    dir = &@cast($ctx, "path", "kernel")
+    dentry = &@cast(user_long($ctx + 8), "dentry", "kernel")
+}
+probe lsm.path_rmdir = kernel.lsm("path_rmdir") {
+    dir = &@cast($ctx, "path", "kernel")
+    dentry = &@cast(user_long($ctx + 8), "dentry", "kernel")
+}
+probe lsm.path_rename = kernel.lsm("path_rename") {
+    old_dir = &@cast($ctx, "path", "kernel")
+    old_dentry = &@cast(user_long($ctx + 8), "dentry", "kernel")
+}
+probe lsm.path_chmod = kernel.lsm("path_chmod") {
+    path = &@cast($ctx, "path", "kernel")
+}
+probe lsm.path_chown = kernel.lsm("path_chown") {
+    path = &@cast($ctx, "path", "kernel")
+}
+
+// Task/process hooks
+probe lsm.task_alloc = kernel.lsm("task_alloc") {
+    task = &@cast($ctx, "task_struct", "kernel")
+}
+probe lsm.task_free = kernel.lsm("task_free") {
+    task = &@cast($ctx, "task_struct", "kernel")
+}
+
+// Memory mapping hooks
+probe lsm.mmap_file = kernel.lsm("mmap_file") {
+    file = &@cast($ctx, "file", "kernel")
+}
+probe lsm.task_kill = kernel.lsm("task_kill") {
+    p = &@cast($ctx, "task_struct", "kernel")
+}
+probe lsm.task_setnice = kernel.lsm("task_setnice") {
+    p = &@cast($ctx, "task_struct", "kernel")
+}
+probe lsm.task_setioprio = kernel.lsm("task_setioprio") {
+    p = &@cast($ctx, "task_struct", "kernel")
+}
+probe lsm.task_setrlimit = kernel.lsm("task_setrlimit") {
+    p = &@cast($ctx, "task_struct", "kernel")
+}

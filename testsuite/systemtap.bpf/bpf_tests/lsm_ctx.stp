@@ -1,0 +1,24 @@
+#!/usr/bin/env stap
+
+# Demonstrates $ctx usage with @cast() - from the NEWS example
+# Monitors binary execution and extracts filename
+
+global exec_count
+
+probe lsm.bprm_check_security {
+    filename = kernel_string(@cast($ctx, "linux_binprm", "kernel")->filename)
+    exec_count++
+    printf("exec: %s\n", filename)
+}
+
+probe begin {
+    println("BEGIN")
+}
+
+probe timer.s(3) {
+    if (exec_count > 0)
+        println("END PASS")
+    else
+        println("END FAIL")
+    exit()
+}

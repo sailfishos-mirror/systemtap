@@ -1,0 +1,256 @@
+# lsm.exp - Tests for LSM (Linux Security Module) BPF probes
+
+set testdir "$srcdir/$subdir/bpf_tests"
+
+# Check if BPF runtime is available
+if {![bpf_p]} {
+    untested "lsm.exp - BPF runtime not available"
+    return
+}
+
+# Check if LSM BPF support is available (kernel 5.7+)
+proc lsm_available_p {} {
+    # Check if BPF_PROG_TYPE_LSM is available by trying to compile
+    # Use -u to bypass elision of empty probes
+    set cmd "stap -u -g --runtime=bpf -p2 -e {probe kernel.lsm(\"bprm_check_security\") { }}"
+    if {[catch {eval exec $cmd} output]} {
+        return 0
+    }
+    return 1
+}
+
+if {![lsm_available_p]} {
+    untested "lsm.exp - BPF LSM support not available (requires kernel 5.7+, CONFIG_BPF_LSM=y)"
+    return
+}
+
+# Test 1: Basic LSM probe attachment and execution counting
+set test "lsm_basic"
+set script "$testdir/lsm_basic.stp"
+
+if {[file exists $script]} {
+    spawn stap -g --runtime=bpf -v $script -c "sleep 4"
+    set ok 0
+    expect {
+        -timeout 30
+        -re {BEGIN.*END PASS} {
+            pass "$test"
+            set ok 1
+        }
+        -re {END FAIL} {
+            fail "$test - no executions detected"
+        }
+        timeout {
+            fail "$test - timeout"
+        }
+        eof {
+            if {!$ok} {
+                fail "$test - unexpected EOF"
+            }
+        }
+    }
+    catch {close}; catch {wait}
+} else {
+    untested "$test - script not found"
+}
+
+# Test 2: LSM probe point listing
+set test "lsm_listing"
+spawn stap -L lsm.bprm_check_security --runtime=bpf
+set ok 0
+expect {
+    -timeout 10
+    -re {lsm\.bprm_check_security} {
+        pass "$test"
+        set ok 1
+    }
+    timeout {
+        fail "$test - timeout"
+    }
+    eof {
+        if {!$ok} {
+            fail "$test - probe point not listed"
+        }
+    }
+}
+catch {close}; catch {wait}
+
+# Test 3: Invalid LSM hook name
+set test "lsm_invalid_hook"
+spawn stap -g --runtime=bpf -p2 -e {probe kernel.lsm("nonexistent_hook") { }}
+set ok 0
+expect {
+    -timeout 10
+    -re {LSM hook.*not yet supported} {
+        pass "$test"
+        set ok 1
+    }
+    -re {semantic error} {
+        pass "$test"
+        set ok 1
+    }
+    timeout {
+        fail "$test - timeout"
+    }
+    eof {
+        if {!$ok} {
+            fail "$test - should have rejected invalid hook"
+        }
+    }
+}
+catch {close}; catch {wait}
+
+# Test 4: LSM probe requires BPF runtime
+set test "lsm_requires_bpf"
+spawn stap -g -p2 -e {probe lsm.bprm_check_security { }}
+set ok 0
+expect {
+    -timeout 10
+    -re {require.*--runtime=bpf} {
+        pass "$test"
+        set ok 1
+    }
+    -re {semantic error} {
+        pass "$test"
+        set ok 1
+    }
+    timeout {
+        fail "$test - timeout"
+    }
+    eof {
+        if {!$ok} {
+            fail "$test - should have required BPF runtime"
+        }
+    }
+}
+catch {close}; catch {wait}
+
+# Test 5: File open hook
+set test "lsm_file_open"
+set script "$testdir/lsm_file_open.stp"
+
+if {[file exists $script]} {
+    spawn stap -g --runtime=bpf -v $script -c "sleep 1; touch /tmp/lsm_test_$$; cat /tmp/lsm_test_$$; sleep 3; rm /tmp/lsm_test_$$"
+    set ok 0
+    expect {
+        -timeout 30
+        -re {BEGIN.*Opened:.*END PASS} {
+            pass "$test"
+            set ok 1
+        }
+        -re {END PASS} {
+            pass "$test - detected file opens"
+            set ok 1
+        }
+        -re {END FAIL} {
+            fail "$test - no file opens detected"
+        }
+        timeout {
+            fail "$test - timeout"
+        }
+        eof {
+            if {!$ok} {
+                fail "$test - unexpected EOF"
+            }
+        }
+    }
+    catch {close}; catch {wait}
+} else {
+    untested "$test - script not found"
+}
+
+# Test 6: Socket creation hook
+set test "lsm_socket"
+set script "$testdir/lsm_socket.stp"
+
+if {[file exists $script]} {
+    spawn stap -g --runtime=bpf -v $script -c "sh -c 'sleep 1; nc -l 12345 2>/dev/null & sleep 3; kill $! 2>/dev/null'"
+    set ok 0
+    expect {
+        -timeout 30
+        -re {BEGIN.*Socket:.*END PASS} {
+            pass "$test"
+            set ok 1
+        }
+        -re {END PASS} {
+            pass "$test - detected socket creation"
+            set ok 1
+        }
+        -re {END FAIL} {
+            fail "$test - no socket creation detected"
+        }
+        timeout {
+            fail "$test - timeout"
+        }
+        eof {
+            if {!$ok} {
+                fail "$test - unexpected EOF"
+            }
+        }
+    }
+    catch {close}; catch {wait}
+} else {
+    untested "$test - script not found"
+}
+
+# Test 7: Multiple hook types simultaneously
+set test "lsm_multiple_hooks"
+spawn stap -g --runtime=bpf -v -p2 -e {
+    probe lsm.bprm_check_security,
+          lsm.file_open,
+          lsm.socket_create {
+        println("hook fired")
+    }
+}
+set ok 0
+expect {
+    -timeout 10
+    -re {Pass 2: analyzed script} {
+        pass "$test"
+        set ok 1
+    }
+    timeout {
+        fail "$test - timeout"
+    }
+    eof {
+        if {!$ok} {
+            fail "$test - failed to compile multiple hooks"
+        }
+    }
+}
+catch {close}; catch {wait}
+
+
+# Test 8: $ctx usage with @cast (NEWS example)
+set test "lsm_ctx"
+set script "$testdir/lsm_ctx.stp"
+
+if {[file exists $script]} {
+    spawn stap -g --runtime=bpf -v $script -c "sh -c 'sleep 1; ls >/dev/null; cat /etc/hostname >/dev/null; sleep 3'"
+    set ok 0
+    expect {
+        -timeout 30
+        -re {BEGIN.*exec:.*END PASS} {
+            pass "$test"
+            set ok 1
+        }
+        -re {END PASS} {
+            pass "$test - detected executions with $ctx"
+            set ok 1
+        }
+        -re {END FAIL} {
+            fail "$test - no executions detected"
+        }
+        timeout {
+            fail "$test - timeout"
+        }
+        eof {
+            if {!$ok} {
+                fail "$test - unexpected EOF"
+            }
+        }
+    }
+    catch {close}; catch {wait}
+} else {
+    untested "$test - script not found"
+}

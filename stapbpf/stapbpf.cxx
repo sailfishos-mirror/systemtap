@@ -60,12 +60,23 @@ extern "C" {
 #include "../git_version.h"
 #include "../version.h"
 #include "../bpf-internal.h"
+#include "lsm-btf.h"
 
 #ifndef EM_BPF
 #define EM_BPF 0xeb9f
 #endif
 #ifndef R_BPF_MAP_FD
 #define R_BPF_MAP_FD 1
+#endif
+/* BPF LSM support introduced in kernel 5.7 */
+#ifndef BPF_PROG_TYPE_LSM
+#define BPF_PROG_TYPE_LSM ((enum bpf_prog_type)29)
+#endif
+#ifndef BPF_LSM_MAC
+#define BPF_LSM_MAC ((enum bpf_attach_type)27)
+#endif
+#ifndef BPF_LINK_CREATE
+#define BPF_LINK_CREATE ((enum bpf_cmd)28)
 #endif
 
 using namespace std;
@@ -263,6 +274,17 @@ struct trace_data
   { }
 };
 
+struct lsm_data
+{
+  std::string hook_name;
+  int prog_fd;
+  int link_fd;  // BPF link keeps attachment alive
+
+  lsm_data(std::string name, int fd)
+    : hook_name(name), prog_fd(fd), link_fd(-1)
+  { }
+};
+
 static std::vector<procfsprobe_data> procfsprobes;
 static std::vector<kprobe_data> kprobes;
 static std::vector<timer_data> timers;
@@ -270,6 +292,7 @@ static std::vector<perf_data> perf_probes;
 static std::vector<trace_data> tracepoint_probes;
 static std::vector<trace_data> raw_tracepoint_probes;
 static std::vector<uprobe_data> uprobes;
+static std::vector<lsm_data> lsm_probes;
 
 // TODO: Move fatal() to bpfinterp.h and replace abort() calls in the interpreter.
 // TODO: Add warn() option.
@@ -516,6 +539,10 @@ prog_load(Elf_Data *data, const char *name)
       else
         prog_type = BPF_PROG_TYPE_PERF_EVENT;
     }
+#ifdef HAVE_BPF_PROG_TYPE_LSM
+  else if (strncmp(name, "lsm", 3) == 0)
+    prog_type = BPF_PROG_TYPE_LSM;
+#endif
   else
     fatal("unhandled program type for section \"%s\"\n", name);
 
@@ -528,8 +555,58 @@ prog_load(Elf_Data *data, const char *name)
                module_basename, script_name, VERSION, name, (unsigned long)data->d_size);
       fflush (kmsg); // Otherwise, flush will only happen after the prog runs.
     }
-  int fd = bpf_prog_load(prog_type, static_cast<bpf_insn *>(data->d_buf),
-			 data->d_size, module_license, kernel_version);
+
+  int fd = -1;
+
+#if defined(HAVE_BPF_PROG_TYPE_LSM) && defined(HAVE_LIBBPF)
+  // LSM programs require BTF at load time
+  if (prog_type == BPF_PROG_TYPE_LSM)
+    {
+      // Extract hook name from section name "lsm/hook_name"
+      const char *hook_start = strchr(name, '/');
+      if (!hook_start)
+        fatal("LSM section name '%s' missing hook name\n", name);
+
+      std::string hook_name(hook_start + 1);
+      __s32 btf_id = lsm_hook_btf_id(hook_name);
+      if (btf_id < 0)
+        fatal("Failed to find BTF ID for LSM hook '%s'\n", hook_name.c_str());
+
+      // Load with BTF info
+      union bpf_attr attr;
+      int retry = 0;
+    lsm_retry:
+      memset(&attr, 0, sizeof(attr));
+      attr.prog_type = BPF_PROG_TYPE_LSM;
+      attr.insns = (__u64)(unsigned long)data->d_buf;
+      attr.insn_cnt = data->d_size / sizeof(bpf_insn);
+      attr.license = (__u64)(unsigned long)module_license;
+      attr.kern_version = kernel_version;
+      attr.expected_attach_type = BPF_LSM_MAC;
+      attr.attach_btf_id = btf_id;
+
+      // Set up logging - always use higher verbosity to get error details
+      if (verbose || retry)
+        {
+          attr.log_buf = (__u64)(unsigned long)bpf_log_buf;
+          attr.log_size = LOG_BUF_SIZE;
+          attr.log_level = retry ? verbose + 1 : verbose;
+        }
+
+      bpf_log_buf[0] = 0;
+      fd = syscall(__NR_bpf, BPF_PROG_LOAD, &attr, sizeof(attr));
+
+      // Retry with verbose logging on failure
+      if (fd < 0 && verbose == 0 && !retry)
+        {
+          retry = 1;
+          goto lsm_retry;
+        }
+    }
+  else
+#endif
+    fd = bpf_prog_load(prog_type, static_cast<bpf_insn *>(data->d_buf),
+                       data->d_size, module_license, kernel_version);
   if (fd < 0)
     {
       if (bpf_log_buf[0] != 0)
@@ -782,6 +859,22 @@ collect_raw_tracepoint(const char *name, unsigned name_idx, unsigned fd_idx)
     fatal("probe %u section %u not loaded\n", name_idx, fd_idx);
 
   raw_tracepoint_probes.push_back(trace_data(tp_system, tp_name, fd));
+}
+
+static void
+collect_lsm(const char *name, unsigned name_idx, unsigned fd_idx)
+{
+  char lsm_hook[512];
+
+  int res = snprintf(lsm_hook, sizeof(lsm_hook), "%s", name + 4); // skip "lsm/" prefix
+  if (res < 0 || res >= (int)sizeof(lsm_hook))
+    fatal("LSM hook name too long in probe %u section %u\n", name_idx, fd_idx);
+
+  int fd = -1;
+  if (fd_idx >= prog_fds.size() || (fd = prog_fds[fd_idx]) < 0)
+    fatal("probe %u section %u not loaded\n", name_idx, fd_idx);
+
+  lsm_probes.push_back(lsm_data(lsm_hook, fd));
 }
 
 static void
@@ -1237,6 +1330,89 @@ register_raw_tracepoints()
  fail:
   unregister_raw_tracepoints(nprobes);
   exit(1);
+#endif
+}
+
+static void
+unregister_lsm_probes(const size_t nprobes)
+{
+  for (size_t i = 0; i < nprobes; ++i)
+    if (lsm_probes[i].link_fd >= 0)
+      close(lsm_probes[i].link_fd);
+}
+
+static void
+register_lsm_probes()
+{
+  size_t nprobes = lsm_probes.size();
+  if (nprobes == 0)
+    return;
+
+#ifndef HAVE_BPF_PROG_TYPE_LSM
+  fprintf(stderr, "BPF LSM probes unsupported on this kernel\n");
+  exit(1);
+#else
+#ifndef HAVE_LIBBPF
+  fprintf(stderr, "BPF LSM probes require libbpf for BTF support\n");
+  exit(1);
+#else
+  // Check if BPF LSM is enabled in the kernel
+  if (verbose >= 1)
+    {
+      int fd = open("/sys/kernel/security/lsm", O_RDONLY);
+      if (fd >= 0)
+        {
+          char lsm_list[512];
+          ssize_t len = read(fd, lsm_list, sizeof(lsm_list) - 1);
+          close(fd);
+          if (len > 0)
+            {
+              lsm_list[len] = '\0';
+              if (strstr(lsm_list, "bpf") == NULL)
+                fprintf(stderr, "Warning: BPF not found in active LSMs (%s)\n"
+                               "LSM hooks may not enforce return values.\n", lsm_list);
+            }
+        }
+    }
+
+  {
+    union bpf_attr attr;
+
+    for (size_t i = 0; i < nprobes; ++i)
+      {
+        lsm_data &l = lsm_probes[i];
+
+        // Look up BTF ID for the LSM hook
+        __s32 btf_id = lsm_hook_btf_id(l.hook_name);
+        if (btf_id < 0)
+          {
+            fprintf(stderr, "Failed to find BTF ID for LSM hook '%s'\n",
+                    l.hook_name.c_str());
+            goto fail;
+          }
+
+        memset(&attr, 0, sizeof(attr));
+        attr.link_create.prog_fd = l.prog_fd;
+        attr.link_create.attach_type = BPF_LSM_MAC;
+        // Note: target_btf_id was already set during program load,
+        // don't set it again here
+
+        int fd = syscall(__NR_bpf, BPF_LINK_CREATE, &attr, sizeof(attr));
+        if (fd < 0)
+          {
+            fprintf(stderr, "Error attaching LSM probe %s: %s\n",
+                    l.hook_name.c_str(), strerror(errno));
+            goto fail;
+          }
+        l.link_fd = fd;
+      }
+  }
+  return;
+
+ fail:
+  unregister_lsm_probes(nprobes);
+  exit(1);
+#endif
 #endif
 }
 
@@ -1757,6 +1933,8 @@ load_bpf_file(const char *module)
       collect_tracepoint(sh_name[i], i, i);
     if (strncmp(sh_name[i], "raw_trace", 9) == 0)
       collect_raw_tracepoint(sh_name[i], i, i);
+    if (strncmp(sh_name[i], "lsm", 3) == 0)
+      collect_lsm(sh_name[i], i, i);
     if (strncmp(sh_name[i], "perf", 4) == 0)
       collect_perf(sh_name[i], i, i);
     if (strncmp(sh_name[i], "timer", 5) == 0)
@@ -2266,6 +2444,7 @@ main(int argc, char **argv)
   register_timers();
   register_tracepoints();
   register_raw_tracepoints();
+  register_lsm_probes();
   register_perf();
 
   // Run the begin probes.
@@ -2323,6 +2502,7 @@ main(int argc, char **argv)
   unregister_perf(perf_probes.size());
   unregister_tracepoints(tracepoint_probes.size());
   unregister_raw_tracepoints(raw_tracepoint_probes.size());
+  unregister_lsm_probes(lsm_probes.size());
 
   // Clean procfs-like probe files.
   procfs_cleanup();

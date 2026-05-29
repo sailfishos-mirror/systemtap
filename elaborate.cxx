@@ -6130,9 +6130,11 @@ void semantic_pass_opt8(systemtap_session& s)
                           // Skip renaming context variables that are initialized from outside the probe body
                           // These are shared across all combined handlers and initialized by probe entry code:
                           // - __tracepoint_arg_* (tracepoint context: $regs, $id, $ret, etc.)
+                          // - __lsm_arg_* (LSM context: $ctx)
                           // - __nf_* (netfilter context: hooknum, skb, in, out, verdict)
                           // - __mark_arg* (marker context)
                           if (old_var->name.starts_with("__tracepoint_arg_") ||
+                              old_var->name.starts_with("__lsm_arg_") ||
                               old_var->name.starts_with("__nf_") ||
                               old_var->name.starts_with("__mark_arg"))
                             {
