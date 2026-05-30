@@ -13748,10 +13748,12 @@ register_standard_tapsets(systemtap_session & s)
   s.pattern_root->bind(TOK_KERNEL)->bind_str(TOK_TRACE)
     ->bind(new tracepoint_builder());
 
-  // LSM hook probes (BPF runtime only, check in builder)
+  // LSM hook probes (BPF runtime only, requires libbpf for BTF)
+#ifdef HAVE_LIBBPF
   s.pattern_root->bind(TOK_KERNEL)->bind_str(TOK_LSM)
     ->bind_privilege(pr_privileged)
     ->bind(new lsm_builder());
+#endif
 
   // Kprobe based probe
   s.pattern_root->bind(TOK_KPROBE)->bind_str(TOK_FUNCTION)
