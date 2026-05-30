@@ -539,7 +539,7 @@ prog_load(Elf_Data *data, const char *name)
       else
         prog_type = BPF_PROG_TYPE_PERF_EVENT;
     }
-#ifdef HAVE_BPF_PROG_TYPE_LSM
+#if defined(HAVE_BPF_PROG_TYPE_LSM) && defined(HAVE_LIBBPF)
   else if (strncmp(name, "lsm", 3) == 0)
     prog_type = BPF_PROG_TYPE_LSM;
 #endif
