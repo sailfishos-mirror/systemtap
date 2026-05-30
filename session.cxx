@@ -535,6 +535,9 @@ systemtap_session::version ()
 #ifdef HAVE_BPF_DECLS
        << " BPF"
 #endif
+#ifdef HAVE_LIBBPF
+       << " LIBBPF"
+#endif
 #ifdef HAVE_JAVA
        << " JAVA"
 #endif

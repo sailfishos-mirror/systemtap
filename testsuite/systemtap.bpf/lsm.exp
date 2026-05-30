@@ -8,8 +8,18 @@ if {![bpf_p]} {
     return
 }
 
-# Check if LSM BPF support is available (kernel 5.7+)
+# Check if LSM BPF support is available (kernel 5.7+, libbpf >= 1.0)
 proc lsm_available_p {} {
+    # Check if libbpf support is compiled in
+    set cmd "stap --version"
+    if {[catch {eval exec $cmd} output]} {
+        return 0
+    }
+    if {![regexp {LIBBPF} $output]} {
+        verbose -log "LSM requires libbpf >= 1.0"
+        return 0
+    }
+
     # Check if BPF_PROG_TYPE_LSM is available by trying to compile
     # Use -u to bypass elision of empty probes
     set cmd "stap -u -g --runtime=bpf -p2 -e {probe kernel.lsm(\"bprm_check_security\") { }}"
@@ -20,7 +30,7 @@ proc lsm_available_p {} {
 }
 
 if {![lsm_available_p]} {
-    untested "lsm.exp - BPF LSM support not available (requires kernel 5.7+, CONFIG_BPF_LSM=y)"
+    untested "lsm.exp - BPF LSM support not available (requires kernel 5.7+, CONFIG_BPF_LSM=y, libbpf >= 1.0)"
     return
 }
 
