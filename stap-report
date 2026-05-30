@@ -96,6 +96,7 @@ run "cat /etc/hosts"
 run "cat /var/log/stap-server/log"
 run "cat /proc/cpuinfo | grep -E 'processor|vendor_id|model name|flags|bugs'"
 run "cat /sys/kernel/security/lockdown"
+run "cat /sys/kernel/security/lsm"
 if [ -x /usr/bin/dpkg ]; then
   # debian/ubuntu
   run "dpkg --list | grep -E 'systemtap|elfutils|kernel|linux|gcc|dyninst|java|byteman|avahi|nss|nspr|dejagnu|libdw' | awk '{print \$2,\$3}' | sort"
