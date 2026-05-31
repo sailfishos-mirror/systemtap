@@ -1,6 +1,6 @@
 # lsm.exp - Tests for LSM (Linux Security Module) BPF probes
 
-set testdir "$srcdir/$subdir/bpf_tests"
+set testdir "$srcdir/$subdir/bpf_tests/lsm"
 
 # Check if BPF runtime is available
 if {![bpf_p]} {

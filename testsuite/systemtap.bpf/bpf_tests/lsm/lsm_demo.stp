@@ -1,0 +1,83 @@
+#!/usr/bin/env stap --runtime=bpf -g
+//
+// LSM Demo - Comprehensive security monitoring example
+// Demonstrates the power of tapset variable abstractions
+//
+
+global exec_log, file_log, socket_log
+
+// Monitor program execution
+probe lsm.bprm_check_security
+{
+    exec_log[filename] <<< 1
+    printf("EXEC: %s (args=%d)\n", filename, argc)
+}
+
+// Monitor file access
+probe lsm.file_open
+{
+    if (pathname !~ "^/proc" && pathname !~ "^/sys")
+    {
+        file_log[pathname] <<< 1
+        printf("OPEN: %s (inode=%d, mode=0%o)\n", pathname, inode, mode)
+    }
+}
+
+// Monitor file permission checks
+probe lsm.file_permission
+{
+    access = ""
+    if (may_read) access = access . "R"
+    if (may_write) access = access . "W"
+    if (may_exec) access = access . "X"
+
+    if (access != "" && pathname !~ "^/proc" && pathname !~ "^/sys")
+        printf("PERM: %s (%s)\n", pathname, access)
+}
+
+// Monitor socket operations
+probe lsm.socket_create
+{
+    fam_str = (family == 2) ? "AF_INET" :
+              (family == 10) ? "AF_INET6" :
+              (family == 1) ? "AF_UNIX" : sprintf("AF_%d", family)
+
+    type_str = (type == 1) ? "STREAM" :
+               (type == 2) ? "DGRAM" : sprintf("TYPE_%d", type)
+
+    socket_log[fam_str, type_str] <<< 1
+    printf("SOCKET: %s/%s proto=%d\n", fam_str, type_str, protocol)
+}
+
+// Monitor directory operations
+probe lsm.inode_mkdir
+{
+    printf("MKDIR: %s/%s (mode=0%o)\n", dir_inode, dirname, mode)
+}
+
+probe lsm.inode_rmdir
+{
+    printf("RMDIR: %s/%s\n", dir_inode, dirname)
+}
+
+// Monitor file deletions
+probe lsm.inode_unlink
+{
+    printf("UNLINK: %s/%s\n", dir_inode, filename)
+}
+
+// Report summary
+probe end
+{
+    println("\n=== EXECUTION SUMMARY ===")
+    foreach (exe in exec_log- limit 10)
+        printf("  %s: %d times\n", exe, @count(exec_log[exe]))
+
+    println("\n=== FILE ACCESS SUMMARY ===")
+    foreach (path in file_log- limit 10)
+        printf("  %s: %d times\n", path, @count(file_log[path]))
+
+    println("\n=== SOCKET SUMMARY ===")
+    foreach ([fam, type] in socket_log-)
+        printf("  %s/%s: %d times\n", fam, type, @count(socket_log[fam, type]))
+}
