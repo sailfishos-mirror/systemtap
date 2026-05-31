@@ -1159,8 +1159,8 @@ make_tracequeries(systemtap_session& s, const map<string,string>& contents)
   // create a simple Makefile
   string makefile(dir + "/Makefile");
   ofstream omf(makefile.c_str());
-  // force debuginfo generation, and relax implicit functions
-  omf << extra_cflags << " := -g -Wno-implicit-function-declaration " << "-Werror" << endl;
+  // force debuginfo generation
+  omf << extra_cflags << " := -g " << "-Werror" << endl;
   // RHBZ 655231: later rhel6 kernels' module-signing kbuild logic breaks out-of-tree modules
   omf << "CONFIG_MODULE_SIG := n" << endl;
   // PR23488: need to override this kconfig, else we get no useful struct decls
