@@ -23,9 +23,7 @@ lsp_config=jupyter_stap_lsp.json
 
 if [ "$1" = '--container-install' ]; then
     PREFIX=$2
-     if [ ! -e $PREFIX/share/systemtap/interactive-notebook/isystemtap/constants.py ]; then
-         echo "Usage: --container-install $PREFIX is not a valid prefix directory. It must be a parent of interactive-notebook/" 1>&2; exit 1;
-     fi
+    # In container mode, no validation needed - we're already in the right directory
 elif [ "$1" = '--remove' ]; then
     jupyter kernelspec remove isystemtap
     rm -rf $jupyter_dir

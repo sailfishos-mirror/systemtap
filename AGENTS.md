@@ -39,6 +39,10 @@ sudo -E make installcheck   # Root: full runtime tests, takes many hours, uses $
 The `-E` flag on sudo is needed to preserve environment variables
 related to debuginfod usage.
 
+**Important:** Always run test commands from the top-level directory,
+not from the `testsuite/` subdirectory. The build system handles
+entering the testsuite directory automatically.
+
 Run specific tests:
 
 ```bash

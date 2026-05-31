@@ -6,8 +6,9 @@
 # Public License (GPL); either version 2, or (at your option) any
 # later version.
 
-# If things act up we know 'latest' at time of development was '2023-03-13'
-FROM jupyter/minimal-notebook:latest
+# Pin to python-3.11.6 tag which has JupyterLab 3.6.x (last tag before 4.x migration)
+# See: https://hub.docker.com/r/jupyter/minimal-notebook/tags
+FROM jupyter/minimal-notebook:python-3.11.6
 
 LABEL maintainer="Systemtap Development Team <systemtap@sourceware.org>"
 
@@ -37,7 +38,10 @@ RUN mkdir -p /usr/local/bin/before-notebook.d/ && \
 WORKDIR $NOTEBOOK_DIR
 RUN apt-get update --yes && \
     apt-get install --yes jq
-RUN ./container/stap-jupyter-install --container-install $NOTEBOOK_PREFIX
+RUN ./container/stap-jupyter-install --container-install $NOTEBOOK_PREFIX || \
+    (echo "===== JUPYTERLAB DEBUG LOGS =====" && \
+     find /tmp -name "jupyterlab-debug-*.log" -exec cat {} \; && \
+     exit 1)
 RUN fix-permissions $CONDA_DIR && \
     fix-permissions /home/$NB_USER 
 
