@@ -1962,12 +1962,16 @@ read_cert_info_from_file (const string &certPath, string &fingerprint)
     }
 
   // Get the fingerprint from the signature.
-  unsigned char fingerprint_buf[32]; // SHA256_LENGTH
+  // Use SHA1 for MOK fingerprints to match mokutil behavior
+  // MOKutil always uses SHA1 fingerprints regardless of certificate signature algorithm
+  unsigned char fingerprint_buf[SHA1_LENGTH];
   SECItem fpItem;
-  rv = PK11_HashBuf(SEC_OID_SHA256, fingerprint_buf, derCert.data, derCert.len);
+  rv = PK11_HashBuf(SEC_OID_SHA1, fingerprint_buf, derCert.data, derCert.len);
   if (rv)
     {
-      nsscommon_error (_F("Could not decode SHA256 fingerprint from file %s",
+      // Note: We use SHA1 for MOK fingerprints because mokutil (the UEFI MOK
+      // enrollment tool) always displays SHA1 fingerprints, not SHA256.
+      nsscommon_error (_F("Could not decode SHA1 fingerprint from file %s",
 			  certPath.c_str ()));
       goto done;
     }
@@ -1976,7 +1980,7 @@ read_cert_info_from_file (const string &certPath, string &fingerprint)
   str = CERT_Hexify(&fpItem, 1);
   if (! str)
   {
-      nsscommon_error (_F("Could not hexify SHA256 fingerprint from file %s",
+      nsscommon_error (_F("Could not hexify SHA1 fingerprint from file %s",
 			  certPath.c_str ()));
       goto done;
   }
