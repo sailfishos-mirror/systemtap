@@ -501,9 +501,9 @@ install-exec-local:
 		do $(INSTALL_PROGRAM) -D $$f $(DESTDIR)$(bindir)/$$f; done
 
 install-data-local:
-	(cd "$(srcdir)"; for f in *.{ipynb,md,txt,json,py}; \
+	(cd "$(srcdir)"; for f in *.ipynb *.md *.txt *.json *.py; \
 		do $(INSTALL_DATA) -D $$f $(DESTDIR)$(pkgdatadir)/interactive-notebook/$$f; done)
-	(cd "$(srcdir)/isystemtap"; for f in *.{py,json}; \
+	(cd "$(srcdir)/isystemtap"; for f in *.py *.json; \
 		do $(INSTALL_DATA) -D $$f $(DESTDIR)$(pkgdatadir)/interactive-notebook/isystemtap/$$f; done)
 	(cd "$(srcdir)/container"; for f in *; \
 		do $(INSTALL_DATA) -D $$f $(DESTDIR)$(pkgdatadir)/interactive-notebook/container/$$f; done)
