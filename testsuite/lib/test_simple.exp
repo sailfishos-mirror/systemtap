@@ -63,10 +63,12 @@ proc run_cmd_2way_as_root { cmd stdout_var stderr_var } {
 proc like { test_name target regex regex_opts } {
     regsub -all -- {\n} $regex {\n} escaped_regex
     if {[regexp {*}$regex_opts -- $regex $target]} {
-        pass "${test_name}: matches regex \"$escaped_regex\""
+        verbose -log "${test_name}: matches regex \"$escaped_regex\""
+        pass "${test_name}"
         return 1
     }
-    fail "${test_name}: fails to match regex \"$escaped_regex\": got \"$target\""
+    verbose -log "${test_name}: fails to match regex \"$escaped_regex\": got \"$target\""
+    fail "${test_name}"
     return 0
 }
 
@@ -82,10 +84,12 @@ proc like { test_name target regex regex_opts } {
 proc unlike { test_name got regex regex_opts } {
     regsub -all -- {\n} $regex {\n} escaped_regex
     if {[regexp {*}$regex_opts -- $regex $got]} {
-        fail "${test_name}: should NOT match regex \"$escaped_regex\" but matches: got \"$got\""
+        verbose -log "${test_name}: should NOT match regex \"$escaped_regex\" but matches: got \"$got\""
+        fail "${test_name}"
         return 0
     }
-    pass "${test_name}: matches regex \"$escaped_regex\""
+    verbose -log "${test_name}: matches regex \"$escaped_regex\""
+    pass "${test_name}"
     return 1
 }
 
@@ -99,10 +103,12 @@ proc unlike { test_name got regex regex_opts } {
 proc is { test_name got expected } {
     regsub -all -- {\n} $expected {\n} escaped_exp
     if {$got eq $expected} {
-        pass "${test_name}: string is \"$escaped_exp\""
+        verbose -log "${test_name}: string is \"$escaped_exp\""
+        pass "${test_name}"
         return 1
     }
-    fail "${test_name}: string should be \"$escaped_exp\", but got \"$got\""
+    verbose -log "${test_name}: string should be \"$escaped_exp\", but got \"$got\""
+    fail "${test_name}"
     return 0
 }
 
@@ -116,10 +122,12 @@ proc is { test_name got expected } {
 proc isnt { test_name got expected } {
     regsub -all -- {\n} $expected {\n} escaped_exp
     if {$got eq $expected} {
-        fail "${test_name}: string should NOT be \"$escaped_exp\", but got \"$got\""
+        verbose -log "${test_name}: string should NOT be \"$escaped_exp\", but got \"$got\""
+        fail "${test_name}"
         return 0
     }
-    pass "${test_name}: string should NOT be \"$escaped_exp\""
+    verbose -log "${test_name}: string should NOT be \"$escaped_exp\""
+    pass "${test_name}"
     return 1
 }
 
@@ -130,12 +138,13 @@ proc isnt { test_name got expected } {
 # Returns 1 when the check passes, 0 otherwise.
 
 proc ok { test_name result } {
-    regsub -all -- {\n} $expected {\n} escaped_exp
     if {! $result} {
-        fail "${test_name}: not ok: $result"
+        verbose -log "${test_name}: not ok: $result"
+        fail "${test_name}"
         return 0
     }
-    pass "${test_name}: ok: $result"
+    verbose -log "${test_name}: ok: $result"
+    pass "${test_name}"
     return 1
 }
 
@@ -146,12 +155,13 @@ proc ok { test_name result } {
 # Returns 1 when the check passes, 0 otherwise.
 
 proc nok { test_name result } {
-    regsub -all -- {\n} $expected {\n} escaped_exp
     if {$result} {
-        fail "${test_name}: should NOT be ok but is ok: $result"
+        verbose -log "${test_name}: should NOT be ok but is ok: $result"
+        fail "${test_name}"
         return 0
     }
-    pass "${test_name}: sould NOT be ok: $result"
+    verbose -log "${test_name}: should NOT be ok: $result"
+    pass "${test_name}"
     return 1
 }
 
