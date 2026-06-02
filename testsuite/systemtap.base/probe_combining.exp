@@ -139,8 +139,8 @@ foreach runtime [get_runtime_list] {
     }
     set test_name "$test: $subtest6 ($runtime)"
 
-    # Run with -vv to see optimization messages
-    set exit_code [run_cmd_2way "stap -vv --runtime=$runtime '$srcdir/$subdir/${test}_6.stp'" out stderr]
+    # Run with --vp 02 to see optimization messages without global version text
+    set exit_code [run_cmd_2way "stap --vp 02 --runtime=$runtime '$srcdir/$subdir/${test}_6.stp'" out stderr]
 
     set exp_out "1
 2
