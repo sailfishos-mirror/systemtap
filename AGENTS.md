@@ -81,7 +81,19 @@ The directory path is printed during compilation (look for "Keeping temporary di
 
 Generated C files can be 100k+ lines for complex scripts with many probes.
 
+### Verbose Output and Test Suites
+
+Using general verbosity flags like `-vv` prints the SystemTap version header to `stdout`, which can break exact `stdout` expectations in `.exp` test cases. To get compiler debug messages (e.g., optimization logs from pass 2) without polluting `stdout`, use per-pass verbosity instead:
+```bash
+stap --vp 02 script.stp
+```
+
 ## Runtime Options
+
+When running a script directly from the local build tree, always use `sudo -E` to preserve necessary environment variables (like `LD_LIBRARY_PATH` or `DEBUGINFOD_URLS`):
+```bash
+sudo -E ./stap path/to/script.stp
+```
 
 SystemTap supports three different runtimes with different privilege and capability levels:
 
@@ -116,3 +128,7 @@ stap --dyninst script.stp   # Userspace only, can run non-privileged
 **Note:** Not all tapsets and language features work in all
   runtimes. The default kernel module runtime has the most complete
   support.
+
+## Commit Conventions
+
+When writing Git commit messages, wrap the text to approximately 70 characters per line to conform with standard Git formatting practices.
