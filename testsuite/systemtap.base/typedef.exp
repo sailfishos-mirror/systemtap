@@ -1,0 +1,26 @@
+set test "typedef"
+set testpath "$srcdir/$subdir"
+
+if {! [installtest_p]} { untested $test; return }
+if {! [uprobes_p]} { untested $test; return }
+
+set res [target_compile ${testpath}/${test}.c ./typedef.exe executable "additional_flags=-g additional_flags=-O0"]
+if {$res ne ""} {
+    verbose "target_compile failed: $res" 2
+    fail "$test: unable to compile ${test}.c"
+} else {
+    foreach runtime [get_runtime_list] {
+        if {$runtime eq ""} {
+            set runtime "kernel"
+        }
+        set test_name "$test ($runtime)"
+        set cmd "stap --runtime=$runtime -c ./typedef.exe '$srcdir/$subdir/${test}.stp' ./typedef.exe"
+        set exit_code [run_cmd_2way $cmd out stderr]
+        set exp_out "42\n"
+        is "${test_name}: stdout" $out $exp_out
+        is "${test_name}: exit code" $exit_code 0
+        if {$stderr ne ""} {
+            send_log "stderr:\n$stderr"
+        }
+    }
+}

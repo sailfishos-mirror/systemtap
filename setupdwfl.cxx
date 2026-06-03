@@ -625,7 +625,12 @@ setup_dwfl_user(std::vector<std::string>::const_iterator &begin,
 bool
 is_user_module(const std::string &m)
 {
-  return m[0] == '/' && m.rfind(".ko", m.length() - 1) != m.length() - 3;
+  return m.find('/') != std::string::npos &&
+         !(endswith(m, ".ko") ||
+           endswith(m, ".ko.gz") ||
+           endswith(m, ".ko.bz2") ||
+           endswith(m, ".ko.xz") ||
+           endswith(m, ".ko.zst"));
 }
 
 int

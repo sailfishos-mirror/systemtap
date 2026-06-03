@@ -5112,6 +5112,10 @@ dwarf_cast_query::handle_query_module()
 
   try
     {
+      Dwarf_Die type_die_mem;
+      dw.resolve_unqualified_inner_typedie (type_die, &type_die_mem, &e);
+      type_die = &type_die_mem;
+
       Dwarf_Die cu_mem;
       dw.focus_on_cu(dwarf_diecu(type_die, &cu_mem, NULL, NULL));
 
