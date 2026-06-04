@@ -2309,7 +2309,7 @@ bpf_unparser::visit_foreach_loop(foreach_loop* s)
                        frame, newkey_ofs);
   this_prog.mk_mov (this_ins, this_prog.lookup_reg(BPF_REG_4), id);
   this_prog.mk_mov (this_ins, this_prog.lookup_reg(BPF_REG_5), limit);
-  this_prog.mk_call (this_ins, BPF_FUNC_map_get_next_key, 5);
+  this_prog.mk_call (this_ins, (bpf_func_id)BPF_FUNC_map_get_next_key, 5);
   this_prog.mk_jcond (this_ins, NE, this_prog.lookup_reg(BPF_REG_0), i0,
                       join_block, load_block_1);
 
@@ -2333,7 +2333,7 @@ bpf_unparser::visit_foreach_loop(foreach_loop* s)
                        frame, newkey_ofs);
   this_prog.mk_mov (this_ins, this_prog.lookup_reg(BPF_REG_4), id);
   this_prog.mk_mov (this_ins, this_prog.lookup_reg(BPF_REG_5), limit);
-  this_prog.mk_call (this_ins, BPF_FUNC_map_get_next_key, 5);
+  this_prog.mk_call (this_ins, (bpf_func_id)BPF_FUNC_map_get_next_key, 5);
   this_prog.mk_jcond (this_ins, NE, this_prog.lookup_reg(BPF_REG_0), i0,
                       join_block, load_block_1);
 
@@ -2848,7 +2848,7 @@ bpf_unparser::visit_concatenation (concatenation* e)
       this_prog.mk_mov(this_ins, this_prog.lookup_reg(BPF_REG_2), placeholder_next);
 
       // Call function to concatenate. 
-      this_prog.mk_call(this_ins, BPF_FUNC_str_concat, 2);
+      this_prog.mk_call(this_ins, (bpf_func_id)BPF_FUNC_str_concat, 2);
 
       result_str = this_prog.new_reg();
       this_prog.mk_mov(this_ins, result_str, this_prog.lookup_reg(BPF_REG_0));
@@ -3948,7 +3948,7 @@ bpf_unparser::emit_print_format (const std::string& format,
       for (size_t i = 0; i < nargs; ++i)
         emit_mov(this_prog.lookup_reg(BPF_REG_3 + i), actual[i]);
 
-      this_prog.mk_call(this_ins, BPF_FUNC_sprintf, nargs + 2);
+      this_prog.mk_call(this_ins, (bpf_func_id)BPF_FUNC_sprintf, nargs + 2);
       return this_prog.lookup_reg(BPF_REG_0);
     }
 
@@ -4172,7 +4172,7 @@ bpf_unparser::visit_stat_op (stat_op* e)
   uint64_t sc_type = globals::intern_sc_type(e->ctype);
   emit_mov(this_prog.lookup_reg(BPF_REG_3), this_prog.new_imm(sc_type));
 
-  this_prog.mk_call (this_ins, BPF_FUNC_stapbpf_stat_get, 3);
+  this_prog.mk_call (this_ins, (bpf_func_id)BPF_FUNC_stapbpf_stat_get, 3);
 
   result = this_prog.new_reg();
   emit_mov(result, this_prog.lookup_reg(BPF_REG_0));

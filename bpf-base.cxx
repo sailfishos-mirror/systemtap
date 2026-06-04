@@ -402,7 +402,7 @@ void
 init_bpf_helper_tables ()
 {
 #define __BPF_SET_FUNC_NAME(x) bpf_func_name_map[BPF_FUNC_ ## x] = #x
-#define __BPF_SET_FUNC_ID(x) bpf_func_id_map[#x] = BPF_FUNC_ ## x
+#define __BPF_SET_FUNC_ID(x) bpf_func_id_map[#x] = (bpf_func_id)(BPF_FUNC_ ## x)
   __BPF_FUNC_MAPPER(__BPF_SET_FUNC_NAME)
   __STAPBPF_FUNC_MAPPER(__BPF_SET_FUNC_NAME)
   __BPF_FUNC_MAPPER(__BPF_SET_FUNC_ID)
