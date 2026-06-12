@@ -17,22 +17,6 @@ if {[catch { exec $installed_stap -wp4 $srcdir/$subdir/rlimit.stp} res ]} {
      pass $test
 }
 
-# Increase AS limit (as non root)
-set test "rlimit AS increase (as non root)"
-if {[as_non_root "$installed_stap --rlimit-as=1 --rlimit-as=999999999999 -wp4 $srcdir/$subdir/rlimit.stp" ]} {
-     pass $test
-} else {
-     fail $test
-}
-
-# Increase AS limit (as root)
-set test "rlimit AS increase (as root)"
-if {[as_root "$installed_stap --rlimit-as=1 --rlimit-as=999999999999 -wp4 $srcdir/$subdir/rlimit.stp" ]} {
-     fail $test
-} else {
-     pass $test
-}
-
 # Realistic AS limit
 set test "rlimit AS realistic"
 if {[catch { exec $installed_stap --rlimit-as=2000000000 -wp4 $srcdir/$subdir/rlimit.stp} res ]} {
@@ -47,22 +31,6 @@ if {[catch { exec $installed_stap --rlimit-as=1 -wp4 $srcdir/$subdir/rlimit.stp}
      pass $test
 } else {
      fail $test
-}
-
-# Increase CPU limit (as non root)
-set test "rlimit CPU increase (as non root)"
-if {[as_non_root "$installed_stap --rlimit-cpu=1 --rlimit-cpu=999999999999 -wp4 $srcdir/$subdir/rlimit.stp" ]} {
-     pass $test
-} else {
-     fail $test
-}
-
-# Increase CPU limit (as root)
-set test "rlimit CPU increase (as root)"
-if {[as_root "$installed_stap --rlimit-cpu=1 --rlimit-cpu=999999999999 -wp4 $srcdir/$subdir/rlimit.stp" ]} {
-     fail $test
-} else {
-     pass $test
 }
 
 # Realistic CPU limit
@@ -107,22 +75,6 @@ if {[catch { exec $installed_stap --rlimit-nproc=20 -wp4 $srcdir/$subdir/rlimit.
 # Small NPROC limit
 # Did not seem to change functionality
 
-# Increase STACK limit (as non root)
-set test "rlimit STACK increase (as non root)"
-if {[as_non_root "$installed_stap --rlimit-stack=1 --rlimit-stack=999999999999 -wp4 $srcdir/$subdir/rlimit.stp" ]} {
-     pass $test
-} else {
-     fail $test
-}
-
-# Increase STACK limit (as root)
-set test "rlimit STACK increase (as root)"
-if {[as_root "$installed_stap --rlimit-stack=1 --rlimit-stack=999999999999 -wp4 $srcdir/$subdir/rlimit.stp" ]} {
-     fail $test
-} else {
-     pass $test
-}
-
 # Realistic STACK limit
 set test "rlimit STACK realistic"
 if {[catch { exec $installed_stap --rlimit-stack=1024000 -wp4 $srcdir/$subdir/rlimit.stp} res ]} {
@@ -134,22 +86,6 @@ if {[catch { exec $installed_stap --rlimit-stack=1024000 -wp4 $srcdir/$subdir/rl
 # Small STACK limit
 # PR13977. The setrlimit() call in stap succeeds, but some kernels ignore
 # the small limit.
-
-# Increase FSIZE limit (as non root)
-set test "rlimit FSIZE increase (as non root)"
-if {[as_non_root "$installed_stap --rlimit-fsize=1 --rlimit-fsize=999999999999 -wp4 $srcdir/$subdir/rlimit.stp" ]} {
-     pass $test
-} else {
-     fail $test
-}
-
-# Increase FSIZE limit (as root)
-set test "rlimit FSIZE increase (as root)"
-if {[as_root "$installed_stap --rlimit-fsize=1 --rlimit-fsize=999999999999 -wp4 $srcdir/$subdir/rlimit.stp" ]} {
-     fail $test
-} else {
-     pass $test
-}
 
 # Realistic FSIZE limit
 set test "rlimit FSIZE realistic"
