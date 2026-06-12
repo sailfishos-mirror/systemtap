@@ -1,1 +1,1 @@
-probe kernel.function("*ar*").call { println($$vars) }
+probe kernel.function("tcp*send*").call { println($$vars) }

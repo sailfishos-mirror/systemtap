@@ -25,6 +25,7 @@
 #include <stdexcept>
 
 extern "C" {
+#include <sys/resource.h>
 #include <signal.h>
 #include <elfutils/libdw.h>
 #include <pwd.h>
@@ -447,6 +448,10 @@ public:
   std::map<std::string, int> seen_errors; // NB: can change to a set if threshold is 1
   int suppressed_errors;
   int warningerr_count; // see comment in systemtap_session::print_error
+
+  // resource limits
+  std::map<int, struct rlimit> rlimits;
+  int apply_rlimits ();
 
   // Returns number of critical errors (not counting those part of warnings)
   unsigned num_errors ()

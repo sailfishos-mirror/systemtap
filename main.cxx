@@ -1706,6 +1706,11 @@ main (int argc, char * const argv [])
     if (rc != 0)
       return rc;
 
+    // Apply any resource limits requested by the user.
+    rc = s.apply_rlimits ();
+    if (rc != 0)
+      return rc;
+
     #if HAVE_LANGUAGE_SERVER_SUPPORT
     if(s.language_server_mode){
       // The language server commuinicates with the client via stdio, so the systemtap verbosity should be 0

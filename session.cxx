@@ -1465,16 +1465,11 @@ systemtap_session::parse_cmdline (int argc, char * const argv [])
 	    cerr << _F("Unable to convert rlimit-as resource limit '%s'.", optarg) << endl;
 	    return 1;
 	  }
-	  if(setrlimit (RLIMIT_AS, & our_rlimit)) {
-	    int saved_errno = errno;
-	    cerr << _F("Unable to set resource limits for rlimit-as : %s", strerror (errno)) << endl;
-	    if (saved_errno != EPERM)
-	      return 1;
-	  }
+	  rlimits[RLIMIT_AS] = our_rlimit;
 
           /* Disable core dumps, since exhaustion results in uncaught bad_alloc etc. exceptions */
 	  our_rlimit.rlim_max = our_rlimit.rlim_cur = 0;
-	  (void) setrlimit (RLIMIT_CORE, & our_rlimit);
+	  rlimits[RLIMIT_CORE] = our_rlimit;
 	  break;
 
 	case LONG_OPT_RLIMIT_CPU:
@@ -1490,12 +1485,7 @@ systemtap_session::parse_cmdline (int argc, char * const argv [])
 	    cerr << _F("Unable to convert resource limit '%s' for rlimit-cpu", optarg) << endl;
 	    return 1;
 	  }
-	  if(setrlimit (RLIMIT_CPU, & our_rlimit)) {
-	    int saved_errno = errno;
-	    cerr << _F("Unable to set resource limits for rlimit-cpu : %s", strerror (errno)) << endl;
-	    if (saved_errno != EPERM)
-	      return 1;
-	  }
+	  rlimits[RLIMIT_CPU] = our_rlimit;
 	  break;
 
 	case LONG_OPT_RLIMIT_NPROC:
@@ -1511,12 +1501,7 @@ systemtap_session::parse_cmdline (int argc, char * const argv [])
 	    cerr << _F("Unable to convert resource limit '%s' for rlimit-nproc", optarg) << endl;
 	    return 1;
 	  }
-	  if(setrlimit (RLIMIT_NPROC, & our_rlimit)) {
-	    int saved_errno = errno;
-	    cerr << _F("Unable to set resource limits for rlimit-nproc : %s", strerror (errno)) << endl;
-	    if (saved_errno != EPERM)
-	      return 1;
-	  }
+	  rlimits[RLIMIT_NPROC] = our_rlimit;
 	  break;
 
 	case LONG_OPT_RLIMIT_STACK:
@@ -1532,16 +1517,11 @@ systemtap_session::parse_cmdline (int argc, char * const argv [])
 	    cerr << _F("Unable to convert resource limit '%s' for rlimit-stack", optarg) << endl;
 	    return 1;
 	  }
-	  if(setrlimit (RLIMIT_STACK, & our_rlimit)) {
-	    int saved_errno = errno;
-	    cerr << _F("Unable to set resource limits for rlimit-stack : %s", strerror (errno)) << endl;
-	    if (saved_errno != EPERM)
-	      return 1;
-	  }
+	  rlimits[RLIMIT_STACK] = our_rlimit;
 
           /* Disable core dumps, since exhaustion results in SIGSEGV */
 	  our_rlimit.rlim_max = our_rlimit.rlim_cur = 0;
-	  (void) setrlimit (RLIMIT_CORE, & our_rlimit);
+	  rlimits[RLIMIT_CORE] = our_rlimit;
 	  break;
 
 	case LONG_OPT_RLIMIT_FSIZE:
@@ -1557,12 +1537,7 @@ systemtap_session::parse_cmdline (int argc, char * const argv [])
 	    cerr << _F("Unable to convert resource limit '%s' for rlimit-fsize", optarg) << endl;
 	    return 1;
 	  }
-	  if(setrlimit (RLIMIT_FSIZE, & our_rlimit)) {
-	    int saved_errno = errno;
-	    cerr << _F("Unable to set resource limits for rlimit-fsize : %s", strerror (errno)) << endl;
-	    if (saved_errno != EPERM)
-	      return 1;
-	  }
+	  rlimits[RLIMIT_FSIZE] = our_rlimit;
 	  break;
 
 	case LONG_OPT_SYSROOT:
@@ -1794,6 +1769,33 @@ systemtap_session::parse_cmdline (int argc, char * const argv [])
       kernel_build_tree = sysroot + "/lib/modules/" + kernel_release  + "/build";
   }
 
+  return 0;
+}
+
+int
+systemtap_session::apply_rlimits ()
+{
+  for (std::map<int, struct rlimit>::iterator it = rlimits.begin(); it != rlimits.end(); ++it)
+    {
+      if (setrlimit (it->first, & it->second))
+        {
+          int saved_errno = errno;
+          string resource_name;
+          switch (it->first)
+            {
+            case RLIMIT_AS: resource_name = "rlimit-as"; break;
+            case RLIMIT_CPU: resource_name = "rlimit-cpu"; break;
+            case RLIMIT_NPROC: resource_name = "rlimit-nproc"; break;
+            case RLIMIT_STACK: resource_name = "rlimit-stack"; break;
+            case RLIMIT_FSIZE: resource_name = "rlimit-fsize"; break;
+            case RLIMIT_CORE: resource_name = "rlimit-core"; break;
+            default: resource_name = lex_cast(it->first); break;
+            }
+          cerr << _F("Unable to set resource limits for %s: %s", resource_name.c_str(), strerror (saved_errno)) << endl;
+          if (saved_errno != EPERM)
+            return 1;
+        }
+    }
   return 0;
 }
 

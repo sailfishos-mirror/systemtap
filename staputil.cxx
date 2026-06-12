@@ -1477,7 +1477,7 @@ string autosprintf(const char* format, ...)
   if (rc < 0)
     {
       va_end(args);
-      return _F("autosprintf/vasprintf error %d", rc);
+      return "autosprintf/vasprintf error";
     }
   string s = str;
   va_end (args);
