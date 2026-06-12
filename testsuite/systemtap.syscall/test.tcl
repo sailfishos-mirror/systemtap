@@ -8,8 +8,9 @@ proc syscall_cleanup {} {
 	set current_dir ""
     }
     if {$syscall_dir != ""} {
+        chown_to_original_user $syscall_dir
 #	puts "rm -rf $syscall_dir"
-	exec rm -rf $syscall_dir
+	catch {exec rm -rf $syscall_dir}
 	set syscall_dir ""
     }
 }

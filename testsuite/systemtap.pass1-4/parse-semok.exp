@@ -128,4 +128,5 @@ foreach dir $dirlist {
 }
 
 # Cleanup
+chown_to_original_user $tmpdir
 if { $verbose == 0 } { catch {exec /bin/rm -rf $tmpdir} }

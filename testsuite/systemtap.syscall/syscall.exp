@@ -116,6 +116,10 @@ proc test_procedure {} {
         unset staprun_spawn_id
     }
     exec /bin/rm -f ${test_module} $stap_output_log
+
+    # Restore default SIGINT handler to avoid this trap being active
+    # for the rest of the test suite.
+    trap SIG_DFL SIGINT
 }
 
 test_procedure

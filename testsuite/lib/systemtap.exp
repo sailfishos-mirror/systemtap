@@ -33,6 +33,29 @@ proc installtest_p {} {
     } else { return 0 }
 }
 
+proc get_original_user {} {
+    global env
+    if {[info exists env(SUDO_USER)]} {
+        return $env(SUDO_USER)
+    }
+    # Fallback to the owner of the current directory (the build tree)
+    set owner [file attributes . -owner]
+    if {$owner != "root"} {
+        return $owner
+    }
+    return ""
+}
+
+proc chown_to_original_user {args} {
+    set user [get_original_user]
+    if {$user != ""} {
+        foreach path $args {
+            if {[file exists $path]} {
+                catch {exec chown -R $user $path}
+            }
+        }
+    }
+}
 
 proc grep_kallsyms { pattern } {
     if {! [catch {exec grep -q "$pattern" "/proc/kallsyms"} dummy]} {
