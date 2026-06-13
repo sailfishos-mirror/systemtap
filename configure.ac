@@ -684,6 +684,8 @@ no) ;;
        AC_CHECK_LIB(tbb, TBB_runtime_interface_version, [tbb_LIBS=-ltbb],[tbb_LIBS=])       
        LIBS="$save_LIBS"
        DYNINST_LIBS="-lparseAPI -lsymtabAPI -linstructionAPI $tbb_LIBS -lcommon"
+       # Workaround for Dyninst requiring DYNINST_TBB_HAS_VERSION_H on newer TBB versions
+       AC_CHECK_HEADERS([tbb/version.h], [DYNINST_CXXFLAGS="$DYNINST_CXXFLAGS -DDYNINST_TBB_HAS_VERSION_H"])
      fi
      ;;
 *)  # Use paths in the user-specified prefix
@@ -694,6 +696,8 @@ no) ;;
     AC_CHECK_LIB(tbb, TBB_runtime_interface_version, [tbb_LIBS=-ltbb],[tbb_LIBS=])       
     LIBS="$save_LIBS"
     DYNINST_LIBS="-lparseAPI -lsymtabAPI -linstructionAPI $tbb_LIBS -lcommon"
+    # Workaround for Dyninst requiring DYNINST_TBB_HAS_VERSION_H on newer TBB versions
+    AC_CHECK_HEADERS([tbb/version.h], [DYNINST_CXXFLAGS="$DYNINST_CXXFLAGS -DDYNINST_TBB_HAS_VERSION_H"])
     ;;
 esac
 if test "$with_dyninst" != "no"; then

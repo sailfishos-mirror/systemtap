@@ -13698,6 +13698,17 @@ fi
 
        LIBS="$save_LIBS"
        DYNINST_LIBS="-lparseAPI -lsymtabAPI -linstructionAPI $tbb_LIBS -lcommon"
+       # Workaround for Dyninst requiring DYNINST_TBB_HAS_VERSION_H on newer TBB versions
+              for ac_header in tbb/version.h
+do :
+  ac_fn_c_check_header_compile "$LINENO" "tbb/version.h" "ac_cv_header_tbb_version_h" "$ac_includes_default"
+if test "x$ac_cv_header_tbb_version_h" = xyes
+then :
+  printf '%s\n' "#define HAVE_TBB_VERSION_H 1" >>confdefs.h
+ DYNINST_CXXFLAGS="$DYNINST_CXXFLAGS -DDYNINST_TBB_HAS_VERSION_H"
+fi
+
+done
      fi
      ;;
 *)  # Use paths in the user-specified prefix
@@ -13758,6 +13769,17 @@ fi
 
     LIBS="$save_LIBS"
     DYNINST_LIBS="-lparseAPI -lsymtabAPI -linstructionAPI $tbb_LIBS -lcommon"
+    # Workaround for Dyninst requiring DYNINST_TBB_HAS_VERSION_H on newer TBB versions
+           for ac_header in tbb/version.h
+do :
+  ac_fn_c_check_header_compile "$LINENO" "tbb/version.h" "ac_cv_header_tbb_version_h" "$ac_includes_default"
+if test "x$ac_cv_header_tbb_version_h" = xyes
+then :
+  printf '%s\n' "#define HAVE_TBB_VERSION_H 1" >>confdefs.h
+ DYNINST_CXXFLAGS="$DYNINST_CXXFLAGS -DDYNINST_TBB_HAS_VERSION_H"
+fi
+
+done
     ;;
 esac
 if test "$with_dyninst" != "no"; then
