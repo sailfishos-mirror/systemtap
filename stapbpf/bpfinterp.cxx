@@ -1039,7 +1039,7 @@ bpf_interpret(size_t ninsns, const struct bpf_insn insns[],
 	  continue;
 
 	case BPF_JMP | BPF_CALL:
-	  switch (si)
+	  switch ((uint32_t)si)
 	    {
 	    case BPF_FUNC_map_lookup_elem:
 	      {
