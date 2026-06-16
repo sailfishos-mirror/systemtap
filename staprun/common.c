@@ -62,13 +62,21 @@ int control_channel = -1; /* NB: fd==0 possible */
 static char path_buf[PATH_MAX];
 static char *get_abspath(char *path)
 {
+	char *cwd;
 	int len;
+
 	if (path[0] == '/')
 		return path;
 
-	len = strlen(getcwd(path_buf, PATH_MAX));
-	if (len + 2 + strlen(path) >= PATH_MAX)
+	cwd = getcwd(path_buf, PATH_MAX);
+	if (cwd == NULL)
 		return NULL;
+
+	len = strlen(cwd);
+	if (len + 2 + strlen(path) >= PATH_MAX) {
+		errno = ENAMETOOLONG;
+		return NULL;
+	}
 	path_buf[len] = '/';
 	/* Note that this strcpy() call is OK, since we checked
 	 * the length earlier to make sure the string would fit. */
@@ -279,7 +287,7 @@ void parse_args(int argc, char **argv)
 		int ret;
 		outfile_name = get_abspath(outfile_name);
 		if (outfile_name == NULL) {
-			err(_("File name is too long.\n"));
+			perr(_("Unable to make output file name absolute"));
 			usage(argv[0],1);
 		}
 		ret = stap_strfloctime(tmp, PATH_MAX - 21,
