@@ -383,6 +383,7 @@ mok_dir_valid_p (const string &mok_fingerprint, const string &mok_path, bool ver
 			 mok_dir.c_str(), strerror(errno)), true);
       return false;
     }
+  closedir (dirp);
 
   // Find both the x509 certificate and private key files.
   string mok_private_cert_path = mok_dir + MOK_PRIVATE_CERT_FILE;
