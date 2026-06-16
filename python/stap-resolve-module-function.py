@@ -1,15 +1,53 @@
 from __future__ import print_function
 
 import ast
-import warnings
-with warnings.catch_warnings():
-    warnings.simplefilter("ignore")
-    # deprecated in python 3.4, but still works as of python 3.7.6
-    import imp
 import os.path
 import re
 import sys
 from glob import glob
+
+try:
+    import importlib.util
+    import importlib.machinery
+    _use_importlib = (sys.version_info >= (3, 4))
+except ImportError:
+    _use_importlib = False
+
+if _use_importlib:
+    class _ImpShim(object):
+        PY_SOURCE = 1
+        PKG_DIRECTORY = 5
+        C_BUILTIN = 6
+        C_EXTENSION = 3
+
+        def find_module(self, name, path):
+            spec = importlib.machinery.PathFinder.find_spec(name, path)
+            if spec is None:
+                raise ImportError("No module named %r" % name)
+            pathname = spec.origin
+            if pathname is None:
+                if spec.submodule_search_locations is not None:
+                    return (None, name, ('', '', self.PKG_DIRECTORY))
+                return (None, name, ('', '', self.C_BUILTIN))
+            if isinstance(spec.loader, importlib.machinery.SourceFileLoader):
+                type = self.PY_SOURCE
+                fh = open(pathname, 'r')
+            elif isinstance(spec.loader, importlib.machinery.ExtensionFileLoader):
+                type = self.C_EXTENSION
+                fh = None
+            elif spec.submodule_search_locations is not None:
+                type = self.PKG_DIRECTORY
+                fh = None
+            else:
+                type = self.C_BUILTIN
+                fh = None
+            return (fh, pathname, ('', '', type))
+    imp = _ImpShim()
+else:
+    import warnings
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        import imp
 
 
 _verbose = 0
