@@ -13132,15 +13132,26 @@ no) ;;
      old_LIBS="$LIBS"
      old_LDFLAGS="$LDFLAGS"
      old_CPPFLAGS="$CPPFLAGS"
-     CPPFLAGS="$CPPFLAGS $DYNINST_CXXFLAGS"
      ac_ext=cpp
 ac_cpp='$CXXCPP $CPPFLAGS'
 ac_compile='$CXX -c $CXXFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CXX -o conftest$ac_exeext $CXXFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=$ac_cv_cxx_compiler_gnu
 
+     # Workaround for Dyninst requiring DYNINST_TBB_HAS_VERSION_H on newer TBB versions
+            for ac_header in tbb/version.h
+do :
+  ac_fn_cxx_check_header_compile "$LINENO" "tbb/version.h" "ac_cv_header_tbb_version_h" "$ac_includes_default"
+if test "x$ac_cv_header_tbb_version_h" = xyes
+then :
+  printf "%s\n" "#define HAVE_TBB_VERSION_H 1" >>confdefs.h
+ DYNINST_CXXFLAGS="$DYNINST_CXXFLAGS -DDYNINST_TBB_HAS_VERSION_H"
+fi
+
+done
+     CPPFLAGS="$CPPFLAGS $DYNINST_CXXFLAGS"
      for location in /usr/lib64/dyninst /usr/lib/dyninst ${libdir}/dyninst; do
-       LDFLAGS="-L${location}"
+         LDFLAGS="-L${location}"
          LIBS="-lparseAPI ${BOOST_SYSTEM_LIB}"
 	   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -13164,6 +13175,8 @@ rm -f core conftest.err conftest.$ac_objext conftest.beam \
     conftest$ac_exeext conftest.$ac_ext
        if test "$found_DYNINST_LDFLAGS" = "yes"; then
          DYNINST_LDFLAGS="$LDFLAGS"
+         { printf "%s\n" "$as_me:${as_lineno-$LINENO}: dyninst libraries found in $DYNINST_LDFLAGS" >&5
+printf "%s\n" "$as_me: dyninst libraries found in $DYNINST_LDFLAGS" >&6;}
 	 break
        fi
      done
@@ -13233,17 +13246,6 @@ fi
 
        LIBS="$save_LIBS"
        DYNINST_LIBS="-lparseAPI -lsymtabAPI -linstructionAPI $tbb_LIBS -lcommon"
-       # Workaround for Dyninst requiring DYNINST_TBB_HAS_VERSION_H on newer TBB versions
-              for ac_header in tbb/version.h
-do :
-  ac_fn_c_check_header_compile "$LINENO" "tbb/version.h" "ac_cv_header_tbb_version_h" "$ac_includes_default"
-if test "x$ac_cv_header_tbb_version_h" = xyes
-then :
-  printf "%s\n" "#define HAVE_TBB_VERSION_H 1" >>confdefs.h
- DYNINST_CXXFLAGS="$DYNINST_CXXFLAGS -DDYNINST_TBB_HAS_VERSION_H"
-fi
-
-done
      fi
      ;;
 *)  # Use paths in the user-specified prefix

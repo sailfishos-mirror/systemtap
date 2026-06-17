@@ -609,10 +609,12 @@ no) ;;
      old_LIBS="$LIBS"
      old_LDFLAGS="$LDFLAGS"
      old_CPPFLAGS="$CPPFLAGS"
-     CPPFLAGS="$CPPFLAGS $DYNINST_CXXFLAGS"
      AC_LANG_PUSH(C++)
+     # Workaround for Dyninst requiring DYNINST_TBB_HAS_VERSION_H on newer TBB versions
+     AC_CHECK_HEADERS([tbb/version.h], [DYNINST_CXXFLAGS="$DYNINST_CXXFLAGS -DDYNINST_TBB_HAS_VERSION_H"])
+     CPPFLAGS="$CPPFLAGS $DYNINST_CXXFLAGS"
      for location in /usr/lib64/dyninst /usr/lib/dyninst ${libdir}/dyninst; do
-       LDFLAGS="-L${location}"
+         LDFLAGS="-L${location}"
          LIBS="-lparseAPI ${BOOST_SYSTEM_LIB}"
 	   AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <dyninst/CodeSource.h>]],
 					   [[char *s; Dyninst::ParseAPI::SymtabCodeSource *sts = new Dyninst::ParseAPI::SymtabCodeSource(s);]])],
@@ -620,6 +622,7 @@ no) ;;
 					   [found_DYNINST_LDFLAGS=yes],[found_DYNINST_LDFLAGS=no])
        if test "$found_DYNINST_LDFLAGS" = "yes"; then
          DYNINST_LDFLAGS="$LDFLAGS"
+         AC_MSG_NOTICE([dyninst libraries found in $DYNINST_LDFLAGS])
 	 break
        fi
      done
@@ -634,8 +637,6 @@ no) ;;
        AC_CHECK_LIB(tbb, TBB_runtime_interface_version, [tbb_LIBS=-ltbb],[tbb_LIBS=])       
        LIBS="$save_LIBS"
        DYNINST_LIBS="-lparseAPI -lsymtabAPI -linstructionAPI $tbb_LIBS -lcommon"
-       # Workaround for Dyninst requiring DYNINST_TBB_HAS_VERSION_H on newer TBB versions
-       AC_CHECK_HEADERS([tbb/version.h], [DYNINST_CXXFLAGS="$DYNINST_CXXFLAGS -DDYNINST_TBB_HAS_VERSION_H"])
      fi
      ;;
 *)  # Use paths in the user-specified prefix
