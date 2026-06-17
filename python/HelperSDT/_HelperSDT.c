@@ -16,7 +16,7 @@
 #include <frameobject.h>
 // python 3.11 removed direct access to PyFrameObject members
 // https://docs.python.org/3.11/whatsnew/3.11.html#c-api-changes
-#if PY_MAJOR_VERSION <= 3 && PY_MINOR_VERSION < 11
+#if PY_MINOR_VERSION < 11
 PyFrameObject _dummy_frame;
 #else
 PyFrameObject *_dummy_frame;
@@ -31,19 +31,6 @@ PyListObject _dummy_list;
 PyTupleObject _dummy_tuple;
 #include <unicodeobject.h>
 PyUnicodeObject _dummy_unicode;
-
-#if PY_MAJOR_VERSION < 3
-
-#include <stringobject.h>
-PyStringObject _dummy_string;
-#include <classobject.h>
-PyClassObject _dummy_class;
-PyDictEntry _dummy_dictentry;
-PyInstanceObject _dummy_instance;
-#include <intobject.h>
-PyIntObject _dummy_int;
-
-#else
 
 PyASCIIObject _dummy_ascii;
 PyCompactUnicodeObject _dummy_compactunicode;
@@ -195,13 +182,7 @@ typedef struct _stp_InterpreterFrame _stp_Py3InterpreterFrame;
 
 #endif
 
-#endif
-
-#if PY_MAJOR_VERSION < 3
-#define PROVIDER HelperSDT2
-#else
 #define PROVIDER HelperSDT3
-#endif
 
 static PyObject *
 trace_callback(PyObject *self, PyObject *args)
@@ -267,7 +248,6 @@ static PyMethodDef HelperSDT_methods[] = {
 PyDoc_STRVAR(HelperSDT_doc,
 	     "This module provides an interface for interfacing between Python tracing events and systemtap.");
 
-#if PY_MAJOR_VERSION >= 3
 //
 // According to <https://docs.python.org/3/c-api/module.html>:
 //
@@ -307,29 +287,16 @@ static struct PyModuleDef moduledef = {
         NULL,				/* m_clear */
         NULL				/* m_free */
 };
-#endif
-
 
 PyMODINIT_FUNC
-#if PY_MAJOR_VERSION >= 3
 PyInit__HelperSDT(void)
-#else
-init_HelperSDT(void)
-#endif
 {
     PyObject *module;
-
-#if PY_MAJOR_VERSION >= 3
     char *stap_module;
+
     module = PyModule_Create(&moduledef);
     if (module == NULL)
 	return NULL;
-#else
-    module = Py_InitModule3("_HelperSDT", HelperSDT_methods,
-			    HelperSDT_doc);
-    if (module == NULL)
-	return;
-#endif
 
     // Add constants for the PyTrace_* values we use.
     PyModule_AddIntMacro(module, PyTrace_CALL);
@@ -337,19 +304,17 @@ init_HelperSDT(void)
     PyModule_AddIntMacro(module, PyTrace_LINE);
     PyModule_AddIntMacro(module, PyTrace_RETURN);
 
-#if PY_MAJOR_VERSION >= 3
     // Get the systemtap module name from the environment. If we found
     // it, let systemtap know information it needs.
     stap_module = getenv("SYSTEMTAP_MODULE");
     if (stap_module) {
-	// Here we force the compiler to fully resolve the function
-	// pointer value by assigning it to a variable and accessing
-	// it with the asm() statement. Otherwise we get a @GOTPCREL
-	// reference which stap can't parse.
-	void *fptr = &PyObject_GenericGetAttr;
-	asm ("nop" : "=r"(fptr) : "r"(fptr));
-	STAP_PROBE2(PROVIDER, Init, stap_module, fptr);
+        // Here we force the compiler to fully resolve the function
+        // pointer value by assigning it to a variable and accessing
+        // it with the asm() statement. Otherwise we get a @GOTPCREL
+        // reference which stap can't parse.
+        void *fptr = &PyObject_GenericGetAttr;
+        asm ("nop" : "=r"(fptr) : "r"(fptr));
+        STAP_PROBE2(PROVIDER, Init, stap_module, fptr);
     }
     return module;
-#endif
 }

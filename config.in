@@ -134,9 +134,6 @@
 /* Define to 1 if you have the 'ppoll' function. */
 #undef HAVE_PPOLL
 
-/* Define to 1 to enable python version 2 probe support in systemtap. */
-#undef HAVE_PYTHON2_PROBES
-
 /* Define to 1 to enable python version 3 probe support in systemtap. */
 #undef HAVE_PYTHON3_PROBES
 
@@ -175,6 +172,9 @@
 
 /* Define to 1 if you have the <sys/types.h> header file. */
 #undef HAVE_SYS_TYPES_H
+
+/* Define to 1 if you have the <tbb/version.h> header file. */
+#undef HAVE_TBB_VERSION_H
 
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
@@ -216,12 +216,6 @@
 /* The python3 interpreter binary exists. */
 #undef PYTHON3_EXISTS
 
-/* Base name of the python2 interpreter binary. */
-#undef PYTHON_BASENAME
-
-/* The python2 interpreter binary exists. */
-#undef PYTHON_EXISTS
-
 /* extra stap version code */
 #undef STAP_EXTRA_VERSION
 
@@ -236,10 +230,6 @@
 /* Enable extensions on AIX, Interix, z/OS.  */
 #ifndef _ALL_SOURCE
 # undef _ALL_SOURCE
-#endif
-/* Enable extensions on Cosmopolitan Libc. */
-#ifndef _COSMO_SOURCE
-# undef _COSMO_SOURCE
 #endif
 /* Enable general extensions on macOS.  */
 #ifndef _DARWIN_C_SOURCE

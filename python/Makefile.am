@@ -21,47 +21,30 @@ if HAVE_PYTHON_PROBES
 # Why aren't we putting stap-resolve-module-function.py into
 # pkglibexecpython_PYTHON? stap-resolve-module-function.py is a
 # python script, but it will be run by the translator as either a
-# python version 2 or python version 3 script. So, it doesn't need to
-# be executable (since we'll be calling "python
-# stap-resolve-module-function.py ARGS" or "python3
-# stap-resolve-module-function.y ARGS."
+# python version 3 script. So, it doesn't need to
+# be executable (since we'll be calling "python3
+# stap-resolve-module-function.py ARGS."
 pkglibexecpython_DATA += stap-resolve-module-function.py
 
 all-local:
-if HAVE_PYTHON2_PROBES
-	(cd $(srcdir); CFLAGS="$(CFLAGS) $(AM_CPPFLAGS)" $(PYTHON) setup.py build \
-         --build-base $(shell readlink -f $(builddir))/py2build \
-         --verbose)
-endif
 if HAVE_PYTHON3_PROBES
-	(cd $(srcdir); CFLAGS="$(CFLAGS) $(AM_CPPFLAGS)" $(PYTHON3) setup.py build \
-         --build-base $(shell readlink -f $(builddir))/py3build \
-         --verbose)
+	(cd $(srcdir); CFLAGS="$(CFLAGS) $(AM_CPPFLAGS)" $(PYTHON3) -m pip wheel . \
+		 --wheel-dir $(shell readlink -f $(builddir))/py3build \
+		 --no-deps --no-index --no-build-isolation \
+		 --verbose)
 endif
 
 
-# Note that we're rebuilding here, then installing. This is necessary
-# since only the build command has the '--build-base' directory option
-# and we need to keep separate build directories for python 2 and 3.
+# Note that we're installing from the wheel we just built.
 install-exec-local:
-if HAVE_PYTHON2_PROBES
-	(cd $(srcdir); CFLAGS="$(CFLAGS) $(AM_CPPFLAGS)" $(PYTHON) setup.py build \
-         --build-base $(shell readlink -f $(builddir))/py2build \
-	 install --prefix $(DESTDIR)$(prefix) \
-	 --single-version-externally-managed \
-	 --record $(shell readlink -f $(builddir))/py2build/install_files.txt \
-         --verbose)
-endif
 if HAVE_PYTHON3_PROBES
-	(cd $(srcdir); CFLAGS="$(CFLAGS) $(AM_CPPFLAGS)" $(PYTHON3) setup.py build \
-         --build-base $(shell readlink -f $(builddir))/py3build \
-	 install --prefix $(DESTDIR)$(prefix) \
-	 --single-version-externally-managed \
-	 --record $(shell readlink -f $(builddir))/py3build/install_files.txt \
-         --verbose)
+	$(PYTHON3) -m pip install $(shell readlink -f $(builddir))/py3build/*.whl \
+		 $(if $(DESTDIR),--root $(DESTDIR)) --prefix $(prefix) \
+		 --no-deps --no-index --no-build-isolation \
+		 --ignore-installed --verbose
 endif
 
 clean-local:
-	rm -rf py2build py3build
+	rm -rf py3build build dist HelperSDT.egg-info
 
 endif

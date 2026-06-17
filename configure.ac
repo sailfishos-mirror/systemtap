@@ -38,59 +38,9 @@ AC_CHECK_FUNCS(openat)
 AM_GNU_GETTEXT(external)
 AM_GNU_GETTEXT_VERSION([0.19.4])
 
-# We want the 'PYTHON' varible to be python version 2. We also want
-# our custom 'PYTHON3' varible to be python version 3.
-#
-# Note that the python2/python3 code was inspired by code in the
-# 'abrt' configure:
-#   <https://github.com/abrt/abrt/blob/master/configure.ac>
-#
-# First, figure out what version of python is in the executable named
-# 'python'. On most systems that is python version 2, but on arch
-# linux that is python version 3.
-AC_PATH_PROG([PYTHON_UNKNOWN], [python], [no])
-if test "x$PYTHON_UNKNOWN" != "xno"; then
-   # OK, we found 'python'. What version is it?
-   AC_CACHE_CHECK([whether $PYTHON_UNKNOWN is version 2 or 3],
-		 [ac_cv_python_unknown_version],
-		 [ac_cv_python_unknown_version=`$PYTHON_UNKNOWN -c "import sys; sys.stdout.write(sys.version[[:3]][[0]])"`])
-fi
-  
-# Now we'll update the _AM_PYTHON_INTERPRETER_LIST variable (which
-# AM_PATH_PYTHON uses) to only be version 2 versions of python. Note
-# that the m4_define happens when autoconf is run, but the
-# PLAIN_PYTHON_INTERPRETER variable expansion will happen when the
-# user runs configure.
-#
-# Note that for python2, we prefer an executable named 'python2' over
-# one just named 'python'.
-if test "x$PYTHON_UNKNOWN" != "xno" -a "x$ac_cv_python_unknown_version" = "x2"; then
-   PLAIN_PYTHON_INTERPRETER=python
-else
-   PLAIN_PYTHON_INTERPRETER=python2
-fi
-m4_define([_AM_PYTHON_INTERPRETER_LIST],
-	  [python2 $PLAIN_PYTHON_INTERPRETER python2.7 python2.6])
-
-# Now we can call AM_PATH_PYTHON to find python version 2.6+ (and
-# version 2 only).
-AM_PATH_PYTHON([2.6], [], [:])
-python_basename=$(basename "$PYTHON")
-AC_DEFINE_UNQUOTED([PYTHON_BASENAME], "${python_basename}",
-		   [Base name of the python2 interpreter binary.])
-if test "x$PYTHON" != "x:"; then
-AC_DEFINE([PYTHON_EXISTS], [],
-	  [The python2 interpreter binary exists.])
-fi
-
-# AM_PATH_PYTHON defines 'pyexecdir'. Make sure the python and
-# pyexecdir variables get sent down to the subconfigure in the
-# testsuite directory.
-AS_VAR_APPEND([ac_configure_args], [" python='$PYTHON' pyexecdir='$pyexecdir'"])
-
 # Now let's try to find python version 3.
 AC_PATH_PROGS([PYTHON3],
-              	 [python3 python3.7 python3.6 python3.5 python3.4 python3.3 python3.2 python3.1 python3.0], [:])
+              	 [python3 python3.14 python3.13 python3.12 python3.11 python3.10 python3.9 python3.8 python3.7 python3.6 python3.5 python3.4 python3.3 python3.2 python3.1 python3.0], [:])
 python3_basename=$(basename "$PYTHON3")
 AC_DEFINE_UNQUOTED([PYTHON3_BASENAME], "${python3_basename}",
 		   [Base name of the python3 interpreter binary.])
@@ -758,37 +708,6 @@ dnl See if we have enough libraries and tools to build the virt server
 fi
 AM_CONDITIONAL([BUILD_VIRT], [test "${have_libvirt}" = "yes" -a "${have_libxml2}" = "yes" -a "$enable_virt" != "no"])
 
-dnl Handle the option to build python2 probe support
-AC_ARG_WITH([python2-probes],
-  AS_HELP_STRING([--without-python2-probes],
-    [Disable building python version 2 probe support, even if it is available]))
-have_python2_support=no
-AS_IF([test "x$with_python2_probes" != "xno"],
-  [dnl First, check to make sure we have the 'python-config' script.
-   AS_IF([test "x$PYTHON" != "x:"],
-	 [AC_PATH_PROGS([PYTHON_CONFIG], [${python_basename}-config python2-config python-config])])
-   AS_IF([test "x$PYTHON_CONFIG" != "x"],
-	 [dnl Use the 'python-config' script to find the python
-	  dnl include directories.
-	  PYTHON_CPPFLAGS=`$PYTHON_CONFIG --includes 2> /dev/null`
-	  AC_SUBST([PYTHON_CPPFLAGS], [$PYTHON_CPPFLAGS])
-	  save_CPPFLAGS="$CPPFLAGS"
-	  CPPFLAGS="$PYTHON_CPPFLAGS $CPPFLAGS"
-	  dnl Now make sure we can find the python 2 Python.h file. We
-	  dnl need to clear the cached result, since this might be a
-	  dnl cached result from the python 3 header file (since they
-	  dnl share the same name).
-	  AS_UNSET([ac_cv_header_Python_h])
-	  AC_CHECK_HEADERS([Python.h], [have_python2_support=yes])
-	  CPPFLAGS="$save_CPPFLAGS"])])
-AS_IF([test "x$have_python2_support" = "xyes"],
-  [AC_DEFINE([HAVE_PYTHON2_PROBES], [1],
-    [Define to 1 to enable python version 2 probe support in systemtap.])],
-  [AS_IF([test "x$with_python2_probes" = "xyes"],
-    [AC_MSG_ERROR([python version 2 probe support requested but not found])])
-])
-AM_CONDITIONAL([HAVE_PYTHON2_PROBES], [test "x$have_python2_support" = "xyes"])
-
 dnl Handle the option to build python3 probe support
 AC_ARG_WITH([python3-probes],
   AS_HELP_STRING([--without-python3-probes],
@@ -805,13 +724,7 @@ AS_IF([test "x$with_python3_probes" != "xno"],
 	  AC_SUBST([PYTHON3_CPPFLAGS], [$PYTHON3_CPPFLAGS])
 	  save_CPPFLAGS="$CPPFLAGS"
 	  CPPFLAGS="$PYTHON3_CPPFLAGS $CPPFLAGS"
-	  dnl Now make sure we can find the python 3 Python.h
-	  dnl file. However, we've got a problem. AC_CHECK_HEADERS
-	  dnl was called above for the python 2 version of
-	  dnl Python.h. But, autoconf doesn't really know the
-	  dnl difference between the two files, since they both have
-	  dnl the same name. So, we'll unset the cache variable.
-	  AS_UNSET([ac_cv_header_Python_h])
+	  dnl Now make sure we can find the python 3 Python.h file.
 	  AC_CHECK_HEADERS([Python.h], [have_python3_support=yes])
 	  CPPFLAGS="$save_CPPFLAGS"])])
 AS_IF([test "x$have_python3_support" = "xyes"],
@@ -824,7 +737,7 @@ AM_CONDITIONAL([HAVE_PYTHON3_PROBES], [test "x$have_python3_support" = "xyes"])
 
 dnl We want either (or both) python probe support.
 AM_CONDITIONAL([HAVE_PYTHON_PROBES],
-  [test "x$have_python2_support" = "xyes" -o "x$have_python3_support" = "xyes"])
+  [test "x$have_python3_support" = "xyes"])
 
 PKG_CHECK_MODULES([jsonc], [json-c >= 0.13], [have_jsonc=yes], [have_jsonc=no])
 PKG_CHECK_MODULES([ncurses], [ncurses], [have_ncurses=yes], [have_ncurses=no])

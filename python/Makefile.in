@@ -96,10 +96,9 @@ target_triplet = @target@
 # Why aren't we putting stap-resolve-module-function.py into
 # pkglibexecpython_PYTHON? stap-resolve-module-function.py is a
 # python script, but it will be run by the translator as either a
-# python version 2 or python version 3 script. So, it doesn't need to
-# be executable (since we'll be calling "python
-# stap-resolve-module-function.py ARGS" or "python3
-# stap-resolve-module-function.y ARGS."
+# python version 3 script. So, it doesn't need to
+# be executable (since we'll be calling "python3
+# stap-resolve-module-function.py ARGS."
 @HAVE_PYTHON_PROBES_TRUE@am__append_1 = stap-resolve-module-function.py
 subdir = python
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -246,7 +245,6 @@ PKG_CONFIG = @PKG_CONFIG@
 PKG_CONFIG_LIBDIR = @PKG_CONFIG_LIBDIR@
 PKG_CONFIG_PATH = @PKG_CONFIG_PATH@
 POSUB = @POSUB@
-PYTHON = @PYTHON@
 PYTHON3 = @PYTHON3@
 PYTHON3_CONFIG = @PYTHON3_CONFIG@
 PYTHON3_CPPFLAGS = @PYTHON3_CPPFLAGS@
@@ -254,13 +252,6 @@ PYTHON3_EXEC_PREFIX = @PYTHON3_EXEC_PREFIX@
 PYTHON3_PLATFORM = @PYTHON3_PLATFORM@
 PYTHON3_PREFIX = @PYTHON3_PREFIX@
 PYTHON3_VERSION = @PYTHON3_VERSION@
-PYTHON_CONFIG = @PYTHON_CONFIG@
-PYTHON_CPPFLAGS = @PYTHON_CPPFLAGS@
-PYTHON_EXEC_PREFIX = @PYTHON_EXEC_PREFIX@
-PYTHON_PLATFORM = @PYTHON_PLATFORM@
-PYTHON_PREFIX = @PYTHON_PREFIX@
-PYTHON_UNKNOWN = @PYTHON_UNKNOWN@
-PYTHON_VERSION = @PYTHON_VERSION@
 RANLIB = @RANLIB@
 READLINE_LIBS = @READLINE_LIBS@
 SED = @SED@
@@ -345,16 +336,12 @@ oldincludedir = @oldincludedir@
 openssl_CFLAGS = @openssl_CFLAGS@
 openssl_LIBS = @openssl_LIBS@
 pdfdir = @pdfdir@
-pkgpyexecdir = @pkgpyexecdir@
-pkgpythondir = @pkgpythondir@
 preferred_python = @preferred_python@
 prefix = @prefix@
 program_transform_name = @program_transform_name@
 psdir = @psdir@
 py3execdir = @py3execdir@
-pyexecdir = @pyexecdir@
 python3dir = @python3dir@
-pythondir = @pythondir@
 runstatedir = @runstatedir@
 sbindir = @sbindir@
 selinux_CFLAGS = @selinux_CFLAGS@
@@ -620,32 +607,20 @@ uninstall-am: uninstall-pkglibexecpythonDATA \
 
 
 @HAVE_PYTHON_PROBES_TRUE@all-local:
-@HAVE_PYTHON2_PROBES_TRUE@@HAVE_PYTHON_PROBES_TRUE@	(cd $(srcdir); CFLAGS="$(CFLAGS) $(AM_CPPFLAGS)" $(PYTHON) setup.py build \
-@HAVE_PYTHON2_PROBES_TRUE@@HAVE_PYTHON_PROBES_TRUE@         --build-base $(shell readlink -f $(builddir))/py2build \
-@HAVE_PYTHON2_PROBES_TRUE@@HAVE_PYTHON_PROBES_TRUE@         --verbose)
-@HAVE_PYTHON3_PROBES_TRUE@@HAVE_PYTHON_PROBES_TRUE@	(cd $(srcdir); CFLAGS="$(CFLAGS) $(AM_CPPFLAGS)" $(PYTHON3) setup.py build \
-@HAVE_PYTHON3_PROBES_TRUE@@HAVE_PYTHON_PROBES_TRUE@         --build-base $(shell readlink -f $(builddir))/py3build \
-@HAVE_PYTHON3_PROBES_TRUE@@HAVE_PYTHON_PROBES_TRUE@         --verbose)
+@HAVE_PYTHON3_PROBES_TRUE@@HAVE_PYTHON_PROBES_TRUE@	(cd $(srcdir); CFLAGS="$(CFLAGS) $(AM_CPPFLAGS)" $(PYTHON3) -m pip wheel . \
+@HAVE_PYTHON3_PROBES_TRUE@@HAVE_PYTHON_PROBES_TRUE@		 --wheel-dir $(shell readlink -f $(builddir))/py3build \
+@HAVE_PYTHON3_PROBES_TRUE@@HAVE_PYTHON_PROBES_TRUE@		 --no-deps --no-index --no-build-isolation \
+@HAVE_PYTHON3_PROBES_TRUE@@HAVE_PYTHON_PROBES_TRUE@		 --verbose)
 
-# Note that we're rebuilding here, then installing. This is necessary
-# since only the build command has the '--build-base' directory option
-# and we need to keep separate build directories for python 2 and 3.
+# Note that we're installing from the wheel we just built.
 @HAVE_PYTHON_PROBES_TRUE@install-exec-local:
-@HAVE_PYTHON2_PROBES_TRUE@@HAVE_PYTHON_PROBES_TRUE@	(cd $(srcdir); CFLAGS="$(CFLAGS) $(AM_CPPFLAGS)" $(PYTHON) setup.py build \
-@HAVE_PYTHON2_PROBES_TRUE@@HAVE_PYTHON_PROBES_TRUE@         --build-base $(shell readlink -f $(builddir))/py2build \
-@HAVE_PYTHON2_PROBES_TRUE@@HAVE_PYTHON_PROBES_TRUE@	 install --prefix $(DESTDIR)$(prefix) \
-@HAVE_PYTHON2_PROBES_TRUE@@HAVE_PYTHON_PROBES_TRUE@	 --single-version-externally-managed \
-@HAVE_PYTHON2_PROBES_TRUE@@HAVE_PYTHON_PROBES_TRUE@	 --record $(shell readlink -f $(builddir))/py2build/install_files.txt \
-@HAVE_PYTHON2_PROBES_TRUE@@HAVE_PYTHON_PROBES_TRUE@         --verbose)
-@HAVE_PYTHON3_PROBES_TRUE@@HAVE_PYTHON_PROBES_TRUE@	(cd $(srcdir); CFLAGS="$(CFLAGS) $(AM_CPPFLAGS)" $(PYTHON3) setup.py build \
-@HAVE_PYTHON3_PROBES_TRUE@@HAVE_PYTHON_PROBES_TRUE@         --build-base $(shell readlink -f $(builddir))/py3build \
-@HAVE_PYTHON3_PROBES_TRUE@@HAVE_PYTHON_PROBES_TRUE@	 install --prefix $(DESTDIR)$(prefix) \
-@HAVE_PYTHON3_PROBES_TRUE@@HAVE_PYTHON_PROBES_TRUE@	 --single-version-externally-managed \
-@HAVE_PYTHON3_PROBES_TRUE@@HAVE_PYTHON_PROBES_TRUE@	 --record $(shell readlink -f $(builddir))/py3build/install_files.txt \
-@HAVE_PYTHON3_PROBES_TRUE@@HAVE_PYTHON_PROBES_TRUE@         --verbose)
+@HAVE_PYTHON3_PROBES_TRUE@@HAVE_PYTHON_PROBES_TRUE@	$(PYTHON3) -m pip install $(shell readlink -f $(builddir))/py3build/*.whl \
+@HAVE_PYTHON3_PROBES_TRUE@@HAVE_PYTHON_PROBES_TRUE@		 $(if $(DESTDIR),--root $(DESTDIR)) --prefix $(prefix) \
+@HAVE_PYTHON3_PROBES_TRUE@@HAVE_PYTHON_PROBES_TRUE@		 --no-deps --no-index --no-build-isolation \
+@HAVE_PYTHON3_PROBES_TRUE@@HAVE_PYTHON_PROBES_TRUE@		 --ignore-installed --verbose
 
 @HAVE_PYTHON_PROBES_TRUE@clean-local:
-@HAVE_PYTHON_PROBES_TRUE@	rm -rf py2build py3build
+@HAVE_PYTHON_PROBES_TRUE@	rm -rf py3build build dist HelperSDT.egg-info
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

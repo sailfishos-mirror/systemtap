@@ -20,10 +20,7 @@ import cmd
 import os.path
 import sys
 
-if sys.version_info[0] == 2:
-    import _HelperSDT
-else:
-    from . import _HelperSDT
+from . import _HelperSDT
 
 class _Breakpoint:
     def __init__(self, index, filename, funcname, lineno, flags, key):

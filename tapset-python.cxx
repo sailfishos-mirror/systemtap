@@ -18,7 +18,6 @@
 using namespace std;
 using namespace __gnu_cxx;
 
-static const string TOK_PYTHON2("python2");
 static const string TOK_PYTHON3("python3");
 static const string TOK_MODULE("module");
 static const string TOK_FUNCTION("function");
@@ -44,14 +43,13 @@ struct python_probe_info
 
 struct python_derived_probe: public derived_probe
 {
-  int python_version;
   interned_string module;
   interned_string function;
   bool has_return;
   bool has_call;
 
   python_derived_probe (systemtap_session &, probe* p, probe_point* l,
-			int python_version, interned_string module,
+			interned_string module,
 			interned_string function, bool has_return,
 			bool has_call);
   void join_group (systemtap_session& s);
@@ -64,14 +62,12 @@ struct python_derived_probe_group: public generic_dpg<python_derived_probe>
 {
 private:
   systemtap_session &s;
-  vector<python_derived_probe* > python2_probes;
-  embeddedcode *python2_embedded;
   vector<python_derived_probe* > python3_probes;
   embeddedcode *python3_embedded;
 
 public:
   python_derived_probe_group(systemtap_session &s) :
-      s(s), python2_embedded(NULL), python3_embedded(NULL) {}
+      s(s), python3_embedded(NULL) {}
   void enroll (python_derived_probe* probe);
   void emit_module_decls (systemtap_session& ) { }
   void emit_module_init (systemtap_session& ) { }
@@ -85,10 +81,8 @@ public:
 
 struct python_var_expanding_visitor: public var_expanding_visitor
 {
-  python_var_expanding_visitor(systemtap_session& s, int pv)
-    : var_expanding_visitor(s), python_version(pv) {}
-
-  int python_version;
+  python_var_expanding_visitor(systemtap_session& s)
+    : var_expanding_visitor(s) {}
 
   void visit_target_symbol (target_symbol* e);
 };
@@ -98,23 +92,16 @@ struct python_builder: public derived_probe_builder
 {
 private:
   int resolve(systemtap_session& s,
-	      const unsigned python_ver,
 	      interned_string module,
 	      interned_string function,
 	      vector<python_probe_info *> &results);
-
-  // python2-related info
-  derived_probe* python2_procfs_probe;
-  unsigned python2_key;
 
   // python3-related info
   derived_probe* python3_procfs_probe;
   unsigned python3_key;
 
 public:
-  python_builder() : python2_procfs_probe(NULL),
-		     python2_key(0),
-		     python3_procfs_probe(NULL),
+  python_builder() : python3_procfs_probe(NULL),
 		     python3_key(0) {}
 
   void build(systemtap_session & sess, probe * base,
@@ -127,13 +114,12 @@ public:
 
 python_derived_probe::python_derived_probe (systemtap_session &, probe* p,
 					    probe_point* l,
-					    int pv,
 					    interned_string m,
 					    interned_string f,
 					    bool hr,
 					    bool hc):
   derived_probe (p, l, true /* .components soon rewritten */ ),
-  python_version(pv), module(m), function(f), has_return(hr),
+  module(m), function(f), has_return(hr),
   has_call(hc)
 {
   return;
@@ -172,34 +158,9 @@ python_derived_probe::break_definition ()
 void
 python_derived_probe_group::enroll (python_derived_probe* p)
 {
-  if (p->python_version == 2)
-    {
-      python2_probes.push_back(p);
-      // Create/update the global synthetic embedded code.
-      if (python2_embedded == NULL)
-        {
-	  python2_embedded = new embeddedcode;
-	  s.embeds.push_back(python2_embedded);
-	}
+  python3_probes.push_back(p);
 
-      unsigned index = 0;
-      stringstream data;
-      data << "/* ---- python 2 probes ---- */\n";
-      data << "static const char python2_probe_info[] =";
-      for (auto iter = python2_probes.begin(); iter != python2_probes.end();
-	   iter++)
-        {
-	  data << "\n  \"b " << (*iter)->break_definition()
-	       << "|" << index++ << "\\n\"";
-	}
-      data << ";\n";
-      python2_embedded->code = data.str();
-    }
-  else if (p->python_version == 3)
-    {
-      python3_probes.push_back(p);
-
-      // Create/update the global synthetic embedded code.
+  // Create/update the global synthetic embedded code.
       if (python3_embedded == NULL)
         {
 	  python3_embedded = new embeddedcode;
@@ -218,9 +179,6 @@ python_derived_probe_group::enroll (python_derived_probe* p)
 	}
       data << ";\n";
       python3_embedded->code = data.str();
-  }
-  else
-    throw SEMANTIC_ERROR(_F("Unknown python version: %d", p->python_version));
 }
 
 
@@ -229,14 +187,6 @@ void
 warn_for_bpf(systemtap_session& s, python_derived_probe_group *dpg,
              const std::string& kind)
 {
-  for (auto iter = dpg->python2_probes.begin();
-       iter != dpg->python2_probes.end();
-       iter++)
-    {
-      s.print_warning(_F("%s will be ignored by bpf backend",
-                         kind.c_str()),
-                      (*iter)->tok);
-    }
   for (auto iter = dpg->python3_probes.begin();
        iter != dpg->python3_probes.end();
        iter++)
@@ -269,8 +219,7 @@ python_var_expanding_visitor::visit_target_symbol (target_symbol* e)
 
 	functioncall* fcall = new functioncall;
 	fcall->tok = e->tok;
-	fcall->function = (python_version == 2
-			   ? "python2_get_locals" : "python3_get_locals");
+	fcall->function = "python3_get_locals";
 	fcall->type = pe_string;
 
 	target_symbol *tsym = new target_symbol;
@@ -321,14 +270,12 @@ python_var_expanding_visitor::visit_target_symbol (target_symbol* e)
 	// into a string representation of that object.
 	functioncall *repr_fcall = new functioncall;
 	repr_fcall->tok = e->tok;
-	repr_fcall->function = (python_version == 2
-				? "Py2Object_Repr" : "Py3Object_Repr");
+	repr_fcall->function = "Py3Object_Repr";
 	repr_fcall->type = pe_string;
 
 	functioncall *var_fcall = new functioncall;
 	var_fcall->tok = e->tok;
-	var_fcall->function = (python_version == 2 ? "python2_get_var_obj"
-			       : "python3_get_var_obj");
+	var_fcall->function = "python3_get_var_obj";
 	var_fcall->type = pe_long;
 
 	target_symbol *tsym = new target_symbol;
@@ -366,8 +313,7 @@ python_var_expanding_visitor::visit_target_symbol (target_symbol* e)
 	    {
 		functioncall *fcall = new functioncall;
 		fcall->tok = e->tok;
-		fcall->function = (python_version == 2 ? "Py2Object_GetAttr"
-				   : "Py3Object_GetAttr");
+		fcall->function = "Py3Object_GetAttr";
 		fcall->type = pe_long;
 
 		fcall->args.push_back(last_fcall);
@@ -403,7 +349,6 @@ python_var_expanding_visitor::visit_target_symbol (target_symbol* e)
 
 int
 python_builder::resolve(systemtap_session& s,
-			const unsigned python_ver,
 			interned_string module,
 			interned_string function,
 			vector<python_probe_info *> & results)
@@ -414,10 +359,7 @@ python_builder::resolve(systemtap_session& s,
 
   assert_no_interrupts();
 
-  if (python_ver == 2)
-      args.push_back(PYTHON_BASENAME);
-  else
-      args.push_back(PYTHON3_BASENAME);
+  args.push_back(PYTHON3_BASENAME);
   args.push_back(string(PKGLIBDIR)
 		 + "/python/stap-resolve-module-function.py");
   if (s.verbose > 2)
@@ -470,7 +412,6 @@ python_builder::build(systemtap_session & sess, probe * base,
 		      vector<derived_probe *> & finished_results)
 {
   interned_string module, function;
-  unsigned python_version = has_null_param (parameters, TOK_PYTHON2) ? 2 : 3;
   bool has_module = get_param (parameters, TOK_MODULE, module);
   bool has_function = get_param (parameters, TOK_FUNCTION, function);
   bool has_return = has_null_param (parameters, TOK_RETURN);
@@ -482,7 +423,7 @@ python_builder::build(systemtap_session & sess, probe * base,
     throw SEMANTIC_ERROR(_("The python function name must be specified."));
 
   vector<python_probe_info *> results;
-  if (resolve(sess, python_version, module, function, results) != 0)
+  if (resolve(sess, module, function, results) != 0)
     throw SEMANTIC_ERROR(_("The python module/function name cannot be resolved."));
 
   auto iter = results.begin();
@@ -523,38 +464,9 @@ python_builder::build(systemtap_session & sess, probe * base,
 	  pp->components.push_back(ppc);
 	}
 
-      // Create (if necessary) the python 2 procfs probe which the
-      // HelperSDT python module reads to get probe information.
-      if (python_version == 2 && python2_procfs_probe == NULL)
-        {
-	  stringstream code;
-	  const token* tok = base->body->tok;
-
-	  // Notice this synthetic probe has a dummy body. That's OK,
-	  // since we'll point it at our internal buffer.
-          // NB: it cannot be empty, because then we optimize it away.
-	  code << "probe procfs(\"_stp_python2_probes\").read { exit() } " << endl;
-	  probe *base_probe = parse_synthetic_probe (sess, code, tok);
-	  if (!base_probe)
-	    throw SEMANTIC_ERROR (_("can't create python2 procfs probe"),
-				  tok);
-	  vector<derived_probe *> results;
-	  derive_probes(sess, base_probe, results);
-	  if (results.size() != 1)
-	    throw SEMANTIC_ERROR (_F("wrong number of probes derived (%d),"
-				     " should be 1", (int)results.size()));
-	  python2_procfs_probe = results[0];
-	  finished_results.push_back(results[0]);
-	      
-	  // Now that we've got our procfs derived probe, point it at
-	  // our internal buffer that we're going to create/update in
-	  // python_derived_probe_group::enroll().
-	  python2_procfs_probe->use_internal_buffer("python2_probe_info");
-	}
-
       // Create (if necessary) the python 3 procfs probe which the
       // HelperSDT python module reads to get probe information.
-      else if (python_version == 3 && python3_procfs_probe == NULL)
+      if (python3_procfs_probe == NULL)
         {
 	  stringstream code;
 	  const token* tok = base->body->tok;
@@ -602,16 +514,14 @@ python_builder::build(systemtap_session & sess, probe * base,
       stringstream code;
       const token* tok = base->body->tok;
       code << "probe process(\""
-	   << (python_version == 2 ? PYTHON_BASENAME : PYTHON3_BASENAME)
+	   << PYTHON3_BASENAME
 	   << "\").library(\""
-	   << (python_version == 2 ? PYEXECDIR : PY3EXECDIR)
-	  // For python2, the name of the .so file is '_HelperSDT.so'. For
-	  // python3, the name varies based on the python3 version number
+	   << PY3EXECDIR
+	  // For python3, the name varies based on the python3 version number
 	  // and architecture. On i686, the name of the .so file is
 	  // '_HelperSDT.cpython-35m-i386-linux-gnu.so'. So, we'll use
 	  // a wildcard to find it.
-	   << (python_version == 2 ? "/HelperSDT/_HelperSDT.so\")"
-	       : "/HelperSDT/_HelperSDT.*.so\")")
+	   << "/HelperSDT/_HelperSDT.*.so\")"
 	   << ".provider(\"HelperSDT*\").mark(\""
 	   << (has_return ? "PyTrace_RETURN"
 	       : (has_call ? "PyTrace_CALL" : "PyTrace_LINE"))
@@ -649,7 +559,7 @@ python_builder::build(systemtap_session & sess, probe * base,
       // 0), but the combination of module name and key is unique
       // system-wide.
       code << "  if ($$$arg2 != "
-	   << (python_version == 2 ? python2_key++ : python3_key++)
+	   << python3_key++
 	   << " || user_string($$$arg1) != module_name()) { next }";
       code << "}" << endl;
 
@@ -671,8 +581,8 @@ python_builder::build(systemtap_session & sess, probe * base,
       // backtrace requests in the probe body. The latter uses '$$$arg3'
       // as the python frame pointer, and we don't want the python
       // variable exander to find those maker argument references.
-      python_var_expanding_visitor pvev (sess, python_version);
-      
+      python_var_expanding_visitor pvev (sess);
+
       // Splice base_copy->body in after the parsed body
       mark_probe->body = new block(mark_probe->body, base_copy->body);
 
@@ -693,7 +603,7 @@ python_builder::build(systemtap_session & sess, probe * base,
       // procfs file.
       probe* new_probe = new probe (base, pp);
       python_derived_probe *pdp;
-      pdp = new python_derived_probe(sess, new_probe, pp, python_version,
+      pdp = new python_derived_probe(sess, new_probe, pp,
 				     (*iter)->module, (*iter)->function,
 				     has_return, has_call);
       pdp->join_group(sess);
@@ -708,34 +618,22 @@ python_builder::build(systemtap_session & sess, probe * base,
 void
 register_tapset_python(systemtap_session& s)
 {
-#if defined(HAVE_PYTHON2_PROBES) || defined(HAVE_PYTHON3_PROBES)
+#if defined(HAVE_PYTHON3_PROBES)
   match_node* root = s.pattern_root;
   derived_probe_builder *builder = new python_builder();
 
-  vector<match_node*> roots;
-#if defined(HAVE_PYTHON2_PROBES)
-  roots.push_back(root->bind(TOK_PYTHON2));
-  //roots.push_back(root->bind_num(TOK_PYTHON2));
-#endif
-#if defined(HAVE_PYTHON3_PROBES)
-  roots.push_back(root->bind(TOK_PYTHON3));
-  //roots.push_back(root->bind_num(TOK_PYTHON3));
-#endif
+  match_node* python3_root = root->bind(TOK_PYTHON3);
+  //python3_root->bind_num(TOK_PYTHON3);
 
-  for (unsigned i = 0; i < roots.size(); ++i)
-    {
-      roots[i]->bind_str(TOK_MODULE)->bind_str(TOK_FUNCTION)
-	->bind_privilege(pr_all)
-	->bind(builder);
-      roots[i]->bind_str(TOK_MODULE)->bind_str(TOK_FUNCTION)->bind(TOK_CALL)
-	->bind_privilege(pr_all)
-	->bind(builder);
-      roots[i]->bind_str(TOK_MODULE)->bind_str(TOK_FUNCTION)->bind(TOK_RETURN)
-	->bind_privilege(pr_all)
-	->bind(builder);
-    }
-#else
-  (void) s;
+  python3_root->bind_str(TOK_MODULE)->bind_str(TOK_FUNCTION)
+    ->bind_privilege(pr_all)
+    ->bind(builder);
+  python3_root->bind_str(TOK_MODULE)->bind_str(TOK_FUNCTION)->bind(TOK_CALL)
+    ->bind_privilege(pr_all)
+    ->bind(builder);
+  python3_root->bind_str(TOK_MODULE)->bind_str(TOK_FUNCTION)->bind(TOK_RETURN)
+    ->bind_privilege(pr_all)
+    ->bind(builder);
 #endif
 }
 

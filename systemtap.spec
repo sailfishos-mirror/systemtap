@@ -40,7 +40,6 @@
 %endif
 %{!?with_pyparsing: %global with_pyparsing 0%{?fedora} >= 18 || 0%{?rhel} >= 7}
 %{!?with_python3: %global with_python3 0%{?fedora} >= 23 || 0%{?rhel} > 7}
-%{!?with_python2_probes: %global with_python2_probes (0%{?fedora} <= 28 && 0%{?rhel} <= 7)}
 %{!?with_python3_probes: %global with_python3_probes (0%{?fedora} >= 23 || 0%{?rhel} > 7)}
 %{!?with_httpd: %global with_httpd 0}
 %{!?with_specific_python: %global with_specific_python 0%{?fedora} >= 31}
@@ -149,7 +148,6 @@ Release: 1%{?release_override}%{?dist}
 # systemtap-runtime-java libHelperSDT.so, HelperSDT.jar, stapbm, req:-runtime
 # systemtap-runtime-virthost  /usr/bin/stapvirt, req:libvirt req:libxml2
 # systemtap-runtime-virtguest udev rules, init scripts/systemd service, req:-runtime
-# systemtap-runtime-python2 HelperSDT python2 module, req:-runtime
 # systemtap-runtime-python3 HelperSDT python3 module, req:-runtime
 # systemtap-jupyter      /usr/bin/stap-jupyter-* interactive-notebook req:systemtap
 #
@@ -231,20 +229,11 @@ BuildRequires: pkgconfig(libvirt)
 BuildRequires: pkgconfig(libxml-2.0)
 %endif
 BuildRequires: readline-devel
-%if %{with_python2_probes}
-BuildRequires: python2-devel
-%if 0%{?fedora} >= 1
-BuildRequires: python2-setuptools
-%else
-BuildRequires: python-setuptools
-%endif
-%endif
-%if %{with_python3}
-BuildRequires: python3
-%endif
 %if %{with_python3_probes}
 BuildRequires: python3-devel
 BuildRequires: python3-setuptools
+BuildRequires: python3-pip
+BuildRequires: python3-wheel
 %endif
 
 %if %{with_httpd}
@@ -469,9 +458,6 @@ Requires: crash
 %if %{with_java}
 Requires: systemtap-runtime-java = %{version}-%{release}
 %endif
-%if %{with_python2_probes}
-Requires: systemtap-runtime-python2 = %{version}-%{release}
-%endif
 %if %{with_python3_probes}
 Requires: systemtap-runtime-python3 = %{version}-%{release}
 %endif
@@ -521,18 +507,6 @@ This package includes support files needed to run systemtap scripts
 that probe Java processes running on the OpenJDK runtimes using Byteman.
 %endif
 
-%if %{with_python2_probes}
-%package runtime-python2
-Summary: Systemtap Python 2 Runtime Support
-License: GPL-2.0-or-later
-URL: https://sourceware.org/systemtap/
-Requires: systemtap-runtime = %{version}-%{release}
-
-%description runtime-python2
-This package includes support files needed to run systemtap scripts
-that probe python 2 processes.
-%endif
-
 %if %{with_python3_probes}
 %package runtime-python3
 Summary: Systemtap Python 3 Runtime Support
@@ -540,10 +514,7 @@ License: GPL-2.0-or-later
 URL: https://sourceware.org/systemtap/
 Requires: systemtap-runtime = %{version}-%{release}
 
-%if ! (%{with_python2_probes})
-# Provide an clean upgrade path when the python2 package is removed
 Obsoletes: %{name}-runtime-python2 < %{version}-%{release}
-%endif
 
 %description runtime-python3
 This package includes support files needed to run systemtap scripts
@@ -680,11 +651,6 @@ or within a container.
 %else
 %global python3_config --without-python3
 %endif
-%if %{with_python2_probes}
-%global python2_probes_config --with-python2-probes
-%else
-%global python2_probes_config --without-python2-probes
-%endif
 %if %{with_python3_probes}
 %global python3_probes_config --with-python3-probes
 %else
@@ -718,7 +684,7 @@ or within a container.
 # We don't ship compileworthy python code, just oddball samples
 %global py_auto_byte_compile 0
 
-%configure %{Werror_config} %{dyninst_config} %{sqlite_config} %{crash_config} %{docs_config} %{rpm_config} %{java_config} %{virt_config} %{dracut_config} %{python3_config} %{python2_probes_config} %{python3_probes_config} %{httpd_config} %{bpf_config} %{debuginfod_config} --disable-silent-rules --with-extra-version="rpm %{version}-%{release}"
+%configure %{Werror_config} %{dyninst_config} %{sqlite_config} %{crash_config} %{docs_config} %{rpm_config} %{java_config} %{virt_config} %{dracut_config} %{python3_config} %{python3_probes_config} %{httpd_config} %{bpf_config} %{debuginfod_config} --disable-silent-rules --with-extra-version="rpm %{version}-%{release}"
 make %{?_smp_mflags} V=1
 
 
@@ -1145,10 +1111,9 @@ exit 0
 %{_emacs_sitestartdir}/systemtap-init.el
 %{_datadir}/vim/vimfiles
 %endif
-# Notice that the stap-resolve-module-function.py file is used by
-# *both* the python2 and python3 subrpms.  Both subrpms use that same
-# python script to help list python probes.
-%if %{with_python3_probes} || %{with_python2_probes}
+# The stap-resolve-module-function.py file is used by the
+# python3 subrpm to help list python probes.
+%if %{with_python3_probes}
 %{_libexecdir}/systemtap/python/stap-resolve-module-function.py
 %dir %{_libexecdir}/systemtap/python
 %exclude %{_libexecdir}/systemtap/python/stap-resolve-module-function.py?
@@ -1272,11 +1237,6 @@ exit 0
 %{_libexecdir}/systemtap/stapbm
 %endif
 
-%if %{with_python2_probes}
-%files runtime-python2
-%{python_sitearch}/HelperSDT
-%{python_sitearch}/HelperSDT-*.egg-info
-%endif
 %if %{with_python3_probes}
 %files runtime-python3
 %{python3_sitearch}/HelperSDT
