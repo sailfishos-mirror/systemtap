@@ -634,6 +634,8 @@ register_tapset_python(systemtap_session& s)
   python3_root->bind_str(TOK_MODULE)->bind_str(TOK_FUNCTION)->bind(TOK_RETURN)
     ->bind_privilege(pr_all)
     ->bind(builder);
+#else
+  (void) s;
 #endif
 }
 
