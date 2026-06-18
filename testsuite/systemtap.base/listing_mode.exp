@@ -51,7 +51,17 @@ proc stap_list {pp {exp ""} {nlines_exp 1} {arguments ""}} {
    }
 
    verbose -log "executing: stap -l $pp $arguments"
-   catch {eval exec stap -l $pp $arguments} out
+   # Use timeout to prevent hanging - 60s should be enough for any legitimate probe listing
+   set result [catch {eval exec timeout 60 stap -l $pp $arguments} out]
+   if {$result != 0} {
+      # Check if it timed out (exit code 124 from timeout command)
+      if {[string match "*exit code 124*" $::errorInfo] || [string match "*timed out*" $out]} {
+         verbose -log "TIMEOUT after 60s: stap -l $pp $arguments"
+         fail "$subtest (timeout)"
+         return
+      }
+      # Other errors fall through to normal processing
+   }
    set n 0
    foreach line [split $out "\n"] {
       if {$is_regex} {
@@ -81,7 +91,8 @@ proc stap_list {pp {exp ""} {nlines_exp 1} {arguments ""}} {
 # Returns the address to vfs_read using stap. NB: we can't use kallsyms because
 # the addresses might show up as all 0s for non-root.
 proc get_kernel_function_number {} {
-   if {[catch {exec stap -vvl {kernel.function("vfs_read")} 2>@1} out]} {
+   verbose -log "running: stap -vvl kernel.function(\"vfs_read\")"
+   if {[catch {exec timeout 60 stap -vvl {kernel.function("vfs_read")} 2>@1} out]} {
       return 0
    }
    if {![regexp -line "^probe vfs_read@.* pc=0x(\[0-9a-f\]+)" $out dummy addr]} {
@@ -165,7 +176,8 @@ proc test_cleanup2 {} {
 proc get_process_function_number {} {
    global exepath
 
-   if {[catch {exec stap -vvl "process(\"$exepath\").function(\"main\")" 2>@1} out]} {
+   verbose -log "running: stap -vvl process(\"$exepath\").function(\"main\")"
+   if {[catch {exec timeout 60 stap -vvl "process(\"$exepath\").function(\"main\")" 2>@1} out]} {
       return 0
    }
    if {![regexp -line "^probe main@.* pc=0x(\[0-9a-f\]+)" $out dummy addr]} {
@@ -187,7 +199,8 @@ if {$process_addr == 0} {
 proc get_library_function_number {} {
    global exepath sopath
 
-   if {[catch {exec stap -vvl "process(\"$exepath\").library(\"$sopath\").function(\"libfoo\")" 2>@1} out]} {
+   verbose -log "running: stap -vvl process(\"$exepath\").library(\"$sopath\").function(\"libfoo\")"
+   if {[catch {exec timeout 60 stap -vvl "process(\"$exepath\").library(\"$sopath\").function(\"libfoo\")" 2>@1} out]} {
       return 0
    }
    if {![regexp -line "^probe libfoo@.* pc=0x(\[0-9a-f\]+)" $out dummy addr]} {
@@ -244,7 +257,8 @@ proc stap_list_cmd_lib {pp {exp ""} {nlines_exp 1} {arguments ""}} {
 }
 
 # Initialize the list of probe types to test, using --dump-probe-types
-if {[catch {exec stap --dump-probe-types} out]} {
+verbose -log "running: stap --dump-probe-types"
+if {[catch {exec timeout 60 stap --dump-probe-types} out]} {
    verbose -log "stap --dump-probe-types output: $out"
    fail "$test (can't get probe list)"
    return
