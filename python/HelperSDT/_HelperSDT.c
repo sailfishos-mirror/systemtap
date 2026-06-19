@@ -39,6 +39,9 @@ PyCompactUnicodeObject _dummy_compactunicode;
 PyBytesObject _dummy_bytes;
 #include <longobject.h>
 PyLongObject _dummy_long;
+#include <cpython/code.h>
+// Ensure PyCodeObject debuginfo is available
+PyCodeObject _dummy_code_obj;
 
 /* This is internal to libpython. */
 #if PY_MINOR_VERSION == 6  /* python 3.6 */
@@ -95,7 +98,7 @@ struct _dictkeysobject {
   char dk_indices[];  /* char is required to avoid strict aliasing. */
 };
 
-#elif PY_MINOR_VERSION == 11  /* python 3.11 */
+#elif PY_MINOR_VERSION >= 11  /* python 3.11+ */
 /*
  * PyDictObject [...,PyDictKeysObject ma_keys,...]
  * PyDictKeysObject [..,dk_log2_size,dk_kind,...]
@@ -136,19 +139,25 @@ struct _dictvalues {
 
 #include <stdbool.h>
 #include <stddef.h>
-#include <python3.11/Python.h>
 
-// Redacted Python-3.11.0b3/Include/internal/pycore_frame.h
+// Redacted from Python Include/internal/pycore_frame.h
+// Support for Python 3.11+ including 3.12, 3.13, 3.14, 3.15
 
 struct _stp_frame {
     PyObject_HEAD
-    struct _frame *f_back;      /* previous frame, or NULL */
+    PyFrameObject *f_back;      /* previous frame, or NULL */
     struct _stp_Py3InterpreterFrame *f_frame; /* points to the frame data */
     PyObject *f_trace;          /* Trace function */
     int f_lineno;               /* Current line number. Only valid if non-zero */
     char f_trace_lines;         /* Emit per-line trace events? */
     char f_trace_opcodes;       /* Emit per-opcode trace events? */
+#if PY_MINOR_VERSION >= 12
+    PyObject *f_extra_locals;   /* Dict for locals set by users using f_locals, could be NULL */
+    PyObject *f_locals_cache;   /* Borrowed reference for PyEval_GetLocals */
+    PyObject *f_overwritten_fast_locals; /* Support for borrowed references */
+#else
     char f_fast_as_locals;      /* Have the fast locals of this frame been converted to a dict? */
+#endif
     /* The frame data, if this frame object owns the frame */
     PyObject *_f_frame_data[1];
 };
@@ -156,6 +165,31 @@ struct _stp_frame {
 typedef struct _stp_frame _stp_Py3FrameObject;
 _stp_Py3FrameObject _dummy_stp_Py3FrameObject;
 
+#if PY_MINOR_VERSION >= 15
+// Python 3.15+ uses _PyStackRef for some fields
+// _PyStackRef is a union with a uintptr_t bits field
+typedef union {
+    uintptr_t bits;
+} _stp_PyStackRef;
+
+struct _stp_Py3InterpreterFrame {
+    _stp_PyStackRef f_executable; /* Deferred or strong reference (code object or None) */
+    struct _stp_Py3InterpreterFrame *previous;
+    _stp_PyStackRef f_funcobj; /* Deferred or strong reference */
+    PyObject *f_globals; /* Borrowed reference */
+    PyObject *f_builtins; /* Borrowed reference */
+    PyObject *f_locals; /* Strong reference, may be NULL */
+    void /*PyFrameObject*/ *frame_obj; /* Strong reference, may be NULL */
+    void /*_Py_CODEUNIT*/ *instr_ptr; /* Instruction currently executing */
+    void *stackpointer;
+    uint16_t return_offset;
+    char owner;
+    uint8_t visited;
+    /* Locals and stack */
+    _stp_PyStackRef localsplus[1];
+} _stp_InterpreterFrame;
+#else
+// Python 3.11-3.14
 struct _stp_Py3InterpreterFrame {
     /* "Specials" section */
     void /*PyFunctionObject*/ *f_func; /* Strong reference */
@@ -177,6 +211,7 @@ struct _stp_Py3InterpreterFrame {
     /* Locals and stack */
     PyObject *localsplus[1];
 } _stp_InterpreterFrame;
+#endif
 
 typedef struct _stp_InterpreterFrame _stp_Py3InterpreterFrame;
 

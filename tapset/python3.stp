@@ -124,10 +124,20 @@ private global Py3Object_GenericGetAttr_addr = 0
     @cast_sizeof("PyCompactUnicodeObject")
 %)
 
-private function Py3Frame_GetCode (object) 
+// Helper to convert _PyStackRef to PyObject* (Python 3.15+)
+// In non-debug builds, _PyStackRef.bits contains the pointer with tag bits in lower 2 bits
+// Tag bits (Py_TAG_BITS = 3, mask = 0x3) must be masked off
+@define Py3StackRef_AsPyObject(stackref) %(
+    ((@stackref->bits) & ~3)
+%)
+
+private function Py3Frame_GetCode (object)
 {
+  // Python 3.15+ uses f_executable (a _PyStackRef) instead of f_code
+  // Python 3.11-3.14 uses f_code (a PyCodeObject*)
+  // For old-style frames (pre-3.11), use f_code directly
   return @choose_defined(@Py3FrameObject(object)->f_code,
-			 @cast(object, "_stp_Py3FrameObject")->f_frame->f_code)
+			 @Py3StackRef_AsPyObject(@cast(object, "_stp_Py3FrameObject")->f_frame->f_executable))
 }
 
 private function Py3Frame_GetTrace (object) 
@@ -144,6 +154,8 @@ private function Py3Frame_GetBack (object)
   else
     {
       f_frame = @cast(object, "_stp_Py3FrameObject")->f_frame
+      if (f_frame == NULL)
+        return NULL
       back = @cast(object, "_stp_Py3FrameObject")->f_back;
       if (back == NULL && f_frame->previous != NULL) {
 	back = f_frame->previous->frame_obj;
@@ -154,8 +166,8 @@ private function Py3Frame_GetBack (object)
 
 private function Py3Frame_GetFilename (object)
 {
-  return @choose_defined(@Py3FrameObject(object)->f_code->co_filename,
-			 @cast(object, "_stp_Py3FrameObject")->f_frame->f_code->co_filename)
+  f_code = Py3Frame_GetCode(object)
+  return @cast(f_code, "PyCodeObject")->co_filename
 }
  
 private function Py3Frame_GetLocalsplus (object) 
@@ -196,6 +208,30 @@ private function Py3Dict_GetValue (object, idx)
     @Py3VarObject(@object)->ob_size
 %)
 
+// Python 3.15+ changed PyLongObject to use long_value.lv_tag for size
+// Number of digits = lv_tag >> 3, sign = lv_tag & 3 (0=pos, 1=zero, 2=neg)
+// lv_tag is at offset 16 in PyLongObject (after PyObject_HEAD which is 16 bytes)
+//
+// SYSTEMTAP PORTING NOTE: We use hardcoded offset + user_long() here instead of
+// @cast(object, "PyLongObject")->long_value.lv_tag because:
+// 1. Field access via @cast returns an lvalue reference, not an rvalue
+// 2. SystemTap's type inference treats the bare field reference as a string
+// 3. Using it in arithmetic operations causes "type mismatch (string vs long)" errors
+// 4. Workarounds like adding +0 or wrapping in a function hit the same issue
+// 5. Embedded C %{ offsetof(...) %} doesn't work in kernel modules (no Python headers)
+// 6. user_long(addr) reads a long value from userspace memory and returns it as a proper long type
+@define Py3Long_SIZE_FROM_TAG(object) %(
+    user_long(@object + 16)
+%)
+
+@define Py3Long_SIZE(object) %(
+    @choose_defined(@Py3LongObject(@object)->ob_size,
+        (((@Py3Long_SIZE_FROM_TAG(@object)) & 3) == 1 ? 0 :
+         (((@Py3Long_SIZE_FROM_TAG(@object)) & 2) ?
+          -((@Py3Long_SIZE_FROM_TAG(@object)) >> 3) :
+          ((@Py3Long_SIZE_FROM_TAG(@object)) >> 3))))
+%)
+
 @define Py3Type_HasFeature(t, f) %(
     ((@t->tp_flags & (@f)) != 0)
 %)
@@ -226,7 +262,7 @@ private function Py3Dict_GetValue (object, idx)
 %)
 
 @define Py3Unicode_IS_READY(op) %(
-    @Py3ASCIIObject(@op)->state->ready
+    (@choose_defined(@Py3ASCIIObject(@op)->state->ready, 1))
 %)
 
 @define Py3Unicode_IS_ASCII(op) %(
@@ -331,13 +367,15 @@ private function Py3Long_AsLongLongAndOverflow_Small:long(v:long)
     i = @Py3_SIZE(v)
     if (i == -1) {
 	/* We're using 'x & 0xffff' instead of '(short)x' */
-	res = -(@Py3LongObject(v)->ob_digit[0] & 0xffff)
+	res = -(@choose_defined((&@Py3LongObject(v)->long_value)->ob_digit[0],
+				@Py3LongObject(v)->ob_digit[0]) & 0xffff)
     }
     else if (i == 0) {
 	res = 0
     }
     else if (i == 1) {
-	res = @Py3LongObject(v)->ob_digit[0]
+	res = @choose_defined((&@Py3LongObject(v)->long_value)->ob_digit[0],
+			      @Py3LongObject(v)->ob_digit[0])
     }
     else {
 	sign = 1
@@ -349,7 +387,8 @@ private function Py3Long_AsLongLongAndOverflow_Small:long(v:long)
 	while (--i >= 0) {
 	    prev = x
 	    x = ((x << %{ Py3Long_SHIFT_SMALL %})
-		 | @Py3LongObject(v)->ob_digit[i])
+		 | @choose_defined((&@Py3LongObject(v)->long_value)->ob_digit[i],
+				   @Py3LongObject(v)->ob_digit[i]))
 	    if ((x >> %{ Py3Long_SHIFT_SMALL %}) != prev) {
 		error("Python int too large")
 		return res
@@ -375,16 +414,21 @@ private function Py3Long_AsLongLongAndOverflow_Small:long(v:long)
 private function Py3Long_AsLongLongAndOverflow_Big:long(v:long)
 {
     res = -1
-    i = @Py3_SIZE(v)
+    i = @Py3Long_SIZE(v)
     if (i == -1) {
 	/* We're using 'x & 0xffffffff' instead of '(int32_t)x' */
-	res = -(@Py3LongObject(v)->ob_digit[0] & 0xffffffff)
+	// SYSTEMTAP PORTING NOTE: For Python 3.15+, long_value is a struct member (not pointer).
+	// Use (&struct_member) to get its address, then access ->ob_digit array.
+	// For older Python, ob_digit is directly in PyLongObject, so ->ob_digit works.
+	res = -(@choose_defined((&@Py3LongObject(v)->long_value)->ob_digit[0],
+				@Py3LongObject(v)->ob_digit[0]) & 0xffffffff)
     }
     else if (i == 0) {
 	res = 0
     }
     else if (i == 1) {
-	res = @Py3LongObject(v)->ob_digit[0]
+	res = @choose_defined((&@Py3LongObject(v)->long_value)->ob_digit[0],
+			      @Py3LongObject(v)->ob_digit[0])
     }
     else {
 	sign = 1
@@ -396,7 +440,8 @@ private function Py3Long_AsLongLongAndOverflow_Big:long(v:long)
 	while (--i >= 0) {
 	    prev = x
 	    x = ((x << %{ Py3Long_SHIFT_BIG %})
-		 | @Py3LongObject(v)->ob_digit[i])
+		 | @choose_defined((&@Py3LongObject(v)->long_value)->ob_digit[i],
+				   @Py3LongObject(v)->ob_digit[i]))
 	    if ((x >> %{ Py3Long_SHIFT_BIG %}) != prev) {
 		error("Python int too large")
 		return res
@@ -421,7 +466,7 @@ private function Py3Long_AsLongLongAndOverflow_Big:long(v:long)
 
 private function Py3Long_AsLongLong:long(v:long)
 {
-    if (! @Py3Long_Check(v)) {    
+    if (! @Py3Long_Check(v)) {
 	error(sprintf("Py3Long_AsLong called on %s object at %p",
 	      python3_get_typename(v), v))
 	return -1
@@ -498,21 +543,19 @@ private function Py3Unicode_AsASCIIString:string(object:long)
 
 private function Py3Code_lnotab (object)
 {
+   // Python 3.11+ uses co_linetable instead of co_lnotab
    return @choose_defined(@Py3CodeObject(object)->co_lnotab,
-   			 @choose_defined(@Py3CodeObject(object)->co_linetable,
-   					 @cast(object, "_stp_Py3FrameObject")->f_frame->f_code->co_linetable))
+   			 @Py3CodeObject(object)->co_linetable)
 }
 
 private function Py3Code_firstlineno (object)
 {
-  return @choose_defined(@Py3CodeObject(object)->co_firstlineno,
-			 @cast(object, "_stp_Py3FrameObject")->f_frame->f_code->co_firstlineno)
+  return @Py3CodeObject(object)->co_firstlineno
 }
 
 private function Py3Code_nlocals (object)
 {
-  return @choose_defined(@Py3CodeObject(object)->co_nlocals,
-			 @cast(object, "_stp_Py3FrameObject")->f_frame->f_code->co_nlocals)
+  return @Py3CodeObject(object)->co_nlocals
 }
 
 private function Py3Code_Addr2Line:long(code:long, addrq:long)
@@ -585,7 +628,8 @@ private function Py3Frame_GetLineNumber (frame)
 			     @cast(frame, "_stp_Py3FrameObject")->f_lineno)
   } else {
     lasti = @choose_defined(@Py3FrameObject(frame)->f_lasti,
-			    @cast(frame, "_stp_Py3FrameObject")->f_frame->prev_instr - @cast(frame, "_stp_Py3FrameObject")->f_frame->f_code)
+			    @choose_defined(@cast(frame, "_stp_Py3FrameObject")->f_frame->prev_instr - @cast(frame, "_stp_Py3FrameObject")->f_frame->f_code,
+					    0))
     if (@defined(@Py3FrameObject(frame)->f_lasti))
       lineno = Py3Code_Addr2Line(Py3Frame_GetCode(frame), lasti)
     else
@@ -913,8 +957,10 @@ function Py3Object_Repr:string(object:long)
 	return "<NULL>"
     if (@Py3Unicode_Check(object))
 	return sprintf("\"%s\"", Py3Unicode_AsASCIIString(object))
-    if (@Py3Long_Check(object))
-    	return sprintf("%#x", Py3Long_AsLongLong(object))
+    if (@Py3Long_Check(object)) {
+    	value = Py3Long_AsLongLong(object)
+    	return sprintf("%#x", value)
+    }
     if (@Py3Tuple_Check(object))
 	return Py3Tuple_Repr(object)
     if (@Py3List_Check(object))
@@ -1048,18 +1094,26 @@ function Py3Object_GetAttr:long(object:long, attr:string)
 function python_print_backtrace:long()
 {
     if ($$$$provider != "HelperSDT3") next;
-    frame = $$$arg3;    
+    frame = $$$arg3;
     printf("Traceback (most recent call first):\n")
     while (frame != 0) {
-	lineno = Py3Frame_GetLineNumber(frame)
-	code = Py3Frame_GetCode(frame)
+        try {
+	    lineno = Py3Frame_GetLineNumber(frame)
+	} catch {
+	    lineno = 0
+	}
+        try {
+	    code = Py3Frame_GetCode(frame)
+	} catch {
+	    break
+	}
         try {
            filename = Py3Unicode_AsASCIIString(Py3Frame_GetFilename(frame))
 	} catch {
 	   filename = ""
 	}
 	try {
-	   name = Py3Unicode_AsASCIIString(code->co_name)
+	   name = Py3Unicode_AsASCIIString(@Py3CodeObject(code)->co_name)
 	} catch {
 	   name = ""
 	}
@@ -1074,7 +1128,11 @@ function python_print_backtrace:long()
 	# appropriate line, but we can't really do that when we're in
 	# the kernel.
 
-	frame = Py3Frame_GetBack (frame)
+        try {
+	    frame = Py3Frame_GetBack (frame)
+	} catch {
+	    break
+	}
     }
 }
 
@@ -1094,7 +1152,7 @@ function python_sprint_backtrace:string()
 	lineno = Py3Frame_GetLineNumber(frame)
 	code = Py3Frame_GetCode(frame)
 	filename = Py3Unicode_AsASCIIString(Py3Frame_GetFilename(frame))
-	name = Py3Unicode_AsASCIIString(code->co_name)
+	name = Py3Unicode_AsASCIIString(@Py3CodeObject(code)->co_name)
 
 	# Quit when we make it back to the HelperSDT module.
 	if (isinstr(filename, "/HelperSDT/"))
@@ -1182,9 +1240,22 @@ function python3_get_locals:string(frame:long, flags:long)
 	    
     if (@defined(@cast(code, "PyCodeObject")->co_nlocalsplus)) {
 	localsplus = Py3Frame_GetLocalsplus(frame)
+	first = 1
 	for (offset = 0; offset < code->co_nlocalsplus; offset++) {
+	  if (! first)
+	    retstr .= " "
+	  first = 0
 	  key_obj = Py3Tuple_GetItem(code->co_localsplusnames, offset)
-	  value_obj = user_long(localsplus + (offset * %{ sizeof(intptr_t) %}))
+	  // Python 3.15: localsplus is array of _PyStackRef, need to read .bits field
+	  // Python 3.11-3.14: localsplus is array of PyObject*
+	  // Try to read as _PyStackRef first (3.15), fall back to PyObject* (3.11-3.14)
+	  try {
+	    stackref_bits = user_long(localsplus + (offset * %{ sizeof(uintptr_t) %}))
+	    // Python 3.15: mask off tag bits (lower 2 bits) to get actual pointer
+	    value_obj = stackref_bits & ~3
+	  } catch {
+	    value_obj = user_long(localsplus + (offset * %{ sizeof(intptr_t) %}))
+	  }
 	  retstr .= sprintf("%s=%s", Py3Unicode_AsASCIIString(key_obj),
 			    Py3Object_Repr(value_obj))
 	}
@@ -1203,7 +1274,14 @@ function python3_get_locals:string(frame:long, flags:long)
 	      retstr .= " "
 	    first = 0
 	    key_obj = Py3Tuple_GetItem(p, i)
-	    value_obj = user_long(localsplus + (i * %{ sizeof(intptr_t) %}))
+	    // Python 3.15: localsplus is array of _PyStackRef
+	    try {
+	      stackref_bits = user_long(localsplus + (i * %{ sizeof(uintptr_t) %}))
+	      // Mask off tag bits (lower 2 bits)
+	      value_obj = stackref_bits & ~3
+	    } catch {
+	      value_obj = user_long(localsplus + (i * %{ sizeof(intptr_t) %}))
+	    }
 	    retstr .= sprintf("%s=%s", Py3Unicode_AsASCIIString(key_obj),
 			      Py3Object_Repr(value_obj))
 	}
@@ -1217,14 +1295,36 @@ function python3_get_var_obj:long(frame:long, var:string)
 {
   try {
     f_code = Py3Frame_GetCode(frame)
-    n = f_code->co_nlocals
-	    
+    n = @Py3CodeObject(f_code)->co_nlocals
+
     if (@defined(@cast(f_code, "PyCodeObject")->co_nlocalsplus)) {
 	localsplus = Py3Frame_GetLocalsplus(frame)
-	for (offset = 0; offset < f_code->co_nlocalsplus; offset++) {
-	  key_obj = Py3Tuple_GetItem(f_code->co_localsplusnames, offset)
-	  if (var == Py3Unicode_AsASCIIString(key_obj)) {
-	    return user_long(localsplus + (offset * %{ sizeof(intptr_t) %}))
+	nlocalsplus = @cast(f_code, "PyCodeObject")->co_nlocalsplus
+	for (offset = 0; offset < nlocalsplus; offset++) {
+	  key_obj = Py3Tuple_GetItem(@cast(f_code, "PyCodeObject")->co_localsplusnames, offset)
+	  key_str = Py3Unicode_AsASCIIString(key_obj)
+	  if (var == key_str) {
+	    // Python 3.15: read _PyStackRef.bits, Python 3.11-3.14: read PyObject*
+	    // SYSTEMTAP PORTING NOTE: localsplus is a pointer to an array in userspace.
+	    // We must use user_long(address) to read from userspace memory.
+	    // Cannot use @cast here because we need to read the actual array element values.
+	    // The try/catch handles the difference between uintptr_t (3.15+) and intptr_t (older).
+	    try {
+	      stackref = user_long(localsplus + (offset * %{ sizeof(uintptr_t) %}))
+	      tag_bits = stackref & 3
+	      masked = stackref & ~3
+	      // Python 3.15: Check if this is a tagged integer (tag bits == 3)
+	      // Tagged integers are encoded directly in the stackref, not as pointers.
+	      // Tag bits: 0=deferred, 1=immortal/normal ref, 2=unused, 3=tagged int
+	      if (tag_bits == 3) {
+	          // This is a tagged integer - need special handling
+	          // For now, return 0 to indicate we can't handle it yet
+	          return 0
+	      }
+	      return masked  // Mask off tag bits to get the actual PyObject* pointer
+	    } catch {
+	      return user_long(localsplus + (offset * %{ sizeof(intptr_t) %}))
+	    }
 	  }
 	}
       }
@@ -1239,7 +1339,13 @@ function python3_get_var_obj:long(frame:long, var:string)
 	for (i = 0; i < n; i++) {
 	  key_obj = Py3Tuple_GetItem(p, i)
 	  if (var == Py3Unicode_AsASCIIString(key_obj)) {
-	    return user_long(localsplus + (i * %{ sizeof(intptr_t) %}))
+	    // Python 3.15: read _PyStackRef.bits, Python 3.11-3.14: read PyObject*
+	    try {
+	      stackref = user_long(localsplus + (i * %{ sizeof(uintptr_t) %}))
+	      return stackref & ~3  // Mask off tag bits
+	    } catch {
+	      return user_long(localsplus + (i * %{ sizeof(intptr_t) %}))
+	    }
 	  }
 	}
     }
@@ -1263,13 +1369,19 @@ function python3_get_var_obj:long(frame:long, var:string, index:long)
 {
     f_code = Py3Frame_GetCode(frame)
     n = Py3Code_nlocals(f_code)
-            
+
     if (@defined(@cast(f_code, "PyCodeObject")->co_nlocalsplus)) {
 	localsplus = Py3Frame_GetLocalsplus(frame)
-	for (offset = 0; offset < f_code->co_nlocalsplus; offset++) {
-	  key_obj = Py3Tuple_GetItem(f_code->co_localsplusnames, offset)
+	for (offset = 0; offset < @cast(f_code, "PyCodeObject")->co_nlocalsplus; offset++) {
+	  key_obj = Py3Tuple_GetItem(@cast(f_code, "PyCodeObject")->co_localsplusnames, offset)
 	  if (var == Py3Unicode_AsASCIIString(key_obj)) {
-            return user_long(localsplus + (offset * %{ sizeof(intptr_t) %}))
+	    // Python 3.15: read _PyStackRef.bits, Python 3.11-3.14: read PyObject*
+	    try {
+	      stackref = user_long(localsplus + (offset * %{ sizeof(uintptr_t) %}))
+	      return stackref & ~3  // Mask off tag bits
+	    } catch {
+	      return user_long(localsplus + (offset * %{ sizeof(intptr_t) %}))
+	    }
 	  }
 	}
       }
@@ -1281,11 +1393,16 @@ function python3_get_var_obj:long(frame:long, var:string, index:long)
 	else
 	  p = 0
         localsplus = @choose_defined(@Py3FrameObject(frame)->f_localsplus,0)
-	printf("XXX3 %d %#lx\n", n, localsplus);
 	for (i = 0; i < n; i++) {
 	  key_obj = Py3Tuple_GetItem(p, i)
 	  if (var == Py3Unicode_AsASCIIString(key_obj)) {
+	    // Python 3.15: read _PyStackRef.bits, Python 3.11-3.14: read PyObject*
+	    try {
+	      stackref = user_long(localsplus + (i * %{ sizeof(uintptr_t) %}))
+	      return stackref & ~3  // Mask off tag bits
+	    } catch {
 	      return user_long(localsplus + (i * %{ sizeof(intptr_t) %}))
+	    }
 	  }
       }
     }

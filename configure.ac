@@ -42,7 +42,7 @@ AM_GNU_GETTEXT_VERSION([0.19.4])
 # (like 3.12+ which are available on RHEL8/9) to ensure we have
 # modern enough pip support for our PEP 517 build system.
 AC_PATH_PROGS([PYTHON3],
-              	 [python3.14 python3.13 python3.12 python3.11 python3.10 python3.9 python3.8 python3.7 python3 python3.6 python3.5 python3.4 python3.3 python3.2 python3.1 python3.0], [:])
+              	 [python3.15 python3.14 python3.13 python3.12 python3.11 python3.10 python3.9 python3.8 python3.7 python3 python3.6 python3.5 python3.4 python3.3 python3.2 python3.1 python3.0], [:])
 python3_basename=$(basename "$PYTHON3")
 AC_DEFINE_UNQUOTED([PYTHON3_BASENAME], "${python3_basename}",
 		   [Base name of the python3 interpreter binary.])
