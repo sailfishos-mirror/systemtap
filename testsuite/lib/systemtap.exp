@@ -9,13 +9,20 @@ if { [info procs saved_record_test] == "" } {
     rename record_test saved_record_test
     proc record_test { type message args } {
         # Let the DMESG expect_background soak up all pent-up input
-        global dmesg_spawn_id
+        global dmesg_spawn_id last_heartbeat_ms
         if {[info exists dmesg_spawn_id]} {
             if {$dmesg_spawn_id != ""} {
                 expect -i $dmesg_spawn_id -timeout 0
             }
         }
-        send_log "TIMESTAMP_MS: [clock milliseconds]\n"
+
+        set now [clock milliseconds]
+        if {! [info exists last_heartbeat_ms] || [expr {$now - $last_heartbeat_ms}] > 60000} {
+            clone_output "HEARTBEAT_MS: $now"
+            set last_heartbeat_ms $now
+        }
+
+        send_log "TIMESTAMP_MS: $now\n"
         eval [list saved_record_test $type $message] $args
     }
 }
