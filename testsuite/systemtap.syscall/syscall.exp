@@ -15,6 +15,11 @@ set test_module "${wd}/${test_module_name}.ko"
 
 source $srcdir/$subdir/test.tcl
 
+if {! [installtest_p]} {
+  untested $test_script
+  return
+}
+
 proc test_procedure {} {
     global env srcdir subdir test_script test_module test_module_name wd stap_output_log staprun_spawn_id
     set flags ""
@@ -83,7 +88,7 @@ proc test_procedure {} {
     set stap_output_log "${wd}/syscall_longlonglong.out"
     file delete $stap_output_log
 
-    spawn sh -c "staprun ${test_module} >> $stap_output_log"
+    spawn sh -c "staprun ${test_module} >> $stap_output_log 2>&1"
     set staprun_spawn_id $spawn_id
     fconfigure $staprun_spawn_id -buffering none -blocking 0
     expect_background -i $staprun_spawn_id -re ".*" { exp_continue }
@@ -102,9 +107,6 @@ proc test_procedure {} {
 
 	foreach filename [lsort $test_files] {
 	    set testname [file tail [string range $filename 0 end-2]]
-	    if {![installtest_p]} {
-		untested "${arch_size}-bit $testname"; continue
-	    }
 	    send_log "Testing ${arch_size}-bit ${testname} syscall\n"
 	    run_one_test $filename $flags ${arch_size} "syscall"
 	}

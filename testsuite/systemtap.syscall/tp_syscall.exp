@@ -15,6 +15,11 @@ set test_module "${wd}/${test_module_name}.ko"
 
 source $srcdir/$subdir/test.tcl
 
+if {! [installtest_p]} {
+  untested $test_script
+  return
+}
+
 proc test_procedure {} {
     global env srcdir subdir test_script test_module test_module_name wd stap_output_log staprun_spawn_id
     set flags ""
@@ -94,9 +99,6 @@ proc test_procedure {} {
 
 	foreach filename [lsort $test_files] {
 	    set testname [file tail [string range $filename 0 end-2]]
-	    if {![installtest_p]} {
-		untested "${arch_size}-bit $testname"; continue
-	    }
 	    send_log "Testing ${arch_size}-bit ${testname} tp_syscall\n"
 	    run_one_test $filename $flags ${arch_size} "tp_syscall"
 	}
