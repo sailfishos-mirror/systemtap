@@ -64,8 +64,8 @@ proc stap_run_error { TEST_NAME EXPECT_ERROR ERROR_STRING OUTPUT_CHECK_STRING ar
 	          kill -INT -$mypid }
 	eof { fail "$TEST_NAME startup (eof)" }
     }
-    # again for good measure with KILL after 3s
-    kill -INT -$mypid 3
+    # again for good measure with KILL after 15s
+    kill -INT -$mypid 15
     catch close
     wait
 }

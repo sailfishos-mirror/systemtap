@@ -122,9 +122,9 @@ proc stap_run { TEST_NAME {LOAD_GEN_FUNCTION ""} {OUTPUT_CHECK_STRING ""} args }
         }
 	eof { fail "$TEST_NAME startup (eof)" }
     }
-  # again for good measure with KILL after 3s
-  kill -INT -$mypid 3
-  kill -INT $mypid 3
+  # again for good measure with KILL after 15s
+  kill -INT -$mypid 15
+  kill -INT $mypid 15
   catch close
   wait
 }
@@ -145,8 +145,9 @@ proc wait_n_secs {N_SECS} {
 	if {$ncpu > 2} {
 	    set ncpu [expr $ncpu - 2]
 	}
-	send_log "executing: timeout $N_SECS*2 -k 1 $STRESS -c $ncpu -t $N_SECS"
-	exec timeout --kill=1 [expr $N_SECS * 2] $STRESS -c $ncpu -t $N_SECS
+        # give stap 10ish seconds to respond to a SIGTERM before a SIGKILL
+	send_log "executing: timeout $N_SECS*2 -k 10 $STRESS -c $ncpu -t $N_SECS"
+	exec timeout --kill=15 [expr $N_SECS * 2] $STRESS -c $ncpu -t $N_SECS
     } else {
 	# fallback method
 	# Tcl_Sleep does not always handle the system clock jumping, 

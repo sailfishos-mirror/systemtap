@@ -55,8 +55,8 @@ proc stapi_exit { } {
 	    eof { }
 	}
     }
-    # again for good measure with KILL after 3s
-    kill -INT -[exp_pid -i $stapi_spawn_id] 3
+    # again for good measure with KILL after 15s
+    kill -INT -[exp_pid -i $stapi_spawn_id] 15
     catch {close}; catch {wait}
     set stapi_spawn_id 0
 }
