@@ -54,6 +54,8 @@ private global Py3Object_GenericGetAttr_addr = 0
  */
 #define DICT_KEYS_GENERAL 0
 #define DICT_KEYS_UNICODE 1
+
+#define Py3_TPFLAGS_MANAGED_DICT (1L<<4)
 %}
 
 #
@@ -133,11 +135,29 @@ private global Py3Object_GenericGetAttr_addr = 0
 
 private function Py3Frame_GetCode (object)
 {
-  // Python 3.15+ uses f_executable (a _PyStackRef) instead of f_code
-  // Python 3.11-3.14 uses f_code (a PyCodeObject*)
+  // Python 3.15+ uses f_executable (_PyStackRef) instead of f_code
+  // Python 3.13-3.14 uses f_executable (PyObject*)
+  // Python 3.11-3.12 uses f_code on the interpreter frame
   // For old-style frames (pre-3.11), use f_code directly
   return @choose_defined(@Py3FrameObject(object)->f_code,
-			 @Py3StackRef_AsPyObject(@cast(object, "_stp_Py3FrameObject")->f_frame->f_executable))
+			 @choose_defined(@cast(object, "_stp_Py3FrameObject")->f_frame->f_code,
+					 @choose_defined(@Py3StackRef_AsPyObject(@cast(object, "_stp_Py3FrameObject")->f_frame->f_executable),
+							 @cast(object, "_stp_Py3FrameObject")->f_frame->f_executable)))
+}
+
+private function Py3Frame_GetBytecodeOffset:long(frame)
+{
+  f_frame = @cast(frame, "_stp_Py3FrameObject")->f_frame
+  f_code = Py3Frame_GetCode(frame)
+  // co_code_adaptive: 3.11+; pre-3.11 paths use PyFrameObject->f_lasti instead
+  code_base = @choose_defined(@cast(f_code, "PyCodeObject")->co_code_adaptive,
+			      @cast(f_code, "PyCodeObject")->co_code)
+  // prev_instr: 3.11-3.12; instr_ptr: 3.13+ (including 3.15 _PyStackRef frames)
+  instr = @choose_defined(@cast(f_frame, "_stp_Py3InterpreterFrame")->prev_instr,
+			  @cast(f_frame, "_stp_Py3InterpreterFrame")->instr_ptr)
+  lasti = @choose_defined(@Py3FrameObject(frame)->f_lasti,
+			  (instr - code_base) * %{ sizeof(uint16_t) %})
+  return lasti
 }
 
 private function Py3Frame_GetTrace (object) 
@@ -623,19 +643,15 @@ private function Py310Code_Addr2Line:long(code:long, addrq:long)
 
 private function Py3Frame_GetLineNumber (frame)
 {
-  if (! Py3Frame_GetTrace (frame)) {
-    lineno = @choose_defined(@Py3FrameObject(frame)->f_lineno,
-			     @cast(frame, "_stp_Py3FrameObject")->f_lineno)
-  } else {
-    lasti = @choose_defined(@Py3FrameObject(frame)->f_lasti,
-			    @choose_defined(@cast(frame, "_stp_Py3FrameObject")->f_frame->prev_instr - @cast(frame, "_stp_Py3FrameObject")->f_frame->f_code,
-					    0))
-    if (@defined(@Py3FrameObject(frame)->f_lasti))
-      lineno = Py3Code_Addr2Line(Py3Frame_GetCode(frame), lasti)
-    else
-      lineno = Py310Code_Addr2Line(Py3Frame_GetCode(frame), lasti)
-  }
-  return lineno
+  lineno = @choose_defined(@Py3FrameObject(frame)->f_lineno,
+			   @cast(frame, "_stp_Py3FrameObject")->f_lineno)
+  if (lineno != 0)
+    return lineno
+
+  lasti = Py3Frame_GetBytecodeOffset(frame)
+  if (@defined(@Py3FrameObject(frame)->f_lasti))
+    return Py3Code_Addr2Line(Py3Frame_GetCode(frame), lasti)
+  return Py310Code_Addr2Line(Py3Frame_GetCode(frame), lasti)
 }
 
 #
@@ -786,6 +802,46 @@ private function Py3List_Repr:string(object:long)
       (@ME_VALUE(@entry_ptr)))
 %)
 
+// Shared keys lookup for managed-dict instance attributes (Python 3.11+).
+private function Py3DictKeys_StringLookup:long(keys:long, name:string)
+{
+    n = @Py3DictKeysObject(keys)->dk_nentries
+    key_kind = @DK_KIND(keys)
+    for (i = 0; i < n; i++) {
+	entry_ptr = &@DK_UNICODE_ENTRIES(keys)[i]
+	key = @Py3ME_KEY(key_kind, entry_ptr)
+	if (key != 0 && Py3Unicode_AsASCIIString(key) == name)
+	    return i
+    }
+    return -1
+}
+
+// Instance attributes via managed dict / inline values (Python 3.11+).
+// Uses @defined on ht_cached_keys so older libpython debuginfo still compiles.
+private function Py3Object_GetInstanceAttribute:long(obj:long, name:string)
+{
+    tp = @Py3_TYPE(obj)
+    if (!(@Py3TypeObject(tp)->tp_flags & %{ Py3_TPFLAGS_MANAGED_DICT %}))
+	return 0
+    if (!@defined(@cast(tp, "PyHeapTypeObject")->ht_cached_keys))
+	return 0
+    dorv = user_long(obj - 3 * %{ sizeof(void *) %})
+    if (dorv & 1) {
+	values = dorv + 1
+	keys = @cast(tp, "PyHeapTypeObject")->ht_cached_keys
+	if (keys == 0)
+	    return 0
+	ix = Py3DictKeys_StringLookup(keys, name)
+	if (ix < 0)
+	    return 0
+	return user_long(values + ix * %{ sizeof(void *) %})
+    }
+    dict = dorv
+    if (dict == 0)
+	return 0
+    return Py3Dict_GetItem(dict, name)
+}
+
 private function Py3Dict_GetItem:long(op:long, key:string)
 {
     if (!@Py3Dict_Check(op)) {
@@ -829,11 +885,10 @@ private function Py3Dict_GetItem:long(op:long, key:string)
 	n = @choose_defined(@Py3DictObject(op)->ma_keys->dk_nentries,
 			    @DK_SIZE(@Py3DictObject(op)->ma_keys))
 	for (i = 0; i < n; i++) {
-	  # if DK_IS_UNICODE ...
+	    key_kind = @DK_KIND(@Py3DictObject(op)->ma_keys)
 	    entry_ptr = (key_kind == %{ DICT_KEYS_GENERAL %} ) 
 	      ? &@DK_ENTRIES(@Py3DictObject(op)->ma_keys)[i]
 	      : &@DK_UNICODE_ENTRIES(@Py3DictObject(op)->ma_keys)[i]
-	    key_kind = @DK_KIND(@Py3DictObject(op)->ma_keys)
 	    if (@Py3ME_KEY(key_kind,entry_ptr) == 0 || @Py3ME_VALUE(key_kind,entry_ptr) == 0
 		|| ! @Py3Unicode_Check(@Py3ME_KEY(key_kind,entry_ptr)))
 		continue
@@ -1021,12 +1076,26 @@ private function Py3Object_GenericGetAttrWithDict:long(obj:long, name:string,
     }
 
     if (dict == 0) {
-	dictoffset = tp->tp_dictoffset
-	if (dictoffset != 0) {
-	    if (dictoffset < 0) {
-		error("yikes")
+	// Managed dict (3.11+); legacy tp_dictoffset otherwise
+	if (@defined(@cast(tp, "PyHeapTypeObject")->ht_cached_keys)
+	    && (@Py3TypeObject(tp)->tp_flags & %{ Py3_TPFLAGS_MANAGED_DICT %})) {
+	    res = Py3Object_GetInstanceAttribute(obj, name)
+	    if (res != 0)
+		return res
+	}
+	else {
+	    dictoffset = tp->tp_dictoffset
+	    if (dictoffset != 0) {
+		if (dictoffset < 0) {
+		    tsize = @Py3_SIZE(obj)
+		    if (tsize < 0)
+			tsize = -tsize
+		    size = @Py3TypeObject(tp)->tp_basicsize + tsize * @Py3TypeObject(tp)->tp_itemsize
+		    dict = user_long(user_long(obj + dictoffset + size))
+		}
+		else
+		    dict = user_long(obj + dictoffset)
 	    }
-	    dict = user_long(obj + dictoffset);
 	}
     }
     if (dict != 0) {
@@ -1293,7 +1362,6 @@ function python3_get_locals:string(frame:long, flags:long)
 
 function python3_get_var_obj:long(frame:long, var:string)
 {
-  try {
     f_code = Py3Frame_GetCode(frame)
     n = @Py3CodeObject(f_code)->co_nlocals
 
@@ -1305,23 +1373,15 @@ function python3_get_var_obj:long(frame:long, var:string)
 	  key_str = Py3Unicode_AsASCIIString(key_obj)
 	  if (var == key_str) {
 	    // Python 3.15: read _PyStackRef.bits, Python 3.11-3.14: read PyObject*
-	    // SYSTEMTAP PORTING NOTE: localsplus is a pointer to an array in userspace.
-	    // We must use user_long(address) to read from userspace memory.
-	    // Cannot use @cast here because we need to read the actual array element values.
 	    // The try/catch handles the difference between uintptr_t (3.15+) and intptr_t (older).
 	    try {
 	      stackref = user_long(localsplus + (offset * %{ sizeof(uintptr_t) %}))
 	      tag_bits = stackref & 3
 	      masked = stackref & ~3
-	      // Python 3.15: Check if this is a tagged integer (tag bits == 3)
-	      // Tagged integers are encoded directly in the stackref, not as pointers.
-	      // Tag bits: 0=deferred, 1=immortal/normal ref, 2=unused, 3=tagged int
-	      if (tag_bits == 3) {
-	          // This is a tagged integer - need special handling
-	          // For now, return 0 to indicate we can't handle it yet
-	          return 0
-	      }
-	      return masked  // Mask off tag bits to get the actual PyObject* pointer
+	      // Python 3.15: tagged integer (tag bits == 3) encoded inline
+	      if (tag_bits == 3)
+		  error(sprintf("Python variable '%s' cannot be accessed", var))
+	      return masked
 	    } catch {
 	      return user_long(localsplus + (offset * %{ sizeof(intptr_t) %}))
 	    }
@@ -1339,30 +1399,24 @@ function python3_get_var_obj:long(frame:long, var:string)
 	for (i = 0; i < n; i++) {
 	  key_obj = Py3Tuple_GetItem(p, i)
 	  if (var == Py3Unicode_AsASCIIString(key_obj)) {
-	    // Python 3.15: read _PyStackRef.bits, Python 3.11-3.14: read PyObject*
 	    try {
 	      stackref = user_long(localsplus + (i * %{ sizeof(uintptr_t) %}))
-	      return stackref & ~3  // Mask off tag bits
+	      return stackref & ~3
 	    } catch {
 	      return user_long(localsplus + (i * %{ sizeof(intptr_t) %}))
 	    }
 	  }
 	}
     }
-    
+
     # If we can't find it in the locals, we look in the globals.
     f_globals = Py3Frame_GetGlobals(frame)
     value_obj = Py3Dict_GetItem(f_globals, var)
     if (value_obj == 0) {
-       error(sprintf("Python variable  cannot be found"))
+	error(sprintf("Python variable '%s' cannot be found", var))
 	return 0
     }
-    else {
-	return value_obj
-    }
-  } catch {
-    # printf("Python variable '%s' cannot be accessed\n", var)
-  }
+    return value_obj
 }
 
 function python3_get_var_obj:long(frame:long, var:string, index:long)

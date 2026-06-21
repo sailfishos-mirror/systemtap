@@ -151,12 +151,15 @@ struct _stp_frame {
     int f_lineno;               /* Current line number. Only valid if non-zero */
     char f_trace_lines;         /* Emit per-line trace events? */
     char f_trace_opcodes;       /* Emit per-opcode trace events? */
-#if PY_MINOR_VERSION >= 12
+#if PY_MINOR_VERSION <= 12
+    char f_fast_as_locals;      /* Have the fast locals of this frame been converted to a dict? */
+#elif PY_MINOR_VERSION == 13
     PyObject *f_extra_locals;   /* Dict for locals set by users using f_locals, could be NULL */
     PyObject *f_locals_cache;   /* Borrowed reference for PyEval_GetLocals */
-    PyObject *f_overwritten_fast_locals; /* Support for borrowed references */
-#else
-    char f_fast_as_locals;      /* Have the fast locals of this frame been converted to a dict? */
+#else  /* 3.14+ */
+    PyObject *f_extra_locals;
+    PyObject *f_locals_cache;
+    PyObject *f_overwritten_fast_locals;
 #endif
     /* The frame data, if this frame object owns the frame */
     PyObject *_f_frame_data[1];
@@ -167,7 +170,6 @@ _stp_Py3FrameObject _dummy_stp_Py3FrameObject;
 
 #if PY_MINOR_VERSION >= 15
 // Python 3.15+ uses _PyStackRef for some fields
-// _PyStackRef is a union with a uintptr_t bits field
 typedef union {
     uintptr_t bits;
 } _stp_PyStackRef;
@@ -188,32 +190,72 @@ struct _stp_Py3InterpreterFrame {
     /* Locals and stack */
     _stp_PyStackRef localsplus[1];
 } _stp_InterpreterFrame;
-#else
-// Python 3.11-3.14
+
+#elif PY_MINOR_VERSION >= 13
+// Python 3.13-3.14
+struct _stp_Py3InterpreterFrame {
+    PyObject *f_executable; /* Strong reference (code object or None) */
+    struct _stp_Py3InterpreterFrame *previous;
+    PyObject *f_funcobj; /* Strong reference */
+    PyObject *f_globals; /* Borrowed reference */
+    PyObject *f_builtins; /* Borrowed reference */
+    PyObject *f_locals; /* Strong reference, may be NULL */
+    PyFrameObject *frame_obj; /* Strong reference, may be NULL */
+    void /*_Py_CODEUNIT*/ *instr_ptr; /* Instruction currently executing */
+    int stacktop;
+    uint16_t return_offset;
+    char owner;
+    PyObject *localsplus[1];
+} _stp_InterpreterFrame;
+
+#elif PY_MINOR_VERSION == 12
+// Python 3.12 reorganized the interpreter frame layout
+struct _stp_Py3InterpreterFrame {
+    PyCodeObject *f_code; /* Strong reference */
+    struct _stp_Py3InterpreterFrame *previous;
+    PyObject *f_funcobj; /* Strong reference */
+    PyObject *f_globals; /* Borrowed reference */
+    PyObject *f_builtins; /* Borrowed reference */
+    PyObject *f_locals; /* Strong reference, may be NULL */
+    PyFrameObject *frame_obj; /* Strong reference, may be NULL */
+    void /*_Py_CODEUNIT*/ *prev_instr;
+    int stacktop;
+    uint16_t return_offset;
+    char owner;
+    PyObject *localsplus[1];
+} _stp_InterpreterFrame;
+
+#else  /* Python 3.11 */
 struct _stp_Py3InterpreterFrame {
     /* "Specials" section */
-    void /*PyFunctionObject*/ *f_func; /* Strong reference */
+    PyFunctionObject *f_func; /* Strong reference */
     PyObject *f_globals; /* Borrowed reference */
     PyObject *f_builtins; /* Borrowed reference */
     PyObject *f_locals; /* Strong reference, may be NULL */
     PyCodeObject *f_code; /* Strong reference */
-    void /*PyFrameObject*/ *frame_obj; /* Strong reference, may be NULL */
+    PyFrameObject *frame_obj; /* Strong reference, may be NULL */
     /* Linkage section */
     struct _stp_Py3InterpreterFrame *previous;
-    // NOTE: This is not necessarily the last instruction started in the given
-    // frame. Rather, it is the code unit *prior to* the *next* instruction. For
-    // example, it may be an inline CACHE entry, an instruction we just jumped
-    // over, or (in the case of a newly-created frame) a totally invalid value:
     void /*_Py_CODEUNIT*/ *prev_instr;
-    int stacktop;     /* Offset of TOS from localsplus  */
-    bool is_entry;  // Whether this is the "root" frame for the current _PyCFrame.
+    int stacktop;
+    bool is_entry;
     char owner;
-    /* Locals and stack */
     PyObject *localsplus[1];
 } _stp_InterpreterFrame;
 #endif
 
 typedef struct _stp_InterpreterFrame _stp_Py3InterpreterFrame;
+
+// Instance attribute lookup (Python 3.11+ managed dict / inline values)
+typedef union {
+    PyObject *dict;
+    char *values;
+} PyDictOrValues;
+PyDictOrValues _dummy_dorv;
+
+PyDictValues _dummy_dictvalues;
+
+PyHeapTypeObject _dummy_heaptype;
 
 #endif
 
