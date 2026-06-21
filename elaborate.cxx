@@ -6018,6 +6018,11 @@ void semantic_pass_opt8(systemtap_session& s)
        it != s.probes.end(); ++it)
     {
       derived_probe* p = *it;
+      // Skip synthetic probes - these may have specialized pointers (like entry_handler)
+      // that depend on their presence in s.probes and a distinct session_index.
+      if (p->synthetic)
+        continue;
+
       probe_point* pp = p->sole_location();
       // Skip probes with conditions - don't merge handlers with different conditions
       if (pp && !pp->condition)
