@@ -65,16 +65,8 @@ if {$bid_check_passed == 0} {
 
 set test "nonshared build id"
 
-# Since uprobes.ko may not be prebuilt in the runtime, and we don't
-# yet have a way to discover the path to the cache-build uprobes.ko,
-# we need to preload it.  This dummy run lets us go through the
-# motions to get uprobes loaded, and then we don't need to worry about
-# each staprun -u finding its module.
-#
-# PR13536: it turns out PR5163 makes staprun -u (without /path)
-# impossible, so stop using it in this test case.  Instead we hope and
-# pray and beseech the almighty spaghetti monster that uprobes stay
-# loaded after the following ditty:
+# NB: Previously, this test was relevant to RHEL6 era uprobes.ko management,
+# which is long gone from systemtap.  See also: PR13536, PR5163
 set bid_ko [pwd]/bid.ko
 catch {exec rm -f $bid_ko}
 set status 0
