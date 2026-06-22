@@ -38,9 +38,14 @@ PyCompactUnicodeObject _dummy_compactunicode;
 #include <bytesobject.h>
 PyBytesObject _dummy_bytes;
 #include <longobject.h>
+#if PY_MINOR_VERSION >= 11
+#include <cpython/longintrepr.h>
+#else
+#include <longintrepr.h>
+#endif
 PyLongObject _dummy_long;
-#include <cpython/code.h>
-// Ensure PyCodeObject debuginfo is available
+// Ensure PyCodeObject debuginfo is available (defined via Python.h on all
+// supported versions; do not include cpython/code.h directly on 3.9/3.10).
 PyCodeObject _dummy_code_obj;
 
 /* This is internal to libpython. */
