@@ -244,8 +244,10 @@ private function Py3Dict_GetValue (object, idx)
     user_long(@object + 16)
 %)
 
-// Python 3.12+ stores size in long_value.lv_tag; older versions use
-// PyVarObject.ob_size (via PyObject_VAR_HEAD in PyLongObject).
+// Python 3.12+ stores size in long_value.lv_tag; 3.9-3.11 use ob_size on
+// PyLongObject itself (PyObject_VAR_HEAD).  Do not use Py3VarObject here:
+// casting to PyVarObject still finds ob_size in debuginfo on 3.12+, but at
+// the wrong layout offset, so @choose_defined would pick a bogus ob_size.
 private function Py3Long_Size_From_Tag:long(v:long)
 {
     tag = user_long(v + 16)
@@ -257,7 +259,7 @@ private function Py3Long_Size_From_Tag:long(v:long)
 }
 
 @define Py3Long_SIZE(object) %(
-    @choose_defined(@Py3VarObject(@object)->ob_size,
+    @choose_defined(@Py3LongObject(@object)->ob_size,
         Py3Long_Size_From_Tag(@object))
 %)
 
