@@ -56,6 +56,7 @@ private global Py3Object_GenericGetAttr_addr = 0
 #define DICT_KEYS_UNICODE 1
 
 #define Py3_TPFLAGS_MANAGED_DICT (1L<<4)
+#define Py3_TPFLAGS_INLINE_VALUES (1L<<2)
 %}
 
 #
@@ -130,7 +131,7 @@ private global Py3Object_GenericGetAttr_addr = 0
 // In non-debug builds, _PyStackRef.bits contains the pointer with tag bits in lower 2 bits
 // Tag bits (Py_TAG_BITS = 3, mask = 0x3) must be masked off
 @define Py3StackRef_AsPyObject(stackref) %(
-    ((@stackref->bits) & ~3)
+    ((@choose_defined(@stackref.bits, @stackref->bits)) & ~3)
 %)
 
 private function Py3Frame_GetCode (object)
@@ -139,10 +140,18 @@ private function Py3Frame_GetCode (object)
   // Python 3.13-3.14 uses f_executable (PyObject*)
   // Python 3.11-3.12 uses f_code on the interpreter frame
   // For old-style frames (pre-3.11), use f_code directly
-  return @choose_defined(@Py3FrameObject(object)->f_code,
-			 @choose_defined(@cast(object, "_stp_Py3FrameObject")->f_frame->f_code,
-					 @choose_defined(@Py3StackRef_AsPyObject(@cast(object, "_stp_Py3FrameObject")->f_frame->f_executable),
-							 @cast(object, "_stp_Py3FrameObject")->f_frame->f_executable)))
+  if (@defined(@Py3FrameObject(object)->f_code))
+    return @Py3FrameObject(object)->f_code
+  f_frame = @cast(object, "_stp_Py3FrameObject")->f_frame
+  if (@defined(@cast(f_frame, "_stp_Py3InterpreterFrame")->f_code))
+    return @cast(f_frame, "_stp_Py3InterpreterFrame")->f_code
+  // 3.13+: f_executable is PyObject* (3.13-3.14) or _PyStackRef (3.15).
+  // Read the field as raw memory so @choose_defined does not need an
+  // alternate branch that treats a 3.15 union as PyObject*.
+  exec_val = user_long(&@cast(f_frame, "_stp_Py3InterpreterFrame")->f_executable)
+  if (@defined(@cast(f_frame, "_stp_Py3InterpreterFrame")->stackpointer))
+    return exec_val & ~3
+  return exec_val
 }
 
 private function Py3Frame_GetBytecodeOffset:long(frame)
@@ -660,9 +669,11 @@ private function Py3Frame_GetLineNumber (frame)
     return lineno
 
   lasti = Py3Frame_GetBytecodeOffset(frame)
-  if (@defined(@Py3FrameObject(frame)->f_lasti))
-    return Py3Code_Addr2Line(Py3Frame_GetCode(frame), lasti)
-  return Py310Code_Addr2Line(Py3Frame_GetCode(frame), lasti)
+  f_frame = @cast(frame, "_stp_Py3FrameObject")->f_frame
+  if (@defined(@cast(f_frame, "_stp_Py3InterpreterFrame")->prev_instr)
+      || @defined(@cast(f_frame, "_stp_Py3InterpreterFrame")->instr_ptr))
+    return Py310Code_Addr2Line(Py3Frame_GetCode(frame), lasti)
+  return Py3Code_Addr2Line(Py3Frame_GetCode(frame), lasti)
 }
 
 #
@@ -813,6 +824,22 @@ private function Py3List_Repr:string(object:long)
       (@ME_VALUE(@entry_ptr)))
 %)
 
+// Decode _PyStackRef.bits to PyObject* (or pass tagged int bits through).
+private function Py3StackRef_ValueAsObject:long(bits:long)
+{
+    if ((bits & 3) == 3)
+	return bits
+    return bits & ~3
+}
+
+private function Py3InlineValues_Base:long(obj:long, tp:long)
+{
+    base = obj + @Py3TypeObject(tp)->tp_basicsize
+    if (@defined(@cast(base, "_stp_Py3DictValues315")->capacity))
+	return @cast(base, "_stp_Py3DictValues315")->values
+    return base
+}
+
 // Shared keys lookup for managed-dict instance attributes (Python 3.11+).
 private function Py3DictKeys_StringLookup:long(keys:long, name:string)
 {
@@ -836,21 +863,28 @@ private function Py3Object_GetInstanceAttribute:long(obj:long, name:string)
 	return 0
     if (!@defined(@cast(tp, "PyHeapTypeObject")->ht_cached_keys))
 	return 0
+    keys = @cast(tp, "PyHeapTypeObject")->ht_cached_keys
     dorv = user_long(obj - 3 * %{ sizeof(void *) %})
+    // Python 3.11-3.14: low bit tags inline values pointer in managed dict word
     if (dorv & 1) {
 	values = dorv + 1
-	keys = @cast(tp, "PyHeapTypeObject")->ht_cached_keys
-	if (keys == 0)
-	    return 0
 	ix = Py3DictKeys_StringLookup(keys, name)
 	if (ix < 0)
 	    return 0
-	return user_long(values + ix * %{ sizeof(void *) %})
+	return Py3StackRef_ValueAsObject(user_long(values + ix * %{ sizeof(void *) %}))
     }
-    dict = dorv
-    if (dict == 0)
-	return 0
-    return Py3Dict_GetItem(dict, name)
+    // Materialized __dict__ pointer (any version once dict exists in preheader)
+    if (dorv != 0)
+	return Py3Dict_GetItem(dorv, name)
+    // Inline values at tp_basicsize when dict word is still NULL (3.11+)
+    if (@Py3TypeObject(tp)->tp_flags & %{ Py3_TPFLAGS_INLINE_VALUES %}) {
+	values = Py3InlineValues_Base(obj, tp)
+	ix = Py3DictKeys_StringLookup(keys, name)
+	if (ix < 0)
+	    return 0
+	return Py3StackRef_ValueAsObject(user_long(values + ix * %{ sizeof(void *) %}))
+    }
+    return 0
 }
 
 private function Py3Dict_GetItem:long(op:long, key:string)
@@ -1021,6 +1055,11 @@ function Py3Object_Repr:string(object:long)
 {
     if (object == 0)
 	return "<NULL>"
+    // Python 3.15 _PyStackRef tagged small int (Py_INT_TAG == 3)
+    if ((object & 3) == 3) {
+	value = object >> 2
+	return sprintf("%#x", value)
+    }
     if (@Py3Unicode_Check(object))
 	return sprintf("\"%s\"", Py3Unicode_AsASCIIString(object))
     if (@Py3Long_Check(object)) {
@@ -1082,14 +1121,10 @@ private function Py3Object_GenericGetAttrWithDict:long(obj:long, name:string,
 						       dict:long)
 {
     tp = @Py3_TYPE(obj)
-    if (tp->tp_dict == 0) {
-	return 0
-    }
 
     if (dict == 0) {
 	// Managed dict (3.11+); legacy tp_dictoffset otherwise
-	if (@defined(@cast(tp, "PyHeapTypeObject")->ht_cached_keys)
-	    && (@Py3TypeObject(tp)->tp_flags & %{ Py3_TPFLAGS_MANAGED_DICT %})) {
+	if (@Py3TypeObject(tp)->tp_flags & %{ Py3_TPFLAGS_MANAGED_DICT %}) {
 	    res = Py3Object_GetInstanceAttribute(obj, name)
 	    if (res != 0)
 		return res

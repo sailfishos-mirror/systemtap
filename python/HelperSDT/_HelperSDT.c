@@ -258,6 +258,19 @@ typedef union {
 } PyDictOrValues;
 PyDictOrValues _dummy_dorv;
 
+#if PY_MINOR_VERSION >= 15
+// Python 3.15 added a 4-byte header before inline PyObject* values
+struct _stp_Py3DictValues315 {
+    uint8_t capacity;
+    uint8_t size;
+    uint8_t embedded;
+    uint8_t valid;
+    uint8_t _padding[4];
+    PyObject *values[1];
+};
+struct _stp_Py3DictValues315 _dummy_stp_Py3DictValues315;
+#endif
+
 PyDictValues _dummy_dictvalues;
 
 PyHeapTypeObject _dummy_heaptype;
