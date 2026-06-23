@@ -1021,9 +1021,12 @@ proc kill { SIG PID {KILL_TIMEOUT 0} {AS_ROOT 0} } {
 
    if {$KILL_TIMEOUT > 0} {
       while {$KILL_TIMEOUT > 0} {
-         if {![file isdirectory /proc/$PID]} {
-            return
-         }
+          if {![file isdirectory /proc/$PID]} { return }
+          # detect successful death (zombie), to avoid waiting full $KILL_TIMEOUT
+          if {[catch {exec cat /proc/$PID/stat} statout] == 0} {
+              # The 3rd field in /proc/<pid>/stat is the state (e.g., 'Z' for Zombie)
+              if {[lindex [split $statout] 2] eq "Z"} { return }
+          }
          sleep 1
          incr KILL_TIMEOUT -1
       }
