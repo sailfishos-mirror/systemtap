@@ -34,7 +34,8 @@ class InstallEggInfoCommand(install_egg_info):
 
 setup(
     ext_modules = [
-        Extension("HelperSDT._HelperSDT", ["HelperSDT/_HelperSDT.c"]),
+        Extension("HelperSDT._HelperSDT", ["HelperSDT/_HelperSDT.c"],
+                  extra_compile_args=["-g"]),
     ],
     cmdclass={
         "egg_info": EggInfoCommand,

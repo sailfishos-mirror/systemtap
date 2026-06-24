@@ -127,7 +127,7 @@ private global Py3Object_GenericGetAttr_addr = 0
     @cast_sizeof("PyCompactUnicodeObject")
 %)
 
-// Helper to convert _PyStackRef to PyObject* (Python 3.15+)
+// Helper to convert _PyStackRef to PyObject* (Python 3.14+)
 // In non-debug builds, _PyStackRef.bits contains the pointer with tag bits in lower 2 bits
 // Tag bits (Py_TAG_BITS = 3, mask = 0x3) must be masked off
 @define Py3StackRef_AsPyObject(stackref) %(
@@ -136,8 +136,8 @@ private global Py3Object_GenericGetAttr_addr = 0
 
 private function Py3Frame_GetCode (object)
 {
-  // Python 3.15+ uses f_executable (_PyStackRef) instead of f_code
-  // Python 3.13-3.14 uses f_executable (PyObject*)
+  // Python 3.14+ uses f_executable (_PyStackRef) instead of f_code
+  // Python 3.13 uses f_executable (PyObject*)
   // Python 3.11-3.12 uses f_code on the interpreter frame
   // For old-style frames (pre-3.11), use f_code directly
   if (@defined(@Py3FrameObject(object)->f_code))
@@ -145,9 +145,9 @@ private function Py3Frame_GetCode (object)
   f_frame = @cast(object, "_stp_Py3FrameObject")->f_frame
   if (@defined(@cast(f_frame, "_stp_Py3InterpreterFrame")->f_code))
     return @cast(f_frame, "_stp_Py3InterpreterFrame")->f_code
-  // 3.13+: f_executable is PyObject* (3.13-3.14) or _PyStackRef (3.15).
+  // 3.14+: f_executable is _PyStackRef; 3.13 is PyObject*.
   // Read the field as raw memory so @choose_defined does not need an
-  // alternate branch that treats a 3.15 union as PyObject*.
+  // alternate branch that treats a union as PyObject*.
   exec_val = user_long(&@cast(f_frame, "_stp_Py3InterpreterFrame")->f_executable)
   if (@defined(@cast(f_frame, "_stp_Py3InterpreterFrame")->stackpointer))
     return exec_val & ~3
@@ -161,7 +161,7 @@ private function Py3Frame_GetBytecodeOffset:long(frame)
   // co_code_adaptive: 3.11+; pre-3.11 paths use PyFrameObject->f_lasti instead
   code_base = @choose_defined(@cast(f_code, "PyCodeObject")->co_code_adaptive,
 			      @cast(f_code, "PyCodeObject")->co_code)
-  // prev_instr: 3.11-3.12; instr_ptr: 3.13+ (including 3.15 _PyStackRef frames)
+  // prev_instr: 3.11-3.12; instr_ptr: 3.13+ (3.14+ uses _PyStackRef frames)
   instr = @choose_defined(@cast(f_frame, "_stp_Py3InterpreterFrame")->prev_instr,
 			  @cast(f_frame, "_stp_Py3InterpreterFrame")->instr_ptr)
   lasti = @choose_defined(@Py3FrameObject(frame)->f_lasti,
@@ -178,6 +178,13 @@ private function Py3Frame_GetTrace (object)
 
 private function Py3Frame_GetBack (object)
 {
+  // Note: `x < 0x10000` already covers x==0.  We write the explicit
+  // `== 0 ||` test for readability, to call out the conventional NULL case
+  // (even though it is redundant with the comparison).  These guards
+  // protect against both real NULLs and bogus small values produced by
+  // _PyStackRef handling on 3.14+.
+  if (object == 0 || object < 0x10000)
+    return 0
   if (@defined (@Py3FrameObject(object)->f_back))
     return @Py3FrameObject(object)->f_back
   else
@@ -195,7 +202,16 @@ private function Py3Frame_GetBack (object)
 
 private function Py3Frame_GetFilename (object)
 {
+  // Note: `x < 0x10000` already covers x==0.  We write the explicit
+  // `== 0 ||` test for readability, to call out the conventional NULL case
+  // (even though it is redundant with the comparison).  These guards
+  // protect against both real NULLs and bogus small values produced by
+  // _PyStackRef handling on 3.14+.
+  if (object == 0 || object < 0x10000)
+    return 0
   f_code = Py3Frame_GetCode(object)
+  if (f_code == 0 || f_code < 0x10000)
+    return 0
   return @cast(f_code, "PyCodeObject")->co_filename
 }
  
@@ -640,11 +656,8 @@ private function Py310Code_Addr2Line:long(code:long, addrq:long)
     size = Py3Bytes_Size(Py3Code_lnotab (code)) / 2
     co_lnotab_sval = @Py3BytesObject(Py3Code_lnotab (code))->ob_sval
     line = Py3Code_firstlineno(code)
-    idx = 0
-    while (idx < 52) {
-      addr = user_long(co_lnotab_sval+idx)
-      idx = idx + 8
-    }
+    addr = 0
+    p = 0
     while (--size >= 0) {
     	addr += user_char(co_lnotab_sval)
 	co_lnotab_sval = co_lnotab_sval + 1
@@ -784,17 +797,22 @@ private function Py3List_Repr:string(object:long)
     %)
 %)
 
+@define DK_INDICES_BYTES(dk) %(
+    @choose_defined( (1 << @Py3DictKeysObject(@dk)->dk_log2_index_bytes),
+                     (@DK_SIZE(@dk) * @DK_IXSIZE(@dk)) )
+%)
+
 @define DK_ENTRIES(dk) %(
      (@choose_defined(@Py3DictKeysObject(@dk)->dk_entries,
-                      (&@Py3DictKeyEntry(&@Py3DictKeysObject(@dk)->dk_indices[@DK_SIZE(@dk) * @DK_IXSIZE(@dk)]))))
+                      (&@Py3DictKeyEntry(&@Py3DictKeysObject(@dk)->dk_indices[@DK_INDICES_BYTES(@dk)]))))
      // XXX: python 3.6?
      //      (&@Py3DictKeyEntry(&@Py3DictKeysObject(@dk)->dk_indices->as_1[@DK_SIZE(@dk) * @DK_IXSIZE(@dk)]))))
 %)
 
 @define DK_UNICODE_ENTRIES(dk) %(
      (@choose_defined(@Py3DictKeysObject(@dk)->dk_entries,
-		      @choose_defined(&@Py3DictUnicodeEntry(&@Py3DictKeysObject(@dk)->dk_indices[@DK_SIZE(@dk) * @DK_IXSIZE(@dk)]),
-			       (&@Py3DictKeyEntry(&@Py3DictKeysObject(@dk)->dk_indices[@DK_SIZE(@dk) * @DK_IXSIZE(@dk)])))
+		      @choose_defined(&@Py3DictUnicodeEntry(&@Py3DictKeysObject(@dk)->dk_indices[@DK_INDICES_BYTES(@dk)]),
+			       (&@Py3DictKeyEntry(&@Py3DictKeysObject(@dk)->dk_indices[@DK_INDICES_BYTES(@dk)])))
 		      )
       )
 %)
@@ -837,6 +855,8 @@ private function Py3InlineValues_Base:long(obj:long, tp:long)
     base = obj + @Py3TypeObject(tp)->tp_basicsize
     if (@defined(@cast(base, "_stp_Py3DictValues315")->capacity))
 	return @cast(base, "_stp_Py3DictValues315")->values
+    if (@defined(@cast(base, "_stp_Py3DictValues")->capacity))
+	return @cast(base, "_stp_Py3DictValues")->values
     return base
 }
 
@@ -858,6 +878,8 @@ private function Py3DictKeys_StringLookup:long(keys:long, name:string)
 // Uses @defined on ht_cached_keys so older libpython debuginfo still compiles.
 private function Py3Object_GetInstanceAttribute:long(obj:long, name:string)
 {
+    if (obj != 0 && obj < 0x10000)
+	return 0
     tp = @Py3_TYPE(obj)
     if (!(@Py3TypeObject(tp)->tp_flags & %{ Py3_TPFLAGS_MANAGED_DICT %}))
 	return 0
@@ -868,6 +890,11 @@ private function Py3Object_GetInstanceAttribute:long(obj:long, name:string)
     // Python 3.11-3.14: low bit tags inline values pointer in managed dict word
     if (dorv & 1) {
 	values = dorv + 1
+	// Normalize to point at the start of the PyObject* array, not the header
+	if (@defined(@cast(values, "_stp_Py3DictValues")->capacity))
+	    values = @cast(values, "_stp_Py3DictValues")->values
+	else if (@defined(@cast(values, "_stp_Py3DictValues315")->capacity))
+	    values = @cast(values, "_stp_Py3DictValues315")->values
 	ix = Py3DictKeys_StringLookup(keys, name)
 	if (ix < 0)
 	    return 0
@@ -884,11 +911,44 @@ private function Py3Object_GetInstanceAttribute:long(obj:long, name:string)
 	    return 0
 	return Py3StackRef_ValueAsObject(user_long(values + ix * %{ sizeof(void *) %}))
     }
+
+    // Fallback: try to obtain __dict__ (via GetAttr which handles managed/legacy)
+    // and look up the name there. This covers materialized dicts and cases where
+    // direct inline slot lookup didn't find it (e.g. due to keys layout details in 3.14).
+    if (name != "__dict__") {
+	dict2 = Py3Object_GetAttr(obj, "__dict__")
+	if (dict2 != 0) {
+	    res2 = Py3Dict_GetItem(dict2, name)
+	    if (res2 != 0)
+		return res2
+	}
+    }
+
+    // Legacy dictoffset fallback (for types using tp_dictoffset for __dict__)
+    dictoffset = @Py3TypeObject(tp)->tp_dictoffset
+    if (dictoffset != 0) {
+	if (dictoffset < 0) {
+	    tsize = @Py3_SIZE(obj)
+	    if (tsize < 0)
+		tsize = -tsize
+	    size = @Py3TypeObject(tp)->tp_basicsize + tsize * @Py3TypeObject(tp)->tp_itemsize
+	    dptr = user_long(user_long(obj + dictoffset + size))
+	} else {
+	    dptr = user_long(obj + dictoffset)
+	}
+	if (dptr != 0) {
+	    res = Py3Dict_GetItem(dptr, name)
+	    if (res != 0)
+		return res
+	}
+    }
     return 0
 }
 
 private function Py3Dict_GetItem:long(op:long, key:string)
 {
+    if (op != 0 && op < 0x10000)
+	return 0
     if (!@Py3Dict_Check(op)) {
 	error(sprintf("Py3Dict_GetItem called on %s object at %p",
 		      python3_get_typename(op), @__pointer(op)))
@@ -1060,6 +1120,10 @@ function Py3Object_Repr:string(object:long)
 	value = object >> 2
 	return sprintf("%#x", value)
     }
+    // Guard against bad/small pointers from _PyStackRef reads or cleared slots (3.14+).
+    // Only skip obviously-non-pointer small values; real PyObjects are large.
+    if (object != 0 && object < 0x10000)
+	return sprintf("<bad 0x%x>", object)
     if (@Py3Unicode_Check(object))
 	return sprintf("\"%s\"", Py3Unicode_AsASCIIString(object))
     if (@Py3Long_Check(object)) {
@@ -1164,6 +1228,8 @@ function Py3Object_GetAttr:long(object:long, attr:string)
 	error("The None object has no attributes")
 	return 0
     }
+    if (object != 0 && object < 0x10000)
+	return 0
 
     if (@Py3_TYPE(object)->tp_getattro == 0) {
 	error(sprintf("The %s object has no attributes",
@@ -1361,12 +1427,12 @@ function python3_get_locals:string(frame:long, flags:long)
 	    retstr .= " "
 	  first = 0
 	  key_obj = Py3Tuple_GetItem(code->co_localsplusnames, offset)
-	  // Python 3.15: localsplus is array of _PyStackRef, need to read .bits field
-	  // Python 3.11-3.14: localsplus is array of PyObject*
-	  // Try to read as _PyStackRef first (3.15), fall back to PyObject* (3.11-3.14)
+	  // Python 3.14+: localsplus is array of _PyStackRef, need to read .bits field
+	  // Python 3.11-3.13: localsplus is array of PyObject*
+	  // Try to read as _PyStackRef first (3.14+), fall back to PyObject* (3.11-3.13)
 	  try {
 	    stackref_bits = user_long(localsplus + (offset * %{ sizeof(uintptr_t) %}))
-	    // Python 3.15: mask off tag bits (lower 2 bits) to get actual pointer
+	    // Python 3.14+: mask off tag bits (lower 2 bits) to get actual pointer
 	    value_obj = stackref_bits & ~3
 	  } catch {
 	    value_obj = user_long(localsplus + (offset * %{ sizeof(intptr_t) %}))
@@ -1389,7 +1455,7 @@ function python3_get_locals:string(frame:long, flags:long)
 	      retstr .= " "
 	    first = 0
 	    key_obj = Py3Tuple_GetItem(p, i)
-	    // Python 3.15: localsplus is array of _PyStackRef
+	    // Python 3.14+: localsplus is array of _PyStackRef
 	    try {
 	      stackref_bits = user_long(localsplus + (i * %{ sizeof(uintptr_t) %}))
 	      // Mask off tag bits (lower 2 bits)
@@ -1418,7 +1484,7 @@ function python3_get_var_obj:long(frame:long, var:string)
 	  key_obj = Py3Tuple_GetItem(@cast(f_code, "PyCodeObject")->co_localsplusnames, offset)
 	  key_str = Py3Unicode_AsASCIIString(key_obj)
 	  if (var == key_str) {
-	    // Python 3.15: read _PyStackRef.bits, Python 3.11-3.14: read PyObject*
+	    // Python 3.14+: read _PyStackRef.bits, Python 3.11-3.13: read PyObject*
 	    // The try/catch handles the difference between uintptr_t (3.15+) and intptr_t (older).
 	    try {
 	      stackref = user_long(localsplus + (offset * %{ sizeof(uintptr_t) %}))
@@ -1475,7 +1541,7 @@ function python3_get_var_obj:long(frame:long, var:string, index:long)
 	for (offset = 0; offset < @cast(f_code, "PyCodeObject")->co_nlocalsplus; offset++) {
 	  key_obj = Py3Tuple_GetItem(@cast(f_code, "PyCodeObject")->co_localsplusnames, offset)
 	  if (var == Py3Unicode_AsASCIIString(key_obj)) {
-	    // Python 3.15: read _PyStackRef.bits, Python 3.11-3.14: read PyObject*
+	    // Python 3.14+: read _PyStackRef.bits, Python 3.11-3.13: read PyObject*
 	    try {
 	      stackref = user_long(localsplus + (offset * %{ sizeof(uintptr_t) %}))
 	      return stackref & ~3  // Mask off tag bits
@@ -1496,7 +1562,7 @@ function python3_get_var_obj:long(frame:long, var:string, index:long)
 	for (i = 0; i < n; i++) {
 	  key_obj = Py3Tuple_GetItem(p, i)
 	  if (var == Py3Unicode_AsASCIIString(key_obj)) {
-	    // Python 3.15: read _PyStackRef.bits, Python 3.11-3.14: read PyObject*
+	    // Python 3.14+: read _PyStackRef.bits, Python 3.11-3.13: read PyObject*
 	    try {
 	      stackref = user_long(localsplus + (i * %{ sizeof(uintptr_t) %}))
 	      return stackref & ~3  // Mask off tag bits

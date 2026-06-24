@@ -173,8 +173,8 @@ struct _stp_frame {
 typedef struct _stp_frame _stp_Py3FrameObject;
 _stp_Py3FrameObject _dummy_stp_Py3FrameObject;
 
-#if PY_MINOR_VERSION >= 15
-// Python 3.15+ uses _PyStackRef for some fields
+#if PY_MINOR_VERSION >= 14
+// Python 3.14+ uses _PyStackRef for some fields
 typedef union {
     uintptr_t bits;
 } _stp_PyStackRef;
@@ -196,8 +196,8 @@ struct _stp_Py3InterpreterFrame {
     _stp_PyStackRef localsplus[1];
 } _stp_InterpreterFrame;
 
-#elif PY_MINOR_VERSION >= 13
-// Python 3.13-3.14
+#elif PY_MINOR_VERSION == 13
+// Python 3.13
 struct _stp_Py3InterpreterFrame {
     PyObject *f_executable; /* Strong reference (code object or None) */
     struct _stp_Py3InterpreterFrame *previous;
@@ -269,6 +269,16 @@ struct _stp_Py3DictValues315 {
     PyObject *values[1];
 };
 struct _stp_Py3DictValues315 _dummy_stp_Py3DictValues315;
+#else
+// 3.11-3.14: 4-byte header, no extra padding before the values array
+struct _stp_Py3DictValues {
+    uint8_t capacity;
+    uint8_t size;
+    uint8_t embedded;
+    uint8_t valid;
+    PyObject *values[1];
+};
+struct _stp_Py3DictValues _dummy_stp_Py3DictValues;
 #endif
 
 PyDictValues _dummy_dictvalues;
