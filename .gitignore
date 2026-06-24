@@ -43,3 +43,5 @@ language-server/clients/vscode/out
 node_modules
 package-lock.json
 language-server/clients/eclipse/bin
+# python3 tapset is selected at build time from python3.*.stp.candidate
+tapset/python3.*.stp

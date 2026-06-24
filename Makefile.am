@@ -98,6 +98,22 @@ all: macros.systemtap
 macros.systemtap: $(srcdir)/macros.systemtap.in
 	sed -e "s#@pkgdatadir@#$(pkgdatadir)#g" < $< > $@
 
+# Python tapset selection: at build time, copy exactly one
+# python3.NN.stp.candidate (chosen by the python version used to
+# build _HelperSDT.so) to python3.NN.stp.  This file (and only this)
+# is visible to stap and "make install".  This lets each
+# python3.NN.stp.candidate be free of cross-version @defined()/
+# @choose_defined() conditionals and can use the real libpython
+# DWARF types directly.
+if HAVE_PYTHON3_PROBES
+TAPSET_PYTHON3_STP = tapset/python3.$(PYTHON3_MINOR).stp
+else
+TAPSET_PYTHON3_STP =
+endif
+
+$(TAPSET_PYTHON3_STP): tapset/python3.$(PYTHON3_MINOR).stp.candidate
+	cp -f $< $@
+
 install: all
 	$(MAKE) $(AM_MAKEFLAGS) install-recursive
 
@@ -230,12 +246,12 @@ STAPLOG=staplog.so
 $(STAPLOG): staplog.c
 	$(CC) $(staplog_CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -shared -rdynamic \
 		$(AM_LDFLAGS) $(LDFLAGS) -fPIC -o $@ $<
-all-local: $(STAPLOG) example_index
+all-local: $(STAPLOG) example_index $(TAPSET_PYTHON3_STP)
 install-exec-local: $(STAPLOG)
 	$(MKDIR_P) $(DESTDIR)$(pkglibdir)
 	$(INSTALL) $(STAPLOG) $(DESTDIR)$(pkglibdir)
 else
-all-local: example_index
+all-local: example_index $(TAPSET_PYTHON3_STP)
 endif
 
 # Get extra libs as needed
@@ -268,6 +284,13 @@ endif
 		do $(INSTALL_DATA) -D $$f $(DESTDIR)$(pkgdatadir)/runtime/linux/$$f; done)
 	(cd $(srcdir)/tapset; find . \( -name '*.stp' -o -name '*.stpm' -o -name README \) -print \
 		| while read f; do $(INSTALL_DATA) -D $$f $(DESTDIR)$(pkgdatadir)/tapset/$$f; done)
+# Prune any stale python3*.stp (e.g. the old generic python3.stp, or one for
+# a different python minor) so that only the matching python3.NN.stp is present.
+	-for f in $(DESTDIR)$(pkgdatadir)/tapset/python3*.stp; do \
+	  if test -f "$$f"; then \
+	    case $$f in */python3.$(PYTHON3_MINOR).stp) ;; *) rm -f "$$f";; esac; \
+	  fi; \
+	done
 	(cd $(srcdir)/testsuite/systemtap.examples; find . -type f -print \
 		| grep -E -v 'check.exp|ChangeLog|examples-index-gen.pl|html/.*\.tmpl|metadatabase.dbq$$' \
 		| while read f; do if test -x $$f; then \
@@ -298,6 +321,7 @@ clean-local:
 	rm -rf $(TEST_COV_DIR)
 	rm -rf stap.info
 	rm -rf staplog.so
+	rm -f tapset/python3.*.stp
 
 distclean-local:
 	rm -f doc/beginners/en-US doc/beginners/build/en-US/testsuite
@@ -328,7 +352,16 @@ endif
 SUBDIRS = . java python stapdyn staprun stapbpf doc man po stap-exporter interactive-notebook
 # NB: the gcov target above uses this to enumarate linked binaries' build directories
 DIST_SUBDIRS = testsuite $(SUBDIRS)
-EXTRA_DIST = m4/ChangeLog
+EXTRA_DIST = m4/ChangeLog \
+	tapset/python3.11.stp.candidate \
+	tapset/python3.12.stp.candidate \
+	tapset/python3.13.stp.candidate \
+	tapset/python3.14.stp.candidate \
+	tapset/python3.15.stp.candidate
+
+# Ensure no build-generated python3.NN.stp sneaks into a source tarball.
+dist-hook:
+	rm -f $(distdir)/tapset/python3.*.stp
 
 check-local:
 	SRCDIR=`cd $(srcdir); pwd`; \

@@ -55,6 +55,8 @@ if test "x$PYTHON3" != "x:"; then
    AC_CACHE_CHECK([for python3 version], [ac_cv_python3_version],
    		  [ac_cv_python3_version=`$PYTHON3 -c "import sys; sys.stdout.write(sys.version[[:3]])"`])
    AC_SUBST([PYTHON3_VERSION], [$ac_cv_python3_version])
+   python3_minor=`$PYTHON3 -c "import sys; sys.stdout.write(str(sys.version_info[[1]]))"`
+   AC_SUBST([PYTHON3_MINOR], [$python3_minor])
    AC_SUBST([PYTHON3_PREFIX], ['${prefix}'])
    AC_SUBST([PYTHON3_EXEC_PREFIX], ['${exec_prefix}'])
    AC_CACHE_CHECK([for python3 platform], [ac_cv_python3_platform],

@@ -11,8 +11,9 @@
 #include <stdlib.h>
 
 
-// PR25841: ensure that the libHelperSDT.so file contains debuginfo
-// for the tapset helper functions, so they don't have to look into libpython*
+// We pull in some public Python headers (with -g) so the helper .so carries
+// DWARF for common types. For deep internals (_PyInterpreterFrame etc.) we
+// now rely on the target libpython's own DWARF (see tapset comments).
 #include <frameobject.h>
 // python 3.11 removed direct access to PyFrameObject members
 // https://docs.python.org/3.11/whatsnew/3.11.html#c-api-changes
@@ -145,145 +146,24 @@ struct _dictvalues {
 #include <stdbool.h>
 #include <stddef.h>
 
-// Redacted from Python Include/internal/pycore_frame.h
-// Support for Python 3.11+ including 3.12, 3.13, 3.14, 3.15
+// We no longer define synthetic _stp_* copies of Python internal structs here.
+// Instead, the tapset uses @cast(..., "RealInternalType", "/usr/lib64/libpython3.NN.so")
+// (or just the type name inside a python process probe context) to get the layout
+// directly from the target libpython's DWARF. This gives an exact match for the
+// probed python's internals without hand-maintained duplicates.
+//
+// The helper .so is still required for the SDT markers themselves.
 
-struct _stp_frame {
-    PyObject_HEAD
-    PyFrameObject *f_back;      /* previous frame, or NULL */
-    struct _stp_Py3InterpreterFrame *f_frame; /* points to the frame data */
-    PyObject *f_trace;          /* Trace function */
-    int f_lineno;               /* Current line number. Only valid if non-zero */
-    char f_trace_lines;         /* Emit per-line trace events? */
-    char f_trace_opcodes;       /* Emit per-opcode trace events? */
-#if PY_MINOR_VERSION <= 12
-    char f_fast_as_locals;      /* Have the fast locals of this frame been converted to a dict? */
-#elif PY_MINOR_VERSION == 13
-    PyObject *f_extra_locals;   /* Dict for locals set by users using f_locals, could be NULL */
-    PyObject *f_locals_cache;   /* Borrowed reference for PyEval_GetLocals */
-#else  /* 3.14+ */
-    PyObject *f_extra_locals;
-    PyObject *f_locals_cache;
-    PyObject *f_overwritten_fast_locals;
-#endif
-    /* The frame data, if this frame object owns the frame */
-    PyObject *_f_frame_data[1];
-};
-
-typedef struct _stp_frame _stp_Py3FrameObject;
-_stp_Py3FrameObject _dummy_stp_Py3FrameObject;
-
-#if PY_MINOR_VERSION >= 14
-// Python 3.14+ uses _PyStackRef for some fields
-typedef union {
-    uintptr_t bits;
-} _stp_PyStackRef;
-
-struct _stp_Py3InterpreterFrame {
-    _stp_PyStackRef f_executable; /* Deferred or strong reference (code object or None) */
-    struct _stp_Py3InterpreterFrame *previous;
-    _stp_PyStackRef f_funcobj; /* Deferred or strong reference */
-    PyObject *f_globals; /* Borrowed reference */
-    PyObject *f_builtins; /* Borrowed reference */
-    PyObject *f_locals; /* Strong reference, may be NULL */
-    void /*PyFrameObject*/ *frame_obj; /* Strong reference, may be NULL */
-    void /*_Py_CODEUNIT*/ *instr_ptr; /* Instruction currently executing */
-    void *stackpointer;
-    uint16_t return_offset;
-    char owner;
-    uint8_t visited;
-    /* Locals and stack */
-    _stp_PyStackRef localsplus[1];
-} _stp_InterpreterFrame;
-
-#elif PY_MINOR_VERSION == 13
-// Python 3.13
-struct _stp_Py3InterpreterFrame {
-    PyObject *f_executable; /* Strong reference (code object or None) */
-    struct _stp_Py3InterpreterFrame *previous;
-    PyObject *f_funcobj; /* Strong reference */
-    PyObject *f_globals; /* Borrowed reference */
-    PyObject *f_builtins; /* Borrowed reference */
-    PyObject *f_locals; /* Strong reference, may be NULL */
-    PyFrameObject *frame_obj; /* Strong reference, may be NULL */
-    void /*_Py_CODEUNIT*/ *instr_ptr; /* Instruction currently executing */
-    int stacktop;
-    uint16_t return_offset;
-    char owner;
-    PyObject *localsplus[1];
-} _stp_InterpreterFrame;
-
-#elif PY_MINOR_VERSION == 12
-// Python 3.12 reorganized the interpreter frame layout
-struct _stp_Py3InterpreterFrame {
-    PyCodeObject *f_code; /* Strong reference */
-    struct _stp_Py3InterpreterFrame *previous;
-    PyObject *f_funcobj; /* Strong reference */
-    PyObject *f_globals; /* Borrowed reference */
-    PyObject *f_builtins; /* Borrowed reference */
-    PyObject *f_locals; /* Strong reference, may be NULL */
-    PyFrameObject *frame_obj; /* Strong reference, may be NULL */
-    void /*_Py_CODEUNIT*/ *prev_instr;
-    int stacktop;
-    uint16_t return_offset;
-    char owner;
-    PyObject *localsplus[1];
-} _stp_InterpreterFrame;
-
-#else  /* Python 3.11 */
-struct _stp_Py3InterpreterFrame {
-    /* "Specials" section */
-    PyFunctionObject *f_func; /* Strong reference */
-    PyObject *f_globals; /* Borrowed reference */
-    PyObject *f_builtins; /* Borrowed reference */
-    PyObject *f_locals; /* Strong reference, may be NULL */
-    PyCodeObject *f_code; /* Strong reference */
-    PyFrameObject *frame_obj; /* Strong reference, may be NULL */
-    /* Linkage section */
-    struct _stp_Py3InterpreterFrame *previous;
-    void /*_Py_CODEUNIT*/ *prev_instr;
-    int stacktop;
-    bool is_entry;
-    char owner;
-    PyObject *localsplus[1];
-} _stp_InterpreterFrame;
-#endif
-
-typedef struct _stp_InterpreterFrame _stp_Py3InterpreterFrame;
-
-// Instance attribute lookup (Python 3.11+ managed dict / inline values)
-typedef union {
-    PyObject *dict;
-    char *values;
-} PyDictOrValues;
-PyDictOrValues _dummy_dorv;
-
-#if PY_MINOR_VERSION >= 15
-// Python 3.15 added a 4-byte header before inline PyObject* values
-struct _stp_Py3DictValues315 {
-    uint8_t capacity;
-    uint8_t size;
-    uint8_t embedded;
-    uint8_t valid;
-    uint8_t _padding[4];
-    PyObject *values[1];
-};
-struct _stp_Py3DictValues315 _dummy_stp_Py3DictValues315;
-#else
-// 3.11-3.14: 4-byte header, no extra padding before the values array
-struct _stp_Py3DictValues {
-    uint8_t capacity;
-    uint8_t size;
-    uint8_t embedded;
-    uint8_t valid;
-    PyObject *values[1];
-};
-struct _stp_Py3DictValues _dummy_stp_Py3DictValues;
-#endif
-
+// Public PyDictValues dummy kept in case some tapset code still casts to it
+// for older compatibility. Internal header structs are no longer duplicated here.
 PyDictValues _dummy_dictvalues;
 
 PyHeapTypeObject _dummy_heaptype;
+
+// Expose the exact Python minor version. The tapset (python3.NN.stp) can use
+// this for any remaining version-specific behavior, but most internal type
+// layouts now come directly from the target libpython's DWARF via @cast(..., "Type", "libpython...").
+const int _stp_python3_minor_version = PY_MINOR_VERSION;
 
 #endif
 
@@ -419,7 +299,7 @@ PyInit__HelperSDT(void)
         // reference which stap can't parse.
         void *fptr = &PyObject_GenericGetAttr;
         asm ("nop" : "=r"(fptr) : "r"(fptr));
-        STAP_PROBE2(PROVIDER, Init, stap_module, fptr);
+        STAP_PROBE3(PROVIDER, Init, stap_module, fptr, _stp_python3_minor_version);
     }
     return module;
 }
