@@ -522,6 +522,7 @@ compile_pass (systemtap_session& s)
   output_autoconf(s, o, cs, "autoconf-uapi-mount.c", "STAPCONF_UAPI_LINUX_MOUNT_H", NULL);
   output_autoconf(s, o, cs, "autoconf-time32.c", "STAPCONF_TIME32_H", NULL);
   output_autoconf(s, o, cs, "autoconf-time32-old.c", "STAPCONF_TIME32_OLD_H", NULL);
+  output_autoconf(s, o, cs, "autoconf-time-types.c", "STAPCONF_TIME_TYPES_H", NULL);
   output_autoconf(s, o, cs, "autoconf-compat-utimbuf.c", "STAPCONF_COMPAT_UTIMBUF", NULL);
   output_exportconf(s, o2, "lookup_noperm", "STAPCONF_LOOKUP_NOPERM");
   
@@ -597,10 +598,14 @@ compile_pass (systemtap_session& s)
 		  "STAPCONF_GET_USER_PAGES_REMOTE_FLAGS_LOCKED", NULL);
   output_autoconf(s, o, cs, "autoconf-get_user_pages_remote-notask_struct.c",
 		  "STAPCONF_GET_USER_PAGES_REMOTE_NOTASK_STRUCT", NULL);
+  output_autoconf(s, o, cs, "autoconf-get_user_pages_remote-locked.c",
+		  "STAPCONF_GET_USER_PAGES_REMOTE_LOCKED", NULL);
   output_autoconf(s, o, cs, "autoconf-get_user_pages-flags.c",
 		  "STAPCONF_GET_USER_PAGES_FLAGS", NULL);
   output_autoconf(s, o, cs, "autoconf-get_user_pages-notask_struct.c",
 		  "STAPCONF_GET_USER_PAGES_NOTASK_STRUCT", NULL);
+  output_autoconf(s, o, cs, "autoconf-get_user_pages-no-mm.c",
+		  "STAPCONF_GET_USER_PAGES_NO_MM", NULL);
   output_autoconf(s, o, cs, "autoconf-get_user_page_vma_remote.c",
 		  "STAPCONF_GET_USER_PAGE_VMA_REMOTE", NULL);
   output_autoconf(s, o, cs, "autoconf-bio-bi_opf.c", "STAPCONF_BIO_BI_OPF", NULL);

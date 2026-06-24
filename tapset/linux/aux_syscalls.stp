@@ -42,24 +42,40 @@
 #include <linux/time32.h>
 #define compat_time_t          old_time32_t
 #define compat_timeval         old_timeval32
-#define timeval                old_timeval32             
 #define compat_timespec        old_timespec32
-#define timespec               old_timespec32             
 #define compat_itimerspec      old_itimerspec32
-#define itimerspec             old_itimerspec32
 #define ns_to_compat_timeval   ns_to_old_timeval32
 #define get_compat_itimerspec64        get_old_itimerspec32
 #define put_compat_itimerspec64        put_old_itimerspec32
 #define compat_get_timespec64  get_old_timespec32
 #define compat_put_timespec64  put_old_timespec32
-/* in kernel/time/itimer.c */             
+/* in kernel/time/itimer.c */
 struct old_itimerval32 {
        struct old_timeval32    it_interval;
        struct old_timeval32    it_value;
      };
 #define compat_itimerval old_itimerval32
-#define itimerval        old_itimerval32
-#define timex            old_timex32
+#define compat_timex old_timex32
+#endif
+
+/* userspace time struct layout for copy_from_user decoders */
+#if defined(STAPCONF_TIME_TYPES_H)
+#include <uapi/linux/time_types.h>
+typedef struct __kernel_timespec stap_userspace_timespec;
+typedef struct __kernel_itimerspec stap_userspace_itimerspec;
+typedef struct __kernel_old_itimerval stap_userspace_itimerval;
+#else
+#include <linux/time.h>
+typedef struct timespec stap_userspace_timespec;
+typedef struct itimerspec stap_userspace_itimerspec;
+typedef struct itimerval stap_userspace_itimerval;
+#endif
+#if defined(STAPCONF_TIME32_OLD_H)
+#include <uapi/linux/timex.h>
+typedef struct __kernel_timex stap_userspace_timex;
+#else
+#include <linux/timex.h>
+typedef struct timex stap_userspace_timex;
 #endif
 
              
@@ -359,14 +375,14 @@ function _struct_timespec_u:string(uaddr:long, n:long)
 #define STP_UTIME_NOW  ((1l << 30) - 1l)
 #define STP_UTIME_OMIT ((1l << 30) - 2l)
 	int n = (int)STAP_ARG_n;
-        struct timespec ts[2];  /* maximum enforced below */
+        stap_userspace_timespec ts[2];  /* maximum enforced below */
 	char *ptr = (char *)(uintptr_t)STAP_ARG_uaddr;
 
 	if (ptr == NULL || n < 1 || n > 2)
 		strlcpy (STAP_RETVALUE, "NULL", MAXSTRINGLEN);
 	else {
 		if (_stp_copy_from_user((char *)&ts, ptr,
-		    n*sizeof(struct timespec)))  {
+		    n*sizeof(stap_userspace_timespec)))  {
 			snprintf(STAP_RETVALUE, MAXSTRINGLEN, "0x%lx",
 				 (unsigned long)ptr);
 		}
@@ -445,13 +461,13 @@ function _struct_compat_timespec_u:string(uaddr:long, n:long)
 
 function _struct_itimerspec_u:string(uaddr:long)
 %{ /* pure */
-	struct itimerspec its;
+	stap_userspace_itimerspec its;
 	char *ptr = (char *)(uintptr_t)STAP_ARG_uaddr;
 	
 	if (ptr == NULL)
 		strlcpy (STAP_RETVALUE, "NULL", MAXSTRINGLEN);
 	else {
-		if(_stp_copy_from_user((char *)&its, ptr,sizeof(struct itimerspec)))
+		if(_stp_copy_from_user((char *)&its, ptr,sizeof(stap_userspace_itimerspec)))
 			snprintf(STAP_RETVALUE, MAXSTRINGLEN, "0x%lx",
 				(unsigned long)ptr);
 		else
@@ -486,13 +502,13 @@ function _struct_compat_itimerspec_u:string(uaddr:long)
 
 function _struct_itimerval_u:string(uaddr:long)
 %{ /* pure */
-	struct itimerval itv;
+	stap_userspace_itimerval itv;
 	char *ptr = (char *)(uintptr_t)STAP_ARG_uaddr;
 
 	if (ptr == NULL)
 		strlcpy (STAP_RETVALUE, "NULL", MAXSTRINGLEN);
 	else {
-		if(_stp_copy_from_user((char *)&itv,ptr,sizeof(struct itimerval)))
+		if(_stp_copy_from_user((char *)&itv,ptr,sizeof(stap_userspace_itimerval)))
 			snprintf(STAP_RETVALUE, MAXSTRINGLEN, "0x%lx",
 				 (unsigned long)ptr);
 		else
@@ -5321,7 +5337,7 @@ static const _stp_val_array _stp_adjtimex_modes_list[] = {
 
 function _struct_timex_u:string(uaddr:long)
 %{ /* pure */
-	struct timex ts;
+	stap_userspace_timex ts;
 	char *ptr = (char *)(uintptr_t)STAP_ARG_uaddr;
 	int len;
 	if (ptr == NULL)
@@ -5329,7 +5345,7 @@ function _struct_timex_u:string(uaddr:long)
 	else
 	{
 		if (_stp_copy_from_user((char*)&ts, ptr,
-		    sizeof(struct timex)) == 0)
+		    sizeof(stap_userspace_timex)) == 0)
 		{
 			memset(STAP_RETVALUE, 0, MAXSTRINGLEN);
 			STAP_RETVALUE[0] = '{';

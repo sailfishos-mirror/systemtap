@@ -187,7 +187,7 @@ int main()
   ubuf.actime = 1;
   ubuf.modtime = 1135641600;
   utime("foobar", &ubuf);
-#if defined(__aarch64__)
+#if defined(__aarch64__) || defined(__x86_64__)
   //staptest// utimensat (AT_FDCWD, "foobar", \[1.[0]+\]\[1135641600.[0]+\], 0x0) =
 #elif defined(__ia64__) || defined(__arm__)
   //staptest// utimes ("foobar", \[1.000000\]\[1135641600.000000\]) =
@@ -198,7 +198,7 @@ int main()
   ubuf.actime =  1135690000;
   ubuf.modtime = 1135700000;
   utime("foobar", &ubuf);
-#if defined(__aarch64__)
+#if defined(__aarch64__) || defined(__x86_64__)
   //staptest// utimensat (AT_FDCWD, "foobar", \[1135690000.[0]+\]\[1135700000.[0]+\], 0x0) =
 #elif defined(__ia64__) || defined(__arm__)
   //staptest// utimes ("foobar", \[1135690000.000000\]\[1135700000.000000\]) =
@@ -209,7 +209,7 @@ int main()
   ubuf.actime = 1;
   ubuf.modtime = 1135641600;
   utime((char *)-1, &ubuf);
-#if defined(__aarch64__)
+#if defined(__aarch64__) || defined(__x86_64__)
   //staptest// utimensat (AT_FDCWD, 0x[f]+, \[1.[0]+\]\[1135641600.[0]+\], 0x0) = -NNNN
 #elif defined(__ia64__) || defined(__arm__)
   //staptest// utimes (0x[f]+, \[1.000000\]\[1135641600.000000\]) = -NNNN

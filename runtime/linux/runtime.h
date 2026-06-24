@@ -296,6 +296,17 @@ static void *kallsyms___lock_task_sighand;
 static void *kallsyms_get_mm_exe_file;
 #endif
 
+/* Kernel 7.2+ removed rdmsrl/wrmsrl compatibility aliases. */
+#if defined(CONFIG_X86) || defined(__i386__) || defined(__x86_64__)
+#include <asm/msr.h>
+#ifndef rdmsrl
+#define rdmsrl(msr, val) rdmsrq((msr), (val))
+#endif
+#ifndef wrmsrl
+#define wrmsrl(msr, val) wrmsrq((msr), (val))
+#endif
+#endif
+
 /* PR30777: Need a mechanism to temporarily turn off Intel IBT */
 #ifdef CONFIG_X86_KERNEL_IBT
 
