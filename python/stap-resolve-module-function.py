@@ -467,7 +467,8 @@ def resolve_patterns(module_pattern, function_pattern):
                                                modinfo.path, l))
     if _verbose:
         _eprint('returning %s' % ret_list)
-    return ret_list
+    # The same module can appear more than once on sys.path (e.g. '' and cwd).
+    return list(set(ret_list))
 
 
 class _ModuleInfo(object):
