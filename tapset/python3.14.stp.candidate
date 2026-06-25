@@ -31,7 +31,8 @@
 //    the wrapper). Do not use it to choose between Python minor layouts.
 // 5. Update every "3.14:" or "for 3.14" comment to the new version; they are
 //    precious rationale for the next porter.
-// 6. After editing the .candidate, the build will copy it to python3.NN.stp
+// 6. After editing the .candidate, run make to copy it to tapset/python3.stp and
+//    generate tapset/python3.stpm with stap_python3_libpython from configure.
 //    when you configure with that Python.  make check / installcheck will use it.
 // 7. Bonus: run dwgrep or readelf -wi on the corresponding libpython debug info
 //    (or the debuginfod cache file) to confirm member names/offsets before

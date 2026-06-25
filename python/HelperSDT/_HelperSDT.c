@@ -160,7 +160,7 @@ PyDictValues _dummy_dictvalues;
 
 PyHeapTypeObject _dummy_heaptype;
 
-// Expose the exact Python minor version. The tapset (python3.NN.stp) can use
+// Expose the exact Python minor version. The tapset (python3.stp) can use
 // this for any remaining version-specific behavior, but most internal type
 // layouts now come directly from the target libpython's DWARF via @cast(..., "Type", "libpython...").
 const int _stp_python3_minor_version = PY_MINOR_VERSION;

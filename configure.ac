@@ -57,6 +57,8 @@ if test "x$PYTHON3" != "x:"; then
    AC_SUBST([PYTHON3_VERSION], [$ac_cv_python3_version])
    python3_minor=`$PYTHON3 -c "import sys; sys.stdout.write(str(sys.version_info[[1]]))"`
    AC_SUBST([PYTHON3_MINOR], [$python3_minor])
+   python3_libpython=`$PYTHON3 -c "import sysconfig, os; print(os.path.join(sysconfig.get_config_var('LIBDIR'), sysconfig.get_config_var('INSTSONAME')))"`
+   AC_SUBST([PYTHON3_LIBPYTHON], [$python3_libpython])
    AC_SUBST([PYTHON3_PREFIX], ['${prefix}'])
    AC_SUBST([PYTHON3_EXEC_PREFIX], ['${exec_prefix}'])
    AC_CACHE_CHECK([for python3 platform], [ac_cv_python3_platform],

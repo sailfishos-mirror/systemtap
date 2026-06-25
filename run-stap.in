@@ -17,6 +17,9 @@ case "$builddir" in
 esac
 
 # Set all the variables to find the source and build trees.
+# SYSTEMTAP_TAPSET uses $(srcdir)/tapset; build-generated python3.stp and
+# python3.stpm live in $(builddir)/tapset when srcdir != builddir (see
+# Makefile.am).  After "make install", use the installed tapset instead.
 SYSTEMTAP_TAPSET="${srcdir}/tapset"
 SYSTEMTAP_RUNTIME="${srcdir}/runtime"
 SYSTEMTAP_STAPDYN="${builddir}/stapdyn/stapdyn"
