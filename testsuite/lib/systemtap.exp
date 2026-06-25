@@ -178,10 +178,6 @@ proc java_p {} {
     return $systemtap_java_p
 }
 
-proc python2_p {} {
-    return 0
-}
-
 proc python3_p {} {
     global systemtap_python3_p
     return $systemtap_python3_p

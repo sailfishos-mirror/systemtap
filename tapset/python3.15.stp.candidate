@@ -1276,8 +1276,7 @@ function Py3Object_GetAttr:long(object:long, attr:string)
 	return 0
     }
 
-    // Python 3 is quite different than python 2 when it comes to
-    // attributes. Classes are no longer their own type anymore, so we
+    // In Python 3, classes are no longer their own type, so we
     // can't really check to see if something is a class.
     //
     // The python 3.6m source uses PyObject_GenericGetAttr() for most

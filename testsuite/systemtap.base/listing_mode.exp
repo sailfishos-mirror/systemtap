@@ -294,15 +294,6 @@ proc report_untested_probes {} {
             }
          }
 
-         python2.module(string).function(string) -
-         python2.module(string).function(string).call -
-         python2.module(string).function(string).return
-         {
-            if {![python2_p]} {
-               setup_kfail PYTHON2 *-*-*
-            }
-         }
-
          python3.module(string).function(string) -
          python3.module(string).function(string).call -
          python3.module(string).function(string).return
@@ -550,44 +541,6 @@ if {[java_p]} {
    testing_probe {java(string).class(string).method(string).return}
 
    stap_list {java("JavaProc").class("MyClass").method("MyMethod").return}
-}
-
-if {[python2_p]} {
-
-   testing_probe {python2.module(string).function(string)}
-
-   # Function with no line number should expand with a '.call' added
-   # (and a line number).
-   stap_list {python2.module("listing_mode").function("MyFunction")} \
-       {re:python2.module\("listing_mode"\).function\("MyFunction@listing_mode.py:[0-9]+"\).call}
-
-   # Globby function.
-   stap_list {python2.module("listing_mode").function("My*")} \
-       {re:python2.module\("listing_mode"\).function\("MyFunction@listing_mode.py:[0-9]+"\).call}
-
-   # We could test filename wildcards here, but we'll skip them
-   # because they take a long time.
-   #stap_list {python2.module("listing_mode").function("MyFunction@*")} \
-   #    {re:python2.module\("listing_mode"\).function\("MyFunction@listing_mode.py:[0-9]+"\).call}
-
-   # Function with a line number.
-   stap_list {python2.module("listing_mode").function("MyFunction@listing_mode.py:*")} \
-       {re:python2.module\("listing_mode"\).function\("MyFunction@[^:]+/listing_mode.py:[0-9]+"\)}
-
-   testing_probe {python2.module(string).function(string).return}
-
-   stap_list {python2.module("listing_mode").function("MyFunction").return} \
-       {re:python2.module\("listing_mode"\).function\("MyFunction@listing_mode.py:[0-9]+"\).return}
-
-   testing_probe {python2.module(string).function(string).call}
-
-   # Basic call probe
-   stap_list {python2.module("listing_mode").function("MyFunction").call} \
-       {re:python2.module\("listing_mode"\).function\("MyFunction@listing_mode.py:[0-9]+"\).call}
-
-   # Globby function.
-   stap_list {python2.module("listing_mode").function("*").call} \
-       {re:python2.module\("listing_mode"\).function\(".+@listing_mode.py:[0-9]+"\).call} -1
 }
 
 if {[python3_p]} {

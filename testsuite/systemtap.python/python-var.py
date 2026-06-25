@@ -22,31 +22,20 @@ g_type = type(g_none)
 g_bool = True
 
 #
-# Numeric types: int, long, float, and complex
+# Numeric types: int, float, and complex
 #
-# Note that in python 2, there are 2 integer types 'int' and
-# 'long'. To test both, we've got two integer variables, one with a
-# small value, one with a large value. In python 3, there is no 'int'
-# type.
 g_int = 9
 g_long = 0x7eadbeeffeedbabe
 g_float = 0.5
 g_complex = 1.2 + 12.34J
 
 #
-# Sequence types: strings, unicode strings, lists, tuples, and xrange
-# (python 2 only)
+# Sequence types: strings, lists, and tuples
 #
-# In python 2, there are 2 string types 'string' and 'unicode'. We'll
-# test both. In python 3, there are really just unicode strings, but
-# this should still work.
 g_string = 'regular string'
 g_unicode = u'unicode string'
 g_tuple = (0, 'abc', 2)
 g_list = [0, 1, 2, 3]
-# The 'xrange' type only exists in python 2.
-if sys.version_info[0] == 2:
-    g_xrange = xrange(10)
 
 #
 # Mapping types: dictionary
@@ -84,8 +73,6 @@ def main():
     l_unicode = u'another unicode string'
     l_tuple = ('hello', 99, 'there', 0xbeef)
     l_list = [4, 5, 6, 7, 8, 9, 10]
-    if sys.version_info[0] == 2:
-        l_xrange = xrange(10)
 
     # Notice this dictionary has mixed numeric and string indices.
     l_dictionary = {1: 'numeric index', 'abc': 3}
@@ -103,4 +90,3 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
-

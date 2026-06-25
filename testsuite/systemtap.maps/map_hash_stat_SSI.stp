@@ -1724,8 +1724,8 @@ probe begin {
   array["pydoc","pydoc"] <<< 1;
   array["pygtk-demo","pygtk-demo"] <<< 1;
   array["python","python"] <<< 1;
-  array["python2","python2"] <<< 1;
-  array["python2.7","python2.7"] <<< 1;
+  array["pyapp","pyapp"] <<< 1;
+  array["pyapp39","pyapp39"] <<< 1;
   array["qdbus","qdbus"] <<< 1;
   array["qdbusviewer","qdbusviewer"] <<< 1;
   array["qemu","qemu"] <<< 1;

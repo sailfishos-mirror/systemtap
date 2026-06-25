@@ -14,13 +14,6 @@ probe $1.module("python-var").function("main")
     printf("g_unicode = %s\n", $g_unicode)
     printf("g_tuple = %s\n", $g_tuple)
     printf("g_list = %s\n", $g_list)
-    # Since 'xrange' variables can only exist with python2, we'll get
-    # an error with python3, which we'll just ignore.
-    try {
-	printf("g_xrange = %s\n", $g_xrange)
-    } catch (err) {
-        printf("Error: %s\n", err)
-    }
 
     printf("g_dictionary = %s\n", $g_dictionary)
 
@@ -51,13 +44,6 @@ probe $1.module("python-var").function("main").return
     printf("l_unicode = %s\n", $l_unicode)
     printf("l_tuple = %s\n", $l_tuple)
     printf("l_list = %s\n", $l_list)
-    # Since 'xrange' variables can only exist with python2, we'll get
-    # an error with python3, which we'll just ignore.
-    try {
-	printf("l_xrange = %s\n", $l_xrange)
-    } catch (err) {
-        printf("Error: %s\n", err)
-    }
 
     printf("l_dictionary = %s\n", $l_dictionary)
 

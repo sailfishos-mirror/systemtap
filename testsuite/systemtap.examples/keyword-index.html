@@ -1068,10 +1068,6 @@ keywords: <a href="keyword-index.html#SIMPLE">SIMPLE</a> <br>
 </li><li><a href="general/keyhack.stp">general/keyhack.stp</a> - Hack the keyboard<br>
 keywords: <a href="keyword-index.html#SIMPLE">SIMPLE</a> <a href="keyword-index.html#GURU">GURU</a> <br>
 <p>This script makes it appear that one&#39;s keyboard is broken, by changing keycodes at the kernel device driver level.  Annoy your friends!</p><p><font size="-2"><pre># stap -g keyhack.stp -c &#39;sleep 5&#39;</pre></font></p>
-</li><li><a href="general/pyexample.stp">general/pyexample.stp</a> - SystemTap python 2 support tapset<br>
-keywords: <a href="keyword-index.html#SIMPLE">SIMPLE</a> <br>
-<p>A python support tapset that displays backtraces and variable values</p><p><font size="-2"><pre># PYTHONPATH=$PYEXECDIR stap -g --suppress-time-limits -c \
-&#39;/usr/bin/python3 -m HelperSDT pyexample.py 35&#39; pyexample.stp python2</pre></font></p>
 </li><li><a href="general/pyexample.stp">general/pyexample.stp</a> - SystemTap python 3 support tapset<br>
 keywords: <a href="keyword-index.html#SIMPLE">SIMPLE</a> <br>
 <p>A python support tapset that displays backtraces and variable values</p><p><font size="-2"><pre># PYTHONPATH=$PY3EXECDIR stap -g --suppress-time-limits -c \

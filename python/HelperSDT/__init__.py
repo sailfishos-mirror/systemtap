@@ -6,16 +6,7 @@
 # Public License (GPL); either version 2, or (at your option) any
 # later version.
 
-# Note that we'd like for this module to be the same between python 2
-# and python 3, but the 'print' function has changed quite
-# dramatically between the two versions. You'd think we could use the
-# '__future__' module's 'print' function so we'd be able to use python
-# 3's 'print' function style everywhere. However, this causes python 2
-# scripts that get loaded to have to use python 3 print syntax, since
-# the '__future__' module's print function "leaks" through to the
-# python 2 script. There's probably a way to fix that, but we'll just
-# punt and use 'sys.stdout.write()', which is a little less
-# convenient, but works the same on both python 2 and python 3.
+# HelperSDT uses sys.stdout.write() for output rather than print().
 import cmd
 import os.path
 import sys

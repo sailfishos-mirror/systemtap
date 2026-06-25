@@ -182,7 +182,7 @@ module.function, .statement	process.mark, process.plt	module.function\fI*\fP
 process.function, .statement	begin, end, error, never	process.function\fI*\fP
 process.mark\fI*\fP	timer
 \.function.callee	perf
-python2, python3	procfs
+python3	procfs
 	kernel.statement.absolute
 \fBAUTO-GENERATED-DWARF\fP	kernel.data
 	kprobe.function
@@ -1355,7 +1355,7 @@ ale počitadlo lze číst pomocí následující syntaxe:
    process("PROC").statement("func@file") {stat <<< @perf("NAME")} 
 
 .SS PYTHON
-S použitím speciálního python modulu je možné analyzovat python 2 a python 3 funkce.
+S použitím speciálního python modulu je možné analyzovat python 3 funkce.
 K tomu je potřeba mít nainstalované ladicí informace pro příslušný python.
 Zmíněný modul lze použít takto:
 .SAMPLE
@@ -1363,9 +1363,6 @@ stap foo.stp -c "python -m HelperSDT foo.py"
 .ESAMPLE
 Příslušné sondy potom vypadají takto:
 .SAMPLE
-python2.module("MPATTERN").function("PATTERN")
-python2.module("MPATTERN").function("PATTERN").call
-python2.module("MPATTERN").function("PATTERN").return
 python3.module("MPATTERN").function("PATTERN")
 python3.module("MPATTERN").function("PATTERN").call
 python3.module("MPATTERN").function("PATTERN").return

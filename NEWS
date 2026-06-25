@@ -29,6 +29,13 @@
   The old "systemtap-service onboot" functionality has been extracted into
   a new standalone stap-onboot command for embedding scripts into initramfs.
 
+- Python probing updated: the tapset is split into per-minor-version
+  files (3.9, 3.12, 3.14, 3.15) to simplify porting.  Probing works
+  with Python 3.9 through 3.15.
+
+- REMOVED python 2 probing support (python2 tapset and python2.*
+  probes).  Use python3.module(...) probes with python3 -m HelperSDT.
+
 * What's new in version 5.5, 2026-05-01
 
 - New @enum() operator for accessing enumeration constants from

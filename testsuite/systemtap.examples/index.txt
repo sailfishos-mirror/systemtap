@@ -257,15 +257,6 @@ keywords: _best trace callgraph
   'kernel.function("vfs_read")' -c "cat /proc/sys/vm/* || true"
 
 
-general/pyexample.stp - SystemTap python 2 support tapset
-keywords: simple
-
-  A python support tapset that displays backtraces and variable values
-
-  # PYTHONPATH=$PYEXECDIR stap -g --suppress-time-limits -c \
-  '/usr/bin/python3 -m HelperSDT pyexample.py 35' pyexample.stp python2
-
-
 general/pyexample.stp - SystemTap python 3 support tapset
 keywords: simple
 

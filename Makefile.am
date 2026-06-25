@@ -326,6 +326,7 @@ endif
 	    case $$f in */python3.stp) ;; *) rm -f "$$f";; esac; \
 	  fi; \
 	done
+	rm -f $(DESTDIR)$(pkgdatadir)/tapset/python2.stp
 	(cd $(srcdir)/testsuite/systemtap.examples; find . -type f -print \
 		| grep -E -v 'check.exp|ChangeLog|examples-index-gen.pl|html/.*\.tmpl|metadatabase.dbq$$' \
 		| while read f; do if test -x $$f; then \

@@ -1,4 +1,4 @@
-foreach py {python python2 python3} {
+foreach py {python python3} {
     set test "dtrace $py"
     set python "/usr/bin/$py"
     if {! [file executable $python]} then {

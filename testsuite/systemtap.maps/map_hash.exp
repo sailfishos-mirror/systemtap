@@ -3784,8 +3784,8 @@ array["pyami_sendmail"]=1
 array["pydoc"]=1
 array["pygtk-demo"]=1
 array["python"]=1
-array["python2"]=1
-array["python2.7"]=1
+array["pyapp"]=1
+array["pyapp39"]=1
 array["qdbus"]=1
 array["qdbusviewer"]=1
 array["qemu"]=1
@@ -5843,8 +5843,8 @@ array["pyami_sendmail","pyami_sendmail"]=1
 array["pydoc","pydoc"]=1
 array["pygtk-demo","pygtk-demo"]=1
 array["python","python"]=1
-array["python2","python2"]=1
-array["python2.7","python2.7"]=1
+array["pyapp","pyapp"]=1
+array["pyapp39","pyapp39"]=1
 array["qdbus","qdbus"]=1
 array["qdbusviewer","qdbusviewer"]=1
 array["qemu","qemu"]=1
@@ -9961,8 +9961,8 @@ array["pyami_sendmail"]: count:1  sum:1  avg:1  min:1  max:1  variance:0
 array["pydoc"]: count:1  sum:1  avg:1  min:1  max:1  variance:0
 array["pygtk-demo"]: count:1  sum:1  avg:1  min:1  max:1  variance:0
 array["python"]: count:1  sum:1  avg:1  min:1  max:1  variance:0
-array["python2"]: count:1  sum:1  avg:1  min:1  max:1  variance:0
-array["python2.7"]: count:1  sum:1  avg:1  min:1  max:1  variance:0
+array["pyapp"]: count:1  sum:1  avg:1  min:1  max:1  variance:0
+array["pyapp39"]: count:1  sum:1  avg:1  min:1  max:1  variance:0
 array["qdbus"]: count:1  sum:1  avg:1  min:1  max:1  variance:0
 array["qdbusviewer"]: count:1  sum:1  avg:1  min:1  max:1  variance:0
 array["qemu"]: count:1  sum:1  avg:1  min:1  max:1  variance:0
@@ -12020,8 +12020,8 @@ array["pyami_sendmail", "pyami_sendmail"]: count:1  sum:1  avg:1  min:1  max:1  
 array["pydoc", "pydoc"]: count:1  sum:1  avg:1  min:1  max:1  variance:0
 array["pygtk-demo", "pygtk-demo"]: count:1  sum:1  avg:1  min:1  max:1  variance:0
 array["python", "python"]: count:1  sum:1  avg:1  min:1  max:1  variance:0
-array["python2", "python2"]: count:1  sum:1  avg:1  min:1  max:1  variance:0
-array["python2.7", "python2.7"]: count:1  sum:1  avg:1  min:1  max:1  variance:0
+array["pyapp", "pyapp"]: count:1  sum:1  avg:1  min:1  max:1  variance:0
+array["pyapp39", "pyapp39"]: count:1  sum:1  avg:1  min:1  max:1  variance:0
 array["qdbus", "qdbus"]: count:1  sum:1  avg:1  min:1  max:1  variance:0
 array["qdbusviewer", "qdbusviewer"]: count:1  sum:1  avg:1  min:1  max:1  variance:0
 array["qemu", "qemu"]: count:1  sum:1  avg:1  min:1  max:1  variance:0

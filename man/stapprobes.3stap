@@ -170,7 +170,7 @@ module.function, .statement	process.mark, process.plt	module.function\fI*\fP
 process.function, .statement	begin, end, error, never	process.function\fI*\fP
 process.mark\fI*\fP	timer
 \.function.callee	perf
-python2, python3	procfs
+python3	procfs
 debuginfod	kernel.statement.absolute
 	kernel.data
 \fBAUTO-GENERATED-DWARF\fP	kprobe.function
@@ -1673,7 +1673,7 @@ space probe via:
 
 
 .SS PYTHON
-Support for probing python 2 and python 3 function is available with
+Support for probing python 3 functions is available with
 the help of an extra python support module. Note that the debuginfo
 for the version of python being probed is required. To run a python
 script with the extra python support module you'd add the '-m
@@ -1683,9 +1683,6 @@ stap foo.stp -c "python -m HelperSDT foo.py"
 .ESAMPLE
 Python probes look like the following:
 .SAMPLE
-python2.module("MPATTERN").function("PATTERN")
-python2.module("MPATTERN").function("PATTERN").call
-python2.module("MPATTERN").function("PATTERN").return
 python3.module("MPATTERN").function("PATTERN")
 python3.module("MPATTERN").function("PATTERN").call
 python3.module("MPATTERN").function("PATTERN").return

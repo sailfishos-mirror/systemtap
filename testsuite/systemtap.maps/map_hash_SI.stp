@@ -1724,8 +1724,8 @@ probe begin {
   array["pydoc"] = 1;
   array["pygtk-demo"] = 1;
   array["python"] = 1;
-  array["python2"] = 1;
-  array["python2.7"] = 1;
+  array["pyapp"] = 1;
+  array["pyapp39"] = 1;
   array["qdbus"] = 1;
   array["qdbusviewer"] = 1;
   array["qemu"] = 1;

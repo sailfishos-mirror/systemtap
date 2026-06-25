@@ -278,9 +278,6 @@ set restricted_probe_types [list \
   "netfilter.pf(string).hook(string)" \
   "netfilter.hook(string).pf(string).priority(string)" \
   "netfilter.pf(string).hook(string).priority(string)" \
-  "python2.module(string).function(string)" \
-  "python2.module(string).function(string).call" \
-  "python2.module(string).function(string).return" \
   "python3.module(string).function(string)" \
   "python3.module(string).function(string).call" \
   "python3.module(string).function(string).return" \
@@ -339,9 +336,7 @@ proc add_args { probe_type pid } {
     # Replace "library(string).function(number)" with "library(string).function($addr_of_libloopfunc)"
     regsub -all "library\\(string\\).function\\(number\\)" $probe "library(string).function($addr_of_libloopfunc)" probe
 
-    # Replace all python[23] stuff
-    regsub -all "python2.module\\(string\\).function\\(string\\)" \
-	$probe "python2.module(\"test\").function(\"MyFunction\")" probe
+    # Replace python3 probe templates
     regsub -all "python3.module\\(string\\).function\\(string\\)" \
 	$probe "python3.module(\"test\").function(\"MyFunction\")" probe
 
@@ -449,13 +444,6 @@ proc test_unrestricted_probes { privilege } {
 	    continue
 	}
 
-	# python2 support is optional
-	if {[regexp "^python2" $probe_type] && ! [python2_p]} {
-	    untested "$test: $option $probe_type"
-	    set tested($probe_type) 1
-	    continue
-	}
-
 	# python3 support is optional
 	if {[regexp "^python3" $probe_type] && ! [python3_p]} {
 	    untested "$test: $option $probe_type"
@@ -556,13 +544,6 @@ proc test_restricted_probes { privilege } {
 	    }
 	}
 	set use_alias [lindex $no_yes $selector]
-
-	# python2 support is optional
-	if {[regexp "^python2" $probe_type] && ! [python2_p]} {
-	    untested "$test: $option $probe_type"
-	    set tested($probe_type) 1
-	    continue
-	}
 
 	# python3 support is optional
 	if {[regexp "^python3" $probe_type] && ! [python3_p]} {
