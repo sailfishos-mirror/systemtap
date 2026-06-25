@@ -299,11 +299,13 @@ static void *kallsyms_get_mm_exe_file;
 /* Kernel 7.2+ removed rdmsrl/wrmsrl compatibility aliases. */
 #if defined(CONFIG_X86) || defined(__i386__) || defined(__x86_64__)
 #include <asm/msr.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(7,2,0)
 #ifndef rdmsrl
 #define rdmsrl(msr, val) rdmsrq((msr), (val))
 #endif
 #ifndef wrmsrl
 #define wrmsrl(msr, val) wrmsrq((msr), (val))
+#endif
 #endif
 #endif
 
