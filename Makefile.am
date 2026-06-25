@@ -134,6 +134,7 @@ all-local: $(TAPSET_PYTHON3_STP) $(TAPSET_PYTHON3_STPM)
 endif
 
 $(TAPSET_PYTHON3_STP): $(srcdir)/$(TAPSET_PYTHON3_CANDIDATE)
+	mkdir -p tapset # create build-tree tapset/ dir if needed
 	cp $< $@
 
 $(TAPSET_PYTHON3_STPM):

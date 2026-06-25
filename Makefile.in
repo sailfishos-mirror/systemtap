@@ -2646,6 +2646,7 @@ macros.systemtap: $(srcdir)/macros.systemtap.in
 @HAVE_PYTHON3_PROBES_TRUE@all-local: $(TAPSET_PYTHON3_STP) $(TAPSET_PYTHON3_STPM)
 
 $(TAPSET_PYTHON3_STP): $(srcdir)/$(TAPSET_PYTHON3_CANDIDATE)
+	mkdir -p tapset # create build-tree tapset/ dir if needed
 	cp $< $@
 
 $(TAPSET_PYTHON3_STPM):
