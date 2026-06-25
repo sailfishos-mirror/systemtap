@@ -388,7 +388,6 @@ SUBDIRS = . java python stapdyn staprun stapbpf doc man po stap-exporter interac
 DIST_SUBDIRS = testsuite $(SUBDIRS)
 EXTRA_DIST = m4/ChangeLog \
 	tapset/python3.9.stp.candidate \
-	tapset/python3.11.stp.candidate \
 	tapset/python3.12.stp.candidate \
 	tapset/python3.13.stp.candidate \
 	tapset/python3.14.stp.candidate \
