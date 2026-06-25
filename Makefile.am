@@ -389,7 +389,6 @@ DIST_SUBDIRS = testsuite $(SUBDIRS)
 EXTRA_DIST = m4/ChangeLog \
 	tapset/python3.9.stp.candidate \
 	tapset/python3.12.stp.candidate \
-	tapset/python3.13.stp.candidate \
 	tapset/python3.14.stp.candidate \
 	tapset/python3.15.stp.candidate
 
