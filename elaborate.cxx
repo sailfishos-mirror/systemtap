@@ -2619,7 +2619,15 @@ semantic_pass (systemtap_session& s)
     }
 
   // BZ1795159: don't count out "synthetic" probes any more, we have plenty
-  bool no_primary_probes = s.probes.size() == 0;
+  bool no_primary_probes = true;
+  for (unsigned i = 0; i < s.probes.size(); i++)
+    {
+      if (s.is_primary_probe(s.probes[i]))
+        {
+          no_primary_probes = false;
+          break;
+        }
+    }
 
   if (s.num_errors() == 0 && no_primary_probes && !s.dump_mode)
     {

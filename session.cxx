@@ -1919,8 +1919,12 @@ systemtap_session::check_options (int argc, char * const argv [])
 
   // ignore any -E bits in list modes; their presence could flip the
   // process result code even if list results are empty
-  if (dump_mode)
-    additional_scripts.clear();
+  // NB: We no longer clear additional_scripts here, because doing so breaks
+  // listing-mode alias tests (e.g. stap -l pb -E "probe pb=..."). Instead, we
+  // handle BZ1795159/PR11443 by properly checking is_primary_probe() inside
+  // semantic_pass() in elaborate.cxx.
+  // if (dump_mode)
+  //   additional_scripts.clear();
 
 #if ! HAVE_NSS
   if (client_options)
