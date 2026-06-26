@@ -188,51 +188,12 @@ foreach file $stap_files {
     set output_str [get_output_str $test]
     verbose -log "Running $file"
     set rc [stapbpf_run $test $output_str $options $file]
-    if {$rc != 0} {
-        if { "$::tcl_platform(machine)" == "s390x" } {
-            # The s390x part seems broken at the moment:
-            _setup_kfail BPF s390x rhel
-        } else {
-            # Known failures in other environments:
-            switch $test {
-                array.stp {
-                    _setup_kfail BPF ppc64le rhel
-                    _setup_kfail BPF x86_64 fedora
-                }
-                array_preinit.stp { _setup_kfail BPF ppc64le rhel }
-                bigmap1.stp {
-                    _setup_kfail BPF x86_64,aarch64 rhel
-                    _setup_kfail BPF x86_64 fedora
-                }
-                cast_op_tracepoint.stp { _setup_kfail BPF x86_64 rhel,fedora }
-                context_vars1.stp -
-                context_vars2.stp -
-                context_vars3.stp { _setup_kfail BPF ppc64le rhel }
-                globals2.stp {
-                    _setup_kfail BPF ppc64le rhel
-                    _setup_kfail BPF x86_64 fedora
-                }
-                globals3.stp { _setup_kfail BPF ppc64le rhel }
-                kprobes.stp { _setup_kfail BPF ppc64le rhel }
-                logging1.stp { _setup_kfail BPF x86_64,aarch64,ppc64le rhel }
-                no_begin_no_end.stp { _setup_kfail BPF x86_64 fedora }
-                no_end.stp { _setup_kfail BPF x86_64 fedora }
-                perf1.stp { _setup_kfail BPF x86_64,aarch64,ppc64le rhel }
-                perf2.stp { _setup_kfail BPF aarch64,ppc64le rhel }
-                printf.stp { _setup_kfail BPF x86_64 fedora }
-                reg_alloc3.stp {
-                    _setup_kfail BPF x86_64,aarch64,ppc64le rhel
-                    _setup_kfail BPF x86_64 fedora
-                }
-                timer1.stp { _setup_kfail BPF x86_64 rhel }
-                timer2.stp { _setup_kfail BPF aarch64,ppc64le rhel }
-                tracepoint1.stp {
-                    _setup_kfail BPF x86_64,aarch64,ppc64le rhel
-                    _setup_kfail BPF x86_64 fedora
-                }
-            }
-        }
-    }
+
+    # Previously, we had a cloud of _setup_kfail's here to record
+    # previously habitually failing tests on this or that architecture,
+    # but without a formal bug report, progress doesn't happen.  So
+    # we'll just suffer FAILs as they may occur.
+
     switch $rc {
         0 { pass $test }
         1 { fail "$test incorrect result" }
