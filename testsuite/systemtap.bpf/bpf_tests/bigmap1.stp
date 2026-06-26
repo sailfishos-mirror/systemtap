@@ -23,7 +23,7 @@ probe kernel.function("vfs_read") {
   //if (counter % 256 == 0) printf("reached %d\n", counter)
 }
 
-probe timer.s(30) {
+probe timer.s(10) { # NB: make this shorter than the 20 second timeout here and there in ../bpf.exp
   printf("XXX finishing early!\n")
   // TODO: later, make this scenario a fail
   exit()
