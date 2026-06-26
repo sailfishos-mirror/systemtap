@@ -138,6 +138,7 @@ $(TAPSET_PYTHON3_STP): $(srcdir)/$(TAPSET_PYTHON3_CANDIDATE)
 	cp $< $@
 
 $(TAPSET_PYTHON3_STPM):
+	mkdir -p tapset # create build-tree tapset/ dir if needed
 	@echo '@define stap_python3_libpython %("$(PYTHON3_LIBPYTHON)" %)' > $@
 
 install: all
