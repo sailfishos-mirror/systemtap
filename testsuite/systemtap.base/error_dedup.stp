@@ -1,0 +1,21 @@
+# PR34320 / bug 23598: deduplicated functions should report the actual call site.
+
+global fired
+
+function foo() {
+    error("dedup test fail")
+}
+
+function bar() {
+    error("dedup test fail")
+}
+
+probe timer.s(1) {
+    if (fired) next
+    fired = 1
+    foo()
+}
+
+probe timer.s(3) {
+    exit()
+}

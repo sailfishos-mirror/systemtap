@@ -139,6 +139,7 @@ typedef typeof(&udelay_simple) udelay_simple_fn;
 
 static void _stp_dbug (const char *func, int line, const char *fmt, ...) __attribute__ ((format (printf, 3, 4)));
 static void _stp_error (const char *fmt, ...) __attribute__ ((format (printf, 1, 2)));
+static void _stp_softerror_handler (struct context *c);
 static void _stp_warn (const char *fmt, ...) __attribute__ ((format (printf, 1, 2)));
 
 static void _stp_exit(void);

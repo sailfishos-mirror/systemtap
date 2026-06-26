@@ -71,7 +71,7 @@ function abort ()
    atomic_set (session_state(), STAP_SESSION_STOPPING);
    _stp_exit ();
    CONTEXT->aborted = 1;
-   CONTEXT->last_stmt = NULL;
+   CONTEXT->last_stmt[CONTEXT->nesting+1] = NULL;
 %}
 %)
 
@@ -92,7 +92,7 @@ function error (msg:string)
     is clearer & safer. */
    strlcpy (CONTEXT->error_buffer, STAP_ARG_msg, MAXSTRINGLEN);
    CONTEXT->last_error = CONTEXT->error_buffer;
-   CONTEXT->last_stmt = NULL;
+   CONTEXT->last_stmt[CONTEXT->nesting+1] = NULL;
 %}
 
 %) // XXX runtime != "bpf"

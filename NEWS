@@ -36,6 +36,17 @@
 - REMOVED python 2 probing support (python2 tapset and python2.*
   probes).  Use python3.module(...) probes with python3 -m HelperSDT.
 
+- Runtime handler errors now include a short call-site stack when a
+  fault or tapset error unwinds through nested functions.  Messages
+  show the innermost statement, outer callers ("called from ..."), and
+  the active probe point.  Example:
+    ERROR: user string copy fault -14 at 0x... near identifier
+    'user_string_n' at .../uconversions.stp:128:10 (called from
+    identifier 'user_string' at myscript.stp:21:5) in probe
+    process("libfoo.so").mark("function__entry")
+  Helps trace errors through tapsets and deduplicated functions.
+  (PR#34320)
+
 * What's new in version 5.5, 2026-05-01
 
 - New @enum() operator for accessing enumeration constants from

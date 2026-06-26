@@ -1,0 +1,37 @@
+# PR34320 / bug 23598: deduplicated function bodies keep caller call site
+
+set test "error_dedup"
+if {![installtest_p]} { untested $test; return }
+
+set fail_msg "ERROR: dedup test fail"
+set foo_line "identifier 'foo'"
+
+foreach runtime [get_runtime_list] {
+    set test_name $test
+    if {$runtime != ""} {
+        lappend test_name "($runtime)"
+        spawn stap --runtime=$runtime -DMAXERRORS=1 $srcdir/$subdir/$test.stp
+    } else {
+        spawn stap -DMAXERRORS=1 $srcdir/$subdir/$test.stp
+    }
+
+    set pass 0
+    expect {
+        -timeout 60
+        -re $fail_msg { incr pass; exp_continue }
+        -re $foo_line { incr pass; exp_continue }
+        "WARNING: Number of errors: 1" { incr pass; exp_continue }
+        timeout {
+            kill -INT -[exp_pid] 2
+            fail "$test_name timed out"
+        }
+        eof {}
+    }
+    catch { close }; catch { wait }
+
+    if {$pass == 3} {
+        pass $test_name
+    } else {
+        fail "$test_name ($pass/3)"
+    }
+}

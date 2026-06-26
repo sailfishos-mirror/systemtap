@@ -201,7 +201,7 @@ common_probe_entryfn_prologue (systemtap_session& s,
   s.op->newline();
   s.op->newline() << "c->aborted = 0;";
   s.op->newline() << "c->locked = 0;";
-  s.op->newline() << "c->last_stmt = 0;";
+  s.op->newline() << "{ int _stp_i; for (_stp_i = 0; _stp_i <= MAXNESTING; _stp_i++) c->last_stmt[_stp_i] = NULL; }";
   s.op->newline() << "c->last_error = 0;";
   s.op->newline() << "c->nesting = -1;"; // NB: PR10516 packs locals[] tighter
   s.op->newline() << "c->uregs = 0;";
@@ -354,13 +354,6 @@ common_probe_entryfn_epilogue (systemtap_session& s,
   s.op->newline(-1) << "}";
   s.op->newline() << "#endif";
 
-  s.op->newline() << "c->probe_point = 0;"; // vacated
-  s.op->newline() << "#ifdef STP_NEED_PROBE_NAME";
-  s.op->newline() << "c->probe_name = 0;";
-  s.op->newline() << "#endif";
-  s.op->newline() << "c->probe_type = 0;";
-
-
   s.op->newline() << "if (unlikely (c->last_error)) {";
   s.op->indent(1);
   if (s.suppress_handler_errors) // PR 13306
@@ -369,11 +362,7 @@ common_probe_entryfn_epilogue (systemtap_session& s,
     }
   else
     {
-      s.op->newline() << "if (c->last_stmt != NULL)";
-      s.op->newline(1) << "_stp_softerror (\"%s near %s\", c->last_error, c->last_stmt);";
-      s.op->newline(-1) << "else";
-      s.op->newline(1) << "_stp_softerror (\"%s\", c->last_error);";
-      s.op->indent(-1);
+      s.op->newline() << "_stp_softerror_handler (c);";
       s.op->newline() << "atomic_inc (error_count());";
       s.op->newline() << "if (atomic_read (error_count()) > MAXERRORS) {";
       s.op->newline(1) << "atomic_set (session_state(), STAP_SESSION_ERROR);";
@@ -382,6 +371,12 @@ common_probe_entryfn_epilogue (systemtap_session& s,
     }
 
   s.op->newline(-1) << "}";
+
+  s.op->newline() << "c->probe_point = 0;"; // vacated
+  s.op->newline() << "#ifdef STP_NEED_PROBE_NAME";
+  s.op->newline() << "c->probe_name = 0;";
+  s.op->newline() << "#endif";
+  s.op->newline() << "c->probe_type = 0;";
 
 
   s.op->newline(-1) << "probe_epilogue:"; // context is free

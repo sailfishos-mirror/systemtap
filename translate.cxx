@@ -1103,7 +1103,7 @@ c_unparser::get_probe_dupe (derived_probe *dp)
   // Notice we're using the probe body itself instead of the emitted C
   // probe body to compare probes.  We need to do this because the
   // emitted C probe body has stuff in it like:
-  //   c->last_stmt = "identifier 'printf' at foo.stp:<line>:<column>";
+  //   STAP_LAST_STMT = "identifier 'printf' at foo.stp:<line>:<column>";
   //
   // which would make comparisons impossible.
 
@@ -2749,6 +2749,7 @@ c_unparser::emit_function (functiondecl* v)
   o->newline() << "(void) l;"; // make sure "l" is marked used
   o->newline() << "#define CONTEXT c";
   o->newline() << "#define THIS l";
+  o->newline() << "#define STAP_LAST_STMT (c->last_stmt[c->nesting+1])";
   for (unsigned i = 0; i < v->formal_args.size(); i++) {
     o->newline() << c_arg_define(v->formal_args[i]->name); // #define STAP_ARG_foo ...
   }
@@ -2758,10 +2759,6 @@ c_unparser::emit_function (functiondecl* v)
   // define STAP_RETVALUE only if the function is non-void
   if (v->type != pe_unknown)
     o->newline() << "#define STAP_RETVALUE THIS->__retvalue";
-
-  // set this, in case embedded-c code sets last_error but doesn't otherwise identify itself
-  if (v->tok)
-    o->newline() << "c->last_stmt = " << lex_cast_qstring(*v->tok) << ";";
 
   // check/increment nesting level
   // NB: incoming c->nesting level will be -1 (if we're called directly from a probe),
@@ -2775,6 +2772,9 @@ c_unparser::emit_function (functiondecl* v)
   o->newline(-1) << "} else {";
   o->newline(1) << "c->nesting ++;";
   o->newline(-1) << "}";
+  // fallback location for embedded-C-only tapset functions
+  if (v->tok)
+    o->newline() << "STAP_LAST_STMT = " << lex_cast_qstring(*v->tok) << ";";
 
   // initialize runtime overloading flag
   o->newline() << "c->next = 0;";
@@ -2844,10 +2844,11 @@ c_unparser::emit_function (functiondecl* v)
   o->newline(-1) << "deref_fault: __attribute__((unused));";
   o->newline(0) << "out: __attribute__((unused));";
 
-  // Function prologue: this is why we redirect the "return" above.
-  // Decrement nesting level.
-  o->newline(1) << "c->nesting --;";
+  // Function epilogue: clear this frame on success, then decrement nesting.
+  o->newline(1) << "if (likely(!c->last_error && !c->aborted)) STAP_LAST_STMT = NULL;";
+  o->newline() << "c->nesting --;";
 
+  o->newline() << "#undef STAP_LAST_STMT";
   o->newline() << "#undef CONTEXT";
   o->newline() << "#undef THIS";
   o->newline() << "#undef STAP_NEXT";
@@ -3059,6 +3060,8 @@ c_unparser::emit_probe (derived_probe* v)
         }
 
       v->initialize_probe_context_vars (o);
+
+      o->newline() << "#define STAP_LAST_STMT (c->last_stmt[c->nesting+1])";
 
       max_action_info mai (*session);
       v->body->visit (&mai);
@@ -3844,7 +3847,7 @@ c_unparser_assignment::c_assignop(tmpvar & res,
 		  o->newline() << "if (unlikely(!" << rval << ")) {";
 		  o->newline(1) << "c->last_error = ";
                   o->line() << STAP_T_03;
-		  o->newline() << "c->last_stmt = " << lex_cast_qstring(*rvalue->tok) << ";";
+		  o->newline() << "STAP_LAST_STMT = " << lex_cast_qstring(*rvalue->tok) << ";";
 		  o->newline() << "goto out;";
 		  o->newline(-1) << "}";
 		  o->newline() << lval << " = "
@@ -4026,7 +4029,7 @@ c_unparser::record_actions (unsigned actions, const token* tok, bool update)
       // XXX it really ought to be illegal for anything to be missing a token,
       // but until we're sure of that, we need to defend against NULL.
       if (tok)
-        o->newline() << "c->last_stmt = " << lex_cast_qstring(*tok) << ";";
+        o->newline() << "STAP_LAST_STMT = " << lex_cast_qstring(*tok) << ";";
 
       o->newline() << "goto out;";
       o->newline(-1) << "}";
@@ -4170,6 +4173,7 @@ void c_unparser::visit_try_block (try_block *s)
       c_strcpy (cev.value(), "c->last_error");
     }
   o->newline() << "c->last_error = NULL;";
+  o->newline() << "{ int _stp_i; for (_stp_i = c->nesting + 2; _stp_i <= MAXNESTING; _stp_i++) c->last_stmt[_stp_i] = NULL; }";
 
   // Prevent the catch{} handler from even starting if MAXACTIONS have
   // already been used up.  Add one for the act of catching too.
@@ -4658,7 +4662,7 @@ c_unparser::visit_foreach_loop (foreach_loop *s)
 	  o->newline() << "if (unlikely(NULL == " << mv.calculate_aggregate() << ")) {";
 	  o->newline(1) << "c->last_error = ";
           o->line() << STAP_T_05 << mv << "\";";
-	  o->newline() << "c->last_stmt = " << lex_cast_qstring(*s->tok) << ";";
+	  o->newline() << "STAP_LAST_STMT = " << lex_cast_qstring(*s->tok) << ";";
 	  o->newline() << "goto out;";
 	  o->newline(-1) << "}";
 
@@ -5098,7 +5102,7 @@ delete_statement_operand_visitor::visit_arrayindex (arrayindex* e)
                            << mvar.calculate_aggregate() << ")) {";
               o->newline(1) << "c->last_error = ";
               o->line() << STAP_T_05 << mvar << "\";";
-              o->newline() << "c->last_stmt = "
+              o->newline() << "STAP_LAST_STMT = "
                            << lex_cast_qstring(*e->tok) << ";";
               o->newline() << "goto out;";
               o->newline(-1) << "}";
@@ -5375,7 +5379,7 @@ c_unparser::visit_binary_expression (binary_expression* e)
       o->newline() << "if (unlikely(!" << right << ")) {";
       o->newline(1) << "c->last_error = ";
       o->line() << STAP_T_03;
-      o->newline() << "c->last_stmt = " << lex_cast_qstring(*e->tok) << ";";
+      o->newline() << "STAP_LAST_STMT = " << lex_cast_qstring(*e->tok) << ";";
       o->newline() << "goto out;";
       o->newline(-1) << "}";
       o->newline() << ((e->op == "/") ? "_stp_div64" : "_stp_mod64")
@@ -5474,7 +5478,7 @@ c_unparser::visit_array_in (array_in* e)
       if (!array_slice) // checking for membership of a specific element
         {
           load_map_indices (e->operand, idx);
-          // o->newline() << "c->last_stmt = " << lex_cast_qstring(*e->tok) << ";";
+          // o->newline() << "STAP_LAST_STMT = " << lex_cast_qstring(*e->tok) << ";";
 
           mapvar mvar = getmap (array->referent, e->tok);
           c_assign (res, mvar.exists(idx), e->tok);
@@ -5510,7 +5514,7 @@ c_unparser::visit_array_in (array_in* e)
                            << mvar.calculate_aggregate() << ")) {";
               o->newline(1) << "c->last_error = ";
               o->line() << STAP_T_05 << mvar << "\";";
-              o->newline() << "c->last_stmt = " << lex_cast_qstring(*e->tok) << ";";
+              o->newline() << "STAP_LAST_STMT = " << lex_cast_qstring(*e->tok) << ";";
               o->newline() << "goto out;";
               o->newline(-1) << "}";
             }
@@ -5656,7 +5660,7 @@ c_unparser::visit_concatenation (concatenation* e)
 
   o->line() << "({ ";
   o->indent(1);
-  // o->newline() << "c->last_stmt = " << lex_cast_qstring(*e->tok) << ";";
+  // o->newline() << "STAP_LAST_STMT = " << lex_cast_qstring(*e->tok) << ";";
   c_assign (t.value(), e->operands[0], "assignment");
   for (size_t i = 1; i < e->operands.size(); ++i)
     c_strcat (t.value(), e->operands[i]);
@@ -5845,7 +5849,7 @@ c_unparser_assignment::visit_symbol (symbol *e)
   if (e->referent->index_types.size() != 0)
     throw SEMANTIC_ERROR (_("unexpected reference to array"), e->tok);
 
-  // o->newline() << "c->last_stmt = " << lex_cast_qstring(*e->tok) << ";";
+  // o->newline() << "STAP_LAST_STMT = " << lex_cast_qstring(*e->tok) << ";";
   exp_type ty = rvalue ? rvalue->type : e->type;
   tmpvar rval = parent->gensym (ty);
   tmpvar res = parent->gensym (ty);
@@ -6012,7 +6016,7 @@ c_unparser::load_aggregate (expression *e, aggvar & agg)
   if (sym->referent->arity == 0)
     {
       v = new var(getvar(sym->referent, sym->tok));
-      // o->newline() << "c->last_stmt = " << lex_cast_qstring(*sym->tok) << ";";
+      // o->newline() << "STAP_LAST_STMT = " << lex_cast_qstring(*sym->tok) << ";";
       o->newline() << agg << " = _stp_stat_get (" << *v << ", 0);";
     }
   else
@@ -6032,7 +6036,7 @@ c_unparser::load_aggregate (expression *e, aggvar & agg)
         {
           vector<tmpvar> idx;
           load_map_indices (arr, idx);
-          // o->newline() << "c->last_stmt = " << lex_cast_qstring(*sym->tok) << ";";
+          // o->newline() << "STAP_LAST_STMT = " << lex_cast_qstring(*sym->tok) << ";";
 	  bool pre_agg = (aggregations_active.count(mv->value()) > 0);
           o->newline() << agg << " = " << mv->get(idx, pre_agg) << ";";
         }
@@ -6078,7 +6082,7 @@ c_unparser::visit_arrayindex (arrayindex* e)
       tmpvar res = gensym (e->type);
 
       mapvar mvar = getmap (array->referent, e->tok);
-      // o->newline() << "c->last_stmt = " << lex_cast_qstring(*e->tok) << ";";
+      // o->newline() << "STAP_LAST_STMT = " << lex_cast_qstring(*e->tok) << ";";
       c_assign (res, mvar.get(idx), e->tok);
 
       o->newline() << res << ";";
@@ -6126,7 +6130,7 @@ c_unparser::visit_arrayindex (arrayindex* e)
       var *v = load_aggregate(hist->stat, agg);
       v->assert_hist_compatible(*hist);
 
-      o->newline() << "c->last_stmt = " << lex_cast_qstring(*e->tok) << ";";
+      o->newline() << "STAP_LAST_STMT = " << lex_cast_qstring(*e->tok) << ";";
 
       // PR 2142+2610: empty aggregates
       o->newline() << "if (unlikely (" << agg.value() << " == NULL)"
@@ -6211,7 +6215,7 @@ c_unparser_assignment::visit_arrayindex (arrayindex *e)
 	  assert (rvalue->type == pe_long);
 
 	  mapvar mvar = parent->getmap (array->referent, e->tok);
-	  o->newline() << "c->last_stmt = " << lex_cast_qstring(*e->tok) << ";";
+	  o->newline() << "STAP_LAST_STMT = " << lex_cast_qstring(*e->tok) << ";";
 	  o->newline() << mvar.add (idx, rvar) << ";";
           res = rvar;
 	  // no need for these dummy assignments
@@ -6221,7 +6225,7 @@ c_unparser_assignment::visit_arrayindex (arrayindex *e)
       else
 	{
 	  mapvar mvar = parent->getmap (array->referent, e->tok);
-	  o->newline() << "c->last_stmt = " << lex_cast_qstring(*e->tok) << ";";
+	  o->newline() << "STAP_LAST_STMT = " << lex_cast_qstring(*e->tok) << ";";
 	  if (op != "=") // don't bother fetch slot if we will just overwrite it
 	    parent->c_assign (lvar, mvar.get(idx), e->tok);
 	  c_assignop (res, lvar, rvar, e->tok);
@@ -6342,7 +6346,7 @@ c_unparser::visit_functioncall (functioncall* e)
         }
 
       // call function
-      o->newline() << "c->last_stmt = " << lex_cast_qstring(*e->tok) << ";";
+      o->newline() << "STAP_LAST_STMT = " << lex_cast_qstring(*e->tok) << ";";
       o->newline() << c_funcname (r->name) << " (c);";
       o->newline() << "if (unlikely(c->last_error || c->aborted)) goto out;";
 
@@ -6390,7 +6394,7 @@ c_unparser::visit_functioncall (functioncall* e)
     // check for aborted return from function; this could happen from non-overloaded ones too
     o->newline()
       << "if (unlikely(c->next)) { "
-      << "c->last_stmt = " << lex_cast_qstring(*e->tok) << "; "
+      << "STAP_LAST_STMT = " << lex_cast_qstring(*e->tok) << "; "
       << "c->last_error = \"all functions exhausted\"; goto out; }";
 
   // return result from retvalue slot NB: this must be last, for the
@@ -6505,7 +6509,7 @@ c_unparser::visit_print_format (print_format* e)
                      << " || " <<  agg.value() << "->count == 0) {";
         o->newline(1) << "c->last_error = ";
         o->line() << STAP_T_06;
-	o->newline() << "c->last_stmt = " << lex_cast_qstring(*e->tok) << ";";
+	o->newline() << "STAP_LAST_STMT = " << lex_cast_qstring(*e->tok) << ";";
 	o->newline() << "goto out;";
         o->newline(-1) << "} else";
         if (e->print_to_stream)
@@ -6590,7 +6594,7 @@ c_unparser::visit_print_format (print_format* e)
 	      mem_size = "1LL";
 
 	    /* Limit how much can be printed at a time. (see also PR10490) */
-	    o->newline() << "c->last_stmt = " << lex_cast_qstring(*prec_tok) << ";";
+	    o->newline() << "STAP_LAST_STMT = " << lex_cast_qstring(*prec_tok) << ";";
 	    o->newline() << "if (" << mem_size << " > PAGE_SIZE) {";
 	    o->newline(1) << "snprintf(c->error_buffer, sizeof(c->error_buffer), "
 			  << "\"%lld is too many bytes for a memory dump\", (long long)"
@@ -6725,7 +6729,7 @@ c_unparser::visit_stat_op (stat_op* e)
                        << " || " <<  agg.value() << "->count == 0) {";
           o->newline(1) << "c->last_error = ";
           o->line() << STAP_T_06;
-          o->newline() << "c->last_stmt = " << lex_cast_qstring(*e->tok) << ";";
+          o->newline() << "STAP_LAST_STMT = " << lex_cast_qstring(*e->tok) << ";";
           o->newline() << "goto out;";
           o->newline(-1) << "}";
         }

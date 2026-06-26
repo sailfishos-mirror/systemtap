@@ -1,0 +1,22 @@
+# PR34320: runtime errors should show probe call context, not stale frames.
+
+global fired
+
+function ok() {
+    printf("ok\n")
+}
+
+function bad() {
+    error("context test fail")
+}
+
+probe timer.s(1) {
+    if (fired) next
+    fired = 1
+    ok()
+    bad()
+}
+
+probe timer.s(3) {
+    exit()
+}

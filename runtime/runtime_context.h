@@ -21,5 +21,6 @@
 
 #include "print.c"
 #include "io.c"				// needs to be included after print.c
+#include "handler-error.h"
 
 #endif /* _RUNTIME_CONTEXT_H_ */

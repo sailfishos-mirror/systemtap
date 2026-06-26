@@ -1,0 +1,41 @@
+# PR34320: error context stack and stale-frame cleanup
+
+set test "error_context"
+if {![installtest_p]} { untested $test; return }
+
+set fail_msg "ERROR: context test fail"
+set ok_line "identifier 'ok'"
+set bad_line "identifier 'bad'"
+
+foreach runtime [get_runtime_list] {
+    set test_name $test
+    if {$runtime != ""} {
+        lappend test_name "($runtime)"
+        spawn stap --runtime=$runtime -DMAXERRORS=1 $srcdir/$subdir/$test.stp
+    } else {
+        spawn stap -DMAXERRORS=1 $srcdir/$subdir/$test.stp
+    }
+
+    set pass 0
+    expect {
+        -timeout 60
+        -re $fail_msg { incr pass; exp_continue }
+        -re $bad_line { incr pass; exp_continue }
+        -re $ok_line {
+            fail "$test_name leaked stale location from ok()"
+        }
+        "WARNING: Number of errors: 1" { incr pass; exp_continue }
+        timeout {
+            kill -INT -[exp_pid] 2
+            fail "$test_name timed out"
+        }
+        eof {}
+    }
+    catch { close }; catch { wait }
+
+    if {$pass == 3} {
+        pass $test_name
+    } else {
+        fail "$test_name ($pass/3)"
+    }
+}
