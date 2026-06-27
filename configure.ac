@@ -41,8 +41,14 @@ AM_GNU_GETTEXT_VERSION([0.19.4])
 # Now let's try to find python version 3. We prioritize newer versions
 # (like 3.12+ which are available on RHEL8/9) to ensure we have
 # modern enough pip support for our PEP 517 build system.
-AC_PATH_PROGS([PYTHON3],
+# Override with ./configure PYTHON3=python3.13 to build against a specific minor.
+AC_ARG_VAR([PYTHON3], [Python 3 interpreter for probe/tapset support])
+if test -n "$PYTHON3"; then
+  AC_PATH_PROG([PYTHON3], [$PYTHON3], [:])
+else
+  AC_PATH_PROGS([PYTHON3],
               	 [python3.15 python3.14 python3.13 python3.12 python3.11 python3.10 python3.9 python3.8 python3.7 python3 python3.6 python3.5 python3.4 python3.3 python3.2 python3.1 python3.0], [:])
+fi
 python3_basename=$(basename "$PYTHON3")
 AC_DEFINE_UNQUOTED([PYTHON3_BASENAME], "${python3_basename}",
 		   [Base name of the python3 interpreter binary.])
@@ -66,12 +72,26 @@ if test "x$PYTHON3" != "x:"; then
    AC_SUBST([PYTHON3_PLATFORM], [$ac_cv_python3_platform])
 
    AC_CACHE_CHECK([for python3 script directory], [ac_cv_python3_dir],
-		  [ac_cv_python3_dir=`$PYTHON3 -c "import distutils.sysconfig; print(distutils.sysconfig.get_python_lib(0,0,prefix='$PYTHON3_PREFIX'))"`])
+		  [ac_cv_python3_dir=`$PYTHON3 -c "
+try:
+    import distutils.sysconfig as ds
+    print(ds.get_python_lib(0, 0, prefix='$PYTHON3_PREFIX'))
+except ImportError:
+    import sysconfig
+    print(sysconfig.get_path('purelib', vars={'base': '\${prefix}', 'platbase': '\${prefix}', 'installed_base': '\${prefix}', 'installed_platbase': '\${prefix}'}))
+"`])
    AC_SUBST([python3dir], [$ac_cv_python3_dir])
 
    AC_CACHE_CHECK([for python3 extension module directory],
    		  [ac_cv_py3execdir],
-		  [ac_cv_py3execdir=`$PYTHON3 -c "import distutils.sysconfig; print(distutils.sysconfig.get_python_lib(1,0,prefix='$PYTHON3_EXEC_PREFIX'))"`])
+		  [ac_cv_py3execdir=`$PYTHON3 -c "
+try:
+    import distutils.sysconfig as ds
+    print(ds.get_python_lib(1, 0, prefix='$PYTHON3_EXEC_PREFIX'))
+except ImportError:
+    import sysconfig
+    print(sysconfig.get_path('platlib', vars={'base': '\${prefix}', 'platbase': '\${prefix}', 'installed_base': '\${prefix}', 'installed_platbase': '\${prefix}'}))
+"`])
    AC_SUBST([py3execdir], [$ac_cv_py3execdir])
 fi
 
