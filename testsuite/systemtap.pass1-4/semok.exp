@@ -98,7 +98,7 @@ set utrace_p [utrace_p]
 set plt_probes_p [plt_probes_p]
 set effective_uid [exec /usr/bin/id -u]
 foreach runtime [get_runtime_list] {
-    foreach file [lsort [glob -nocomplain $srcdir/$self/*.stp]] {
+    foreach file [pass14_stap_files $srcdir/$self/*.stp] {
 	set test $self/[file tail $file]
 	if {$runtime != ""} {
 	    verbose -log "Running $file ($runtime)"

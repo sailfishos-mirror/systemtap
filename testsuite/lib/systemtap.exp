@@ -40,6 +40,29 @@ proc installtest_p {} {
     } else { return 0 }
 }
 
+# Return sorted .stp files matching glob pattern(s), optionally filtered
+# by CHECK_ONLY (basename without .stp, as in buildok/nfs-detailed.stp).
+proc pass14_stap_files { args } {
+    global env
+    set all_files [lsort [eval glob -nocomplain $args]]
+    if {![info exists env(CHECK_ONLY)]} {
+        return $all_files
+    }
+    set filtered {}
+    foreach name $env(CHECK_ONLY) {
+        set base [file tail $name]
+        if {[string match *.stp $base]} {
+            set base [file rootname $base]
+        }
+        foreach file $all_files {
+            if {[string equal $base [file rootname [file tail $file]]]} {
+                lappend filtered $file
+            }
+        }
+    }
+    return [lsort -unique $filtered]
+}
+
 proc get_original_user {} {
     global env
     if {[info exists env(SUDO_USER)]} {

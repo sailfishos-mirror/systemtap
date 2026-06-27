@@ -1,5 +1,21 @@
 set test debugtypes
 
+if {[info exists env(CHECK_ONLY)]} {
+    global env
+    set matched 0
+    foreach name $env(CHECK_ONLY) {
+        set match [file tail $name]
+        if {[string match *.stp $match]} {
+            set match [file rootname $match]
+        }
+        if {[string equal $test $match]} {
+            set matched 1
+            break
+        }
+    }
+    if {!$matched} { return }
+}
+
 if {! [installtest_p]} { untested "$test"; return }
 if {! [uprobes_p]} { untested "$test"; return }
 

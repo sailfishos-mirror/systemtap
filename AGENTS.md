@@ -50,9 +50,11 @@ make check RUNTESTFLAGS="test_name.exp"
 sudo -E make installcheck RUNTESTFLAGS="test_name.exp"
 ```
 
-To run individual subtests within an `.exp` file (like `check.exp`), use the `CHECK_ONLY` variable along with `RUNTESTFLAGS`:
+To run individual subtests within an `.exp` file (like `check.exp` or
+`buildok.exp`), use the `CHECK_ONLY` variable along with `RUNTESTFLAGS`:
 
 ```bash
+make check RUNTESTFLAGS="buildok.exp" CHECK_ONLY="nfs-detailed nfs-fop.check_flags"
 make check RUNTESTFLAGS="check.exp" CHECK_ONLY="badname fntimes"
 ```
 

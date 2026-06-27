@@ -5,7 +5,7 @@ set test_suffix "parse-semko"
 # it is semantic (elaboration) (-p2) checks that fail, not parse
 # errors (-p1).
 
-foreach file [lsort [glob -nocomplain $srcdir/semko/*.stp]] {
+foreach file [pass14_stap_files $srcdir/semko/*.stp] {
     set test "semko/[file tail $file]"
     set full_test "${test} ${test_suffix}"
 

@@ -16,7 +16,7 @@ proc dyninst_kfails {test} {
 }
 
 foreach runtime [get_runtime_list] {
-    foreach file [lsort [glob -nocomplain $srcdir/$self/*.stp]] {
+    foreach file [pass14_stap_files $srcdir/$self/*.stp] {
 	set test $self/[file tail $file]
 	if {$runtime != ""} {
 	    verbose -log "Running $file ($runtime)"

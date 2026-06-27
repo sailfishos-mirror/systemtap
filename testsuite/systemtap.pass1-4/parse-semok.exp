@@ -32,7 +32,7 @@ if { $verbose } {
     set dirlist [list buildok]
 }
 foreach dir $dirlist {
-    foreach file [lsort [glob -nocomplain $srcdir/$dir/*.stp]] {
+    foreach file [pass14_stap_files $srcdir/$dir/*.stp] {
 	set test "${dir}/[file tail $file]"
 	set full_test "${test} ${test_suffix}"
 	set extra_args ""
