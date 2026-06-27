@@ -46,7 +46,7 @@ function ppos_pos:long (ppos:long)
 }
 %)
 
-@__private30 function __address_inode:long (page:long)
+function __address_inode:long (page:long)
 {
 	mapping = page? @cast(page, "page", "kernel")->mapping : 0
 	if (mapping == 0)
@@ -80,9 +80,26 @@ function __page_bdev:long (page:long)
 	return @cast(host, "inode", "kernel")->i_sb->s_bdev
 }
 
-@__private30 function __page_index:long (page:long)
+function __page_index:long (page:long)
 {
-	return @cast(page, "page", "kernel")->index
+	if (@type_member_defined("struct page", index))
+		return @cast(page, "page", "kernel")->index
+	if (@type_member_defined("struct folio", index))
+		return @cast(page, "folio", "kernel")->index
+	if (@type_member_defined("struct page", __folio_index))
+		return @cast(page, "page", "kernel")->__folio_index
+	return 0
+}
+
+@__private30 function __iov_iter_is_iovec:long (iter:long)
+{
+	if (@type_member_defined("struct iov_iter", iter_type))
+		return @cast(iter, "iov_iter", "kernel")->iter_type ==
+			@const("ITER_IOVEC")
+	if (@type_member_defined("struct iov_iter", type))
+		return @cast(iter, "iov_iter", "kernel")->type &
+			@const("ITER_IOVEC")
+	return 0
 }
 
 function __file_dev:long (file:long)
@@ -93,7 +110,7 @@ function __file_dev:long (file:long)
 	return @cast(d_inode, "inode", "kernel")->i_sb->s_dev
 }
 
-@__private30 function __file_bdev:long (file:long)
+function __file_bdev:long (file:long)
 {
 	d_inode = __file_inode(file)
 	if (d_inode == 0)
@@ -130,12 +147,12 @@ function __file_filename:string (file:long)
 		return kernel_string(name)
 }
 
-@__private30 function _get_fopv_size:long (iovp:long, nr_segs:long)
+function _get_fopv_size:long (iovp:long, nr_segs:long)
 {
 	if (iovp) {
 		val = 0
 		for (i = 0; i < nr_segs; i++)
-			val += @cast(iovp, "iovec")[i]->iov_len
+			val += @cast(iovp, "iovec", "kernel<uapi/linux/uio.h>")[i]->iov_len
 		return val
 	}
 	return -1
@@ -253,9 +270,9 @@ probe generic.fop.read_iter = kernel.function("generic_file_read_iter") ?
 	ino = __file_ino($iocb->ki_filp)
         
 	pos = $iter->iov_offset
-	if ($iter->type & @const("ITER_IOVEC")) {
-		buf = $iter->iov->iov_base
-		count = __iov_length($iter->iov, $iter->nr_segs, 1,
+	if (__iov_iter_is_iovec($iter)) {
+		buf = $iter->__iov->iov_base
+		count = __iov_length($iter->__iov, $iter->nr_segs, 1,
 				     @const("VERIFY_WRITE"))
 	}
 	else {
@@ -331,9 +348,9 @@ probe generic.fop.write_iter = kernel.function("generic_file_write_iter") ?
 	ino = __file_ino($iocb->ki_filp)
 
 	pos = $from->iov_offset
-	if ($from->type &  @const("ITER_IOVEC")) {
-		buf = $from->iov->iov_base
-		count = __iov_length($from->iov, $from->nr_segs, 1,
+	if (__iov_iter_is_iovec($from)) {
+		buf = $from->__iov->iov_base
+		count = __iov_length($from->__iov, $from->nr_segs, 1,
 				     @const("VERIFY_READ"))
 	}
 	else {
@@ -842,7 +859,7 @@ probe vfs.__set_page_dirty_buffers = kernel.function("__set_page_dirty_buffers")
 }
 probe vfs.__set_page_dirty_buffers.return =
 	kernel.function("__set_page_dirty_buffers").return!,
-        kernel.function("block_dirty_folio")
+        kernel.function("block_dirty_folio").return
 {
 	name = "__set_page_dirty_buffers"
 	retstr = sprintf("%d", $return)
@@ -867,43 +884,61 @@ probe vfs.do_mpage_readpage = __vfs.do_mpage_readpage,
 }
 probe __vfs.do_mpage_readpage = kernel.function("do_mpage_readpage")
 {
-	dev = __page_dev($page)
-	devname = __find_bdevname(dev, __page_bdev($page))
-	ino = __page_ino($page)
+	__mpage_pg = @choose_defined($page, $args->folio)
+	dev = __page_dev(__mpage_pg)
+	devname = __find_bdevname(dev, __page_bdev(__mpage_pg))
+	ino = __page_ino(__mpage_pg)
 
-	index = __page_index($page)
+	index = __page_index(__mpage_pg)
 
 	size = 1
 }
 probe __vfs.ext4_mpage_readpages = kernel.function("ext4_mpage_readpages") ?
 {
-	size = $nr_pages
-	if ($nr_pages == 1 && $page != 0) {
-		dev = __page_dev($page)
-		devname = __find_bdevname(dev, __page_bdev($page))
-		ino = __page_ino($page)
-		index = __page_index($page)
+	if (@defined($rac)) {
+		size = $rac->_nr_pages
+		if ($rac->_nr_pages == 1 && @defined($folio) && $folio != 0) {
+			__page = $folio
+			dev = __page_dev(__page)
+			devname = __find_bdevname(dev, __page_bdev(__page))
+			ino = __page_ino(__page)
+			index = __page_index(__page)
+		}
+		else if (@defined($folio) && $folio != 0) {
+			# readahead_control no longer exposes pgvec; use
+			# the folio parameter when multiple pages are read.
+			__page = $folio
+			dev = __page_dev(__page)
+			devname = __find_bdevname(dev, __page_bdev(__page))
+			ino = __page_ino(__page)
+			index = __page_index(__page)
+		}
 	}
 	else {
-		# Note that we're going to return information about
-		# the first page from the list of pages. It is the best
-		# we can do here.
-		__page = __get_first_page($pages)
-		dev = __page_dev(__page)
-		devname = __find_bdevname(dev, __page_bdev(__page))
-		ino = __page_ino(__page)
-		index = __page_index(__page)
+		size = $nr_pages
+		if ($nr_pages == 1 && @defined($page) && $page != 0) {
+			dev = __page_dev($page)
+			devname = __find_bdevname(dev, __page_bdev($page))
+			ino = __page_ino($page)
+			index = __page_index($page)
+		}
+		else {
+			__page = __get_first_page($pages)
+			dev = __page_dev(__page)
+			devname = __find_bdevname(dev, __page_bdev(__page))
+			ino = __page_ino(__page)
+			index = __page_index(__page)
+		}
 	}
 }
-probe vfs.do_mpage_readpage.return = __vfs.do_mpage_readpage.return,
-	__vfs.ext4_mpage_readpages.return ?
+probe vfs.do_mpage_readpage.return = __vfs.ext4_mpage_readpages.return ?
 {
 	name = "do_mpage_readpage"
-	retstr = sprintf("0x%x", $return)
+	retstr = @defined($return) ? sprintf("0x%x", $return) : "0"
 	units = "pages"
 }
 probe __vfs.do_mpage_readpage.return =
-	kernel.function("do_mpage_readpage").return
+	kernel.function("do_mpage_readpage").return ?
 {
 	size = 1
 }
@@ -1184,9 +1219,9 @@ probe _vfs.block_prepare_write = kernel.function("__block_write_begin_int") !,
 				 kernel.function("__block_write_begin") !,
 				 kernel.function("__block_prepare_write")
 {
-	page = $page
+	page = @choose_defined($page, $folio)
 	if (@defined($pos)) {
-		_inode = __page_ino($page)
+		_inode = __page_ino(page)
 		from = $pos & (@const("_STP_PAGE_SIZE") - 1)
 		to = from + $len		
 %(systemtap_v < "2.3" %?
@@ -1206,8 +1241,8 @@ probe _vfs.block_prepare_write = kernel.function("__block_write_begin_int") !,
 		to = $to
 	}
 
-	name = "_vfs.generic_commit_write"
-	argstr = sprintf("%p, %d, %d", $page, from, to)
+	name = "_vfs.block_prepare_write"
+	argstr = sprintf("%p, %d, %d", page, from, to)
 }
 
 probe _vfs.block_prepare_write.return =
@@ -1218,9 +1253,9 @@ probe _vfs.block_prepare_write.return =
 	name = "_vfs.block_prepare_write"
 	retstr = sprintf("%d", $return)
 
-	page = @entry($page)
+	page = @choose_defined(@entry($page), @entry($folio))
 	if (@defined(@entry($pos))) {
-		_inode = __page_ino(@entry($page))
+		_inode = __page_ino(page)
 		from = @entry($pos) & (@const("_STP_PAGE_SIZE") - 1)
 		to = from + @entry($len)
 %(systemtap_v < "2.3" %?
@@ -1239,7 +1274,7 @@ probe _vfs.block_prepare_write.return =
 		from = @entry($from)
 		to = @entry($to)
 	}
-	page = @entry($page)
+	page = @choose_defined(@entry($page), @entry($folio))
 
 	ret = $return
 	error = ret < 0 ? ret : 0
@@ -1252,12 +1287,12 @@ probe _vfs.block_write_begin = kernel.function("block_write_begin") ?
         pathname = @defined($file) ? fullpath_struct_file(task_current(), $file) : ""
 	pos = $pos
 	len = $len
-	flags = $flags
+	flags = @defined($flags) ? $flags : 0
 
 	_inode = __address_inode($mapping)
 
 	name = "_vfs.block_write_begin"
-	argstr = sprintf("%p, %d, %d, %x", file, $pos, $len, $flags)
+	argstr = sprintf("%p, %d, %d, %x", file, $pos, $len, flags)
 }
 
 probe _vfs.block_write_begin.return =
@@ -1270,7 +1305,7 @@ probe _vfs.block_write_begin.return =
         pathname = @defined(@entry($file)) ? fullpath_struct_file(task_current(), @entry($file)) : ""
 	pos = @entry($pos)
 	len = @entry($len)
-	flags = @entry($flags)
+	flags = @defined(@entry($flags)) ? @entry($flags) : 0
 
 	_inode = __address_inode(@entry($mapping))
 
@@ -1281,15 +1316,16 @@ probe _vfs.block_write_begin.return =
 
 probe _vfs.block_write_end = kernel.function("block_write_end") ?
 {
-	file = $file
-        pathname = fullpath_struct_file(task_current(), $file)
+	file = @defined($file) ? $file : 0
+        pathname = @defined($file) ? fullpath_struct_file(task_current(), $file) : ""
 	pos = $pos
 	len = $len
-	page = $page
-	_inode = __address_inode($mapping)
+	page = @defined($page) ? $page : 0
+	if (@defined($mapping))
+		_inode = __address_inode($mapping)
 
 	name = "_vfs.block_write_end"
-	argstr = sprintf("%p, %d, %d, %p", $file, $pos, $len, $page)
+	argstr = sprintf("%p, %d, %d, %p", file, $pos, $len, page)
 }
 
 probe _vfs.block_write_end.return = kernel.function("block_write_end").return ?
@@ -1297,12 +1333,16 @@ probe _vfs.block_write_end.return = kernel.function("block_write_end").return ?
 	name = "_vfs.block_write_end"
 	retstr = sprintf("%d", $return)
 
-	file = @entry($file)
-        pathname = fullpath_struct_file(task_current(), @entry($file))
+	file = @defined(@entry($file)) ? @entry($file) : 0
+        pathname = @defined(@entry($file)) ?
+		fullpath_struct_file(task_current(), @entry($file)) : ""
 	pos = @entry($pos)
 	len = @entry($len)
-	page = @entry($page)
-	_inode = __address_inode(@entry($mapping))
+	page = @choose_defined(@entry($page), @entry($folio))
+	if (@defined(@entry($mapping)))
+		_inode = __address_inode(@entry($mapping))
+	else if (@defined(@entry($folio)))
+		_inode = __page_ino(page)
 	ret = $return
 }
 

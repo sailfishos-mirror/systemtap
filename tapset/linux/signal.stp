@@ -324,21 +324,26 @@ probe signal.checkperm.return =
 probe __signal.wakeup.signal_wake_up_state
 	= kernel.function("signal_wake_up_state")
 {
-    resume = ($state == 0) ? 0 : 1;
-    if ($state & @const("__TASK_STOPPED") != 0) {
-	state_mask .= " | TASK_STOPPED"
+    if (@defined($state)) {
+	resume = ($state == 0) ? 0 : 1;
+	if ($state & @const("__TASK_STOPPED") != 0) {
+	    state_mask .= " | TASK_STOPPED"
+	}
+	if ($state & @const("__TASK_TRACED") != 0) {
+	    state_mask .= " | TASK_TRACED"
+	}
+	if ($state & @const("TASK_WAKEKILL") != 0) {
+	    state_mask .= " | TASK_WAKEKILL"
+	}
+	state_mask = "TASK_INTERRUPTIBLE" . state_mask
+    } else {
+	resume = 1
+	state_mask = "TASK_INTERRUPTIBLE | TASK_STOPPED | TASK_TRACED"
     }
-    if ($state & @const("__TASK_TRACED") != 0) {
-	state_mask .= " | TASK_TRACED"
-    }
-    if ($state & @const("TASK_WAKEKILL") != 0) {
-	state_mask .= " | TASK_WAKEKILL"
-    }
-    state_mask = "TASK_INTERRUPTIBLE" . state_mask
 }
 probe __signal.wakeup.signal_wake_up = kernel.function("signal_wake_up")
 {
-    resume = $resume
+    resume = @choose_defined($resume, $fatal)
     if (resume == 0) {
 	state_mask = "TASK_INTERRUPTIBLE"
     } else {
@@ -431,8 +436,8 @@ probe signal.force_segv = _signal.force_segv.*
 
 probe _signal.force_segv.part1 = kernel.function("force_sigsegv")
 {
-    sig_pid = $p->pid
-    pid_name = kernel_string($p->comm)
+    sig_pid = pid()
+    pid_name = execname()
     sig = $sig
     sig_name = _signal_name($sig)
 }
@@ -451,11 +456,11 @@ probe _signal.force_segv.part2 = kernel.function("force_sigsegv_info") ?
  * @retstr: Return value as a string
  */
 probe signal.force_segv.return =
-		kernel.function("force_sigsegv").return,
+		kernel.function("force_sigsegv").return ?,
 		kernel.function("force_sigsegv_info").return ?
 {
     name = "force_segv"
-    retstr = return_str(1, $return)
+    retstr = @defined($return) ? return_str(1, $return) : ""
 }
 
 
@@ -578,9 +583,13 @@ probe signal.send_sig_queue =
 	sig_pid = $t->pid
 	pid_name = kernel_string($t->comm)
     }
-    else {
+    else if (@defined($p)) {
 	sig_pid = $p->pid
 	pid_name = kernel_string($p->comm)
+    }
+    else {
+	sig_pid = pid()
+	pid_name = execname()
     }
     sigqueue_addr = $q
 }
@@ -596,7 +605,7 @@ probe signal.send_sig_queue.return =
         kernel.function("send_group_sigqueue").return ?
 {
     name = "send_sig_queue"
-    retstr = return_str(1, $return)
+    retstr = @defined($return) ? return_str(1, $return) : retstr
 }
 
 
@@ -611,12 +620,22 @@ probe signal.send_sig_queue.return =
  * to a specific thread. This normally occurs when the
  * do_sigpending kernel function is executed.
  */
-probe signal.pending = kernel.function("do_sigpending").call !,
+probe signal.pending = kernel.function("do_sigpending") !,
+		       kernel.function("__do_sys_rt_sigpending").call ?,
+		       kernel.function("__do_compat_sys_rt_sigpending").call ?,
 		       kernel.function("sys_rt_sigpending").call ?,
-		       kernel.function("compat_sys_rt_sigpending").call ?
+		       kernel.function("compat_sys_rt_sigpending").call ?,
+		       syscall.rt_sigpending ?
 {
     name = "pending"
-    sigset_add=@choose_defined($set, $uset)
+    if (@defined($set))
+	sigset_add = $set
+    else if (@defined($uset))
+	sigset_add = $uset
+    else if (@defined($set_uaddr))
+	sigset_add = $set_uaddr
+    else
+	sigset_add = 0
 
     # Note that this isn't 100% correct if $sigsetsize doesn't
     # exist (in the case of newer do_sigpending() calls). Instead,
@@ -629,12 +648,15 @@ probe signal.pending = kernel.function("do_sigpending").call !,
  * @name: Name of the probe point
  * @retstr: Return value as a string
  */
-probe signal.pending.return = kernel.function("do_sigpending").return !,
+probe signal.pending.return = kernel.function("__do_sys_rt_sigpending").return ?,
+			      kernel.function("__do_compat_sys_rt_sigpending").return ?,
 			      kernel.function("sys_rt_sigpending").return ?,
-			      kernel.function("compat_sys_rt_sigpending").return ?
+			      kernel.function("compat_sys_rt_sigpending").return ?,
+			      kernel.function("do_sigpending").return ?,
+			      syscall.rt_sigpending.return ?
 {
     name = "pending"
-    retstr = return_str(1, $return)
+    retstr = @defined($return) ? return_str(1, $return) : retstr
 }
 
 
@@ -789,7 +811,7 @@ function get_sigaction_mask:long(act:long)
 probe signal.procmask = kernel.function("sigprocmask")
 {
     name = "procmask"
-    how=$how
+    how = @defined($how) ? $how : 0
     sigset_addr = $set
     oldsigset_addr = $oldset
     sigset = get_sigset($set)

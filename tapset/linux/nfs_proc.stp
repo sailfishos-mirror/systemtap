@@ -42,7 +42,7 @@ function NFS_I:long(inode:long)
 
 function NFS_SERVER:long(inode:long)
 {
-	return @cast(inode, "inode")->i_sb->s_fs_info
+	return @cast(inode, "inode", "kernel:nfs")->i_sb->s_fs_info
 }
 
 @__private30 function NFS_CLIENT:long(inode:long)

@@ -60,18 +60,18 @@ proc dyninst_kfails {test} {
 	semok/umask07.stp -
 	semok/vfs_add_to_page_cache.stp -
 	semok/xfslines.stp {
-	    # Use setup_kfail DYNINST <target triplet> for known
+	    # Use setup_xfail DYNINST <target triplet> for expected
 	    # failures when running with the dyninst runtime (scripts
 	    # that use kernel features or kernel-only tapset
 	    # functions).
-	    setup_kfail DYNINST *-*-*
+	    setup_xfail DYNINST *-*-*
 	}
 
 	semok/thirtysix-utrace.stp {
-	    # Use setup_kfail 14708 <target triplet> for known
+	    # Use setup_xfail 14708 <target triplet> for expected
 	    # failures when running with the dyninst runtime (scripts
 	    # that use utrace-like probes)
-	    setup_kfail 14708 *-*-*
+	    setup_xfail 14708 *-*-*
 	}
 
 	semok/plt1.stp -

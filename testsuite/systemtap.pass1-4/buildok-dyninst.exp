@@ -180,20 +180,20 @@ foreach file [pass14_stap_files $srcdir/$self/*.stp] {
 	buildok/vfs-detailed.stp -
 	buildok/vfs-embedded.stp -
 	buildok/xtime.stp {
-	    # Use setup_kfail DYNINST <target triplet> for known
+	    # Use setup_xfail DYNINST <target triplet> for expected
 	    # failures when running with the dyninst runtime (scripts
 	    # that use kernel features or kernel-only tapset
 	    # functions).
-	    if {$rc != 0} { setup_kfail DYNINST *-*-* } }
+	    if {$rc != 0} { setup_xfail DYNINST *-*-* } }
 
 	buildok/fortyseven.stp {
 	    if {$rc != 0} { setup_kfail 15065 *-*-* } }
 
 	buildok/per-process-syscall.stp {
-	    # Use setup_kfail 14708 <target triplet> for known
+	    # Use setup_xfail 14708 <target triplet> for expected
 	    # failures when running with the dyninst runtime (scripts
 	    # that use utrace-like probes)
-	    if {$rc != 0} { setup_kfail 14708 *-*-* } }
+	    if {$rc != 0} { setup_xfail 14708 *-*-* } }
 
 	buildok/stap_staticmarkers-detailed.stp {
 	    # Use setup_kfail ROOT_ONLY for tests that must be run as
