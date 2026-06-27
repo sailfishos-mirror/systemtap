@@ -18,6 +18,8 @@
 #ifdef STAPCONF_BLK_TYPES
 #include <linux/blk_types.h>
 #endif
+#include <linux/pagemap.h>
+#include <linux/page-flags.h>
 %}
 
 private function disk_get_part_start_sect:long(disk:long, partno:long)
@@ -79,13 +81,19 @@ function bio_op:long(bio:long)
 
     STAP_RETVALUE = -1;
     if (bv_page) {
-	/* Before calling PageSlab() and PageSwapCache() on bv_page, we
+	/* Before calling page/folio tests on bv_page, we
 	 * need to make sure the bv_page struct is valid. */
 	(void)kderef_buffer(NULL, bv_page, sizeof(struct page));
 
+#ifdef FOLIO_MAPPING_ANON
+	if (!folio_test_slab(page_folio(bv_page)) && !folio_test_swapcache(page_folio(bv_page))) {
+	    struct address_space *mapping = kread(&(bv_page->mapping));
+	    if (mapping && ((unsigned long)mapping & FOLIO_MAPPING_ANON) == 0) {
+#else
 	if (!PageSlab(bv_page) && !PageSwapCache(bv_page)) {
 	    struct address_space *mapping = kread(&(bv_page->mapping));
 	    if (mapping && ((unsigned long)mapping & PAGE_MAPPING_ANON) == 0) {
+#endif
 		struct inode *host = kread(&(mapping->host));
 		if (host)
 		    STAP_RETVALUE = kread(&(host->i_ino));

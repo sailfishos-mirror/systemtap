@@ -49,18 +49,6 @@ foreach file [lsort [glob -nocomplain $srcdir/$self/*.stp]] {
 	    # without uprobes. (ia64 has utrace, but not uprobes.)
 	    if {$rc != 0 && ![uprobes_p]} { setup_kfail UPROBES *-*-* } }
 
-	buildok/twentyeightprime.stp {
-	    # Use setup_kfail UPROBES <target triplet> for systems
-	    # without uprobes. (ia64 has utrace, but not uprobes.)
-	    if {$rc != 0 && ![uprobes_p]} { setup_kfail UPROBES *-*-* }
-
-	    # Use setup_kfail INODE_UPROBES <target triplet> for
-	    # systems with inode uprobes, where absolute probes don't
-	    # work.
-	    if {$rc != 0 && [inode_uprobes_p]} {
-		setup_kfail INODE_UPROBES *-*-* }
-	}
-
 	buildok/context-symbols-embedded.stp -
 	buildok/context-unwind-embedded.stp {
 	    # Use setup_kfail UNWIND <target triplet> for systems

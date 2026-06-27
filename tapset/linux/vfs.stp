@@ -933,13 +933,13 @@ probe vfs.add_to_page_cache =
 	devname = __find_bdevname(dev, $mapping->host->i_sb->s_bdev)
 	ino = $mapping->host->i_ino
 
-	index = $offset
+	index = @choose_defined($offset, $index)
 	nrpages = $mapping->nrpages
 	size = $mapping->nrpages
 	units = "pages"
 
 	name = "vfs.add_to_page_cache"
-	argstr = sprintf("%d, %d", ino, $offset)
+	argstr = sprintf("%d, %d", ino, @choose_defined($offset, $index))
 }
 
 
@@ -964,20 +964,25 @@ probe vfs.add_to_page_cache.return =
 
 probe vfs.remove_from_page_cache =
 	kernel.function("__delete_from_page_cache") !,
-	kernel.function("__remove_from_page_cache") ?
+	kernel.function("__remove_from_page_cache") ?,
+	kernel.function("filemap_remove_folio") !,
+	kernel.function("__filemap_remove_folio")
 {
-	dev = __page_dev($page)
-	devname = __find_bdevname(dev, __page_bdev($page))
-	ino = __page_ino($page)
+	__pg = @choose_defined($page, $folio)
+	dev = __page_dev(__pg)
+	devname = __find_bdevname(dev, __page_bdev(__pg))
+	ino = __page_ino(__pg)
 
-	index = __page_index($page)
+	index = __page_index(__pg)
 
 	name = "vfs.remove_from_page_cache"
 	argstr = sprintf("%d", ino)
 }
 probe vfs.remove_from_page_cache.return =
 	kernel.function("__delete_from_page_cache").return !,
-	kernel.function("__remove_from_page_cache").return ?
+	kernel.function("__remove_from_page_cache").return ?,
+	kernel.function("filemap_remove_folio").return !,
+	kernel.function("__filemap_remove_folio").return
 {
 	name = "vfs.remove_from_page_cache"
 	retstr = sprintf("N/A")

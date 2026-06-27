@@ -1138,24 +1138,26 @@ probe nfs.aop.set_page_dirty.return =
  * @for_reclaim and @for_kupdate.
  */
 probe nfs.aop.writepage = kernel.function ("nfs_writepage") !,
-                          module("nfs").function ("nfs_writepage")
+                          module("nfs").function ("nfs_writepage") !,
+                          kernel.function ("nfs_do_writepage") !,
+                          module("nfs").function ("nfs_do_writepage")
 {
-        __page = $page
+        __page = @choose_defined($page, $folio)
         dev = __page_dev(__page)
         ino = __page_ino(__page)
 
         for_reclaim = $wbc->for_reclaim
         for_kupdate = $wbc->for_kupdate
 
-        i_flag = __p2i_flag($page) 
-        i_state = __p2i_state($page)
-        i_size = __p2i_size($page)
+        i_flag = __p2i_flag(__page) 
+        i_state = __p2i_state(__page)
+        i_size = __p2i_size(__page)
 
-        sb_flag = __p2sb_flag($page) 
+        sb_flag = __p2sb_flag(__page) 
 
-        page_index = $page->index
+        page_index = @choose_defined($page->index, $folio->index)
 
-        __inode = __p2i($page)
+        __inode = __p2i(__page)
         wsize = __nfs_server_wsize(__inode)            
  
         name = "nfs.aop.writepage"
@@ -1166,7 +1168,9 @@ probe nfs.aop.writepage = kernel.function ("nfs_writepage") !,
 }
 
 probe nfs.aop.writepage.return = kernel.function ("nfs_writepage").return !,
-                                 module("nfs").function ("nfs_writepage").return
+                                 module("nfs").function ("nfs_writepage").return !,
+                                 kernel.function ("nfs_do_writepage").return !,
+                                 module("nfs").function ("nfs_do_writepage").return
 {
         name = "nfs.aop.writepage.return"
         retstr = sprintf("%d", $return)

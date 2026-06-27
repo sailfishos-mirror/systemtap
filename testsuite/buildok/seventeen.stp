@@ -3,7 +3,7 @@
 # this tests access to members of a target global variable
 # (PR 1191)
 
-probe kernel.function("pipe_write")
+probe kernel.function("pipe_write") !, kernel.function("anon_pipe_write")
 {
 %( kernel_v > "3.9" %?
 	printf("0x%x\n", $pipefifo_fops->llseek)

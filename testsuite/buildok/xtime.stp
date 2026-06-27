@@ -1,7 +1,8 @@
 #! stap -p4
 
 # Test for getting at an external global variable PR10622
-probe kernel.function("do_gettimeofday")
+probe kernel.function("do_gettimeofday") !,
+      kernel.function("__do_sys_gettimeofday")
 {
   printf("xtime.tv_sec:%d\n",
 	 (@defined($tk_core->timekeeper->xtime_sec)
@@ -9,6 +10,6 @@ probe kernel.function("do_gettimeofday")
 	  : (@defined($timekeeper->xtime_sec) ? $timekeeper->xtime_sec
 	     : (@defined($timekeeper->xtime->tv_sec)
 		? $timekeeper->xtime->tv_sec
-	        : $xtime->tv_sec))))
+	        : (@defined($xtime) ? $xtime->tv_sec : 0)))))
   exit();
 }

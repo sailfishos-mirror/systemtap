@@ -131,4 +131,52 @@ stap --dyninst script.stp   # Userspace only, can run non-privileged
 
 ## Commit Conventions
 
-When writing Git commit messages, wrap the text to approximately 70 characters per line to conform with standard Git formatting practices.
+When writing Git commit messages, wrap the text to approximately 70
+characters per line to conform with standard Git formatting practices.
+
+## Kernel Compatibility Portability
+
+When `buildok` / `semok` etc. tests fail on a new kernel
+(e.g. fedrawhide in bunsen `stap-fedrawhide-x86_64`), prefer fixing
+scripts and tapsets over disabling tests.
+
+### Diagnose failures
+
+1. Check bunsen for the builder testrun (`testrun.gitdescribe` like
+   `buildbot/stap-fedrawhide-x86_64/*`) and read testcase logs for `buildok/*`
+   and `semok/*` FAIL results.
+2. Reproduce locally with the same pass the test uses (`-p2` for semok,
+   `-p4` for buildok).
+3. Ask about location of a nearby kernel source git tree checkout for study of
+   struct/function renames (e.g. `fs/mpage.c`, `fs/mount.h`).
+
+### Probe resolution
+
+- List candidates: `stap -l 'kernel.function("*pattern*")'` (existence).
+- Inspect context variables: `stap -L 'kernel.function("fn")'` (DWARF locals).
+- Chain fallbacks with `!` (required final alternative), not `?` on every arm:
+  `kernel.function("old_name") !, kernel.function("new_name")`
+
+### Context variables
+
+- Use `@choose_defined($old, $new)` when parameter names differ across kernels
+  (e.g. `$__argv` vs `$argv`, `$offset` vs `$index`, `$page` vs `$folio`).
+- Use `@defined($var)` guards when a symbol disappears entirely (e.g.
+  `do_mpage_readpage` now passes `struct mpage_readpage_args` with `$args->folio`
+  instead of `$page`).
+- Cast through the proper header when a pointer type is forward-declared only:
+  `@cast(...->nsproxy, "struct nsproxy", "kernel<linux/nsproxy.h>")->mnt_ns`
+
+### Tapset / folio migration
+
+- Page helpers: prefer `@choose_defined($page, $folio)` with existing
+  `__page_*` helpers where possible.
+- `vfs.remove_from_page_cache`: add `filemap_remove_folio` fallbacks; folio-era
+  kernels removed `__delete_from_page_cache`.
+- `nfs.aop.writepage`: add `nfs_do_writepage` fallbacks (`$folio` not `$page`).
+- Embedded C (`%{ ... %}`): use `#ifdef FOLIO_MAPPING_ANON` for
+  `PAGE_MAPPING_ANON` / `PageSwapCache` → `folio_test_*` / `page_folio()`
+  transitions in `ioblock.stp`-style helpers.
+- `struct mount` iteration: `mnt_instance` + `list_head` `s_mounts` on older
+  kernels; walk `sb->s_mounts` via `mnt_next_for_sb` when
+  `@type_member_defined("struct mount", mnt_instance)` is false.

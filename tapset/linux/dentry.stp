@@ -84,15 +84,26 @@ function d_name:string(dentry:long)
 {
         /* s_mounts was added in kernel 3.6, commit b3d9b7a3c.  */
         if (@type_member_defined("struct super_block", s_mounts)) {
-                mnt_ns = @cast(task_current(), "struct task_struct", "kernel<linux/sched.h>")->nsproxy->mnt_ns
+                mnt_ns = @cast(@cast(task_current(), "struct task_struct", "kernel")->nsproxy,
+                                 "struct nsproxy", "kernel<linux/nsproxy.h>")->mnt_ns
                 sb = @cast(inode, "struct inode", "kernel")->i_sb
 
                 /* Look for the mount which matches the current namespace */
-                head = &sb->s_mounts
-                for (pos = head->next; pos != head; pos = pos->next) {
-                        mount = & @container_of(pos, "struct mount", mnt_instance)
-                        if (mount->mnt_ns == mnt_ns)
-                                return & mount->mnt
+                if (@type_member_defined("struct mount", mnt_instance)) {
+                        head = &sb->s_mounts
+                        for (pos = head->next; pos != head; pos = pos->next) {
+                                mount = & @container_of(pos, "struct mount", mnt_instance)
+                                if (mount->mnt_ns == mnt_ns)
+                                        return & mount->mnt
+                        }
+                } else {
+                        m = sb->s_mounts
+                        while (m != 0) {
+                                mount = m
+                                if (mount->mnt_ns == mnt_ns)
+                                        return & mount->mnt
+                                m = mount->mnt_next_for_sb
+                        }
                 }
         }
         return 0
