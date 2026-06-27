@@ -65,8 +65,7 @@ struct semantic_error: public std::runtime_error
       runtime_error(other), tok1(other.tok1), tok2(other.tok2),
       errsrc(other.errsrc), details(other.details), chain (0)
     {
-      if (other.chain)
-        set_chain(*other.chain);
+      chain = clone_chain (other.chain);
     }
 
   std::string errsrc_chain(void) const
@@ -78,7 +77,7 @@ struct semantic_error: public std::runtime_error
     {
       if (chain)
         delete chain;
-      chain = new semantic_error(new_chain);
+      chain = clone_chain (&new_chain);
       return *this;
     }
 
@@ -89,6 +88,28 @@ struct semantic_error: public std::runtime_error
 
 private:
   const semantic_error* chain;
+
+  static semantic_error* clone_chain (const semantic_error* src)
+    {
+      if (!src)
+        return 0;
+      semantic_error* head = 0;
+      semantic_error* prev = 0;
+      for (const semantic_error* cur = src; cur; cur = cur->chain)
+        {
+          semantic_error* node = new semantic_error (cur->errsrc,
+                                                     std::string (cur->what ()),
+                                                     cur->tok1, cur->tok2);
+          node->details = cur->details;
+          node->chain = 0;
+          if (prev)
+            prev->chain = node;
+          else
+            head = node;
+          prev = node;
+        }
+      return head;
+    }
 };
 
 // ------------------------------------------------------------------------
