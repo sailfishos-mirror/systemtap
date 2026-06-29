@@ -67,12 +67,16 @@ function disk_name:string(hd:long, partno:long)
 %{
 #include <linux/blk_types.h>
 #include <linux/blkdev.h>
+#ifndef sync_blockdev
+extern int sync_blockdev(struct block_device *bdev);
+#endif
 %}
 
 function bdev_partno(bdev:long)
 %{ /* pure */ /* unprivileged */
-#ifdef BD_PARTNO
-  STAP_RETURN(bdev_partno((const struct block_device *) STAP_ARG_bdev));
+#if defined(BD_PARTNO)
+  struct block_device *bdev = (struct block_device *) STAP_ARG_bdev;
+  STAP_RETVALUE = bdev ? (u8)(atomic_read(&bdev->__bd_flags) & BD_PARTNO) : 0;
 #else
   STAP_RETURN(0);
 #endif

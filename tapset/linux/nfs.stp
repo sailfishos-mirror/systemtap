@@ -19,6 +19,11 @@
 #include <linux/filelock.h>
 #define STAP_VFS_72 1
 #endif
+
+struct block_device;
+#ifndef sync_blockdev
+extern int sync_blockdev(struct block_device *bdev);
+#endif
 %}
 
 /* Get cache_validity flag from struct inode */

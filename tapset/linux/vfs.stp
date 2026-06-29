@@ -15,6 +15,11 @@
 #include <linux/types.h>		/* For struct list_head */
 #include <linux/mm_types.h>		/* For struct page */
 
+struct block_device;
+#ifndef sync_blockdev
+extern int sync_blockdev(struct block_device *bdev);
+#endif
+
 /* Define our own page size macro. */
 #ifdef PAGE_CACHE_SIZE
 #define _STP_PAGE_SIZE PAGE_CACHE_SIZE
