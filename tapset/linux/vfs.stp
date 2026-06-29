@@ -931,7 +931,8 @@ probe __vfs.ext4_mpage_readpages = kernel.function("ext4_mpage_readpages") ?
 		}
 	}
 }
-probe vfs.do_mpage_readpage.return = __vfs.ext4_mpage_readpages.return ?
+probe vfs.do_mpage_readpage.return = __vfs.do_mpage_readpage.return,
+	__vfs.ext4_mpage_readpages.return ?
 {
 	name = "do_mpage_readpage"
 	retstr = @defined($return) ? sprintf("0x%x", $return) : "0"

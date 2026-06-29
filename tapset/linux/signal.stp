@@ -605,7 +605,7 @@ probe signal.send_sig_queue.return =
         kernel.function("send_group_sigqueue").return ?
 {
     name = "send_sig_queue"
-    retstr = @defined($return) ? return_str(1, $return) : retstr
+    retstr = @defined($return) ? return_str(1, $return) : ""
 }
 
 
@@ -656,7 +656,7 @@ probe signal.pending.return = kernel.function("__do_sys_rt_sigpending").return ?
 			      syscall.rt_sigpending.return ?
 {
     name = "pending"
-    retstr = @defined($return) ? return_str(1, $return) : retstr
+    retstr = @defined($return) ? return_str(1, $return) : ""
 }
 
 

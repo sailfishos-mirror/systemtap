@@ -13,9 +13,12 @@
 #include <linux/kernel.h>
 #include <linux/nfs_fs.h>
 #include <linux/fs.h>
-#include <linux/filelock.h>
 #include <linux/mm_types.h>
 #include <linux/uaccess.h>		/* For VERIFY_READ/VERIFY_WRITE */
+#if defined(__has_include) && __has_include(<linux/filelock.h>)
+#include <linux/filelock.h>
+#define STAP_VFS_72 1
+#endif
 %}
 
 /* Get cache_validity flag from struct inode */
@@ -120,7 +123,15 @@ function __p2i_state:long (page:long) %{
         STAP_RETVALUE = -1;
     else {
         inode = p->mapping->host;
-        STAP_RETVALUE = inode ? inode_state_read(inode) : -1;
+        if (!inode)
+            STAP_RETVALUE = -1;
+#ifdef STAP_VFS_72
+        else
+            STAP_RETVALUE = inode_state_read_once(inode);
+#else
+        else
+            STAP_RETVALUE = inode->i_state;
+#endif
     }
 %}
 
@@ -172,28 +183,45 @@ function __file_mode:long (file:long)
 
 function __file_lock_type:long (fl:long) %{
     struct file_lock *f = (struct file_lock *)STAP_ARG_fl;
+#ifdef STAP_VFS_72
     STAP_RETVALUE = f ? f->c.flc_type : 0;
+#else
+    STAP_RETVALUE = f ? f->fl_type : 0;
+#endif
 %}
 
 function __file_lock_flags:long (fl:long) %{
     struct file_lock *f = (struct file_lock *)STAP_ARG_fl;
+#ifdef STAP_VFS_72
     STAP_RETVALUE = f ? f->c.flc_flags : 0;
+#else
+    STAP_RETVALUE = f ? f->fl_flags : 0;
+#endif
 %}
 
 function __vm_area_flags:long (vma:long) %{
     struct vm_area_struct *v = (struct vm_area_struct *)STAP_ARG_vma;
     if (!v)
         STAP_RETVALUE = 0;
+#ifdef STAP_VFS_72
     else
         STAP_RETVALUE = vma_flags_to_legacy(v->flags);
+#else
+    else
+        STAP_RETVALUE = v->flags;
+#endif
 %}
 
 function __vm_area_desc_flags:long (desc:long) %{
+#ifdef STAP_VFS_72
     struct vm_area_desc *d = (struct vm_area_desc *)STAP_ARG_desc;
     if (!d)
         STAP_RETVALUE = 0;
     else
         STAP_RETVALUE = vma_flags_to_legacy(d->vma_flags);
+#else
+    STAP_RETVALUE = 0;
+#endif
 %}
 
 function __file_parentname:string (file:long)
