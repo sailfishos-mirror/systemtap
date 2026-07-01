@@ -12,8 +12,10 @@ function filter:long (name:string)
 global squash_inode_permission
 
 # We really want to probe may_create(). But, may_create() is now
-# always inlined, and stap can't find its arguments. So, we have to
-# probe may_create()'s callers.
+# always inlined, and stap can't find its arguments. So, we probe its
+# callers instead.  There are two distinct paths:
+#   - vfs_create/vfs_mknod/... for explicit create syscalls
+#   - may_o_create for open(O_CREAT) (touch, creat, etc.)
 
 probe kernel.{function("vfs_create"), function("vfs_mknod"),
               function("vfs_mkdir"), function("vfs_symlink"),
@@ -38,6 +40,15 @@ probe kernel.{function("vfs_create"), function("vfs_mknod"),
   else if (@defined($new_dentry)) name = $new_dentry->d_name->name
 
   if (filter(kernel_string(name)))
+    squash_inode_permission[tid()] = 1
+}
+
+# open(O_CREAT): $dir is struct path const*, not struct inode*
+probe kernel.function("may_o_create@fs/namei.c") ?
+{
+  if ($dentry->d_inode) next
+  if ($dir->dentry->d_inode->i_flags & %{ S_DEAD %}) next
+  if (filter(kernel_string($dentry->d_name->name)))
     squash_inode_permission[tid()] = 1
 }
 
