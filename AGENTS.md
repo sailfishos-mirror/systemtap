@@ -160,19 +160,29 @@ characters per line to conform with standard Git formatting practices.
 
 ## Kernel Compatibility Portability
 
-When `buildok` / `semok` etc. tests fail on a new kernel
-(e.g. fedrawhide in bunsen `stap-fedrawhide-x86_64`), prefer fixing
-scripts and tapsets over disabling tests.
+When `buildok` / `semok` etc. tests fail on a new kernel, prefer fixing
+scripts and tapsets over disabling tests. Reproduce locally with the same
+pass the test uses (`-p2` for semok, `-p4` for buildok); see **Testing
+Quirk** above for `RUNTESTFLAGS` / `CHECK_ONLY`.
+
+Before adding kfails, read the comments in
+`testsuite/systemtap.pass1-4/buildok.exp` above the `switch` block.
+
+**Sourceware upstream CI only:** [builder.sourceware.org](https://builder.sourceware.org)
+runs fedrawhide on slow emulated non-x86_64 VMs, so most arches get a
+stripped smoke `make check` only (`cu-decl.exp`, `warnings.exp`, etc.) —
+not `buildok.exp`. Full `buildok`/`check` coverage is on the native
+x86_64 installcheck builder. Bunsen stores those testrun logs if you have
+MCP access; otherwise use local `make check`.
 
 ### Diagnose failures
 
-1. Check bunsen for the builder testrun (`testrun.gitdescribe` like
-   `buildbot/stap-fedrawhide-x86_64/*`) and read testcase logs for `buildok/*`
-   and `semok/*` FAIL results.
-2. Reproduce locally with the same pass the test uses (`-p2` for semok,
-   `-p4` for buildok).
-3. Ask about location of a nearby kernel source git tree checkout for study of
-   struct/function renames (e.g. `fs/mpage.c`, `fs/mount.h`).
+1. Reproduce locally (`stap -p2` / `-p4`, or `make check` with
+   `CHECK_ONLY`).
+2. On sourceware CI, check bunsen/buildbot logs for `buildok/*` and
+   `semok/*` FAIL results.
+3. Ask about a nearby kernel source tree for struct/function renames
+   (e.g. `fs/mpage.c`, `fs/mount.h`).
 
 ### Probe resolution
 
