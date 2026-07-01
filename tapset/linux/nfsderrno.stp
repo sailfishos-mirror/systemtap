@@ -15,6 +15,11 @@
 #define NFSERR_OPNOTSUPP 45
 #endif
 
+/* NFSERR_EAGAIN removed from Linux 6.15; was never a valid RFC status code */
+#ifndef NFSERR_EAGAIN
+#define NFSERR_EAGAIN 11
+#endif
+
 #define	nfs_ok			__constant_htonl(NFS_OK)
 #define	nfserr_perm		__constant_htonl(NFSERR_PERM)
 #define	nfserr_noent		__constant_htonl(NFSERR_NOENT)
