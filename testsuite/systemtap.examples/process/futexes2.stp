@@ -16,7 +16,7 @@ global wait_keys # per-thread key strings for waiting futexes
 global lock_waits # long-lived stats on (tid,lock) blockage elapsed time
 global process_names # long-lived pid-to-execname mapping
 
-@define KEY %( @cast(key, "union futex_key") %)
+@define KEY %( @cast(key, "union futex_key", "kernel") %)
 probe kernel.function("futex_wait_setup").return {
   if ($return != 0) next
 
@@ -27,8 +27,11 @@ probe kernel.function("futex_wait_setup").return {
 
   if (offset & FUT_OFF_INODE) {
     address = @KEY->shared->pgoff * mem_page_size() + masked_offset
-    path = inode_path(@KEY->shared->inode)
-    wait_keys[tid()] = sprintf("INODE:%s+%p", path, address)
+    if (@type_member_defined("union futex_key", inode))
+      id = inode_path(@KEY->shared->inode)
+    else
+      id = sprintf("seq:%#x", @KEY->shared->i_seq)
+    wait_keys[tid()] = sprintf("INODE:%s+%p", id, address)
   } else if (offset & FUT_OFF_MMSHARED) {
     address = @KEY->private->address + masked_offset
     wait_keys[tid()] = sprintf("MMSHARED:%p", address)
