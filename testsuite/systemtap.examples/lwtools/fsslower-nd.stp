@@ -61,7 +61,8 @@ probe read_funcs, write_funcs
 probe read_funcs = kprobe.function("do_sync_read") !, __vfs_read
 {
 }
-probe __vfs_read = kprobe.function("__vfs_read")
+probe __vfs_read = kprobe.function("__vfs_read") !,
+		     kprobe.function("vfs_read")
 {
 	# Skip the call if new_sync_read() wouldn't be called.
 	file = pointer_arg(1)
@@ -73,7 +74,8 @@ probe __vfs_read = kprobe.function("__vfs_read")
 probe write_funcs = kprobe.function("do_sync_write") !, __vfs_write
 {
 }
-probe __vfs_write = kprobe.function("__vfs_write")
+probe __vfs_write = kprobe.function("__vfs_write") !,
+		      kprobe.function("vfs_write")
 {
 	# Skip the call if new_sync_write() wouldn't be called.
 	file = pointer_arg(1)
@@ -106,7 +108,8 @@ probe read_funcs.return = kprobe.function("do_sync_read").return !,
 			  __vfs_read.return
 {
 }
-probe __vfs_read.return = kprobe.function("__vfs_read").return
+probe __vfs_read.return = kprobe.function("__vfs_read").return !,
+			  kprobe.function("vfs_read").return
 {
 	# Skip the call if new_sync_read() wouldn't be called.
 	file = @entry(pointer_arg(1))
@@ -119,7 +122,8 @@ probe write_funcs.return = kprobe.function("do_sync_write").return !,
 			   __vfs_write.return
 {
 }
-probe __vfs_write.return = kprobe.function("__vfs_write").return
+probe __vfs_write.return = kprobe.function("__vfs_write").return !,
+			   kprobe.function("vfs_write").return
 {
 	# Skip the call if new_sync_write() wouldn't be called.
 	file = @entry(pointer_arg(1))
