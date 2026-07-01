@@ -625,6 +625,10 @@ compile_pass (systemtap_session& s)
                   "STAPCONF_FILES_LOOKUP_FD_RAW", NULL);
   output_autoconf(s, o, cs, "autoconf-file_lock_core.c",
                   "STAPCONF_FILE_LOCK_CORE", NULL);
+  output_autoconf(s, o, cs, "autoconf-linux-filelock-h.c",
+                  "STAPCONF_LINUX_FILELOCK_H", NULL);
+  output_autoconf(s, o, cs, "autoconf-do_sock_getsockopt.c",
+                  "STAPCONF_DO_SOCK_GETSOCKOPT", NULL);
   output_autoconf(s, o, cs, "autoconf-task-state.c", "STAPCONF_TASK_STATE", NULL);
 
   output_autoconf(s, o, cs, "autoconf-linux-unaligned-h.c", "STAPCONF_LINUX_UNALIGNED_H", NULL);

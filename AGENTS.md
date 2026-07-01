@@ -184,6 +184,34 @@ MCP access; otherwise use local `make check`.
 3. Ask about a nearby kernel source tree for struct/function renames
    (e.g. `fs/mpage.c`, `fs/mount.h`).
 
+### Kernel API detection (autoconf vs KERNEL_VERSION)
+
+Prefer **STAPCONF autoconf probes** over `LINUX_VERSION_CODE` /
+`KERNEL_VERSION()` checks in embedded C (`%{ ... %}`) and tapset helpers.
+Autoconf compiles small probe snippets against the **target kernel's
+headers** at module build time, so backported APIs on older version
+numbers (common in enterprise and longterm kernels) are detected
+correctly.
+
+- **Script-level:** `@defined($var)`, `@type_member_defined("struct foo", bar)`,
+  and probe `!` fallback chains (see below).
+- **Embedded C:** `#ifdef STAPCONF_*` from runtime autoconf, not version
+  thresholds.
+
+To add a probe:
+
+1. Add `runtime/linux/autoconf-<name>.c` — a minimal snippet that uses
+   the API or struct field (must compile with kernel `-Werror`).
+2. Register it in `buildrun.cxx` via `output_autoconf(..., "STAPCONF_*", NULL)`.
+3. Guard script/tapset C with `#ifdef STAPCONF_*`.
+
+Examples: `STAPCONF_FILES_LOOKUP_FD_RAW`, `STAPCONF_FILE_LOCK_CORE`,
+`STAPCONF_DO_SOCK_GETSOCKOPT`. Use `output_exportconf` when the probe
+must verify a **linkable exported symbol**, not just a header declaration.
+
+Reserve `KERNEL_VERSION` for cases autoconf cannot express (e.g. very
+old pre-autoconf behavior with no compile-time hook).
+
 ### Probe resolution
 
 - List candidates: `stap -l 'kernel.function("*pattern*")'` (existence).

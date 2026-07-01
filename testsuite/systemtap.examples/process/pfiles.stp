@@ -77,13 +77,13 @@
 #include <linux/file.h>
 #include <linux/fdtable.h>
 #include <linux/fs.h>
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,9,0)
+#ifdef STAPCONF_LINUX_FILELOCK_H
 #include <linux/filelock.h>
 #endif
 #include <net/sock.h>
 #include <linux/un.h>
 #include <linux/tcp.h>
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,10,0)
+#ifdef STAPCONF_DO_SOCK_GETSOCKOPT
 #include <linux/sockptr.h>
 #endif
 #ifdef CONFIG_USER_NS
@@ -106,7 +106,7 @@ static inline struct file *stap_pfiles_lookup_fd(struct files_struct *files,
 static inline int stap_pfiles_getsockopt(struct socket *sock, int level,
 					 int optname, void *optval, int *optlen)
 {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,10,0)
+#ifdef STAPCONF_DO_SOCK_GETSOCKOPT
 	return do_sock_getsockopt(sock, false, level, optname,
 				  KERNEL_SOCKPTR(optval), KERNEL_SOCKPTR(optlen));
 #else
