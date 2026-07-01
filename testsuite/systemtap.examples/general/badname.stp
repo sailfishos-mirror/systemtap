@@ -17,16 +17,45 @@ global squash_inode_permission
 
 probe kernel.{function("vfs_create"), function("vfs_mknod"),
               function("vfs_mkdir"), function("vfs_symlink"),
-              function("vfs_link"), function("vfs_rename")}
+              function("vfs_link")}
 {
   # screen out the conditions which may_create will fail anyway
-  if (@choose_defined($dentry->d_inode, $new_dentry->d_inode)
-      || @choose_defined($dir->i_flags, $new_dir->i_flags) & %{ S_DEAD %}) next
+  exists = 0
+  if (@defined($dentry)) exists = $dentry->d_inode
+  else if (@defined($new_dentry)) exists = $new_dentry->d_inode
+
+  dead = 0
+  if (@defined($dir)) dead = $dir->i_flags & %{ S_DEAD %}
+  else if (@defined($new_dir)) dead = $new_dir->i_flags & %{ S_DEAD %}
+  else if (@defined($dentry))
+    dead = @cast($dentry, "dentry", "kernel")->d_parent->d_inode->i_flags & %{ S_DEAD %}
+
+  if (exists || dead) next
 
   # check that the new file meets our naming rules
-  if (filter(kernel_string(@choose_defined($dentry->d_name->name,
-					   $new_dentry->d_name->name))))
+  name = 0
+  if (@defined($dentry)) name = $dentry->d_name->name
+  else if (@defined($new_dentry)) name = $new_dentry->d_name->name
+
+  if (filter(kernel_string(name)))
     squash_inode_permission[tid()] = 1
+}
+
+probe kernel.function("vfs_rename")
+{
+  if (@defined($rd)) {
+    rd = $rd
+    new_de = @cast(rd, "renamedata", "kernel")->new_dentry
+    new_par = @cast(rd, "renamedata", "kernel")->new_parent
+    if (new_de->d_inode
+	|| @cast(new_par, "dentry", "kernel")->d_inode->i_flags & %{ S_DEAD %}) next
+    if (filter(kernel_string(@cast(new_de, "dentry", "kernel")->d_name->name)))
+      squash_inode_permission[tid()] = 1
+  } else if (@defined($new_dentry)) {
+    if ($new_dentry->d_inode || $new_dir->i_flags & %{ S_DEAD %}) next
+    if (filter(kernel_string($new_dentry->d_name->name)))
+      squash_inode_permission[tid()] = 1
+  }
 }
 
 probe kernel.function("inode_permission@fs/namei.c").return !,
