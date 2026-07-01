@@ -4,7 +4,7 @@ global swap_result
 probe kernel.function("swap_read_folio")!, kernel.function("swap_readpage") {
   swap_result[tz_ctime(gettimeofday_s()),ppfunc(),execname(),pid()] <<< 1
 }
-probe kernel.function("swap_write_folio")!, kernel.function("swap_writepage") {
+probe kernel.function("swap_write_folio")!, kernel.function("swap_writepage")!, kernel.function("__swap_writepage") {
   swap_result[tz_ctime(gettimeofday_s()),ppfunc(),execname(),pid()] <<< 1
 }
 
