@@ -86,13 +86,19 @@ enum {
 @__private30 function _stp_get_mm_counter:long(mm_ptr:long, member:long)
 {
     mm = & @mm(mm_ptr)
-    /* kernels >= 2.6.34, 3.0 (2.6.40 fedora) and later always use atomics */
-    if (@defined(&@mm(0)->rss_stat)) {
+    /* kernels >= 2.6.34: struct mm_rss_stat with count[] */
+    if (@type_member_defined("struct mm_rss_stat", count)) {
 %( kernel_v >= "2.6.40" || CONFIG_NR_CPUS >= CONFIG_SPLIT_PTLOCK_CPUS %?
 	val = atomic_long_read(&mm->rss_stat->count[member])
 %:
 	val = mm->rss_stat->count[member]
 %)
+	if (val < 0)
+	    return 0
+    }
+    /* percpu_counter rss_stat[NR_MM_COUNTERS] (e.g. Linux 7.2+) */
+    else if (@type_member_defined("struct percpu_counter", count)) {
+	val = @cast(&mm->rss_stat[member], "percpu_counter", "kernel")->count
 	if (val < 0)
 	    return 0
     }

@@ -90,6 +90,28 @@ Using general verbosity flags like `-vv` prints the SystemTap version header to 
 stap --vp 02 script.stp
 ```
 
+## Script Language Quirks
+
+### Field access (`->` vs `.`)
+
+In stap script (not C embedded in `%{ ... %}`), **`->` is polymorphic**:
+use it for both struct-pointer member access and struct-value member
+access. Do **not** use C-style `.` for fields.
+
+**`.` is for string concatenation only**, e.g. `"foo" . "bar"`.
+
+Wrong (`.count` may parse as a local identifier, not a member):
+
+```stp
+val = mm->rss_stat[member].count
+```
+
+Right:
+
+```stp
+val = @cast(&mm->rss_stat[member], "percpu_counter", "kernel")->count
+```
+
 ## Runtime Options
 
 When running a script directly from the local build tree, always use `sudo -E` to preserve necessary environment variables (like `LD_LIBRARY_PATH` or `DEBUGINFOD_URLS`):
