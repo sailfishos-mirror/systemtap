@@ -75,15 +75,45 @@
 
 %{
 #include <linux/file.h>
+#include <linux/fdtable.h>
+#include <linux/fs.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,9,0)
+#include <linux/filelock.h>
+#endif
 #include <net/sock.h>
 #include <linux/un.h>
 #include <linux/tcp.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,10,0)
+#include <linux/sockptr.h>
+#endif
 #ifdef CONFIG_USER_NS
 #include <linux/user_namespace.h>
 #endif
 #ifdef STAPCONF_LINUX_UIDGID_H
 #include <linux/uidgid.h>
 #endif
+
+static inline struct file *stap_pfiles_lookup_fd(struct files_struct *files,
+						 unsigned int fd)
+{
+#ifdef STAPCONF_FILES_LOOKUP_FD_RAW
+	return files_lookup_fd_raw(files, fd);
+#else
+	return fcheck_files(files, fd);
+#endif
+}
+
+static inline int stap_pfiles_getsockopt(struct socket *sock, int level,
+					 int optname, void *optval, int *optlen)
+{
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,10,0)
+	return do_sock_getsockopt(sock, false, level, optname,
+				  KERNEL_SOCKPTR(optval), KERNEL_SOCKPTR(optlen));
+#else
+	return sock->ops->getsockopt(sock, level, optname,
+				     (char __user *)optval, (int __user *)optlen);
+#endif
+}
 %}
 
 # XXX: For the time being, mark this example as not working on PREEMPT_RT kernels:
@@ -100,7 +130,7 @@ function task_valid_file_handle:long (task:long, fd:long) %{ /* pure */
 
 	rcu_read_lock();
 	if ((files = kread(&p->files))) {
-		filp = fcheck_files(files, STAP_ARG_fd);
+		filp = stap_pfiles_lookup_fd(files, STAP_ARG_fd);
 		STAP_RETVALUE = !!filp;
 	}
 
@@ -134,7 +164,7 @@ function task_file_handle_i_mode:long (task:long, fd:long) %{ /* pure */
 
 	rcu_read_lock();
 	if ((files = kread(&p->files)) &&
-	    (filp = fcheck_files(files, STAP_ARG_fd)) &&
+	    (filp = stap_pfiles_lookup_fd(files, STAP_ARG_fd)) &&
 #ifdef STAPCONF_DPATH_PATH
 	    (dentry = kread(&filp->f_path.dentry)) &&
 #else
@@ -159,7 +189,7 @@ function task_file_handle_majmin_dev:string (task:long, fd:long) %{ /* pure */
 
 	rcu_read_lock();
 	if ((files = kread(&p->files)) &&
-	    (filp = fcheck_files(files, STAP_ARG_fd)) &&
+	    (filp = stap_pfiles_lookup_fd(files, STAP_ARG_fd)) &&
 #ifdef STAPCONF_DPATH_PATH
 	    (dentry = kread(&filp->f_path.dentry)) &&
 #else
@@ -186,7 +216,7 @@ function task_file_handle_majmin_rdev:string (task:long, fd:long) %{ /* pure */
 
 	rcu_read_lock();
 	if ((files = kread(&p->files)) &&
-	    (filp = fcheck_files(files, STAP_ARG_fd)) &&
+	    (filp = stap_pfiles_lookup_fd(files, STAP_ARG_fd)) &&
 #ifdef STAPCONF_DPATH_PATH
 	    (dentry = kread(&filp->f_path.dentry)) &&
 #else
@@ -211,7 +241,7 @@ function task_file_handle_i_node:long (task:long, fd:long) %{ /* pure */
 
 	rcu_read_lock();
 	if ((files = kread(&p->files)) &&
-	    (filp = fcheck_files(files, STAP_ARG_fd)) &&
+	    (filp = stap_pfiles_lookup_fd(files, STAP_ARG_fd)) &&
 #ifdef STAPCONF_DPATH_PATH
 	    (dentry = kread(&filp->f_path.dentry)) &&
 #else
@@ -235,7 +265,7 @@ function task_file_handle_uid:long (task:long, fd:long) %{ /* pure */
 
 	rcu_read_lock();
 	if ((files = kread(&p->files)) &&
-	    (filp = fcheck_files(files, STAP_ARG_fd))) {
+	    (filp = stap_pfiles_lookup_fd(files, STAP_ARG_fd))) {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,29)
 		/* git commit d76b0d9b */
 		const struct cred *cred;
@@ -293,7 +323,7 @@ function task_file_handle_gid:long (task:long, fd:long) %{ /* pure */
 
 	rcu_read_lock();
 	if ((files = kread(&p->files)) &&
-	    (filp = fcheck_files(files, STAP_ARG_fd))) {
+	    (filp = stap_pfiles_lookup_fd(files, STAP_ARG_fd))) {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,29)
 		/* git commit d76b0d9b */
 		const struct cred *cred;
@@ -348,7 +378,7 @@ function task_file_handle_f_flags:long (task:long, fd:long) %{ /* pure */
 
 	rcu_read_lock();
 	if ((files = kread(&p->files)) &&
-	    (filp = fcheck_files(files, STAP_ARG_fd))) {
+	    (filp = stap_pfiles_lookup_fd(files, STAP_ARG_fd))) {
 		STAP_RETVALUE = kread(&filp->f_flags);
 	}
 
@@ -393,7 +423,7 @@ function task_file_handle_flock:string (task:long, fd:long) %{ /* pure */
 
 	rcu_read_lock();
 	if ((files = kread(&p->files)) &&
-	    (filp = fcheck_files(files, STAP_ARG_fd)) &&
+	    (filp = stap_pfiles_lookup_fd(files, STAP_ARG_fd)) &&
 #ifdef STAPCONF_DPATH_PATH
 	    (dentry = kread(&filp->f_path.dentry)) &&
 #else
@@ -412,9 +442,15 @@ function task_file_handle_flock:string (task:long, fd:long) %{ /* pure */
 			// We'll just look at the first lock.
 			spin_lock(&ctx->flc_lock);
 			flc_lock_set = 1;
+#ifdef STAPCONF_FILE_LOCK_CORE
+			list_for_each_entry(lock, &ctx->flc_flock, c.flc_list) {
+				fl_type = kread(&lock->c.flc_type);
+				fl_pid = kread(&lock->c.flc_pid);
+#else
 			list_for_each_entry(lock, &ctx->flc_flock, fl_list) {
 				fl_type = kread(&lock->fl_type);
 				fl_pid = kread(&lock->fl_pid);
+#endif
 				break;
 			}
 			spin_unlock(&ctx->flc_lock);
@@ -458,7 +494,7 @@ function task_file_handle_d_path:string (task:long, fd:long) %{ /* pure */
 	    // We need GFP_ATOMIC since we're inside a lock so we
 	    // can't sleep.
 	    (page = (char *)__get_free_page(GFP_ATOMIC)) &&
-	    (filp = fcheck_files(files, STAP_ARG_fd))) {
+	    (filp = stap_pfiles_lookup_fd(files, STAP_ARG_fd))) {
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,26)
 		/* git commit 9d1bc601 */
@@ -491,7 +527,7 @@ function task_file_handle_socket:long (task:long, fd:long) %{ /* pure */
 
 	rcu_read_lock();
 	if ((files = kread(&p->files)) &&
-	    (filp = fcheck_files(files, STAP_ARG_fd)) &&
+	    (filp = stap_pfiles_lookup_fd(files, STAP_ARG_fd)) &&
 #ifdef STAPCONF_DPATH_PATH
 	    (dentry = kread(&filp->f_path.dentry)) &&
 #else
@@ -559,7 +595,7 @@ function socket_optname:string (sock:long) %{ /* pure */
 
     for (p = optname_entries; p->optname; ++p) {
        optlen = sizeof(optval);
-       ret = kernel_getsockopt(sock, p->optfam, p->optnum, (char *)&optval, &optlen);
+       ret = stap_pfiles_getsockopt(sock, p->optfam, p->optnum, (char *)&optval, &optlen);
        if (ret == 0 && optval != 0) {
            if (!p->show_val)
                snprintf(str, MAXSTRINGLEN, "%s,", p->optname);
@@ -570,7 +606,7 @@ function socket_optname:string (sock:long) %{ /* pure */
     }
 
     optlen = sizeof(ling);
-    ret = kernel_getsockopt(sock, SOL_SOCKET, SO_LINGER, (void *)&ling, &optlen);
+    ret = stap_pfiles_getsockopt(sock, SOL_SOCKET, SO_LINGER, (void *)&ling, &optlen);
     if (ret == 0 && ling.l_onoff != 0) {
         snprintf(str, MAXSTRINGLEN, "SO_LINGER(%d),", ling.l_linger);
         strcat(STAP_RETVALUE, str);
