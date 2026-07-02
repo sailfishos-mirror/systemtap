@@ -44,6 +44,7 @@ int stp_tracepoint_probe_register(const char *name, void *probe, void *data);
 int stp_tracepoint_probe_unregister(const char *name, void *probe, void *data);
 
 /* Type-checked wrappers to make sure the fn signature is correct.  */
+#ifdef STAPCONF_TRACEPOINT_TYPECHECK
 #define STP_TRACE_REGISTER(name, fn) ({				\
     check_trace_callback_type_##name(fn);			\
     stp_tracepoint_probe_register(#name, (void*)fn, NULL);	\
@@ -52,6 +53,12 @@ int stp_tracepoint_probe_unregister(const char *name, void *probe, void *data);
     check_trace_callback_type_##name(fn);			\
     stp_tracepoint_probe_unregister(#name, (void*)fn, NULL);	\
     })
+#else
+#define STP_TRACE_REGISTER(name, fn) \
+    stp_tracepoint_probe_register(#name, (void*)fn, NULL)
+#define STP_TRACE_UNREGISTER(name, fn) \
+    stp_tracepoint_probe_unregister(#name, (void*)fn, NULL)
+#endif
 
 #endif /* STAPCONF_TRACEPOINT_STRINGS */
 

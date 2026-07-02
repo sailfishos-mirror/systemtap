@@ -583,6 +583,8 @@ compile_pass (systemtap_session& s)
 
   output_autoconf(s, o, cs, "autoconf-tracepoint-has-data.c", "STAPCONF_TRACEPOINT_HAS_DATA", NULL);
   output_autoconf(s, o, cs, "autoconf-tracepoint-strings.c", "STAPCONF_TRACEPOINT_STRINGS", NULL);
+  output_autoconf(s, o, cs, "autoconf-tracepoint-typecheck.c",
+                  "STAPCONF_TRACEPOINT_TYPECHECK", NULL);
   output_autoconf(s, o, cs, "autoconf-timerfd.c", "STAPCONF_TIMERFD_H", NULL);
 
   output_autoconf(s, o, cs, "autoconf-module_layout.c",
