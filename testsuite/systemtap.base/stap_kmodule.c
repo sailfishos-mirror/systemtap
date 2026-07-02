@@ -13,6 +13,7 @@
 #include <linux/module.h>
 #include <linux/timer.h>
 #include <linux/jiffies.h>
+#include <linux/version.h>
 
 /*
  * The purpose of this module is to provide a function that can be
@@ -39,17 +40,28 @@ static void simple_timer_function(struct timer_list *timer)
 	}
 }
 
-int init_module(void)
+static int __init stap_kmodule_init(void)
 {
 	timer_setup (&simple_timer, simple_timer_function,0);
 	mod_timer (&simple_timer, jiffies + msecs_to_jiffies(timer_interval));
 	return 0;
 }
+module_init(stap_kmodule_init);
 
-void cleanup_module(void)
+static void __exit stap_kmodule_exit(void)
 {
-	del_timer (&simple_timer);
+	/*
+	 * Use del_timer_sync() on RHEL8 (4.18) / RHEL9 (5.14) and other
+	 * pre-6.15 kernels.  Upstream 6.15+ (linux 8fa7292fee5c) removed
+	 * the del_timer*() wrappers; call timer_delete_sync() there instead.
+	 */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 15, 0)
+	timer_delete_sync (&simple_timer);
+#else
+	del_timer_sync (&simple_timer);
+#endif
 }
+module_exit(stap_kmodule_exit);
 
 MODULE_DESCRIPTION("systemtap test module");
 MODULE_LICENSE("GPL");
