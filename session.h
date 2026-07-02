@@ -15,12 +15,14 @@
 #include <locale.h>
 #endif
 
+#include <atomic>
 #include <list>
 #include <string>
 #include <vector>
 #include <iostream>
 #include <sstream>
 #include <map>
+#include <mutex>
 #include <set>
 #include <stdexcept>
 
@@ -126,7 +128,6 @@ struct parse_error: public std::runtime_error
       return errsrc + (chain ? "|" + chain->errsrc_chain() : "");
     }
 };
-
 
 struct symresolution_info;
 
@@ -443,6 +444,7 @@ public:
   // NB: It is very important for all of the above (and below) fields
   // to be cleared in the systemtap_session ctor (session.cxx).
 
+  std::mutex print_warning_mutex;
   std::set<std::string> seen_warnings;
   int suppressed_warnings;
   std::map<std::string, int> seen_errors; // NB: can change to a set if threshold is 1
@@ -530,7 +532,7 @@ struct exit_exception: public std::runtime_error
 
 
 // global counter of SIGINT/SIGTERM's received
-extern int pending_interrupts;
+extern std::atomic<int> pending_interrupts;
 
 // Interrupt exception subclass for catching
 // interrupts (i.e. ctrl-c).

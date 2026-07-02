@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <iostream>
 #include <fstream>
+#include <mutex>
 #include <sstream>
 #include <set>
 #include <string>
@@ -658,69 +659,87 @@ internal_find_debuginfo (Dwfl_Module *mod,
   if(!current_session_for_find_debuginfo->download_dbinfo || abrt_path.empty())
     goto call_dwfl_standard_find_debuginfo;
 
-  /* Check that we haven't already run this */
-  if (install_dbinfo_failed < 0)
+  {
+    /* The symbol-dump worker threads (translate.cxx:emit_symbol_data) can
+       reach this path concurrently.  */
+    static std::mutex download_mutex;
+
+    /* Check that we haven't already run this */
     {
+      std::lock_guard<std::mutex> g (download_mutex);
+      if (install_dbinfo_failed < 0)
+        {
+          if(current_session_for_find_debuginfo->verbose > 1)
+            current_session_for_find_debuginfo->print_warning(_F("We already tried running '%s'", abrt_path.c_str()));
+          goto call_dwfl_standard_find_debuginfo;
+        }
+    }
+
+    /* Extract the build ID.  */
+    const unsigned char *bits;
+    GElf_Addr vaddr;
+    if(current_session_for_find_debuginfo->verbose > 2)
+      clog << _("Extracting build ID.") << endl;
+    bits_length = dwfl_module_build_id(mod, &bits, &vaddr);
+
+    /* Convert the binary bits to a hex string */
+    hex = hex_dump(bits, bits_length);
+
+    /* Search for the debuginfo with the build ID */
+    if(current_session_for_find_debuginfo->verbose > 2)
+      clog << _F("Searching for debuginfo with build ID: '%s'.", hex.c_str()) << endl;
+    if (bits_length > 0)
+      {
+        int fd = dwfl_build_id_find_debuginfo(mod,
+               NULL, NULL, 0,
+               NULL, NULL, 0,
+               debuginfo_file_name);
+        if (fd >= 0)
+          return fd;
+      }
+
+    {
+      /* The above failed, so call abrt-action-install-debuginfo-to-abrt-cache
+         to download and install the debuginfo.  Re-check the flag under the
+         lock in case another thread failed while we were looking up the
+         build ID above.  */
+      std::lock_guard<std::mutex> g (download_mutex);
+
+      if (install_dbinfo_failed < 0)
+        goto call_dwfl_standard_find_debuginfo;
+
       if(current_session_for_find_debuginfo->verbose > 1)
-        current_session_for_find_debuginfo->print_warning(_F("We already tried running '%s'", abrt_path.c_str()));
-      goto call_dwfl_standard_find_debuginfo;
+        clog << _F("Downloading and installing debuginfo with build ID: '%s' using %s.",
+                hex.c_str(), abrt_path.c_str()) << endl;
+
+      struct tms tms_before;
+      times (& tms_before);
+      struct timeval tv_before;
+      struct tms tms_after;
+      unsigned _sc_clk_tck;
+      struct timeval tv_after;
+      gettimeofday (&tv_before, NULL);
+
+      if(execute_abrt_action_install_debuginfo_to_abrt_cache (hex) < 0)
+        {
+          install_dbinfo_failed = -1;
+          current_session_for_find_debuginfo->print_warning(_F("%s failed.", abrt_path.c_str()));
+          goto call_dwfl_standard_find_debuginfo;
+        }
+
+      _sc_clk_tck = sysconf (_SC_CLK_TCK);
+      times (& tms_after);
+      gettimeofday (&tv_after, NULL);
+      if(current_session_for_find_debuginfo->verbose > 1)
+        clog << _("Download completed in ")
+                  << ((tms_after.tms_cutime + tms_after.tms_utime
+                  - tms_before.tms_cutime - tms_before.tms_utime) * 1000 / (_sc_clk_tck)) << "usr/"
+                  << ((tms_after.tms_cstime + tms_after.tms_stime
+                  - tms_before.tms_cstime - tms_before.tms_stime) * 1000 / (_sc_clk_tck)) << "sys/"
+                  << ((tv_after.tv_sec - tv_before.tv_sec) * 1000 +
+                  ((long)tv_after.tv_usec - (long)tv_before.tv_usec) / 1000) << "real ms"<< endl;
     }
-
-  /* Extract the build ID */
-  const unsigned char *bits;
-  GElf_Addr vaddr;
-  if(current_session_for_find_debuginfo->verbose > 2)
-    clog << _("Extracting build ID.") << endl;
-  bits_length = dwfl_module_build_id(mod, &bits, &vaddr);
-
-  /* Convert the binary bits to a hex string */
-  hex = hex_dump(bits, bits_length);
-
-  /* Search for the debuginfo with the build ID */
-  if(current_session_for_find_debuginfo->verbose > 2)
-    clog << _F("Searching for debuginfo with build ID: '%s'.", hex.c_str()) << endl;
-  if (bits_length > 0)
-    {
-      int fd = dwfl_build_id_find_debuginfo(mod,
-             NULL, NULL, 0,
-             NULL, NULL, 0,
-             debuginfo_file_name);
-      if (fd >= 0)
-        return fd;
-    }
-
-  /* The above failed, so call abrt-action-install-debuginfo-to-abrt-cache
-  to download and install the debuginfo */
-  if(current_session_for_find_debuginfo->verbose > 1)
-    clog << _F("Downloading and installing debuginfo with build ID: '%s' using %s.",
-            hex.c_str(), abrt_path.c_str()) << endl;
-
-  struct tms tms_before;
-  times (& tms_before);
-  struct timeval tv_before;
-  struct tms tms_after;
-  unsigned _sc_clk_tck;
-  struct timeval tv_after;
-  gettimeofday (&tv_before, NULL);
-
-  if(execute_abrt_action_install_debuginfo_to_abrt_cache (hex) < 0)
-    {
-      install_dbinfo_failed = -1;
-      current_session_for_find_debuginfo->print_warning(_F("%s failed.", abrt_path.c_str()));
-      goto call_dwfl_standard_find_debuginfo;
-    }
-
-  _sc_clk_tck = sysconf (_SC_CLK_TCK);
-  times (& tms_after);
-  gettimeofday (&tv_after, NULL);
-  if(current_session_for_find_debuginfo->verbose > 1)
-    clog << _("Download completed in ")
-              << ((tms_after.tms_cutime + tms_after.tms_utime
-              - tms_before.tms_cutime - tms_before.tms_utime) * 1000 / (_sc_clk_tck)) << "usr/"
-              << ((tms_after.tms_cstime + tms_after.tms_stime
-              - tms_before.tms_cstime - tms_before.tms_stime) * 1000 / (_sc_clk_tck)) << "sys/"
-              << ((tv_after.tv_sec - tv_before.tv_sec) * 1000 +
-              ((long)tv_after.tv_usec - (long)tv_before.tv_usec) / 1000) << "real ms"<< endl;
+  }
 
   call_dwfl_standard_find_debuginfo:
 

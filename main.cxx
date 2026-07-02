@@ -309,7 +309,7 @@ printscript(systemtap_session& s, ostream& o)
 }
 
 
-int pending_interrupts;
+std::atomic<int> pending_interrupts;
 
 extern "C"
 void handle_interrupt (int)

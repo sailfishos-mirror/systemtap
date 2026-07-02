@@ -1,0 +1,46 @@
+# Pass-3 translation output must be byte-identical from run to run.  In
+# particular stap_symbols.c -- the per-module symbol/unwind data emitted
+# by translate.cxx:emit_symbol_data(), which is dumped by several worker
+# threads when stap is built against a thread-safe elfutils -- must not
+# depend on thread scheduling.
+
+set test "translate_determinism"
+
+set script {probe begin { print_ubacktrace() }}
+set dirs {}
+set failed 0
+
+for {set i 1} {$i <= 2} {incr i} {
+    set errf ""
+    catch {set errf [exec mktemp]}
+    catch {exec stap -p3 -k --ldd -d /bin/sh -e $script > /dev/null 2> $errf}
+    set err ""
+    catch {set err [exec cat $errf]}
+    catch {exec rm -f $errf}
+    if {![regexp {Keeping temporary directory "([^"]*)"} $err -> dir]} {
+        fail "$test (run $i: no kept temporary directory)"
+        set failed 1
+        break
+    }
+    lappend dirs $dir
+}
+
+if {!$failed} {
+    set d1 [lindex $dirs 0]
+    set d2 [lindex $dirs 1]
+    # NB: compare by content, not directory listing: the generated main
+    # source embeds the (differing) pid in its file name.
+    set rc1 [catch {eval exec diff [glob $d1/stap_symbols.c] [glob $d2/stap_symbols.c]} out1]
+    set rc2 [catch {eval exec diff [glob $d1/stap_*_src.c] [glob $d2/stap_*_src.c]} out2]
+    if {$rc1 == 0 && $rc2 == 0} {
+        pass $test
+    } elseif {$rc1 != 0} {
+        fail "$test (stap_symbols.c differs between runs)"
+    } else {
+        fail "$test (translated source differs between runs)"
+    }
+}
+
+foreach d $dirs {
+    if {[string match "/tmp/stap*" $d]} { catch {exec rm -rf $d} }
+}

@@ -2631,6 +2631,8 @@ systemtap_session::print_error_details (std::ostream& message,
 void
 systemtap_session::print_warning (const string& message_str, const token* tok)
 {
+  std::lock_guard<std::mutex> g (print_warning_mutex);
+
   // Only output in dump mode if -vv is supplied:
   if (suppress_warnings && (!dump_mode || verbose <= 1))
     return; // NB: don't count towards suppressed_warnings count
