@@ -89,19 +89,21 @@ static struct file_operations stm_fops_cmd = {
 #endif
 
 
-int init_module(void)
+static int __init memory1_module_init(void)
 {
 	stm_ctl = proc_create ("stap_memory1_test", 0666, NULL, &stm_fops_cmd);
 	if (stm_ctl == NULL) 
 		return -1;
 	return 0;
 }
+module_init(memory1_module_init);
 
-void cleanup_module(void)
+static void __exit memory1_module_exit(void)
 {
 	if (stm_ctl)
 		remove_proc_entry ("stap_memory1_test", NULL);
 }
+module_exit(memory1_module_exit);
 
 MODULE_DESCRIPTION("systemtap memory1 test module");
 MODULE_LICENSE("GPL");
