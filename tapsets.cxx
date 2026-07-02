@@ -11194,6 +11194,14 @@ struct tracepoint_derived_probe: public derived_probe
 
   systemtap_session& sess;
   string tracepoint_system, tracepoint_name, header;
+  /*
+   * True for in-kernel-only tracepoints from DECLARE_TRACE() (stapprobe_
+   * function in tracequery DWARF).  False for TRACE_EVENT() tracepoints
+   * (stapprobe_* struct).  Since kernel 6.16, DECLARE_TRACE() expands its
+   * argument with a _tp suffix internally while the registration string
+   * stays unprefixed; see STAPCONF_TRACEPOINT_DECLARE_TP and emit below.
+   */
+  bool declare_trace_hook;
   vector <struct tracepoint_arg> args;
 
   void build_args(dwflpp& dw, Dwarf_Die& func_die);
@@ -11472,7 +11480,8 @@ tracepoint_derived_probe::tracepoint_derived_probe (systemtap_session& s,
                                                     const string& tracepoint_name,
                                                     probe* base, probe_point* loc):
   derived_probe (base, loc, true /* .components soon rewritten */), sess (s),
-  tracepoint_system (tracepoint_system), tracepoint_name (tracepoint_name)
+  tracepoint_system (tracepoint_system), tracepoint_name (tracepoint_name),
+  declare_trace_hook (dwarf_tag (&func_die) == DW_TAG_subprogram)
 {
   // create synthetic probe point name; preserve condition
   vector<probe_point::component*> comps;
@@ -12716,9 +12725,29 @@ tracepoint_derived_probe_group::emit_module_decls (systemtap_session& s)
       // emit normalized registration functions
       s.op->newline() << "int register_tracepoint_probe_" << i << "(void);";
       tpop->newline() << "int register_tracepoint_probe_" << i << "(void);" << endl;
+      /*
+       * DECLARE_TRACE() probes (declare_trace_hook): kernel 6.16+ uses
+       * check_trace_callback_type_<name>_tp while registering "<name>".
+       * Older kernels spelled _tp in the header (e.g. pelt_cfs_tp) and
+       * used the same token for both.  TRACE_EVENT() probes are unchanged.
+       */
       tpop->newline() << "int register_tracepoint_probe_" << i << "(void) {";
-      tpop->newline(1) << "return STP_TRACE_REGISTER(" << p->tracepoint_name
-                       << ", " << enter_fn << ");";
+      if (p->declare_trace_hook)
+        {
+          tpop->newline(1) << "#ifdef STAPCONF_TRACEPOINT_DECLARE_TP";
+          tpop->newline(1) << "return STP_TRACE_REGISTER2(" << p->tracepoint_name
+                           << ", " << p->tracepoint_name << "_tp, "
+                           << enter_fn << ");";
+          tpop->newline(-1) << "#else";
+          tpop->newline(1) << "return STP_TRACE_REGISTER2(" << p->tracepoint_name
+                           << ", " << p->tracepoint_name << ", "
+                           << enter_fn << ");";
+          tpop->newline(-1) << "#endif";
+        }
+      else
+        tpop->newline(1) << "return STP_TRACE_REGISTER2(" << p->tracepoint_name
+                         << ", " << p->tracepoint_name << ", "
+                         << enter_fn << ");";
       tpop->newline(-1) << "}";
 
       // NB: we're not prepared to deal with unreg failures.  However, failures
@@ -12730,8 +12759,22 @@ tracepoint_derived_probe_group::emit_module_decls (systemtap_session& s)
       s.op->newline() << "void unregister_tracepoint_probe_" << i << "(void);";
       tpop->newline() << "void unregister_tracepoint_probe_" << i << "(void);" << endl;
       tpop->newline() << "void unregister_tracepoint_probe_" << i << "(void) {";
-      tpop->newline(1) << "(void) STP_TRACE_UNREGISTER(" << p->tracepoint_name
-                       << ", " << enter_fn << ");";
+      if (p->declare_trace_hook)
+        {
+          tpop->newline(1) << "#ifdef STAPCONF_TRACEPOINT_DECLARE_TP";
+          tpop->newline(1) << "(void) STP_TRACE_UNREGISTER2(" << p->tracepoint_name
+                           << ", " << p->tracepoint_name << "_tp, "
+                           << enter_fn << ");";
+          tpop->newline(-1) << "#else";
+          tpop->newline(1) << "(void) STP_TRACE_UNREGISTER2(" << p->tracepoint_name
+                           << ", " << p->tracepoint_name << ", "
+                           << enter_fn << ");";
+          tpop->newline(-1) << "#endif";
+        }
+      else
+        tpop->newline(1) << "(void) STP_TRACE_UNREGISTER2(" << p->tracepoint_name
+                         << ", " << p->tracepoint_name << ", "
+                         << enter_fn << ");";
       tpop->newline(-1) << "}";
       tpop->newline();
 
