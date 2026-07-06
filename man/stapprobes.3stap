@@ -166,7 +166,7 @@ l l l.
 \fBDWARF	NON-DWARF	SYMBOL-TABLE\fP
 
 kernel.function, .statement	kernel.mark	kernel.function\fI*\fP
-module.function, .statement	process.mark, process.plt	module.function\fI*\fP
+module.function, .statement, .tracepoint	process.mark, process.plt	module.function\fI*\fP
 process.function, .statement	begin, end, error, never	process.function\fI*\fP
 process.mark\fI*\fP	timer
 \.function.callee	perf
@@ -175,6 +175,7 @@ debuginfod	kernel.statement.absolute
 	kernel.data
 \fBAUTO-GENERATED-DWARF\fP	kprobe.function
 kernel.trace	process.statement.absolute
+kernel.tracepoint
 kernel.lsm
 	process.begin, .end
 	netfilter
@@ -1429,6 +1430,77 @@ and a string of name=value pairs for all parameters of the tracepoint
 is available in
 .BR $$vars " or " $$parms .
 
+.SS BTF TRACEPOINTS
+
+This family of probe points also hooks up to kernel and module
+tracepoints, but discovers them from
+.BR btf_trace_* callback typedefs
+rather than from trace event header files.  The kernel catalog comes
+from
+.BR vmlinux.h
+in the kernel build tree (requires
+.BR CONFIG_DEBUG_INFO_BTF ).
+Module tracepoints are discovered from the module's debuginfo when it
+contains matching
+.BR btf_trace_*
+typedefs (typical when
+.BR CONFIG_DEBUG_INFO_BTF_MODULES
+is enabled).
+
+Kernel probes look like:
+.BR kernel.tracepoint("name") .
+Module probes look like:
+.BR module("modname").tracepoint("name") .
+The name string may contain the usual wildcard characters.  Unlike
+.BR kernel.trace() ,
+these probes do
+.B not
+use
+.BR system:name
+syntax; specify only the tracepoint registration name (for example
+.BR sched_switch ,
+not
+.BR sched:sched_switch ).
+
+Handler arguments are positional and numbered from one:
+.BR $arg1 ,
+.BR $arg2 ,
+and so on, derived from the callback typedef in
+.BR vmlinux.h
+or module debuginfo.  The leading
+.BR "void *"
+cookie parameter is omitted.  Named parameters from
+.BR TP_PROTO
+are not available on this probe type; use
+.BR kernel.trace("system:name")
+if you need those names.
+
+The tracepoint name is available in
+.BR $$name .
+.BR $$system
+is always empty for BTF tracepoint probes.
+A string of name=value pairs for usable arguments is available in
+.BR $$vars " or " $$parms .
+
+Example uses:
+.PP
+.nf
+# Kernel tracepoint by registration name
+probe kernel.tracepoint("sched_switch") {
+  printf("preempt=%d cpu=%d\\n", $arg1, $arg4)
+}
+
+# Module tracepoint (module debuginfo required)
+probe module("nfs").tracepoint("nfs_getattr_enter") {
+  printf("inode=%d\\n", $arg1)
+}
+
+# List available kernel tracepoints
+$ stap -L 'kernel.tracepoint("sched_switch")'
+$ stap -l 'kernel.tracepoint("*")'
+.fi
+.PP
+
 .SS LSM (LINUX SECURITY MODULE) HOOKS
 
 This family of probe points, available with the BPF runtime
@@ -1763,6 +1835,17 @@ probe instead.
 kernel.trace("sched_*")
 refers to all scheduler-related (really, prefixed) tracepoints in
 the kernel.
+.TP
+kernel.tracepoint("sched_switch")
+refers to the
+.BR sched_switch
+tracepoint using the BTF/vmlinux.h catalog and
+.BR $arg1 ,
+.BR $arg2 ,
+etc. arguments.
+.TP
+module("nfs").tracepoint("nfs_*")
+refers to NFS module tracepoints discovered from module debuginfo.
 .TP
 kernel.mark("getuid")
 refers to an obsolete STAP_MARK(getuid, ...) macro call in the kernel.

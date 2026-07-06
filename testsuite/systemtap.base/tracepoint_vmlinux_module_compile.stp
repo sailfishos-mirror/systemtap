@@ -1,0 +1,3 @@
+probe module("nfs").tracepoint("nfs_getattr_enter") {
+  printf("%s\n", $arg1$)
+}

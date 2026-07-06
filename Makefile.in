@@ -189,6 +189,7 @@ am__dirstamp = $(am__leading_dot)dirstamp
 @BUILD_TRANSLATOR_TRUE@	stap-elaborate.$(OBJEXT) \
 @BUILD_TRANSLATOR_TRUE@	stap-translate.$(OBJEXT) \
 @BUILD_TRANSLATOR_TRUE@	stap-tapsets.$(OBJEXT) \
+@BUILD_TRANSLATOR_TRUE@	stap-tracepoint-vmlinux.$(OBJEXT) \
 @BUILD_TRANSLATOR_TRUE@	stap-buildrun.$(OBJEXT) \
 @BUILD_TRANSLATOR_TRUE@	stap-loc2stap.$(OBJEXT) \
 @BUILD_TRANSLATOR_TRUE@	stap-hash.$(OBJEXT) \
@@ -353,7 +354,9 @@ am__depfiles_remade = ./$(DEPDIR)/stap-analysis.Po \
 	./$(DEPDIR)/stap-tapset-python.Po \
 	./$(DEPDIR)/stap-tapset-timers.Po \
 	./$(DEPDIR)/stap-tapset-utrace.Po ./$(DEPDIR)/stap-tapsets.Po \
-	./$(DEPDIR)/stap-task_finder.Po ./$(DEPDIR)/stap-translate.Po \
+	./$(DEPDIR)/stap-task_finder.Po \
+	./$(DEPDIR)/stap-tracepoint-vmlinux.Po \
+	./$(DEPDIR)/stap-translate.Po \
 	./$(DEPDIR)/stap-translator-output.Po \
 	./$(DEPDIR)/stap_authorize_cert-nsscommon.Po \
 	./$(DEPDIR)/stap_authorize_cert-stap-authorize-cert.Po \
@@ -672,7 +675,8 @@ nodist_pkglibexec_SCRIPTS = initscript/stap-service-prepare
 oldinclude_HEADERS = includes/sys/sdt.h includes/sys/sdt-config.h
 @BUILD_TRANSLATOR_TRUE@stap_SOURCES = main.cxx session.cxx parse.cxx \
 @BUILD_TRANSLATOR_TRUE@	staptree.cxx elaborate.cxx \
-@BUILD_TRANSLATOR_TRUE@	translate.cxx tapsets.cxx buildrun.cxx \
+@BUILD_TRANSLATOR_TRUE@	translate.cxx tapsets.cxx \
+@BUILD_TRANSLATOR_TRUE@	tracepoint-vmlinux.cxx buildrun.cxx \
 @BUILD_TRANSLATOR_TRUE@	loc2stap.cxx hash.cxx mdfour.c \
 @BUILD_TRANSLATOR_TRUE@	cache.cxx staputil.cxx coveragedb.cxx \
 @BUILD_TRANSLATOR_TRUE@	dwarf_wrappers.cxx tapset-been.cxx \
@@ -1218,6 +1222,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stap-tapset-utrace.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stap-tapsets.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stap-task_finder.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stap-tracepoint-vmlinux.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stap-translate.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stap-translator-output.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stap_authorize_cert-nsscommon.Po@am__quote@ # am--include-marker
@@ -1403,6 +1408,20 @@ stap-tapsets.obj: tapsets.cxx
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='tapsets.cxx' object='stap-tapsets.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(stap_CPPFLAGS) $(CPPFLAGS) $(stap_CXXFLAGS) $(CXXFLAGS) -c -o stap-tapsets.obj `if test -f 'tapsets.cxx'; then $(CYGPATH_W) 'tapsets.cxx'; else $(CYGPATH_W) '$(srcdir)/tapsets.cxx'; fi`
+
+stap-tracepoint-vmlinux.o: tracepoint-vmlinux.cxx
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(stap_CPPFLAGS) $(CPPFLAGS) $(stap_CXXFLAGS) $(CXXFLAGS) -MT stap-tracepoint-vmlinux.o -MD -MP -MF $(DEPDIR)/stap-tracepoint-vmlinux.Tpo -c -o stap-tracepoint-vmlinux.o `test -f 'tracepoint-vmlinux.cxx' || echo '$(srcdir)/'`tracepoint-vmlinux.cxx
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/stap-tracepoint-vmlinux.Tpo $(DEPDIR)/stap-tracepoint-vmlinux.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='tracepoint-vmlinux.cxx' object='stap-tracepoint-vmlinux.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(stap_CPPFLAGS) $(CPPFLAGS) $(stap_CXXFLAGS) $(CXXFLAGS) -c -o stap-tracepoint-vmlinux.o `test -f 'tracepoint-vmlinux.cxx' || echo '$(srcdir)/'`tracepoint-vmlinux.cxx
+
+stap-tracepoint-vmlinux.obj: tracepoint-vmlinux.cxx
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(stap_CPPFLAGS) $(CPPFLAGS) $(stap_CXXFLAGS) $(CXXFLAGS) -MT stap-tracepoint-vmlinux.obj -MD -MP -MF $(DEPDIR)/stap-tracepoint-vmlinux.Tpo -c -o stap-tracepoint-vmlinux.obj `if test -f 'tracepoint-vmlinux.cxx'; then $(CYGPATH_W) 'tracepoint-vmlinux.cxx'; else $(CYGPATH_W) '$(srcdir)/tracepoint-vmlinux.cxx'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/stap-tracepoint-vmlinux.Tpo $(DEPDIR)/stap-tracepoint-vmlinux.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='tracepoint-vmlinux.cxx' object='stap-tracepoint-vmlinux.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(stap_CPPFLAGS) $(CPPFLAGS) $(stap_CXXFLAGS) $(CXXFLAGS) -c -o stap-tracepoint-vmlinux.obj `if test -f 'tracepoint-vmlinux.cxx'; then $(CYGPATH_W) 'tracepoint-vmlinux.cxx'; else $(CYGPATH_W) '$(srcdir)/tracepoint-vmlinux.cxx'; fi`
 
 stap-buildrun.o: buildrun.cxx
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(stap_CPPFLAGS) $(CPPFLAGS) $(stap_CXXFLAGS) $(CXXFLAGS) -MT stap-buildrun.o -MD -MP -MF $(DEPDIR)/stap-buildrun.Tpo -c -o stap-buildrun.o `test -f 'buildrun.cxx' || echo '$(srcdir)/'`buildrun.cxx
@@ -2451,6 +2470,7 @@ distclean: distclean-recursive
 	-rm -f ./$(DEPDIR)/stap-tapset-utrace.Po
 	-rm -f ./$(DEPDIR)/stap-tapsets.Po
 	-rm -f ./$(DEPDIR)/stap-task_finder.Po
+	-rm -f ./$(DEPDIR)/stap-tracepoint-vmlinux.Po
 	-rm -f ./$(DEPDIR)/stap-translate.Po
 	-rm -f ./$(DEPDIR)/stap-translator-output.Po
 	-rm -f ./$(DEPDIR)/stap_authorize_cert-nsscommon.Po
@@ -2569,6 +2589,7 @@ maintainer-clean: maintainer-clean-recursive
 	-rm -f ./$(DEPDIR)/stap-tapset-utrace.Po
 	-rm -f ./$(DEPDIR)/stap-tapsets.Po
 	-rm -f ./$(DEPDIR)/stap-task_finder.Po
+	-rm -f ./$(DEPDIR)/stap-tracepoint-vmlinux.Po
 	-rm -f ./$(DEPDIR)/stap-translate.Po
 	-rm -f ./$(DEPDIR)/stap-translator-output.Po
 	-rm -f ./$(DEPDIR)/stap_authorize_cert-nsscommon.Po

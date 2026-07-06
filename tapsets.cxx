@@ -24,6 +24,7 @@
 #include "setupdwfl.h"
 #include "loc2stap.h"
 #include "analysis.h"
+#include "tracepoint-vmlinux.h"
 #include <gelf.h>
 
 #include "sdt_types.h"
@@ -490,6 +491,7 @@ static const string TOK_PROCESS("process");
 static const string TOK_PROVIDER("provider");
 static const string TOK_MARK("mark");
 static const string TOK_TRACE("trace");
+static const string TOK_TRACEPOINT("tracepoint");
 static const string TOK_LSM("lsm");
 static const string TOK_LABEL("label");
 static const string TOK_LIBRARY("library");
@@ -11192,6 +11194,21 @@ struct tracepoint_derived_probe: public derived_probe
                             const string& tracepoint_name,
                             probe* base_probe, probe_point* location);
 
+  tracepoint_derived_probe (systemtap_session& s,
+                            dwflpp& dw,
+                            const string& tracepoint_name,
+                            const string& btf_typedef_name,
+                            bool declare_trace_hook_p,
+                            probe* base_probe, probe_point* location);
+
+  tracepoint_derived_probe (systemtap_session& s,
+                            dwflpp& dw,
+                            const string& module_name,
+                            const string& tracepoint_name,
+                            const string& btf_typedef_name,
+                            bool declare_trace_hook_p,
+                            probe* base_probe, probe_point* location);
+
   systemtap_session& sess;
   string tracepoint_system, tracepoint_name, header;
   /*
@@ -11205,6 +11222,7 @@ struct tracepoint_derived_probe: public derived_probe
   vector <struct tracepoint_arg> args;
 
   void build_args(dwflpp& dw, Dwarf_Die& func_die);
+  void build_args_from_btf_typedef(dwflpp& dw, const string& btf_typedef_name);
   void build_args_for_bpf(dwflpp& dw, Dwarf_Die& struct_die);
   void getargs (std::list<std::string> &arg_set) const;
   void join_group (systemtap_session& s);
@@ -11560,6 +11578,99 @@ tracepoint_derived_probe::tracepoint_derived_probe (systemtap_session& s,
 }
 
 
+tracepoint_derived_probe::tracepoint_derived_probe(
+  systemtap_session& s, dwflpp& dw,
+  const string& tracepoint_name,
+  const string& btf_typedef_name,
+  bool declare_trace_hook_p,
+  probe* base, probe_point* loc):
+  derived_probe (base, loc, true /* .components soon rewritten */), sess (s),
+  tracepoint_system (""), tracepoint_name (tracepoint_name),
+  header ("vmlinux.h"), declare_trace_hook (declare_trace_hook_p)
+{
+  vector<probe_point::component*> comps;
+  comps.push_back (new probe_point::component (TOK_KERNEL));
+  comps.push_back (new probe_point::component (TOK_TRACEPOINT,
+                                               new literal_string(tracepoint_name)));
+  this->sole_location()->components = comps;
+
+  if (s.runtime_mode == systemtap_session::bpf_runtime)
+    throw SEMANTIC_ERROR (_("kernel.tracepoint() is not supported with --runtime=bpf yet"),
+                          loc->components[0]->tok);
+
+  build_args_from_btf_typedef(dw, btf_typedef_name);
+
+  tracepoint_var_expanding_visitor v (dw, args);
+  var_expand_const_fold_loop (sess, this->body, v);
+
+  for (unsigned i = 0; i < args.size(); i++)
+    {
+      if (!args[i].used)
+        continue;
+
+      vardecl* v = new vardecl;
+      v->name = v->unmangled_name = "__tracepoint_arg_" + args[i].name;
+      v->tok = this->tok;
+      v->set_arity(0, this->tok);
+      v->type = pe_long;
+      v->synthetic = true;
+      this->locals.push_back(v);
+    }
+
+  if (sess.verbose > 2)
+    clog << "btf-tracepoint-based " << name() << " tracepoint='"
+         << tracepoint_name << "' from " << btf_typedef_name << endl;
+}
+
+
+tracepoint_derived_probe::tracepoint_derived_probe(
+  systemtap_session& s, dwflpp& dw,
+  const string& module_name,
+  const string& tracepoint_name,
+  const string& btf_typedef_name,
+  bool declare_trace_hook_p,
+  probe* base, probe_point* loc):
+  derived_probe (base, loc, true /* .components soon rewritten */), sess (s),
+  tracepoint_system (""), tracepoint_name (tracepoint_name),
+  header ("vmlinux.h"), declare_trace_hook (declare_trace_hook_p)
+{
+  vector<probe_point::component*> comps;
+  comps.push_back (new probe_point::component (TOK_MODULE,
+                                               new literal_string(module_name)));
+  comps.push_back (new probe_point::component (TOK_TRACEPOINT,
+                                               new literal_string(tracepoint_name)));
+  this->sole_location()->components = comps;
+
+  if (s.runtime_mode == systemtap_session::bpf_runtime)
+    throw SEMANTIC_ERROR (_("module.tracepoint() is not supported with --runtime=bpf yet"),
+                          loc->components[0]->tok);
+
+  build_args_from_btf_typedef(dw, btf_typedef_name);
+
+  tracepoint_var_expanding_visitor v (dw, args);
+  var_expand_const_fold_loop (sess, this->body, v);
+
+  for (unsigned i = 0; i < args.size(); i++)
+    {
+      if (!args[i].used)
+        continue;
+
+      vardecl* v = new vardecl;
+      v->name = v->unmangled_name = "__tracepoint_arg_" + args[i].name;
+      v->tok = this->tok;
+      v->set_arity(0, this->tok);
+      v->type = pe_long;
+      v->synthetic = true;
+      this->locals.push_back(v);
+    }
+
+  if (sess.verbose > 2)
+    clog << "module-btf-tracepoint-based " << name() << " module='"
+         << module_name << "' tracepoint='" << tracepoint_name
+         << "' from " << btf_typedef_name << endl;
+}
+
+
 static bool
 resolve_pointer_type(Dwarf_Die& die, bool& isptr)
 {
@@ -11760,6 +11871,131 @@ tracepoint_derived_probe::build_args(dwflpp&, Dwarf_Die& func_die)
             }
         }
     while (dwarf_siblingof(&arg, &arg) == 0);
+}
+
+static bool
+btf_param_is_void_cookie(Dwarf_Die *param)
+{
+  Dwarf_Die type;
+  if (!dwarf_attr_die(param, DW_AT_type, &type))
+    return false;
+  string tname;
+  if (!dwarf_type_name(&type, tname))
+    return false;
+  return tname == "void *" || tname == "void*";
+}
+
+static void
+fix_btf_callback_param(tracepoint_arg& ta)
+{
+  int tag = dwarf_tag(&ta.type_die);
+  if (tag != DW_TAG_structure_type && tag != DW_TAG_union_type)
+    return;
+
+  // vmlinux.h / module BTF DWARF often describes pointer parameters as
+  // structure types without DW_TAG_pointer_type.  Tracepoint callbacks pass
+  // pointers to kernel objects, not whole structs by value.
+  ta.isptr = true;
+  ta.typecast = "(intptr_t)";
+
+  const string var = "__tracepoint_arg_" + ta.name;
+  size_t pos = ta.c_decl.rfind(var);
+  if (pos == string::npos)
+    return;
+  if (pos > 0 && ta.c_decl[pos - 1] == '*')
+    return;
+  ta.c_decl.insert(pos, "*");
+}
+
+static void
+btf_add_args_from_subroutine_type(tracepoint_derived_probe *probe,
+                                  Dwarf_Die *subr)
+{
+  Dwarf_Die param;
+  if (dwarf_child(subr, &param) != 0)
+    return;
+
+  unsigned argno = 0;
+  do
+    {
+      if (dwarf_tag(&param) != DW_TAG_formal_parameter)
+        continue;
+      if (probe->args.empty() && btf_param_is_void_cookie(&param))
+        continue;
+
+      argno++;
+      probe->args.emplace_back(probe->tracepoint_name, &param);
+      tracepoint_arg& ta = probe->args.back();
+      ta.name = "arg" + lex_cast(argno);
+      if (!dwarf_type_decl(&ta.type_die, "__tracepoint_arg_" + ta.name, ta.c_decl))
+        throw SEMANTIC_ERROR(_F("cannot get declaration of $%s for tracepoint '%s'",
+                                  ta.name.c_str(), probe->tracepoint_name.c_str()),
+                             probe->tok);
+      ta.usable = resolve_tracepoint_arg_type(ta);
+      fix_btf_callback_param(ta);
+
+      if (probe->sess.verbose > 4)
+        clog << _F("btf tracepoint '%s': type:'%s' name:'%s' decl:'%s' %s",
+                   probe->tracepoint_name.c_str(), ta.c_type.c_str(), ta.name.c_str(),
+                   ta.c_decl.c_str(), ta.usable ? "ok" : "unavailable") << endl;
+    }
+  while (dwarf_siblingof(&param, &param) == 0);
+}
+
+struct btf_typedef_search
+{
+  tracepoint_derived_probe *probe;
+  string btf_typedef_name;
+  bool found;
+};
+
+static int
+btf_typedef_search_type(Dwarf_Die *die, bool, const string&,
+                        btf_typedef_search *q)
+{
+  if (dwarf_tag(die) != DW_TAG_typedef)
+    return DWARF_CB_OK;
+
+  const char *n = dwarf_diename(die);
+  if (!n || q->btf_typedef_name != n)
+    return DWARF_CB_OK;
+
+  Dwarf_Die type;
+  if (!dwarf_attr_die(die, DW_AT_type, &type))
+    return DWARF_CB_OK;
+
+  if (dwarf_tag(&type) == DW_TAG_pointer_type)
+    {
+      if (!dwarf_attr_die(&type, DW_AT_type, &type))
+        return DWARF_CB_OK;
+    }
+
+  if (dwarf_tag(&type) != DW_TAG_subroutine_type)
+    return DWARF_CB_OK;
+
+  btf_add_args_from_subroutine_type(q->probe, &type);
+  q->found = true;
+  return DWARF_CB_ABORT;
+}
+
+static int
+btf_typedef_search_cu(Dwarf_Die *cudie, btf_typedef_search *q)
+{
+  int rc = dwflpp::iterate_over_globals(cudie, btf_typedef_search_type, q);
+  if (q->found)
+    return DWARF_CB_ABORT;
+  return rc;
+}
+
+void
+tracepoint_derived_probe::build_args_from_btf_typedef(dwflpp& dw,
+                                                        const string& btf_typedef_name)
+{
+  btf_typedef_search q = { this, btf_typedef_name, false };
+  dw.iterate_over_cus(btf_typedef_search_cu, &q, true);
+  if (!q.found)
+    throw SEMANTIC_ERROR(_F("cannot find %s in vmlinux.h dwarf",
+                              btf_typedef_name.c_str()), this->tok);
 }
 
 void
@@ -12595,6 +12831,7 @@ tracepoint_derived_probe_group::emit_module_decls (systemtap_session& s)
     {
       tracepoint_derived_probe *p = probes[i];
       string header = p->header;
+      const bool btf_catalog_p = (header == "vmlinux.h");
 
       // We cache the auxiliary output files on a per-header basis.  We don't
       // need one aux file per tracepoint, only one per tracepoint-header.
@@ -12604,19 +12841,22 @@ tracepoint_derived_probe_group::emit_module_decls (systemtap_session& s)
           tpop = s.op_create_auxiliary();
           per_header_aux[header] = tpop;
 
-          // PR9993: Add extra headers to work around undeclared types in individual
-          // include/trace/foo.h files
-          const vector<string>& extra_decls = tracepoint_extra_decls (s, header,
-								      false);
-          for (unsigned z=0; z<extra_decls.size(); z++)
-            tpop->newline() << extra_decls[z] << "\n";
-
-          // strip include/ substring, the same way as done in get_tracequery_module()
-          size_t root_pos = header.rfind("include/");
-          header = ((root_pos != string::npos) ? header.substr(root_pos + 8) : header);
-
           tpop->newline() << "#include <linux/stp_tracepoint.h>" << endl;
-          tpop->newline() << "#include <" << header << ">";
+          if (!btf_catalog_p)
+            {
+              // PR9993: Add extra headers to work around undeclared types in individual
+              // include/trace/foo.h files
+              const vector<string>& extra_decls = tracepoint_extra_decls (s, header,
+                                                                          false);
+              for (unsigned z=0; z<extra_decls.size(); z++)
+                tpop->newline() << extra_decls[z] << "\n";
+
+              // strip include/ substring, the same way as done in get_tracequery_module()
+              size_t root_pos = header.rfind("include/");
+              header = ((root_pos != string::npos) ? header.substr(root_pos + 8) : header);
+
+              tpop->newline() << "#include <" << header << ">";
+            }
         }
 
       // Recompute the 'used' flag: probe combining can create shared context variables
@@ -12732,7 +12972,13 @@ tracepoint_derived_probe_group::emit_module_decls (systemtap_session& s)
        * used the same token for both.  TRACE_EVENT() probes are unchanged.
        */
       tpop->newline() << "int register_tracepoint_probe_" << i << "(void) {";
-      if (p->declare_trace_hook)
+      if (btf_catalog_p)
+        {
+          tpop->newline(1) << "return stp_tracepoint_probe_register("
+                           << lex_cast_qstring(p->tracepoint_name) << ", (void*)"
+                           << enter_fn << ", NULL);";
+        }
+      else if (p->declare_trace_hook)
         {
           tpop->newline(1) << "#ifdef STAPCONF_TRACEPOINT_DECLARE_TP";
           tpop->newline(1) << "return STP_TRACE_REGISTER2(" << p->tracepoint_name
@@ -12759,7 +13005,13 @@ tracepoint_derived_probe_group::emit_module_decls (systemtap_session& s)
       s.op->newline() << "void unregister_tracepoint_probe_" << i << "(void);";
       tpop->newline() << "void unregister_tracepoint_probe_" << i << "(void);" << endl;
       tpop->newline() << "void unregister_tracepoint_probe_" << i << "(void) {";
-      if (p->declare_trace_hook)
+      if (btf_catalog_p)
+        {
+          tpop->newline(1) << "(void) stp_tracepoint_probe_unregister("
+                           << lex_cast_qstring(p->tracepoint_name) << ", (void*)"
+                           << enter_fn << ", NULL);";
+        }
+      else if (p->declare_trace_hook)
         {
           tpop->newline(1) << "#ifdef STAPCONF_TRACEPOINT_DECLARE_TP";
           tpop->newline(1) << "(void) STP_TRACE_UNREGISTER2(" << p->tracepoint_name
@@ -13660,6 +13912,291 @@ sort_for_bpf(systemtap_session& s,
   return true;
 }
 
+struct focus_typequery_data
+{
+  systemtap_session& sess;
+  dwflpp& dw;
+  const char *target_name; // if set, focus only this module name
+  bool focused;
+};
+
+static int
+focus_typequery_module_cb(Dwfl_Module *mod,
+                          void **,
+                          const char *name,
+                          Dwarf_Addr addr,
+                          focus_typequery_data *fd)
+{
+  if (fd->target_name && strcmp(name, fd->target_name) != 0)
+    return DWARF_CB_OK;
+
+  module_info* mi = fd->sess.module_cache->cache[name];
+  if (mi == 0)
+    {
+      mi = fd->sess.module_cache->cache[name] = new module_info(name);
+      mi->mod = mod;
+      mi->addr = addr;
+
+      const char* debug_filename = "";
+      const char* main_filename = "";
+      (void) dwfl_module_info(mod, NULL, NULL, NULL, NULL, NULL,
+                              &main_filename, &debug_filename);
+      if (debug_filename || main_filename)
+        mi->elf_path = debug_filename ?: main_filename;
+    }
+
+  fd->dw.focus_on_module(mod, mi);
+  fd->focused = true;
+  return DWARF_CB_ABORT;
+}
+
+static bool
+focus_typequery_module(systemtap_session& s, dwflpp& dw,
+                       const char *target_name = NULL)
+{
+  focus_typequery_data fd = { s, dw, target_name, false };
+  dw.iterate_over_modules(focus_typequery_module_cb, &fd);
+  return fd.focused;
+}
+
+struct btf_tracepoint_builder: public derived_probe_builder
+{
+  dwflpp *dw;
+
+  btf_tracepoint_builder(): dw(0) {}
+  ~btf_tracepoint_builder() { delete dw; }
+
+  bool init_dw(systemtap_session& s)
+  {
+    if (dw)
+      return true;
+
+    string vpath;
+    if (!vmlinux_h_path(s, vpath))
+      return false;
+
+    string mod = "kernel<vmlinux.h>";
+    if (make_typequery(s, mod) != 0)
+      {
+        s.print_warning(_("failed to build vmlinux.h typequery module for kernel.tracepoint()"));
+        return false;
+      }
+
+    dw = new dwflpp(s, mod, true);
+    if (!focus_typequery_module(s, *dw))
+      {
+        delete dw;
+        dw = 0;
+        s.print_warning(_("failed to focus on vmlinux.h typequery module for kernel.tracepoint()"));
+        return false;
+      }
+    return true;
+  }
+
+  void build(systemtap_session& s,
+             probe *base, probe_point *location,
+             literal_map_t const& parameters,
+             vector<derived_probe*>& finished_results);
+
+  virtual string name() { return "btf tracepoint builder"; }
+};
+
+void
+btf_tracepoint_builder::build(systemtap_session& s,
+                              probe *base, probe_point *location,
+                              literal_map_t const& parameters,
+                              vector<derived_probe*>& finished_results)
+{
+  if (s.runtime_mode == systemtap_session::bpf_runtime)
+    throw SEMANTIC_ERROR (_("kernel.tracepoint() is not supported with --runtime=bpf yet"),
+                          location->components[0]->tok);
+
+  if (!init_dw(s))
+    throw SEMANTIC_ERROR (_("kernel.tracepoint() requires vmlinux.h in the kernel build tree "
+                            "(kernel-devel with CONFIG_DEBUG_INFO_BTF)"),
+                          location->components[0]->tok);
+
+  interned_string pattern;
+  assert(get_param(parameters, TOK_TRACEPOINT, pattern));
+
+  string tracepoint(pattern);
+  if (tracepoint.find(':') != string::npos)
+    throw SEMANTIC_ERROR (_("kernel.tracepoint() does not use system:name syntax; "
+                            "use the tracepoint name only"),
+                          location->components[0]->tok);
+
+  if (tracepoint.empty())
+    throw SEMANTIC_ERROR (_("invalid kernel.tracepoint() string"), location->components[0]->tok);
+
+  const vector<btf_tracepoint_meta>& catalog = get_btf_tracepoint_catalog(s);
+  if (catalog.empty())
+    throw SEMANTIC_ERROR (_("no btf_trace_* entries found in vmlinux.h"),
+                          location->components[0]->tok);
+
+  unsigned results_pre = finished_results.size();
+  set<string> probed_names;
+  const bool listing_p = (s.dump_mode == systemtap_session::dump_matched_probes
+                          || s.dump_mode == systemtap_session::dump_matched_probes_vars);
+
+  for (size_t i = 0; i < catalog.size(); i++)
+    {
+      const btf_tracepoint_meta& meta = catalog[i];
+
+      if (!dw->function_name_matches_pattern(meta.hook_name, tracepoint))
+        continue;
+
+      if (!probed_names.insert(meta.hook_name).second)
+        continue;
+
+      try
+        {
+          derived_probe *dp = new tracepoint_derived_probe(
+            s, *dw, meta.hook_name, meta.btf_name, meta.declare_trace_hook,
+            base, location);
+          finished_results.push_back(dp);
+        }
+      catch (const semantic_error& e)
+        {
+          if (!listing_p)
+            throw;
+          if (s.verbose > 2)
+            clog << _F("skipping kernel.tracepoint(\"%s\"): %s",
+                       meta.hook_name.c_str(), e.what()) << endl;
+        }
+    }
+
+  if (finished_results.size() == results_pre)
+    {
+      string pat(pattern);
+      throw SEMANTIC_ERROR (_F("no match for kernel.tracepoint(\"%s\")",
+                                pat.c_str()),
+                            location->components[0]->tok);
+    }
+}
+
+struct module_btf_tracepoint_builder: public derived_probe_builder
+{
+  map<string, dwflpp*> mod_dw;
+
+  module_btf_tracepoint_builder() {}
+  ~module_btf_tracepoint_builder() { delete_map(mod_dw); }
+
+  dwflpp* init_dw(systemtap_session& s, const string& module_name)
+  {
+    auto it = mod_dw.find(module_name);
+    if (it != mod_dw.end())
+      return it->second;
+
+    dwflpp *dw = new dwflpp(s, module_name, true);
+    if (!focus_typequery_module(s, *dw, module_name.c_str()))
+      {
+        delete dw;
+        return NULL;
+      }
+
+    mod_dw[module_name] = dw;
+    return dw;
+  }
+
+  void build(systemtap_session& s,
+             probe *base, probe_point *location,
+             literal_map_t const& parameters,
+             vector<derived_probe*>& finished_results);
+
+  virtual string name() { return "module btf tracepoint builder"; }
+};
+
+void
+module_btf_tracepoint_builder::build(systemtap_session& s,
+                                     probe *base, probe_point *location,
+                                     literal_map_t const& parameters,
+                                     vector<derived_probe*>& finished_results)
+{
+  if (s.runtime_mode == systemtap_session::bpf_runtime)
+    throw SEMANTIC_ERROR (_("module.tracepoint() is not supported with --runtime=bpf yet"),
+                          location->components[0]->tok);
+
+  interned_string module_name;
+  assert(get_param(parameters, TOK_MODULE, module_name));
+  handle_module_token(s, module_name);
+
+  dwflpp *dw = init_dw(s, module_name);
+  if (!dw)
+    {
+      string mod(module_name);
+      throw SEMANTIC_ERROR (_F("module.tracepoint() requires debuginfo for module '%s'",
+                                mod.c_str()),
+                          location->components[0]->tok);
+    }
+
+  interned_string pattern;
+  assert(get_param(parameters, TOK_TRACEPOINT, pattern));
+
+  string tracepoint(pattern);
+  if (tracepoint.find(':') != string::npos)
+    throw SEMANTIC_ERROR (_("module.tracepoint() does not use system:name syntax; "
+                            "use the tracepoint name only"),
+                          location->components[0]->tok);
+
+  if (tracepoint.empty())
+    throw SEMANTIC_ERROR (_("invalid module.tracepoint() string"),
+                          location->components[0]->tok);
+
+  vector<btf_tracepoint_meta> catalog;
+  get_btf_tracepoint_catalog_from_dwarf(*dw, s, catalog);
+  if (catalog.empty())
+    {
+      string mod(module_name);
+      throw SEMANTIC_ERROR (_F("no btf_trace_* entries found in module '%s' dwarf",
+                                mod.c_str()),
+                          location->components[0]->tok);
+    }
+
+  unsigned results_pre = finished_results.size();
+  set<string> probed_names;
+  const bool listing_p = (s.dump_mode == systemtap_session::dump_matched_probes
+                          || s.dump_mode == systemtap_session::dump_matched_probes_vars);
+
+  for (size_t i = 0; i < catalog.size(); i++)
+    {
+      const btf_tracepoint_meta& meta = catalog[i];
+
+      if (!dw->function_name_matches_pattern(meta.hook_name, tracepoint))
+        continue;
+
+      if (!probed_names.insert(meta.hook_name).second)
+        continue;
+
+      try
+        {
+          derived_probe *dp = new tracepoint_derived_probe(
+            s, *dw, module_name, meta.hook_name, meta.btf_name,
+            meta.declare_trace_hook, base, location);
+          finished_results.push_back(dp);
+        }
+      catch (const semantic_error& e)
+        {
+          if (!listing_p)
+            throw;
+          if (s.verbose > 2)
+            {
+              string mod(module_name);
+              clog << _F("skipping module(\"%s\").tracepoint(\"%s\"): %s",
+                         mod.c_str(), meta.hook_name.c_str(), e.what()) << endl;
+            }
+        }
+    }
+
+  if (finished_results.size() == results_pre)
+    {
+      string mod(module_name);
+      string pat(pattern);
+      throw SEMANTIC_ERROR (_F("no match for module(\"%s\").tracepoint(\"%s\")",
+                                mod.c_str(), pat.c_str()),
+                            location->components[0]->tok);
+    }
+}
+
 bool
 sort_for_bpf(systemtap_session& s __attribute__ ((unused)),
              lsm_derived_probe_group *l,
@@ -13786,9 +14323,17 @@ register_standard_tapsets(systemtap_session & s)
     ->bind_privilege(pr_all)
     ->bind(new uprobe_builder ());
 
-  // kernel tracepoint probes
+  // kernel tracepoint probes (header/tracequery DWARF)
   s.pattern_root->bind(TOK_KERNEL)->bind_str(TOK_TRACE)
     ->bind(new tracepoint_builder());
+
+  // kernel.tracepoint() from vmlinux.h BTF callback typedefs ($arg1..$argN)
+  s.pattern_root->bind(TOK_KERNEL)->bind_str(TOK_TRACEPOINT)
+    ->bind(new btf_tracepoint_builder());
+
+  // module("foo").tracepoint() from module BTF/DWARF ($arg1..$argN)
+  s.pattern_root->bind_str(TOK_MODULE)->bind_str(TOK_TRACEPOINT)
+    ->bind(new module_btf_tracepoint_builder());
 
   // LSM hook probes (BPF runtime only, requires libbpf for BTF)
 #ifdef HAVE_LIBBPF

@@ -1,0 +1,3 @@
+probe kernel.tracepoint("sched_switch") {
+  printf("%s\n", $arg2$)
+}

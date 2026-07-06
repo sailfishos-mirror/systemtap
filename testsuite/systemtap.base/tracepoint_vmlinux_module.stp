@@ -1,0 +1,9 @@
+// Load a module tracepoint probe and confirm stap reaches begin (registration OK).
+probe begin {
+  println("tracepoint_vmlinux module OK")
+  exit()
+}
+
+probe module("nfs").tracepoint("nfs_getattr_enter") {
+  next
+}

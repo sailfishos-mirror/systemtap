@@ -1,0 +1,206 @@
+# Tests for kernel.tracepoint() and module().tracepoint() (vmlinux.h / module BTF DWARF).
+
+set test "tracepoint_vmlinux"
+
+proc kernel_vmlinux_h_p {} {
+    if {[catch {exec uname -r} krel]} {
+        return 0
+    }
+    set path "/lib/modules/$krel/build/vmlinux.h"
+    if {![file exists $path]} {
+        set path "/usr/src/kernels/$krel/vmlinux.h"
+    }
+    return [file exists $path]
+}
+
+proc nfs_module_tracepoint_p {} {
+    if {[catch {exec modinfo -F filename nfs 2>/dev/null} nfsko]} {
+        return 0
+    }
+    if {[string trim $nfsko] eq ""} {
+        return 0
+    }
+    set pp {module("nfs").tracepoint("nfs_getattr_enter")}
+    # stap -l exits 0 when the probe resolves; do not parse its output here.
+    if {[catch {exec stap -l $pp}]} {
+        return 0
+    }
+    return 1
+}
+
+proc stap_list1 {subtest pp {exp ""}} {
+    global test
+    if {$exp == ""} {
+        set exp $pp
+    }
+    verbose -log "executing: stap -l $pp"
+    if {[catch {exec stap -l $pp} out]} {
+        fail "$test $subtest"
+        verbose -log $out
+        return 0
+    }
+    set lines [split [string trim $out] "\n"]
+    if {[llength $lines] != 1 || ![string equal [lindex $lines 0] $exp]} {
+        fail "$test $subtest"
+        verbose -log "expected: \"$exp\""
+        verbose -log "received: \"$out\""
+        return 0
+    }
+    pass "$test $subtest"
+    return 1
+}
+
+proc stap_list_min {subtest pp min} {
+    global test
+    verbose -log "executing: stap -l $pp"
+    if {[catch {exec stap -l $pp} out]} {
+        fail "$test $subtest"
+        verbose -log $out
+        return 0
+    }
+    set n [llength [split [string trim $out] "\n"]]
+    if {$n < $min} {
+        fail "$test $subtest"
+        verbose -log "expected at least $min lines, got $n"
+        return 0
+    }
+    pass "$test $subtest ($n)"
+    return 1
+}
+
+proc stap_compile_file {subtest stppath} {
+    global test
+    verbose -log "running stap -w -p4 $stppath"
+    if {[catch {exec stap -w -p4 $stppath 2>@1} res]} {
+        fail "$test $subtest"
+        verbose -log "stap error: $res"
+        return 0
+    }
+    if {![string match *.ko* $res]} {
+        fail "$test $subtest"
+        verbose -log "expected .ko path in output, got: $res"
+        return 0
+    }
+    pass "$test $subtest"
+    return 1
+}
+
+# --- kernel.tracepoint() ---
+
+if {![kernel_vmlinux_h_p]} {
+    untested "$test kernel (no vmlinux.h)"
+} else {
+    pass "$test kernel vmlinux.h"
+
+    stap_list1 "kernel list sched_switch" \
+        {kernel.tracepoint("sched_switch")} \
+        {kernel.tracepoint("sched_switch")}
+
+    verbose -log "executing: stap -L {kernel.tracepoint(\"sched_switch\")}"
+    if {[catch {exec stap -L {kernel.tracepoint("sched_switch")} 2>@1} out]} {
+        fail "$test kernel list -L sched_switch"
+        verbose -log $out
+    } elseif {![string match {*kernel.tracepoint("sched_switch")*$arg1:*} $out]
+              || ![string match {*$arg2:struct task_struct**} $out]} {
+        fail "$test kernel list -L sched_switch"
+        verbose -log "expected \$arg1 and struct task_struct* \$arg2 in output, got: $out"
+    } else {
+        pass "$test kernel list -L sched_switch"
+    }
+
+    stap_compile_file "kernel compile" $srcdir/$subdir/tracepoint_vmlinux_kernel_compile.stp
+
+    stap_list_min "kernel list wildcard" {kernel.tracepoint("*")} 100
+}
+
+# --- module("nfs").tracepoint() ---
+
+if {![nfs_module_tracepoint_p]} {
+    untested "$test module (no nfs btf_trace_* debuginfo)"
+} else {
+    pass "$test module nfs catalog"
+
+    stap_list1 "module list nfs_getattr_enter" \
+        {module("nfs").tracepoint("nfs_getattr_enter")} \
+        {module("nfs").tracepoint("nfs_getattr_enter")}
+
+    stap_compile_file "module compile" $srcdir/$subdir/tracepoint_vmlinux_module_compile.stp
+
+    stap_list_min "module list wildcard" {module("nfs").tracepoint("*")} 10
+}
+
+proc stap_run_expect_line {name stppath expect {extra_args {-w}}} {
+    global test
+    if {![installtest_p]} {
+        untested $name
+        return
+    }
+    set cmd [concat stap $extra_args $stppath]
+    verbose -log "executing: $cmd"
+    if {[catch {exec {*}$cmd 2>@1} res]} {
+        fail $name
+        verbose -log $res
+        return
+    }
+    foreach line [split $res "\n"] {
+        if {$line eq $expect} {
+            pass $name
+            return
+        }
+    }
+    fail $name
+    verbose -log "expected line \"$expect\" not found in:\n$res"
+}
+
+proc stap_run_expect_regex {name stppath pattern {extra_args {-w}}} {
+    global test
+    if {![installtest_p]} {
+        untested $name
+        return
+    }
+    set cmd [concat stap $extra_args $stppath]
+    verbose -log "executing: $cmd"
+    if {[catch {exec {*}$cmd 2>@1} res]} {
+        fail $name
+        verbose -log $res
+        return
+    }
+    foreach line [split $res "\n"] {
+        if {[regexp -- $pattern $line]} {
+            pass $name
+            return
+        }
+    }
+    fail $name
+    verbose -log "expected pattern \"$pattern\" not found in:\n$res"
+}
+
+# --- runtime (install tree / root) ---
+
+if {![installtest_p]} {
+    untested "$test runtime (not installcheck)"
+    return
+}
+
+if {![kernel_vmlinux_h_p]} {
+    untested "$test kernel runtime (no vmlinux.h)"
+} else {
+    stap_run_expect_regex \
+        "systemtap.base/tracepoint_vmlinux_kernel.stp pretty" \
+        $srcdir/$subdir/tracepoint_vmlinux_kernel.stp \
+        {^PP:\{} 
+    stap_run_expect_line \
+        "systemtap.base/tracepoint_vmlinux_kernel.stp -w" \
+        $srcdir/$subdir/tracepoint_vmlinux_kernel.stp \
+        "kernel.tracepoint OK"
+}
+
+if {![nfs_module_tracepoint_p]} {
+    untested "$test module runtime (no nfs btf_trace_* debuginfo)"
+} else {
+    catch {exec modprobe nfs 2>@1}
+    stap_run_expect_line \
+        "systemtap.base/tracepoint_vmlinux_module.stp -w" \
+        $srcdir/$subdir/tracepoint_vmlinux_module.stp \
+        "tracepoint_vmlinux module OK"
+}

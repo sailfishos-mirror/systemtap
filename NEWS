@@ -17,6 +17,17 @@
     if (filename =~ "forbidden") $return = -13 }'  # deny with EACCES
   Requires kernel 5.7+, CONFIG_BPF_LSM=y. (PR#34126)
 
+- NEW: BTF-based tracepoint probes kernel.tracepoint("name") and
+  module("mod").tracepoint("name").  These discover tracepoints from
+  btf_trace_* callback typedefs in the kernel build tree's vmlinux.h
+  (kernel probes) or in a loadable module's debuginfo (module probes),
+  without trace header files or tracefs.  Handler arguments are
+  positional: $arg1, $arg2, ... (the leading void * cookie is skipped).
+  This is intentionally separate from kernel.trace("system:name"), which
+  still uses trace headers and named TP_PROTO parameters.  BTF tracepoint
+  probes do not use system:name syntax.  Requires vmlinux.h when probing
+  the kernel (CONFIG_DEBUG_INFO_BTF).  Not yet supported with --runtime=bpf.
+
 - REMOVED old systemtap initscript infrastructure. The legacy
   systemtap-service command and systemtap.service have been replaced with
   modern systemd service templates:

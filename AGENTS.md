@@ -58,6 +58,19 @@ make check RUNTESTFLAGS="buildok.exp" CHECK_ONLY="nfs-detailed nfs-fop.check_fla
 make check RUNTESTFLAGS="check.exp" CHECK_ONLY="badname fntimes"
 ```
 
+**Do not declare victory until dejagnu is green.** A manual `stap -l`,
+`-p4`, or ad-hoc `-p5` run is not enough when you add or change tests.
+
+- Run the new `.exp` under dejagnu: `make check RUNTESTFLAGS="your.exp"`.
+- If the test has runtime cases (`installtest_p`), also run
+  `make install` then `sudo -E make installcheck RUNTESTFLAGS="your.exp"`.
+  `make check` alone marks those subtests UNTESTED, not PASS.
+- Read `testsuite/systemtap.log` (or the per-test `.log`) before
+  finishing; stderr from kbuild/gcc can appear in captured output and
+  break `.exp` matchers even when a hand-run looks fine.
+- After changing the translator/runtime, installcheck uses `$prefix`;
+  rebuild with `make install` so it exercises the code you actually changed.
+
 ## Debugging Quirks
 
 ### Compilation Phases

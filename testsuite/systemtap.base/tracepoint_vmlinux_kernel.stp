@@ -1,0 +1,15 @@
+// Wait for sched_switch hits; first hit pretty-prints $arg2 (task_struct*).
+global hits
+
+probe kernel.tracepoint("sched_switch") {
+  if (++hits == 1)
+    printf("PP:%s\n", $arg2$)
+  if (hits >= 3) {
+    println("kernel.tracepoint OK")
+    exit()
+  }
+}
+
+probe timer.s(30) {
+  exit()
+}
