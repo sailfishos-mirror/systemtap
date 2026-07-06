@@ -65,6 +65,8 @@ make check RUNTESTFLAGS="check.exp" CHECK_ONLY="badname fntimes"
 - If the test has runtime cases (`installtest_p`), also run
   `make install` then `sudo -E make installcheck RUNTESTFLAGS="your.exp"`.
   `make check` alone marks those subtests UNTESTED, not PASS.
+- Run those tests sequentially, not concurrently, as they'd scribble over
+  each other's files and logs.
 - Read `testsuite/systemtap.log` (or the per-test `.log`) before
   finishing; stderr from kbuild/gcc can appear in captured output and
   break `.exp` matchers even when a hand-run looks fine.
