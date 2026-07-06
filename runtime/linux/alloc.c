@@ -103,7 +103,10 @@ struct _stp_mem_entry {
 	int32_t magic;
 	enum _stp_memtype type;
 	size_t len;
-	void *addr;
+	union {
+		void *addr;
+		void __percpu *percpu_addr;
+	};
 	const char *tag;
 };
 
@@ -158,17 +161,61 @@ static void *_stp_mem_debug_setup(void *addr, size_t size, enum _stp_memtype typ
 }
 
 /* Percpu allocations don't have the fence. Implementing it is problematic. */
-static void _stp_mem_debug_percpu(struct _stp_mem_entry *m, void *addr, size_t size)
+static void _stp_mem_debug_percpu(struct _stp_mem_entry *m, void __percpu *addr, size_t size)
 {
 	struct list_head *p = (struct list_head *)m;
 	unsigned long flags;
 	m->magic = STP_MEM_MAGIC;
 	m->type = STP_MEM_PERCPU;
 	m->len = size;
-	m->addr = addr;
+	m->percpu_addr = addr;
 	stp_spin_lock_irqsave(&_stp_mem_lock, flags);
 	list_add(p, &_stp_mem_list);
 	stp_spin_unlock_irqrestore(&_stp_mem_lock, flags);
+}
+
+/* Percpu pointers live in a disjoint address space; use the tracking
+   entry for printk %p rather than casting percpu_addr to void *. */
+static const void *_stp_mem_debug_printable_addr(struct _stp_mem_entry *m)
+{
+	if (m->type == STP_MEM_PERCPU)
+		return m;
+	return m->addr;
+}
+
+static void _stp_mem_debug_free_percpu(void __percpu *addr)
+{
+	int found = 0;
+	struct list_head *p, *tmp;
+	struct _stp_mem_entry *m = NULL;
+	unsigned long flags;
+
+	if (!addr)
+		return;
+
+	stp_spin_lock_irqsave(&_stp_mem_lock, flags);
+	list_for_each_safe(p, tmp, &_stp_mem_list) {
+		m = list_entry(p, struct _stp_mem_entry, list);
+		if (m->type == STP_MEM_PERCPU && m->percpu_addr == addr) {
+			list_del(p);
+			found = 1;
+			break;
+		}
+	}
+	stp_spin_unlock_irqrestore(&_stp_mem_lock, flags);
+	if (!found) {
+		printk("SYSTEMTAP ERROR: Free of unallocated percpu memory type=%s\n",
+		       _stp_malloc_types[STP_MEM_PERCPU].free);
+		return;
+	}
+	if (m->magic != STP_MEM_MAGIC) {
+		printk("SYSTEMTAP ERROR: Memory at %p corrupted!!\n",
+		       _stp_mem_debug_printable_addr(m));
+		return;
+	}
+
+	free_percpu(addr);
+	kfree(p);
 }
 
 static void _stp_mem_debug_free(void *addr, enum _stp_memtype type)
@@ -182,9 +229,10 @@ static void _stp_mem_debug_free(void *addr, enum _stp_memtype type)
 		/* Passing NULL to these *free() functions is safe */
 		switch (type) {
 		case STP_MEM_KMALLOC:
-		case STP_MEM_PERCPU:
 		case STP_MEM_VMALLOC:
 			return;
+		default:
+			break;
 		}
 	}
 
@@ -217,10 +265,6 @@ static void _stp_mem_debug_free(void *addr, enum _stp_memtype type)
 	case STP_MEM_KMALLOC:
 		_stp_check_mem_fence(addr, m->len);
 		kfree(addr - MEM_FENCE_SIZE);
-		break;
-	case STP_MEM_PERCPU:
-		free_percpu(addr);
-		kfree(p);
 		break;
 	case STP_MEM_VMALLOC:
 		_stp_check_mem_fence(addr, m->len);
@@ -589,7 +633,7 @@ static void _stp_vfree(void *addr)
 static void _stp_free_percpu(void __percpu *addr)
 {
 #ifdef DEBUG_MEM
-	_stp_mem_debug_free(addr, STP_MEM_PERCPU);
+	_stp_mem_debug_free_percpu(addr);
 #else
 	free_percpu(addr);
 #endif
@@ -608,11 +652,14 @@ static void _stp_mem_debug_done(void)
 		list_del(p);
 
 		printk("SYSTEMTAP ERROR: Memory %p len=%d tag=%s allocation type: %s. Not freed.\n",
-		       m->addr, (int)m->len, m->tag ? m->tag : "",
+		       _stp_mem_debug_printable_addr(m),
+		       (int)m->len, m->tag ? m->tag : "",
 		       _stp_malloc_types[m->type].alloc);
 
 		if (m->magic != STP_MEM_MAGIC) {
-			printk("SYSTEMTAP ERROR: Memory at %p len=%d corrupted!!\n", m->addr, (int)m->len);
+			printk("SYSTEMTAP ERROR: Memory at %p len=%d corrupted!!\n",
+			       _stp_mem_debug_printable_addr(m),
+			       (int)m->len);
 			/* Don't free. Too dangerous */
 			goto done;
 		}
@@ -623,7 +670,7 @@ static void _stp_mem_debug_done(void)
 			kfree(m->addr - MEM_FENCE_SIZE);
 			break;
 		case STP_MEM_PERCPU:
-			free_percpu(m->addr);
+			free_percpu(m->percpu_addr);
 			kfree(p);
 			break;
 		case STP_MEM_VMALLOC:
