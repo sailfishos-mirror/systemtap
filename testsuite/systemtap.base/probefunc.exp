@@ -28,10 +28,10 @@ set systemtap_script {
     }
 }
 
-# open /proc/kallsyms to get address for scheduler_tick symbol 
+# open /proc/kallsyms to get address for sched_tick / scheduler_tick symbol
 set symf "/proc/kallsyms"
 set symfd [open $symf r]
-set re "\\mscheduler_tick\\M"
+set re "\\m(sched_tick|scheduler_tick)\\M"
 set rs [grep $symfd $re]
 set flds [split $rs " "]
 set addr [lindex $flds 0]
@@ -40,15 +40,17 @@ close $symfd
 set prefix "probefunc:"
 
 # test probefunc() with kernel.statement().absolute
-set output_string "\\mscheduler_tick\\M\r\n"
+set output_string "\\m(sched_tick|scheduler_tick)\\M\r\n"
 set probepoint "kernel.statement(0x$addr).absolute"
 set script [format $systemtap_script $probepoint]
 stap_run "${prefix}.statement.(0xaddr).absolute" sleep_one_sec $output_string -g -e $script
 
 # test probefunc() with kernel.function()
-set probepoint "kernel.function(\"scheduler_tick\")"
+# Keep the historical test name, but accept sched_tick on newer kernels.
+set testname "kernel.function(\"scheduler_tick\")"
+set probepoint "kernel.function(\"sched_tick\")!, kernel.function(\"scheduler_tick\")"
 set script [format $systemtap_script $probepoint]
-stap_run $prefix$probepoint sleep_one_sec $output_string -e $script
+stap_run $prefix$testname sleep_one_sec $output_string -e $script
 
 # test probefunc() with kernel.function().inline
 # NOTE probefunc inline behavior changed after 1.8.
