@@ -72,9 +72,9 @@ probe nd2_syscall.sched_get_priority_min = kprobe.function(@arch_syscall_prefix 
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.sched_get_priority_min = kernel.trace("sys_enter")
+probe tp_syscall.sched_get_priority_min = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_sched_get_priority_min"), @const("__NR_compat_sched_get_priority_min"))
 	@_SYSCALL_SCHED_GET_PRIORITY_MIN_NAME
 	@_SYSCALL_SCHED_GET_PRIORITY_MIN_REGARGS
@@ -101,10 +101,10 @@ probe nd2_syscall.sched_get_priority_min.return = kprobe.function(@arch_syscall_
 }
  
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.sched_get_priority_min.return = kernel.trace("sys_exit")
+probe tp_syscall.sched_get_priority_min.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_sched_get_priority_min"), @const("__NR_compat_sched_get_priority_min"))
 	@_SYSCALL_SCHED_GET_PRIORITY_MIN_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

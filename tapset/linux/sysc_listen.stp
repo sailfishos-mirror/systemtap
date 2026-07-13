@@ -157,18 +157,18 @@ probe tp_syscall.listen = __tp_syscall.listen ?,
 	@_SYSCALL_LISTEN_NAME
 	@_SYSCALL_LISTEN_ARGSTR
 }
-probe __tp_syscall.listen = kernel.trace("sys_enter")
+probe __tp_syscall.listen = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_listen"))
 	@_SYSCALL_LISTEN_REGARGS
 },
 {
         %( @_IS_SREG_KERNEL %? @_SYSCALL_LISTEN_REGARGS_STORE %)
 }
-probe __tp_syscall.socketcall.listen = kernel.trace("sys_enter")
+probe __tp_syscall.socketcall.listen = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_socketcall"), @const("__NR_compat_socketcall"))
 	if (int_arg(1) != @const("SYS_LISTEN")) next;
 	if (@__compat_task) {
@@ -220,15 +220,15 @@ probe tp_syscall.listen.return = __tp_syscall.listen.return ?,
 	__tp_syscall.socketcall.listen.return ?
 {
 	@_SYSCALL_LISTEN_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.listen.return = kernel.trace("sys_exit")
+probe __tp_syscall.listen.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
 	@__syscall_gate(@const("__NR_listen"))
 }
-probe __tp_syscall.socketcall.listen.return = kernel.trace("sys_exit")
+probe __tp_syscall.socketcall.listen.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_socketcall"), @const("__NR_compat_socketcall"))
 	if (int_arg(1) != @const("SYS_LISTEN")) next;
 }

@@ -81,9 +81,9 @@ probe nd2_syscall.fstatfs64 =
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.fstatfs64 = kernel.trace("sys_enter")
+probe tp_syscall.fstatfs64 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_fstatfs64"), @const("__NR_compat_fstatfs64"))
 	@_SYSCALL_FSTATFS64_NAME
 	@_SYSCALL_FSTATFS64_REGARGS
@@ -113,10 +113,10 @@ probe nd2_syscall.fstatfs64.return =
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.fstatfs64.return = kernel.trace("sys_exit")
+probe tp_syscall.fstatfs64.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_fstatfs64"), @const("__NR_compat_fstatfs64"))
 	@_SYSCALL_FSTATFS64_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

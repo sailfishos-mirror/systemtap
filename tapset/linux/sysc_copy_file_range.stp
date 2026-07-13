@@ -94,9 +94,9 @@ probe nd2_syscall.copy_file_range = kprobe.function(@arch_syscall_prefix "sys_co
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.copy_file_range = kernel.trace("sys_enter")
+probe tp_syscall.copy_file_range = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_copy_file_range"), @const("__NR_compat_copy_file_range"))
 	@_SYSCALL_COPY_FILE_RANGE_NAME
 	@_SYSCALL_COPY_FILE_RANGE_REGARGS
@@ -124,10 +124,10 @@ probe nd2_syscall.copy_file_range.return = kprobe.function(@arch_syscall_prefix 
 }
  
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.copy_file_range.return = kernel.trace("sys_exit")
+probe tp_syscall.copy_file_range.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_copy_file_range"), @const("__NR_compat_copy_file_range"))
 	@_SYSCALL_COPY_FILE_RANGE_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

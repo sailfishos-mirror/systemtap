@@ -54,9 +54,9 @@ probe nd1_syscall.get_thread_area = kprobe.function("sys_get_thread_area")
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.get_thread_area = kernel.trace("sys_enter")
+probe tp_syscall.get_thread_area = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_get_thread_area"))
 	@_SYSCALL_GET_THREAD_AREA_NAME
 	@_SYSCALL_GET_THREAD_AREA_REGARGS
@@ -73,10 +73,10 @@ probe nd1_syscall.get_thread_area.return = kprobe.function("sys_get_thread_area"
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.get_thread_area.return = kernel.trace("sys_exit")
+probe tp_syscall.get_thread_area.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_get_thread_area"))
 	@_SYSCALL_GET_THREAD_AREA_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

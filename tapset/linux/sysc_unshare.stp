@@ -69,9 +69,9 @@ probe nd2_syscall.unshare = kprobe.function(@arch_syscall_prefix "sys_unshare") 
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.unshare = kernel.trace("sys_enter")
+probe tp_syscall.unshare = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_unshare"), @const("__NR_compat_unshare"))
 	@_SYSCALL_UNSHARE_NAME
 	@_SYSCALL_UNSHARE_REGARGS
@@ -98,10 +98,10 @@ probe nd2_syscall.unshare.return = kprobe.function(@arch_syscall_prefix "sys_uns
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.unshare.return = kernel.trace("sys_exit")
+probe tp_syscall.unshare.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_unshare"), @const("__NR_compat_unshare"))
 	@_SYSCALL_UNSHARE_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

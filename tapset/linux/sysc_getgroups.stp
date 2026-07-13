@@ -92,7 +92,7 @@ probe nd2_syscall.getgroups = kprobe.function(@arch_syscall_prefix "sys_getgroup
 /* kernel 3.5+, but undesirable because it affects all syscalls */
 probe tp_syscall.getgroups = __tp_syscall.getgroups, __tp_syscall.getgroups32
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@_SYSCALL_GETGROUPS_NAME
 	@_SYSCALL_GETGROUPS_REGARGS
 	@_SYSCALL_GETGROUPS_ARGSTR
@@ -100,11 +100,11 @@ probe tp_syscall.getgroups = __tp_syscall.getgroups, __tp_syscall.getgroups32
 {
         @_SYSCALL_GETGROUPS_REGARGS_STORE
 }
-probe __tp_syscall.getgroups = kernel.trace("sys_enter")
+probe __tp_syscall.getgroups = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
 	@__syscall_compat_gate(@const("__NR_getgroups"), @const("__NR_compat_getgroups"))
 }
-probe __tp_syscall.getgroups32 = kernel.trace("sys_enter")
+probe __tp_syscall.getgroups32 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
 	@__syscall_compat_gate(@const("__NR_getgroups32"), @const("__NR_compat_getgroups32"))
 }
@@ -135,15 +135,15 @@ probe nd2_syscall.getgroups.return = kprobe.function(@arch_syscall_prefix "sys_g
 /* kernel 3.5+, but undesirable because it affects all syscalls */
 probe tp_syscall.getgroups.return = __tp_syscall.getgroups.return, __tp_syscall.getgroups32.return 
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@_SYSCALL_GETGROUPS_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.getgroups.return = kernel.trace("sys_exit")
+probe __tp_syscall.getgroups.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
 	@__syscall_compat_gate(@const("__NR_getgroups"), @const("__NR_compat_getgroups"))
 }
-probe __tp_syscall.getgroups32.return = kernel.trace("sys_exit")
+probe __tp_syscall.getgroups32.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
 	@__syscall_compat_gate(@const("__NR_getgroups32"), @const("__NR_compat_getgroups32"))
 }

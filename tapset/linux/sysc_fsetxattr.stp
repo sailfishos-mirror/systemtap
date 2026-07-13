@@ -117,9 +117,9 @@ probe nd2_syscall.fsetxattr = kprobe.function(@arch_syscall_prefix "sys_fsetxatt
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.fsetxattr = kernel.trace("sys_enter")
+probe tp_syscall.fsetxattr = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_fsetxattr"), @const("__NR_compat_fsetxattr"))
 	@_SYSCALL_FSETXATTR_NAME
 	@_SYSCALL_FSETXATTR_REGARGS
@@ -146,10 +146,10 @@ probe nd2_syscall.fsetxattr.return = kprobe.function(@arch_syscall_prefix "sys_f
 }
  
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.fsetxattr.return = kernel.trace("sys_exit")
+probe tp_syscall.fsetxattr.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_fsetxattr"), @const("__NR_compat_fsetxattr"))
 	@_SYSCALL_FSETXATTR_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

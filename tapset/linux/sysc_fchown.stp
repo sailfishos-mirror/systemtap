@@ -95,9 +95,9 @@ probe nd2_syscall.fchown = kprobe.function(@arch_syscall_prefix "sys_fchown") ?
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.fchown = kernel.trace("sys_enter")
+probe tp_syscall.fchown = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 %( CONFIG_64BIT == "y" %?
 	@__syscall_compat_gate(@const("__NR_fchown"), @const("__NR_compat_fchown32"))
 %:
@@ -134,14 +134,14 @@ probe nd2_syscall.fchown.return = kprobe.function(@arch_syscall_prefix "sys_fcho
 }
  
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.fchown.return = kernel.trace("sys_exit")
+probe tp_syscall.fchown.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 %( CONFIG_64BIT == "y" %?
 	@__syscall_compat_gate(@const("__NR_fchown"), @const("__NR_compat_fchown32"))
 %:
 	@__syscall_gate(@const("__NR_fchown32"))
 %)
 	@_SYSCALL_FCHOWN_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

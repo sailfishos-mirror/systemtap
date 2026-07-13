@@ -48,9 +48,9 @@ probe nd2_syscall.munlockall = kprobe.function(@arch_syscall0_prefix "sys_munloc
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.munlockall = kernel.trace("sys_enter")
+probe tp_syscall.munlockall = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_munlockall"), @const("__NR_compat_munlockall"))
 	@_SYSCALL_MUNLOCKALL_NAME
 	@_SYSCALL_MUNLOCKALL_ARGSTR
@@ -73,10 +73,10 @@ probe nd2_syscall.munlockall.return = kprobe.function(@arch_syscall0_prefix "sys
 }
  
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.munlockall.return = kernel.trace("sys_exit")
+probe tp_syscall.munlockall.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_munlockall"), @const("__NR_compat_munlockall"))
 	@_SYSCALL_MUNLOCKALL_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

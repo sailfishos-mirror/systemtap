@@ -115,9 +115,9 @@ probe nd2_syscall.setreuid = kprobe.function(@arch_syscall_prefix "sys_setreuid"
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.setreuid = kernel.trace("sys_enter")
+probe tp_syscall.setreuid = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_setreuid"), @const("__NR_compat_setreuid32"))
 	@_SYSCALL_SETREUID_NAME
 	@_SYSCALL_SETREUID_REGARGS
@@ -145,12 +145,12 @@ probe nd2_syscall.setreuid.return = kprobe.function(@arch_syscall_prefix "sys_se
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.setreuid.return = kernel.trace("sys_exit")
+probe tp_syscall.setreuid.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_setreuid"), @const("__NR_compat_setreuid32"))
 	@_SYSCALL_SETREUID_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }
 
 # setreuid16 _________________________________________________
@@ -202,9 +202,9 @@ probe nd2_syscall.setreuid16 = kprobe.function(@arch_syscall_prefix "sys_setreui
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.setreuid16 = kernel.trace("sys_enter")
+probe tp_syscall.setreuid16 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_setreuid"))
 	@_SYSCALL_SETREUID_NAME
 	@_SYSCALL_SETREUID16_REGARGS
@@ -231,10 +231,10 @@ probe nd2_syscall.setreuid16.return = kprobe.function(@arch_syscall_prefix "sys_
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.setreuid16.return = kernel.trace("sys_exit")
+probe tp_syscall.setreuid16.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_setreuid"))
 	@_SYSCALL_SETREUID_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

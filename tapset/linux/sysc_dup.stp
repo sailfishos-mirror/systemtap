@@ -65,9 +65,9 @@ probe nd2_syscall.dup = kprobe.function(@arch_syscall_prefix "sys_dup") ?
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.dup = kernel.trace("sys_enter")
+probe tp_syscall.dup = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_dup"), @const("__NR_compat_dup"))
 	@_SYSCALL_DUP_NAME
 	@_SYSCALL_DUP_REGARGS
@@ -94,10 +94,10 @@ probe nd2_syscall.dup.return = kprobe.function(@arch_syscall_prefix "sys_dup").r
 }
  
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.dup.return = kernel.trace("sys_exit")
+probe tp_syscall.dup.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_dup"), @const("__NR_compat_dup"))
 	@_SYSCALL_DUP_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

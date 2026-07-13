@@ -55,7 +55,7 @@ probe nd2_syscall.pause = kprobe.function(@arch_syscall0_prefix "sys_pause") ?
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.pause = kernel.trace("sys_enter") ?
+probe tp_syscall.pause = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter") ?
 {
 	@__syscall_compat_gate(@const("__NR_pause"), @const("__NR_compat_pause"))
 	@_SYSCALL_PAUSE_NAME
@@ -81,10 +81,10 @@ probe nd2_syscall.pause.return = kprobe.function(@arch_syscall0_prefix "sys_paus
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.pause.return = kernel.trace("sys_exit")
+probe tp_syscall.pause.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_pause"), @const("__NR_compat_pause"))
 	@_SYSCALL_PAUSE_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

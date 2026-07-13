@@ -99,9 +99,9 @@ probe nd2_syscall.getxattr = kprobe.function(@arch_syscall_prefix "sys_getxattr"
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.getxattr = kernel.trace("sys_enter")
+probe tp_syscall.getxattr = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_getxattr"), @const("__NR_compat_getxattr"))
 	@_SYSCALL_GETXATTR_NAME
 	@_SYSCALL_GETXATTR_REGARGS
@@ -128,10 +128,10 @@ probe nd2_syscall.getxattr.return = kprobe.function(@arch_syscall_prefix "sys_ge
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.getxattr.return = kernel.trace("sys_exit")
+probe tp_syscall.getxattr.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_getxattr"), @const("__NR_compat_getxattr"))
 	@_SYSCALL_GETXATTR_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

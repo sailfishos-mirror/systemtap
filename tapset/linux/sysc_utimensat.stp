@@ -96,9 +96,9 @@ probe nd2_syscall.utimensat = kprobe.function(@arch_syscall_prefix "sys_utimensa
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.utimensat = kernel.trace("sys_enter")
+probe tp_syscall.utimensat = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_utimensat"))
 	@_SYSCALL_UTIMENSAT_NAME
 	@_SYSCALL_UTIMENSAT_REGARGS
@@ -126,12 +126,12 @@ probe nd2_syscall.utimensat.return = kprobe.function(@arch_syscall_prefix "sys_u
 }
  
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.utimensat.return = kernel.trace("sys_exit")
+probe tp_syscall.utimensat.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_utimensat"))
 	@_SYSCALL_UTIMENSAT_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }
 
 # compat_utimensat _____________________________________________
@@ -193,9 +193,9 @@ probe nd2_syscall.compat_utimensat = kprobe.function(@arch_syscall_prefix "compa
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_utimensat = kernel.trace("sys_enter")
+probe tp_syscall.compat_utimensat = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_utimensat"))
 	@_SYSCALL_UTIMENSAT_NAME
 	@_SYSCALL_UTIMENSAT_REGARGS
@@ -223,10 +223,10 @@ probe nd2_syscall.compat_utimensat.return = kprobe.function(@arch_syscall_prefix
 }
  
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_utimensat.return = kernel.trace("sys_exit")
+probe tp_syscall.compat_utimensat.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_utimensat"))
 	@_SYSCALL_UTIMENSAT_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

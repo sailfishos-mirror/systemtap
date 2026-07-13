@@ -78,9 +78,9 @@ probe nd2_syscall.chown16 = kprobe.function(@arch_syscall_prefix "sys_chown16") 
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.chown16 = kernel.trace("sys_enter")
+probe tp_syscall.chown16 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 %( CONFIG_64BIT == "y" %?
 	@__compat_syscall_gate(@const("__NR_compat_chown"))
 %:
@@ -111,14 +111,14 @@ probe nd2_syscall.chown16.return = kprobe.function(@arch_syscall_prefix "sys_cho
 }
  
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.chown16.return = kernel.trace("sys_exit")
+probe tp_syscall.chown16.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 %( CONFIG_64BIT == "y" %?
 	@__compat_syscall_gate(@const("__NR_compat_chown"))
 %:
 	@__syscall_gate(@const("__NR_chown"))
 %)
 	@_SYSCALL_CHOWN16_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

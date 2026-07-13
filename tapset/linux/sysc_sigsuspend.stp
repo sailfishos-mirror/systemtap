@@ -115,9 +115,9 @@ probe nd2_syscall.sigsuspend =
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.sigsuspend = kernel.trace("sys_enter")
+probe tp_syscall.sigsuspend = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_sigsuspend"), @const("__NR_compat_sigsuspend"))
 	@_SYSCALL_SIGSUSPEND_NAME
 %( CONFIG_OLD_SIGSUSPEND == "y" %?
@@ -166,10 +166,10 @@ probe nd2_syscall.sigsuspend.return = kprobe.function(@arch_syscall_prefix "sys_
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.sigsuspend.return = kernel.trace("sys_exit")
+probe tp_syscall.sigsuspend.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_sigsuspend"), @const("__NR_compat_sigsuspend"))
 	@_SYSCALL_SIGSUSPEND_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

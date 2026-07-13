@@ -81,9 +81,9 @@ probe nd1_syscall.sigaction = kprobe.function("sys_sigaction") ?
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.sigaction = kernel.trace("sys_enter")
+probe tp_syscall.sigaction = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_sigaction"))
 	@_SYSCALL_SIGACTION_NAME
 	@_SYSCALL_SIGACTION_REGARGS
@@ -103,12 +103,12 @@ probe nd1_syscall.sigaction.return = kprobe.function("sys_sigaction").return ?
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.sigaction.return = kernel.trace("sys_exit")
+probe tp_syscall.sigaction.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_sigaction"))
 	@_SYSCALL_SIGACTION_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }
 
 # sigaction _________________________________________________________
@@ -164,9 +164,9 @@ probe nd2_syscall.sigaction32 =
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.sigaction32 = kernel.trace("sys_enter")
+probe tp_syscall.sigaction32 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_sigaction"))
 	@_SYSCALL_SIGACTION_NAME
 	@_SYSCALL_SIGACTION32_REGARGS
@@ -195,10 +195,10 @@ probe nd2_syscall.sigaction32.return =
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.sigaction32.return = kernel.trace("sys_exit")
+probe tp_syscall.sigaction32.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_sigaction"))
 	@_SYSCALL_SIGACTION_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

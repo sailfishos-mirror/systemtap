@@ -185,18 +185,18 @@ probe tp_syscall.recv = __tp_syscall.recv ?,
 	flags_str = _msg_flags_str(flags)
 	@_SYSCALL_RECV_ARGSTR
 }
-probe __tp_syscall.recv = kernel.trace("sys_enter")
+probe __tp_syscall.recv = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_recv"))
 	@_SYSCALL_RECV_REGARGS
 },
 {
         %( @_IS_SREG_KERNEL %? @_SYSCALL_RECV_REGARGS_STORE %)
 }
-probe __tp_syscall.socketcall.recv = kernel.trace("sys_enter")
+probe __tp_syscall.socketcall.recv = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_socketcall"), @const("__NR_compat_socketcall"))
 	if (int_arg(1) != @const("SYS_RECV")) next;
 	if (@__compat_task) {
@@ -248,15 +248,15 @@ probe tp_syscall.recv.return = __tp_syscall.recv.return ?,
 	__tp_syscall.socketcall.recv.return ?
 {
 	@_SYSCALL_RECV_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.recv.return = kernel.trace("sys_exit")
+probe __tp_syscall.recv.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
 	@__syscall_gate(@const("__NR_recv"))
 }
-probe __tp_syscall.socketcall.recv.return = kernel.trace("sys_exit")
+probe __tp_syscall.socketcall.recv.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_socketcall"), @const("__NR_compat_socketcall"))
 	if (int_arg(1) != @const("SYS_RECV")) next;
 }

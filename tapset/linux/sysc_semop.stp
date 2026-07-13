@@ -165,18 +165,18 @@ probe tp_syscall.semop = __tp_syscall.semop ?, __tp_syscall.compat_semop ?
 	@_SYSCALL_SEMOP_NAME
 	@_SYSCALL_SEMOP_ARGSTR
 }
-probe __tp_syscall.semop = kernel.trace("sys_enter")
+probe __tp_syscall.semop = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_semop"))
 	@_SYSCALL_SEMOP_REGARGS
 },
 {
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SEMOP_REGARGS_STORE %)
 }
-probe __tp_syscall.compat_semop = kernel.trace("sys_enter")
+probe __tp_syscall.compat_semop = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_ipc"))
 	if (int_arg(1) != @const("SEMOP")) next;
 	@_SYSCALL_IPC_SEMOP_REGARGS
@@ -219,15 +219,15 @@ probe __nd2_syscall.compat_semop.return =
 probe tp_syscall.semop.return = __tp_syscall.semop.return, __tp_syscall.compat_semop.return
 {
 	@_SYSCALL_SEMOP_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.semop.return = kernel.trace("sys_exit")
+probe __tp_syscall.semop.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
 	@__syscall_gate(@const("__NR_semop"))
 }
-probe __tp_syscall.compat_semop.return = kernel.trace("sys_exit")
+probe __tp_syscall.compat_semop.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_ipc"))
 	if (int_arg(1) != @const("SEMOP")) next;
 }

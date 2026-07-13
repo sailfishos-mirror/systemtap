@@ -123,7 +123,7 @@ probe nd2_syscall.fstatat =
 probe tp_syscall.fstatat = __tp_syscall.fstatat64,
                            __tp_syscall.newfstatat
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@_SYSCALL_FSTATAT_NAME
 	@_SYSCALL_FSTATAT_REGARGS
 	@_SYSCALL_FSTATAT_ARGSTR
@@ -132,11 +132,11 @@ probe tp_syscall.fstatat = __tp_syscall.fstatat64,
         @_SYSCALL_FSTATAT_REGARGS_STORE
 }
 
-probe __tp_syscall.fstatat64 = kernel.trace("sys_enter")
+probe __tp_syscall.fstatat64 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
 	@__syscall_compat_gate(@const("__NR_fstatat64"), @const("__NR_compat_fstatat64"))
 }
-probe __tp_syscall.newfstatat = kernel.trace("sys_enter")
+probe __tp_syscall.newfstatat = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
 	@__syscall_gate(@const("__NR_newfstatat"))
 }
@@ -173,15 +173,15 @@ probe nd2_syscall.fstatat.return =
 probe tp_syscall.fstatat.return = __tp_syscall.fstatat64.return,
                                   __tp_syscall.newfstatat.return
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@_SYSCALL_FSTATAT_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.fstatat64.return = kernel.trace("sys_exit")
+probe __tp_syscall.fstatat64.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
 	@__syscall_compat_gate(@const("__NR_fstatat64"), @const("__NR_compat_fstatat64"))
 }
-probe __tp_syscall.newfstatat.return = kernel.trace("sys_exit")
+probe __tp_syscall.newfstatat.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
 	@__syscall_gate(@const("__NR_newfstatat"))
 }

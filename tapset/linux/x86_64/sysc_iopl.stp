@@ -68,9 +68,9 @@ probe nd2_syscall.iopl = kprobe.function(@arch_syscall_prefix "sys_iopl") ?
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.iopl = kernel.trace("sys_enter")
+probe tp_syscall.iopl = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_iopl"), @const("__NR_ia32_iopl"))
 	@_SYSCALL_IOPL_NAME
 	@_SYSCALL_IOPL_REGARGS
@@ -97,10 +97,10 @@ probe nd2_syscall.iopl.return = kprobe.function(@arch_syscall_prefix "sys_iopl")
 }
  
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.iopl.return = kernel.trace("sys_exit")
+probe tp_syscall.iopl.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_iopl"), @const("__NR_ia32_iopl"))
 	@_SYSCALL_IOPL_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

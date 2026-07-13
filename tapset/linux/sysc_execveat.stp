@@ -142,9 +142,9 @@ probe nd2_syscall.execveat = kprobe.function(@arch_syscall_prefix "sys_execveat"
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.execveat = kernel.trace("sys_enter")
+probe tp_syscall.execveat = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_execveat"))
 	@_SYSCALL_EXECVEAT_NAME
 	@_SYSCALL_EXECVEAT_REGARGS
@@ -168,12 +168,12 @@ probe nd2_syscall.execveat.return = kprobe.function(@arch_syscall_prefix "sys_ex
 }
  
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.execveat.return = kernel.trace("sys_exit")
+probe tp_syscall.execveat.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_execveat"))
 	@_SYSCALL_EXECVEAT_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }
 
 probe nd_syscall.compat_execveat = nd1_syscall.compat_execveat!, nd2_syscall.compat_execveat!, tp_syscall.compat_execveat
@@ -197,9 +197,9 @@ probe nd2_syscall.compat_execveat = kprobe.function(@arch_syscall_prefix "compat
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_execveat = kernel.trace("sys_enter")
+probe tp_syscall.compat_execveat = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_execveat"))
 	@_SYSCALL_EXECVEAT_NAME
 	@_SYSCALL_COMPAT_EXECVEAT_REGARGS
@@ -224,10 +224,10 @@ probe nd2_syscall.compat_execveat.return = kprobe.function(@arch_syscall_prefix 
 }
  
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_execveat.return = kernel.trace("sys_exit")
+probe tp_syscall.compat_execveat.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_execveat"))
 	@_SYSCALL_EXECVEAT_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

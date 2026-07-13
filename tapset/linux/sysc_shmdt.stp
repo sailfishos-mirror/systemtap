@@ -98,18 +98,18 @@ probe tp_syscall.shmdt = __tp_syscall.shmdt, __tp_syscall.compat_ipc.shmdt
 	@_SYSCALL_SHMDT_NAME
 	@_SYSCALL_SHMDT_ARGSTR
 }
-probe __tp_syscall.shmdt = kernel.trace("sys_enter")
+probe __tp_syscall.shmdt = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_shmdt"))
 	@_SYSCALL_SHMDT_REGARGS
 },
 {
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SHMDT_REGARGS_STORE %)
 }
-probe __tp_syscall.compat_ipc.shmdt = kernel.trace("sys_enter")
+probe __tp_syscall.compat_ipc.shmdt = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_ipc"))
 	if (int_arg(1) != @const("SHMDT")) next;
 	@_SYSCALL_IPC_SHMDT_REGARGS
@@ -147,15 +147,15 @@ probe tp_syscall.shmdt.return =	__tp_syscall.shmdt.return,
 	 __tp_syscall.compat_ipc.shmdt.return
 {
 	@_SYSCALL_SHMDT_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.shmdt.return = kernel.trace("sys_exit")
+probe __tp_syscall.shmdt.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
 	@__syscall_gate(@const("__NR_shmdt"))
 }
-probe __tp_syscall.compat_ipc.shmdt.return = kernel.trace("sys_exit")
+probe __tp_syscall.compat_ipc.shmdt.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_ipc"))
 	if (int_arg(1) != @const("SHMDT")) next;
 }

@@ -83,7 +83,7 @@ probe nd2_syscall.getresuid = kprobe.function(@arch_syscall_prefix "sys_getresui
 /* kernel 3.5+, but undesirable because it affects all syscalls */
 probe tp_syscall.getresuid = __tp_syscall.getresuid, __tp_syscall.getresuid16
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@_SYSCALL_GETRESUID_NAME
 	@_SYSCALL_GETRESUID_REGARGS
 	@_SYSCALL_GETRESUID_ARGSTR
@@ -91,11 +91,11 @@ probe tp_syscall.getresuid = __tp_syscall.getresuid, __tp_syscall.getresuid16
 {
         @_SYSCALL_GETRESUID_REGARGS_STORE
 }
-probe __tp_syscall.getresuid = kernel.trace("sys_enter")
+probe __tp_syscall.getresuid = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
 	@__syscall_compat_gate(@const("__NR_getresuid"), @const("__NR_compat_getresuid32"))
 }
-probe __tp_syscall.getresuid16 = kernel.trace("sys_enter")
+probe __tp_syscall.getresuid16 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
 	@__compat_syscall_gate(@const("__NR_compat_getresuid"))
 }
@@ -122,15 +122,15 @@ probe nd2_syscall.getresuid.return =
 /* kernel 3.5+, but undesirable because it affects all syscalls */
 probe tp_syscall.getresuid.return = __tp_syscall.getresuid.return, __tp_syscall.getresuid16.return
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@_SYSCALL_GETRESUID_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.getresuid.return = kernel.trace("sys_exit")
+probe __tp_syscall.getresuid.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
 	@__syscall_compat_gate(@const("__NR_getresuid"), @const("__NR_compat_getresuid32"))
 }
-probe __tp_syscall.getresuid16.return = kernel.trace("sys_exit")
+probe __tp_syscall.getresuid16.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
 	@__compat_syscall_gate(@const("__NR_compat_getresuid"))
 }

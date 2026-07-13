@@ -110,9 +110,9 @@ probe nd2_syscall.execve = kprobe.function(@arch_syscall_prefix "sys_execve") ?
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.execve = kernel.trace("sys_enter")
+probe tp_syscall.execve = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_execve"))
 	@_SYSCALL_EXECVE_NAME
 	@_SYSCALL_EXECVE_REGARGS
@@ -136,12 +136,12 @@ probe nd2_syscall.execve.return = kprobe.function(@arch_syscall_prefix "sys_exec
 }
  
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.execve.return = kernel.trace("sys_exit")
+probe tp_syscall.execve.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_execve"))
 	@_SYSCALL_EXECVE_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }
 
 # In kernels >= 3.7, compat_sys_execve() has been moved to generic
@@ -173,9 +173,9 @@ probe nd2_syscall.compat_execve = kprobe.function(@arch_syscall_prefix "compat_s
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_execve = kernel.trace("sys_enter")
+probe tp_syscall.compat_execve = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_execve"))
 	@_SYSCALL_EXECVE_NAME
 	@_SYSCALL_COMPAT_EXECVE_REGARGS
@@ -200,11 +200,11 @@ probe nd2_syscall.compat_execve.return = kprobe.function(@arch_syscall_prefix "c
 }
  
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_execve.return = kernel.trace("sys_exit")
+probe tp_syscall.compat_execve.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_execve"))
 	@_SYSCALL_EXECVE_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }
 %)

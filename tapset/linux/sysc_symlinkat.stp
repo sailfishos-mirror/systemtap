@@ -98,9 +98,9 @@ probe nd2_syscall.symlinkat = kprobe.function(@arch_syscall_prefix "sys_symlinka
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.symlinkat = kernel.trace("sys_enter")
+probe tp_syscall.symlinkat = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_symlinkat"),
 			       @const("__NR_compat_symlinkat"))
 	@_SYSCALL_SYMLINKAT_NAME
@@ -130,11 +130,11 @@ probe nd2_syscall.symlinkat.return = kprobe.function(@arch_syscall_prefix "sys_s
 }
  
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.symlinkat.return = kernel.trace("sys_exit")
+probe tp_syscall.symlinkat.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_symlinkat"),
 			       @const("__NR_compat_symlinkat"))
 	@_SYSCALL_SYMLINKAT_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

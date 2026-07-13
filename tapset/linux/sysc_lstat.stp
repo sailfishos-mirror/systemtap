@@ -121,7 +121,7 @@ probe tp_syscall.lstat = __tp_syscall.lstat,
                          __tp_syscall.lstat64,
                          __tp_syscall.newlstat
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@_SYSCALL_LSTAT_NAME
 	@_SYSCALL_LSTAT_REGARGS
 	@_SYSCALL_LSTAT_ARGSTR
@@ -129,15 +129,15 @@ probe tp_syscall.lstat = __tp_syscall.lstat,
 {
         %( @_IS_SREG_KERNEL %? @_SYSCALL_LSTAT_REGARGS_STORE %)
 }
-probe __tp_syscall.lstat = kernel.trace("sys_enter")
+probe __tp_syscall.lstat = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
 	@__syscall_compat_gate(@const("__NR_oldlstat"), @const("__NR_compat_oldlstat"))
 }
-probe __tp_syscall.lstat64 = kernel.trace("sys_enter")
+probe __tp_syscall.lstat64 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
 	@__syscall_compat_gate(@const("__NR_lstat64"), @const("__NR_compat_lstat64"))
 }
-probe __tp_syscall.newlstat = kernel.trace("sys_enter")
+probe __tp_syscall.newlstat = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
 	@__syscall_compat_gate(@const("__NR_lstat"), @const("__NR_compat_lstat"))
 }
@@ -178,19 +178,19 @@ probe tp_syscall.lstat.return = __tp_syscall.lstat.return,
                                 __tp_syscall.lstat64.return,
                                 __tp_syscall.newlstat.return
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@_SYSCALL_LSTAT_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.lstat.return = kernel.trace("sys_exit")
+probe __tp_syscall.lstat.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
 	@__syscall_compat_gate(@const("__NR_oldlstat"), @const("__NR_compat_oldlstat"))
 }
-probe __tp_syscall.lstat64.return = kernel.trace("sys_exit")
+probe __tp_syscall.lstat64.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
 	@__syscall_compat_gate(@const("__NR_lstat64"), @const("__NR_compat_lstat64"))
 }
-probe __tp_syscall.newlstat.return = kernel.trace("sys_exit")
+probe __tp_syscall.newlstat.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
 	@__syscall_compat_gate(@const("__NR_lstat"), @const("__NR_compat_lstat"))
 }

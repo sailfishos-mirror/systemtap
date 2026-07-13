@@ -90,9 +90,9 @@ probe nd2_syscall.clock_gettime = kprobe.function(@arch_syscall_prefix "sys_cloc
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.clock_gettime = kernel.trace("sys_enter")
+probe tp_syscall.clock_gettime = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_clock_gettime"), @const("__NR_compat_clock_gettime"))
 	@_SYSCALL_CLOCK_GETTIME_NAME
 	@_SYSCALL_CLOCK_GETTIME_REGARGS
@@ -126,10 +126,10 @@ probe nd2_syscall.clock_gettime.return = kprobe.function(@arch_syscall_prefix "s
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.clock_gettime.return = kernel.trace("sys_exit")
+probe tp_syscall.clock_gettime.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_clock_gettime"), @const("__NR_compat_clock_gettime"))
 	@_SYSCALL_CLOCK_GETTIME_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

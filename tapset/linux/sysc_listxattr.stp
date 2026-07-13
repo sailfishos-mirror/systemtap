@@ -83,9 +83,9 @@ probe nd2_syscall.listxattr = kprobe.function(@arch_syscall_prefix "sys_listxatt
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.listxattr = kernel.trace("sys_enter")
+probe tp_syscall.listxattr = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_listxattr"), @const("__NR_compat_listxattr"))
 	@_SYSCALL_LISTXATTR_NAME
 	@_SYSCALL_LISTXATTR_REGARGS
@@ -112,10 +112,10 @@ probe nd2_syscall.listxattr.return = kprobe.function(@arch_syscall_prefix "sys_l
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.listxattr.return = kernel.trace("sys_exit")
+probe tp_syscall.listxattr.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_listxattr"), @const("__NR_compat_listxattr"))
 	@_SYSCALL_LISTXATTR_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

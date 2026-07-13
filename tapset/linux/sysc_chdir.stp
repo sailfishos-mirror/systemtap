@@ -66,9 +66,9 @@ probe nd2_syscall.chdir = kprobe.function(@arch_syscall_prefix "sys_chdir")
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.chdir = kernel.trace("sys_enter")
+probe tp_syscall.chdir = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_chdir"), @const("__NR_compat_chdir"))
 	@_SYSCALL_CHDIR_NAME
 	@_SYSCALL_CHDIR_REGARGS
@@ -95,10 +95,10 @@ probe nd2_syscall.chdir.return = kprobe.function(@arch_syscall_prefix "sys_chdir
 }
  
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.chdir.return = kernel.trace("sys_exit")
+probe tp_syscall.chdir.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_chdir"), @const("__NR_compat_chdir"))
 	@_SYSCALL_CHDIR_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

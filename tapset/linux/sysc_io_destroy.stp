@@ -66,9 +66,9 @@ probe nd2_syscall.io_destroy = kprobe.function(@arch_syscall_prefix "sys_io_dest
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.io_destroy = kernel.trace("sys_enter")
+probe tp_syscall.io_destroy = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_io_destroy"), @const("__NR_compat_io_destroy"))
 	@_SYSCALL_IO_DESTROY_NAME
 	@_SYSCALL_IO_DESTROY_REGARGS
@@ -95,10 +95,10 @@ probe nd2_syscall.io_destroy.return = kprobe.function(@arch_syscall_prefix "sys_
 }
  
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.io_destroy.return = kernel.trace("sys_exit")
+probe tp_syscall.io_destroy.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_io_destroy"), @const("__NR_compat_io_destroy"))
 	@_SYSCALL_IO_DESTROY_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

@@ -128,9 +128,9 @@ probe nd1_syscall.clone = kprobe.function("_do_fork").call !,
 %)
 }
 
-probe tp_syscall.clone = kernel.trace("sys_enter")
+probe tp_syscall.clone = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 %( arch != "ia64" %?
 	@__syscall_compat_gate(@const("__NR_clone"), @const("__NR_compat_clone"))
 	name = "clone"
@@ -185,9 +185,9 @@ probe nd1_syscall.clone.return = kprobe.function("_do_fork").return !,
 	@SYSC_RETVALSTR(returnval())
 }
 
-probe tp_syscall.clone.return = kernel.trace("sys_exit")
+probe tp_syscall.clone.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 %( arch != "ia64" %?
 	@__syscall_compat_gate(@const("__NR_clone"), @const("__NR_compat_clone"))
 	name = "clone"
@@ -201,5 +201,5 @@ probe tp_syscall.clone.return = kernel.trace("sys_exit")
 	else
 		name = "clone2"
 %)
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

@@ -83,9 +83,9 @@ probe nd2_syscall.swapon = kprobe.function(@arch_syscall_prefix "sys_swapon") ?
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.swapon = kernel.trace("sys_enter")
+probe tp_syscall.swapon = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_swapon"), @const("__NR_compat_swapon"))
 	@_SYSCALL_SWAPON_NAME
 	@_SYSCALL_SWAPON_REGARGS
@@ -112,10 +112,10 @@ probe nd2_syscall.swapon.return = kprobe.function(@arch_syscall_prefix "sys_swap
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.swapon.return = kernel.trace("sys_exit")
+probe tp_syscall.swapon.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_swapon"), @const("__NR_compat_swapon"))
 	@_SYSCALL_SWAPON_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

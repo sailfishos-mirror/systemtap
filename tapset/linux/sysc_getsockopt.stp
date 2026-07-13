@@ -200,18 +200,18 @@ probe tp_syscall.getsockopt = __tp_syscall.getsockopt ?,
 	optname_str = _sockopt_optname_str(optname)
 	@_SYSCALL_GETSOCKOPT_ARGSTR
 }
-probe __tp_syscall.getsockopt = kernel.trace("sys_enter")
+probe __tp_syscall.getsockopt = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_getsockopt"))
 	@_SYSCALL_GETSOCKOPT_REGARGS
 },
 {
         @_SYSCALL_GETSOCKOPT_REGARGS_STORE
 }
-probe __tp_syscall.socketcall.getsockopt = kernel.trace("sys_enter")
+probe __tp_syscall.socketcall.getsockopt = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_socketcall"), @const("__NR_compat_socketcall"))
 	if (int_arg(1) != @const("SYS_GETSOCKOPT")) next;
 	if (@__compat_task) {
@@ -264,15 +264,15 @@ probe tp_syscall.getsockopt.return = __tp_syscall.getsockopt.return ?,
 	__tp_syscall.socketcall.getsockopt.return ?
 {
 	@_SYSCALL_GETSOCKOPT_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.getsockopt.return = kernel.trace("sys_exit")
+probe __tp_syscall.getsockopt.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
 	@__syscall_gate(@const("__NR_getsockopt"))
 }
-probe __tp_syscall.socketcall.getsockopt.return = kernel.trace("sys_exit")
+probe __tp_syscall.socketcall.getsockopt.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_socketcall"), @const("__NR_compat_socketcall"))
 	if (int_arg(1) != @const("SYS_GETSOCKOPT")) next;
 }

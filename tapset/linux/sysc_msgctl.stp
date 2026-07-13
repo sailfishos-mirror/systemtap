@@ -102,9 +102,9 @@ probe nd2_syscall.msgctl = kprobe.function(@arch_syscall_prefix "sys_msgctl") ?
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.msgctl = kernel.trace("sys_enter")
+probe tp_syscall.msgctl = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_msgctl"))
 	@_SYSCALL_MSGCTL_NAME
 	@_SYSCALL_MSGCTL_REGARGS
@@ -132,12 +132,12 @@ probe nd2_syscall.msgctl.return = kprobe.function(@arch_syscall_prefix "sys_msgc
 }
  
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.msgctl.return = kernel.trace("sys_exit")
+probe tp_syscall.msgctl.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_msgctl"))
 	@_SYSCALL_MSGCTL_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }
 
 # compat_sys_msgctl ________________________________________
@@ -237,9 +237,9 @@ probe nd2_syscall.compat_sys_msgctl = kprobe.function(@arch_syscall_prefix "comp
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_sys_msgctl = kernel.trace("sys_enter")
+probe tp_syscall.compat_sys_msgctl = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_ipc"))
 	if ((uint_arg(1) & 0xffff) != @const("MSGCTL")) next;
 	@_SYSCALL_MSGCTL_NAME
@@ -283,11 +283,11 @@ probe nd2_syscall.compat_sys_msgctl.return =
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_sys_msgctl.return = kernel.trace("sys_exit")
+probe tp_syscall.compat_sys_msgctl.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_ipc"))
 	if ((uint_arg(1) & 0xffff) != @const("MSGCTL")) next;
 	@_SYSCALL_MSGCTL_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

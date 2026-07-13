@@ -6,6 +6,11 @@
 // Public License (GPL); either version 2, or (at your option) any
 // later version.
 
+/* kernel.tracepoint sys_enter/sys_exit ($arg1) or kernel.trace ($regs) */
+@define __set_syscall_pt_regs
+%(
+  __set_syscall_pt_regs(@choose_defined($regs, $arg1));
+%)
 
 @define __syscall_nr_gate(syscall_nr)
 %(
@@ -431,4 +436,26 @@
   %( systemtap_v >= "4.0" %? retval = @val; %)
   %( systemtap_v <= "4.0" %? set_returnval(@val); %)
   retstr = return_str(3,@val);
+%)
+
+/* sys_exit via kernel.tracepoint ($arg2) or kernel.trace ($ret) */
+@define SYSC_RETVALSTR_TP
+%(
+  %( systemtap_v >= "4.0" %? retval = @choose_defined($arg2, $ret); %)
+  %( systemtap_v <= "4.0" %? set_returnval(@choose_defined($arg2, $ret)); %)
+  retstr = return_str(1,@choose_defined($arg2, $ret));
+%)
+
+@define SYSC_RETVALSTR2_TP
+%(
+  %( systemtap_v >= "4.0" %? retval = @choose_defined($arg2, $ret); %)
+  %( systemtap_v <= "4.0" %? set_returnval(@choose_defined($arg2, $ret)); %)
+  retstr = return_str(2,@choose_defined($arg2, $ret));
+%)
+
+@define SYSC_RETVALSTR3_TP
+%(
+  %( systemtap_v >= "4.0" %? retval = @choose_defined($arg2, $ret); %)
+  %( systemtap_v <= "4.0" %? set_returnval(@choose_defined($arg2, $ret)); %)
+  retstr = return_str(3,@choose_defined($arg2, $ret));
 %)

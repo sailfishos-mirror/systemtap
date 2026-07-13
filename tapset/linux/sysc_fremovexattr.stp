@@ -76,9 +76,9 @@ probe nd2_syscall.fremovexattr = kprobe.function(@arch_syscall_prefix "sys_fremo
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.fremovexattr = kernel.trace("sys_enter")
+probe tp_syscall.fremovexattr = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_fremovexattr"), @const("__NR_compat_fremovexattr"))
 	@_SYSCALL_FREMOVEXATTR_NAME
 	@_SYSCALL_FREMOVEXATTR_REGARGS
@@ -105,10 +105,10 @@ probe nd2_syscall.fremovexattr.return = kprobe.function(@arch_syscall_prefix "sy
 }
  
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.fremovexattr.return = kernel.trace("sys_exit")
+probe tp_syscall.fremovexattr.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_fremovexattr"), @const("__NR_compat_fremovexattr"))
 	@_SYSCALL_FREMOVEXATTR_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

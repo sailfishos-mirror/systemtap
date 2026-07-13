@@ -187,18 +187,18 @@ probe tp_syscall.send = __tp_syscall.send ?,
 	buf = user_buffer_quoted(buf_uaddr, len, syscall_string_trunc)
 	@_SYSCALL_SEND_ARGSTR
 }
-probe __tp_syscall.send = kernel.trace("sys_enter")
+probe __tp_syscall.send = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_send"))
 	@_SYSCALL_SEND_REGARGS
 },
 {
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SEND_REGARGS_STORE %)
 }
-probe __tp_syscall.socketcall.send = kernel.trace("sys_enter")
+probe __tp_syscall.socketcall.send = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_socketcall"), @const("__NR_compat_socketcall"))
 	if (int_arg(1) != @const("SYS_SEND")) next;
 	if (@__compat_task) {
@@ -250,15 +250,15 @@ probe tp_syscall.send.return = __tp_syscall.send.return ?,
 	__tp_syscall.socketcall.send.return ?
 {
 	@_SYSCALL_SEND_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.send.return = kernel.trace("sys_exit")
+probe __tp_syscall.send.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
 	@__syscall_gate(@const("__NR_send"))
 }
-probe __tp_syscall.socketcall.send.return = kernel.trace("sys_exit")
+probe __tp_syscall.socketcall.send.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_socketcall"), @const("__NR_compat_socketcall"))
 	if (int_arg(1) != @const("SYS_SEND")) next;
 }

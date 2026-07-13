@@ -79,9 +79,9 @@ probe nd2_syscall.exit_group = kprobe.function(@arch_syscall_prefix "sys_exit_gr
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.exit_group = kernel.trace("sys_enter")
+probe tp_syscall.exit_group = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_exit_group"), @const("__NR_compat_exit_group"))
 	@_SYSCALL_EXIT_GROUP_NAME
 	@_SYSCALL_EXIT_GROUP_REGARGS

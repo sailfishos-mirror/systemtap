@@ -73,9 +73,9 @@ probe nd2_syscall.setns = kprobe.function(@arch_syscall_prefix "sys_setns") ?
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.setns = kernel.trace("sys_enter")
+probe tp_syscall.setns = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_setns"), @const("__NR_compat_setns"))
 	@_SYSCALL_SETNS_NAME
 	@_SYSCALL_SETNS_REGARGS
@@ -102,10 +102,10 @@ probe nd2_syscall.setns.return = kprobe.function(@arch_syscall_prefix "sys_setns
 }
  
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.setns.return = kernel.trace("sys_exit")
+probe tp_syscall.setns.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_setns"), @const("__NR_compat_setns"))
 	@_SYSCALL_SETNS_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

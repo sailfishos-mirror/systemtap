@@ -74,9 +74,9 @@ probe nd2_syscall.times = kprobe.function(@arch_syscall_prefix "compat_sys_times
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.times = kernel.trace("sys_enter")
+probe tp_syscall.times = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_times"), @const("__NR_compat_times"))
 	@_SYSCALL_TIMES_NAME
 	@_SYSCALL_TIMES_REGARGS
@@ -105,10 +105,10 @@ probe nd2_syscall.times.return = kprobe.function(@arch_syscall_prefix "compat_sy
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.times.return = kernel.trace("sys_exit")
+probe tp_syscall.times.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_times"), @const("__NR_compat_times"))
 	@_SYSCALL_TIMES_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

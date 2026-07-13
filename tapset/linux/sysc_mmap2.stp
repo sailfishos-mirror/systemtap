@@ -140,9 +140,9 @@ probe __nd2_syscall.mmap_pgoff = kprobe.function(@arch_syscall_prefix "sys_mmap_
 probe tp_syscall.mmap2 = __tp_syscall.mmap, __tp_syscall.mmap_pgoff
 {
 }
-probe __tp_syscall.mmap = kernel.trace("sys_enter")
+probe __tp_syscall.mmap = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_mmap"))
 	@_SYSCALL_MMAP2_NAME
 	start = ulong_arg(1)
@@ -161,9 +161,9 @@ probe __tp_syscall.mmap = kernel.trace("sys_enter")
 {
         %( @_IS_SREG_KERNEL %? @_SYSCALL_MMAP2_REGARGS_STORE %)
 }
-probe __tp_syscall.mmap_pgoff = kernel.trace("sys_enter")
+probe __tp_syscall.mmap_pgoff = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_mmap2"), @const("__NR_compat_mmap2"))
 	@_SYSCALL_MMAP2_NAME
 	start = ulong_arg(1)
@@ -205,18 +205,18 @@ probe nd2_syscall.mmap2.return = kprobe.function(@arch_syscall_prefix "sys_mmap"
 probe tp_syscall.mmap2.return = __tp_syscall.mmap.return, __tp_syscall.mmap_pgoff.return
 {
 }
-probe __tp_syscall.mmap.return = kernel.trace("sys_exit")
+probe __tp_syscall.mmap.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_mmap"))
 	@_SYSCALL_MMAP2_NAME
-	@SYSC_RETVALSTR2($ret)
+	@SYSC_RETVALSTR2_TP
 }
-probe __tp_syscall.mmap_pgoff.return = kernel.trace("sys_exit")
+probe __tp_syscall.mmap_pgoff.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_mmap2"), @const("__NR_compat_mmap2"))
 	@_SYSCALL_MMAP2_NAME
-	@SYSC_RETVALSTR2($ret)
+	@SYSC_RETVALSTR2_TP
 }
 %)

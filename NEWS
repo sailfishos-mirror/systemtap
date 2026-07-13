@@ -28,6 +28,11 @@
   probes do not use system:name syntax.  Requires vmlinux.h when probing
   the kernel (CONFIG_DEBUG_INFO_BTF).  Not yet supported with --runtime=bpf.
 
+- tp_syscall.* and syscall_any tapsets now prefer
+  kernel.tracepoint("sys_enter") / kernel.tracepoint("sys_exit") when BTF
+  vmlinux tracepoints are available, with kernel.trace("sys_enter") /
+  kernel.trace("sys_exit") fallbacks unchanged for older kernels.
+
 - REMOVED old systemtap initscript infrastructure. The legacy
   systemtap-service command and systemtap.service have been replaced with
   modern systemd service templates:

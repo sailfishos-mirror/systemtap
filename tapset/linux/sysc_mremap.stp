@@ -96,9 +96,9 @@ probe nd2_syscall.mremap = kprobe.function(@arch_syscall_prefix "sys_mremap") ?
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.mremap = kernel.trace("sys_enter")
+probe tp_syscall.mremap = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_mremap"), @const("__NR_compat_mremap"))
 	@_SYSCALL_MREMAP_NAME
 	@_SYSCALL_MREMAP_REGARGS
@@ -126,10 +126,10 @@ probe nd2_syscall.mremap.return = kprobe.function(@arch_syscall_prefix "sys_mrem
 }
  
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.mremap.return = kernel.trace("sys_exit")
+probe tp_syscall.mremap.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_mremap"), @const("__NR_compat_mremap"))
 	@_SYSCALL_MREMAP_NAME
-	@SYSC_RETVALSTR2($ret)
+	@SYSC_RETVALSTR2_TP
 }

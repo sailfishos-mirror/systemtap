@@ -163,18 +163,18 @@ probe tp_syscall.shutdown = __tp_syscall.shutdown ?,
 	how_str = _shutdown_how_str(how)
 	@_SYSCALL_SHUTDOWN_ARGSTR
 }
-probe __tp_syscall.shutdown = kernel.trace("sys_enter")
+probe __tp_syscall.shutdown = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_shutdown"))
 	@_SYSCALL_SHUTDOWN_REGARGS
 },
 {
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SHUTDOWN_REGARGS_STORE %)
 }
-probe __tp_syscall.socketcall.shutdown = kernel.trace("sys_enter")
+probe __tp_syscall.socketcall.shutdown = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_socketcall"), @const("__NR_compat_socketcall"))
 	if (int_arg(1) != @const("SYS_SHUTDOWN")) next;
 	if (@__compat_task) {
@@ -226,15 +226,15 @@ probe tp_syscall.shutdown.return = __tp_syscall.shutdown.return ?,
 	__tp_syscall.socketcall.shutdown.return ?
 {
 	@_SYSCALL_SHUTDOWN_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.shutdown.return = kernel.trace("sys_exit")
+probe __tp_syscall.shutdown.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
 	@__syscall_gate(@const("__NR_shutdown"))
 }
-probe __tp_syscall.socketcall.shutdown.return = kernel.trace("sys_exit")
+probe __tp_syscall.socketcall.shutdown.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_socketcall"), @const("__NR_compat_socketcall"))
 	if (int_arg(1) != @const("SYS_SHUTDOWN")) next;
 }

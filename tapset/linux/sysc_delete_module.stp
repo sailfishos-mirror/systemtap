@@ -74,9 +74,9 @@ probe nd2_syscall.delete_module = kprobe.function(@arch_syscall_prefix "sys_dele
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.delete_module = kernel.trace("sys_enter")
+probe tp_syscall.delete_module = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_delete_module"), @const("__NR_compat_delete_module"))
 	@_SYSCALL_DELETE_MODULE_NAME
 	@_SYSCALL_DELETE_MODULE_REGARGS
@@ -104,10 +104,10 @@ probe nd2_syscall.delete_module.return = kprobe.function(@arch_syscall_prefix "s
 }
  
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.delete_module.return = kernel.trace("sys_exit")
+probe tp_syscall.delete_module.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_delete_module"), @const("__NR_compat_delete_module"))
 	@_SYSCALL_DELETE_MODULE_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

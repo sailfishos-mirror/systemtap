@@ -78,9 +78,9 @@ probe nd2_syscall.syslog = kprobe.function(@arch_syscall_prefix "sys_syslog") ?
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.syslog = kernel.trace("sys_enter")
+probe tp_syscall.syslog = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_syslog"), @const("__NR_compat_syslog"))
 	@_SYSCALL_SYSLOG_NAME
 	@_SYSCALL_SYSLOG_REGARGS
@@ -107,10 +107,10 @@ probe nd2_syscall.syslog.return = kprobe.function(@arch_syscall_prefix "sys_sysl
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.syslog.return = kernel.trace("sys_exit")
+probe tp_syscall.syslog.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_syslog"), @const("__NR_compat_syslog"))
 	@_SYSCALL_SYSLOG_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

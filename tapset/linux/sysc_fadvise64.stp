@@ -91,9 +91,9 @@ probe nd2_syscall.fadvise64 = kprobe.function(@arch_syscall_prefix "sys_fadvise6
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.fadvise64 = kernel.trace("sys_enter")
+probe tp_syscall.fadvise64 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_fadvise64"))
 	@_SYSCALL_FADVISE64_NAME
 	fd = int_arg(1)
@@ -154,12 +154,12 @@ probe nd2_syscall.fadvise64.return = kprobe.function(@arch_syscall_prefix "sys_f
 }
  
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.fadvise64.return = kernel.trace("sys_exit")
+probe tp_syscall.fadvise64.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_fadvise64"))
 	@_SYSCALL_FADVISE64_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }
 
 # fadvise64_64 _______________________________________________
@@ -244,9 +244,9 @@ probe nd1_syscall.fadvise64_64 = kprobe.function("sys_fadvise64_64") ?
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.fadvise64_64 = kernel.trace("sys_enter")
+probe tp_syscall.fadvise64_64 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_fadvise64_64"))
 	@_SYSCALL_FADVISE64_NAME
 	fd = int_arg(1)
@@ -314,10 +314,10 @@ probe nd1_syscall.fadvise64_64.return =
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.fadvise64_64.return = kernel.trace("sys_exit")
+probe tp_syscall.fadvise64_64.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_fadvise64_64"))
 	@_SYSCALL_FADVISE64_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

@@ -89,7 +89,7 @@ probe nd2_syscall.lsm_get_self_attr = kprobe.function(@arch_syscall_prefix "__do
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.lsm_get_self_attr = kernel.trace("sys_enter")
+probe tp_syscall.lsm_get_self_attr = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
         # Old kernels not having this define __NR_lsm_get_self_attr work too because in that case we
         # define __NR_lsm_get_self_attr (__NR_syscall_max + 1) in runtime/linux/compat_unistd.h
@@ -119,9 +119,9 @@ probe nd1_syscall.lsm_get_self_attr.return = kprobe.function("__do_sys_lsm_get_s
 # }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.lsm_get_self_attr.return = kernel.trace("sys_exit")
+probe tp_syscall.lsm_get_self_attr.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@_SYSCALL_LSM_GET_SELF_ATTR_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

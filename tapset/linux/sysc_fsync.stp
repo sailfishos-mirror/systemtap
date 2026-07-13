@@ -65,9 +65,9 @@ probe nd2_syscall.fsync = kprobe.function(@arch_syscall_prefix "sys_fsync") ?
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.fsync = kernel.trace("sys_enter")
+probe tp_syscall.fsync = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_fsync"), @const("__NR_compat_fsync"))
 	@_SYSCALL_FSYNC_NAME
 	@_SYSCALL_FSYNC_REGARGS
@@ -94,10 +94,10 @@ probe nd2_syscall.fsync.return = kprobe.function(@arch_syscall_prefix "sys_fsync
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.fsync.return = kernel.trace("sys_exit")
+probe tp_syscall.fsync.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_fsync"), @const("__NR_compat_fsync"))
 	@_SYSCALL_FSYNC_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

@@ -71,9 +71,9 @@ probe nd2_syscall.munmap = kprobe.function(@arch_syscall_prefix "sys_munmap") ?
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.munmap = kernel.trace("sys_enter")
+probe tp_syscall.munmap = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_munmap"), @const("__NR_compat_munmap"))
 	@_SYSCALL_MUNMAP_NAME
 	@_SYSCALL_MUNMAP_REGARGS
@@ -100,10 +100,10 @@ probe nd2_syscall.munmap.return = kprobe.function(@arch_syscall_prefix "sys_munm
 }
  
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.munmap.return = kernel.trace("sys_exit")
+probe tp_syscall.munmap.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_munmap"), @const("__NR_compat_munmap"))
 	@_SYSCALL_MUNMAP_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

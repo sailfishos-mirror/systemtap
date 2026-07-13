@@ -113,9 +113,9 @@ probe nd2_syscall.read = kprobe.function(@arch_syscall_prefix "sys_read")
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.read = kernel.trace("sys_enter")
+probe tp_syscall.read = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_read"), @const("__NR_compat_read"))
 	@_SYSCALL_READ_NAME
 	@_SYSCALL_READ_REGARGS
@@ -154,10 +154,10 @@ probe nd2_syscall.read.return = kprobe.function(@arch_syscall_prefix "sys_read")
 }
  
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.read.return = kernel.trace("sys_exit")
+probe tp_syscall.read.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_read"), @const("__NR_compat_read"))
 	@_SYSCALL_READ_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

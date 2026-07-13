@@ -82,9 +82,9 @@ probe nd2_syscall.exit = kprobe.function(@arch_syscall_prefix "sys_exit")
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.exit = kernel.trace("sys_enter")
+probe tp_syscall.exit = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_exit"), @const("__NR_compat_exit"))
 	@_SYSCALL_EXIT_NAME
 	@_SYSCALL_EXIT_REGARGS

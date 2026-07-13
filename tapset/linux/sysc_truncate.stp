@@ -156,9 +156,9 @@ probe tp_syscall.truncate = __tp_syscall.truncate ?,
 	@_SYSCALL_TRUNCATE_NAME
 	@_SYSCALL_TRUNCATE_ARGSTR
 }
-probe __tp_syscall.truncate = kernel.trace("sys_enter")
+probe __tp_syscall.truncate = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_truncate"))
 	path_uaddr = pointer_arg(1)
 	path = user_string_quoted(path_uaddr)
@@ -178,9 +178,9 @@ probe __tp_syscall.truncate = kernel.trace("sys_enter")
 %)
 }
 
-probe __tp_syscall.truncate64 = kernel.trace("sys_enter")
+probe __tp_syscall.truncate64 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_truncate64"))
 	path_uaddr = pointer_arg(1)
 	path = user_string_quoted(path_uaddr)
@@ -200,9 +200,9 @@ probe __tp_syscall.truncate64 = kernel.trace("sys_enter")
 %)
 }
 
-probe __tp_syscall.compat_truncate = kernel.trace("sys_enter")
+probe __tp_syscall.compat_truncate = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_truncate"))
 	path_uaddr = pointer_arg(1)
 	path = user_string_quoted(path_uaddr)
@@ -250,15 +250,15 @@ probe nd2_syscall.truncate.return =
 probe tp_syscall.truncate.return = __tp_syscall.truncate.return,
                                    __tp_syscall.truncate64.return
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@_SYSCALL_TRUNCATE_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.truncate.return = kernel.trace("sys_exit")
+probe __tp_syscall.truncate.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
 	@__syscall_compat_gate(@const("__NR_truncate"), @const("__NR_compat_truncate"))
 }
-probe __tp_syscall.truncate64.return = kernel.trace("sys_exit")
+probe __tp_syscall.truncate64.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
 	@__syscall_gate(@const("__NR_truncate64"))
 }

@@ -65,9 +65,9 @@ probe nd2_syscall.fdatasync = kprobe.function(@arch_syscall_prefix "sys_fdatasyn
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.fdatasync = kernel.trace("sys_enter")
+probe tp_syscall.fdatasync = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_fdatasync"), @const("__NR_compat_fdatasync"))
 	@_SYSCALL_FDATASYNC_NAME
 	@_SYSCALL_FDATASYNC_REGARGS
@@ -94,10 +94,10 @@ probe nd2_syscall.fdatasync.return = kprobe.function(@arch_syscall_prefix "sys_f
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.fdatasync.return = kernel.trace("sys_exit")
+probe tp_syscall.fdatasync.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_fdatasync"), @const("__NR_compat_fdatasync"))
 	@_SYSCALL_FDATASYNC_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

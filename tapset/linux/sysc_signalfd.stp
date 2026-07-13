@@ -163,9 +163,9 @@ probe tp_syscall.signalfd = __tp_syscall.signalfd4 !,
                             __tp_syscall.signalfd ?
 {
 }
-probe __tp_syscall.signalfd4 = kernel.trace("sys_enter")
+probe __tp_syscall.signalfd4 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_signalfd4"))
 	flags = int_arg(4)
 	if (flags == 0) {
@@ -181,9 +181,9 @@ probe __tp_syscall.signalfd4 = kernel.trace("sys_enter")
 {
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SIGNALFD4_REGARGS_STORE %)
 }
-probe __tp_syscall.signalfd = kernel.trace("sys_enter")
+probe __tp_syscall.signalfd = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_signalfd"))
 	name = "signalfd"
 	flags = 0
@@ -234,18 +234,18 @@ probe __nd2_syscall.signalfd.return = kprobe.function(@arch_syscall_prefix "sys_
 probe tp_syscall.signalfd.return = __tp_syscall.signalfd4.return !,
                                    __tp_syscall.signalfd.return ?
 {
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.signalfd4.return = kernel.trace("sys_exit")
+probe __tp_syscall.signalfd4.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_signalfd4"))
 	flags = int_arg(4)
 	name = (flags == 0) ? "signalfd" : "signalfd4"
 }
-probe __tp_syscall.signalfd.return = kernel.trace("sys_exit")
+probe __tp_syscall.signalfd.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_signalfd4"))
 	flags = 0
 	name = "signalfd"
@@ -319,9 +319,9 @@ probe tp_syscall.compat_signalfd = __tp_syscall.compat_signalfd4 !,
                                    __tp_syscall.compat_signalfd ?
 {
 }
-probe __tp_syscall.compat_signalfd4 = kernel.trace("sys_enter")
+probe __tp_syscall.compat_signalfd4 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_signalfd4"))
 	flags = int_arg(4)
 	if (flags == 0) {
@@ -340,7 +340,7 @@ probe __tp_syscall.compat_signalfd4 = kernel.trace("sys_enter")
 }
 probe __tp_syscall.compat_signalfd = kernel.function("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_signalfd"))
 	flags = int_arg(4)
 	flags = 0
@@ -403,19 +403,19 @@ probe tp_syscall.compat_signalfd.return =
 		__tp_syscall.compat_signalfd.return ?
 {
 }
-probe __tp_syscall.compat_signalfd4.return = kernel.trace("sys_exit")
+probe __tp_syscall.compat_signalfd4.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_signalfd4"))
 	flags = int_arg(4)
 	name = (flags == 0) ? "signalfd" : "signalfd4"
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.compat_signalfd.return = kernel.trace("sys_exit")
+probe __tp_syscall.compat_signalfd.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_signalfd"))
 	flags = 0
 	name = "signalfd"
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

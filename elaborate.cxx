@@ -3182,6 +3182,26 @@ symresolution_info::find_var (const string& name, int arity, const token* tok)
 }
 
 
+// Macro-expanded tokens record their invocation site in token::chain.
+// Guru privileges must follow that outermost caller (e.g. a tapset .stp
+// file), not the .stpm file where a library macro body was defined.
+static const token*
+outermost_macro_invocation (const token* tok)
+{
+  const token* t = tok;
+  while (t && t->chain)
+    t = t->chain;
+  return t;
+}
+
+static bool
+token_privileged_context (const token* tok)
+{
+  const token* t = outermost_macro_invocation (tok);
+  return t && t->location.file && t->location.file->privileged;
+}
+
+
 class functioncall_security_check: public traversing_visitor
 {
   systemtap_session& session;
@@ -3222,7 +3242,7 @@ public:
     }
 
   // Don't allow /* guru */ functions unless caller is privileged.
-  if (!call->synthetic && !call->tok->location.file->privileged &&
+  if (!call->synthetic && !token_privileged_context (call->tok) &&
       s->tagged_p ("/* guru */"))
     throw SEMANTIC_ERROR (_("function may not be used unless -g is specified"),
 			  call->tok);

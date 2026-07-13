@@ -302,7 +302,11 @@ parse_library_macros (systemtap_session& s, const string& name)
       return 0;
     }
 
-  parser p (s, name, i);
+  // Like optional library .stp tapsets (pf_squash_errors in main.cxx),
+  // parse errors in .stpm macro files are warnings: main skips the file
+  // without aborting the session.  Do not set pf_guru here; guru calls
+  // from macro expansion use token::chain to the invoking tapset .stp.
+  parser p (s, name, i, pf_squash_errors);
   return p.parse_library_macros ();
 }
 

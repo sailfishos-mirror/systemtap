@@ -71,9 +71,9 @@ probe nd2_syscall.getpriority = kprobe.function(@arch_syscall_prefix "sys_getpri
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.getpriority = kernel.trace("sys_enter")
+probe tp_syscall.getpriority = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_getpriority"), @const("__NR_compat_getpriority"))
 	@_SYSCALL_GETPRIORITY_NAME
 	@_SYSCALL_GETPRIORITY_REGARGS
@@ -100,10 +100,10 @@ probe nd2_syscall.getpriority.return = kprobe.function(@arch_syscall_prefix "sys
 }
  
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.getpriority.return = kernel.trace("sys_exit")
+probe tp_syscall.getpriority.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_getpriority"), @const("__NR_compat_getpriority"))
 	@_SYSCALL_GETPRIORITY_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

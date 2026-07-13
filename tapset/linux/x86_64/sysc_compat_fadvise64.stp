@@ -127,9 +127,9 @@ probe nd2_syscall.compat_fadvise64 =
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_fadvise64 = kernel.trace("sys_enter")
+probe tp_syscall.compat_fadvise64 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_ia32_fadvise64"))
 	@_SYSCALL_COMPAT_FADVISE64_NAME
 	@_SYSCALL_COMPAT_FADVISE64_REGARGS
@@ -159,12 +159,12 @@ probe nd2_syscall.compat_fadvise64.return =
 }
  
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_fadvise64.return = kernel.trace("sys_exit")
+probe tp_syscall.compat_fadvise64.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_ia32_fadvise64"))
 	@_SYSCALL_COMPAT_FADVISE64_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }
 
 # fadvise64_64 __________________________________________________
@@ -228,9 +228,9 @@ probe nd2_syscall.compat_fadvise64_64 =
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_fadvise64_64 = kernel.trace("sys_enter")
+probe tp_syscall.compat_fadvise64_64 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_ia32_fadvise64_64"))
 	@_SYSCALL_COMPAT_FADVISE64_NAME
 	@_SYSCALL_COMPAT_FADVISE64_64_REGARGS
@@ -260,10 +260,10 @@ probe nd2_syscall.compat_fadvise64_64.return =
 }
  
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_fadvise64_64.return = kernel.trace("sys_exit")
+probe tp_syscall.compat_fadvise64_64.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_ia32_fadvise64_64"))
 	@_SYSCALL_COMPAT_FADVISE64_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

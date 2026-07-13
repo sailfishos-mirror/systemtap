@@ -99,9 +99,9 @@ probe nd2_syscall.shmat = kprobe.function(@arch_syscall_prefix "sys_shmat") ?
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.shmat = kernel.trace("sys_enter")
+probe tp_syscall.shmat = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_shmat"))
 	@_SYSCALL_SHMAT_NAME
 	@_SYSCALL_SHMAT_REGARGS
@@ -128,12 +128,12 @@ probe nd2_syscall.shmat.return = kprobe.function(@arch_syscall_prefix "sys_shmat
 }
  
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.shmat.return = kernel.trace("sys_exit")
+probe tp_syscall.shmat.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_shmat"))
 	@_SYSCALL_SHMAT_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }
 
 # compat_sys_shmat ________________________________________
@@ -214,9 +214,9 @@ probe nd2_syscall.compat_sys_shmat =
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_sys_shmat = kernel.trace("sys_enter")
+probe tp_syscall.compat_sys_shmat = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_ipc"))
 	if (int_arg(1) != @const("SHMAT")) next;
 	@_SYSCALL_SHMAT_NAME
@@ -247,11 +247,11 @@ probe nd2_syscall.compat_sys_shmat.return =
 }
  
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_sys_shmat.return = kernel.trace("sys_exit")
+probe tp_syscall.compat_sys_shmat.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_ipc"))
 	if (int_arg(1) != @const("SHMAT")) next;
 	@_SYSCALL_SHMAT_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

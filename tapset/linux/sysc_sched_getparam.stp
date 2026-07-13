@@ -76,9 +76,9 @@ probe nd2_syscall.sched_getparam = kprobe.function(@arch_syscall_prefix "sys_sch
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.sched_getparam = kernel.trace("sys_enter")
+probe tp_syscall.sched_getparam = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_sched_getparam"), @const("__NR_compat_sched_getparam"))
 	@_SYSCALL_SCHED_GETPARAM_NAME
 	@_SYSCALL_SCHED_GETPARAM_REGARGS
@@ -105,10 +105,10 @@ probe nd2_syscall.sched_getparam.return = kprobe.function(@arch_syscall_prefix "
 }
  
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.sched_getparam.return = kernel.trace("sys_exit")
+probe tp_syscall.sched_getparam.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_sched_getparam"), @const("__NR_compat_sched_getparam"))
 	@_SYSCALL_SCHED_GETPARAM_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

@@ -48,7 +48,7 @@ probe nd2_syscall.sync = kprobe.function(@arch_syscall0_prefix "sys_sync") ?
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.sync = kernel.trace("sys_enter") ?
+probe tp_syscall.sync = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter") ?
 {
 	@__syscall_compat_gate(@const("__NR_sync"), @const("__NR_compat_sync"))
 	@_SYSCALL_SYNC_NAME
@@ -72,10 +72,10 @@ probe nd2_syscall.sync.return = kprobe.function(@arch_syscall0_prefix "sys_sync"
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.sync.return = kernel.trace("sys_exit")
+probe tp_syscall.sync.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_sync"), @const("__NR_compat_sync"))
 	@_SYSCALL_SYNC_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

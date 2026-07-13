@@ -76,9 +76,9 @@ probe nd2_syscall.signal = kprobe.function(@arch_syscall_prefix "sys_signal") ?
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.signal = kernel.trace("sys_enter")
+probe tp_syscall.signal = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_signal"), @const("__NR_compat_signal"))
 	@_SYSCALL_SIGNAL_NAME
 	@_SYSCALL_SIGNAL_REGARGS
@@ -105,10 +105,10 @@ probe nd2_syscall.signal.return = kprobe.function(@arch_syscall_prefix "sys_sign
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.signal.return = kernel.trace("sys_exit")
+probe tp_syscall.signal.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_signal"), @const("__NR_compat_signal"))
 	@_SYSCALL_SIGNAL_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

@@ -103,9 +103,9 @@ probe tp_syscall.epoll_create = __tp_syscall.epoll_create1 !,
                                 __tp_syscall.epoll_create ?
 {
 }
-probe __tp_syscall.epoll_create1 = kernel.trace("sys_enter")
+probe __tp_syscall.epoll_create1 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_epoll_create1"), @const("__NR_compat_epoll_create1"))
 	size = 0;
 	flags = int_arg(1)
@@ -123,9 +123,9 @@ probe __tp_syscall.epoll_create1 = kernel.trace("sys_enter")
 	  set_int_arg(1, flags)
 %)
 }
-probe __tp_syscall.epoll_create = kernel.trace("sys_enter")
+probe __tp_syscall.epoll_create = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_epoll_create"), @const("__NR_compat_epoll_create"))
 	name = "epoll_create"
 	size = int_arg(1)
@@ -183,19 +183,19 @@ probe tp_syscall.epoll_create.return = __tp_syscall.epoll_create1.return !,
                                        __tp_syscall.epoll_create.return ?
 {
 }
-probe __tp_syscall.epoll_create1.return = kernel.trace("sys_exit")
+probe __tp_syscall.epoll_create1.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_epoll_create1"), @const("__NR_compat_epoll_create1"))
 	flags = int_arg(1)
 	name = (flags == 0) ? "epoll_create" : "epoll_create1";
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.epoll_create.return = kernel.trace("sys_exit")
+probe __tp_syscall.epoll_create.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_epoll_create"), @const("__NR_compat_epoll_create"))
 	flags = 0
 	name = "epoll_create"
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

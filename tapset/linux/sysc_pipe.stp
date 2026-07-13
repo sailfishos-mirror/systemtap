@@ -246,9 +246,9 @@ probe __nd2_syscall.pipe = kprobe.function(@arch_syscall_prefix "sys_pipe")
 probe tp_syscall.pipe = __tp_syscall.pipe2 ?, __tp_syscall.pipe
 {
 }
-probe __tp_syscall.pipe2 = kernel.trace("sys_enter")
+probe __tp_syscall.pipe2 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_pipe2"), @const("__NR_compat_pipe2"))
 	name = "pipe2";
 	flags = int_arg(2)
@@ -274,9 +274,9 @@ probe __tp_syscall.pipe2 = kernel.trace("sys_enter")
 %)
 }
 
-probe __tp_syscall.pipe = kernel.trace("sys_enter")
+probe __tp_syscall.pipe = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_pipe"), @const("__NR_compat_pipe"))
 	name = "pipe"
 	flags = 0
@@ -384,9 +384,9 @@ probe tp_syscall.pipe.return = __tp_syscall.pipe2.return ?,
                                __tp_syscall.pipe.return
 {
 }
-probe __tp_syscall.pipe2.return = kernel.trace("sys_exit")
+probe __tp_syscall.pipe2.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_pipe2"), @const("__NR_compat_pipe2"))
 	name = "pipe2";
 	fildes_uaddr = pointer_arg(1)
@@ -397,11 +397,11 @@ probe __tp_syscall.pipe2.return = kernel.trace("sys_exit")
 		pipe0 = _fildes_index_u(fildes_uaddr, 0)
 		pipe1 = _fildes_index_u(fildes_uaddr, 1)
 	}
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.pipe.return = kernel.trace("sys_exit")
+probe __tp_syscall.pipe.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_pipe"), @const("__NR_compat_pipe"))
 	name = "pipe"
 	fildes_uaddr = int_arg(1)
@@ -412,5 +412,5 @@ probe __tp_syscall.pipe.return = kernel.trace("sys_exit")
 		pipe0 = _fildes_index_u(fildes_uaddr, 0)
 		pipe1 = _fildes_index_u(fildes_uaddr, 1)
 	}
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

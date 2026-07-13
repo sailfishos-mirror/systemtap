@@ -127,9 +127,9 @@ probe __nd2_syscall.compat_clock_adjtime =
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.clock_adjtime = kernel.trace("sys_enter")
+probe tp_syscall.clock_adjtime = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_clock_adjtime"), @const("__NR_compat_clock_adjtime"))
 	@_SYSCALL_CLOCK_ADJTIME_NAME
 	@_SYSCALL_CLOCK_ADJTIME_REGARGS
@@ -167,10 +167,10 @@ probe nd2_syscall.clock_adjtime.return = kprobe.function(@arch_syscall_prefix "s
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.clock_adjtime.return = kernel.trace("sys_exit")
+probe tp_syscall.clock_adjtime.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_clock_adjtime"), @const("__NR_compat_clock_adjtime"))
 	@_SYSCALL_CLOCK_ADJTIME_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

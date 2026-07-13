@@ -174,18 +174,18 @@ probe tp_syscall.connect = __tp_syscall.connect ?,
 	@_af_inet_info_u(serv_addr_uaddr, addrlen)
 	@_SYSCALL_CONNECT_ARGSTR
 }
-probe __tp_syscall.connect = kernel.trace("sys_enter")
+probe __tp_syscall.connect = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_connect"))
 	@_SYSCALL_CONNECT_REGARGS
 },
 {
         %( @_IS_SREG_KERNEL %? @_SYSCALL_CONNECT_REGARGS_STORE %)
 }
-probe __tp_syscall.socketcall.connect = kernel.trace("sys_enter")
+probe __tp_syscall.socketcall.connect = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_socketcall"), @const("__NR_compat_socketcall"))
 	if (int_arg(1) != @const("SYS_CONNECT")) next;
 	if (@__compat_task) {
@@ -237,15 +237,15 @@ probe tp_syscall.connect.return = __tp_syscall.connect.return ?,
 	__tp_syscall.socketcall.connect.return ?
 {
 	@_SYSCALL_CONNECT_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.connect.return = kernel.trace("sys_exit")
+probe __tp_syscall.connect.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
 	@__syscall_gate(@const("__NR_connect"))
 }
-probe __tp_syscall.connect.return = kernel.trace("sys_exit")
+probe __tp_syscall.connect.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_socketcall"), @const("__NR_compat_socketcall"))
 	if (int_arg(1) != @const("SYS_CONNECT")) next;
 }

@@ -121,9 +121,9 @@ probe nd2_syscall.ftruncate =
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.ftruncate = kernel.trace("sys_enter")
+probe tp_syscall.ftruncate = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_ftruncate"),
 			       @const("__NR_compat_ftruncate"))
 	@_SYSCALL_FTRUNCATE_NAME
@@ -158,13 +158,13 @@ probe nd2_syscall.ftruncate.return =
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.ftruncate.return = kernel.trace("sys_exit")
+probe tp_syscall.ftruncate.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_ftruncate"),
 			       @const("__NR_compat_ftruncate"))
 	@_SYSCALL_FTRUNCATE_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }
 
 # ftruncate64 ________________________________________________
@@ -202,9 +202,9 @@ probe nd1_syscall.ftruncate64 = kprobe.function("sys_ftruncate64") ?
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.ftruncate64 = kernel.trace("sys_enter")
+probe tp_syscall.ftruncate64 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_ftruncate64"))
 	@_SYSCALL_FTRUNCATE_NAME
 	@_SYSCALL_FTRUNCATE64_REGARGS
@@ -225,10 +225,10 @@ probe nd1_syscall.ftruncate64.return =
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.ftruncate64.return = kernel.trace("sys_exit")
+probe tp_syscall.ftruncate64.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_ftruncate64"))
 	@_SYSCALL_FTRUNCATE_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

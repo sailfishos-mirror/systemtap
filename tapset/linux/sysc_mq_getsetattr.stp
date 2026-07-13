@@ -101,9 +101,9 @@ probe nd2_syscall.mq_getsetattr =
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.mq_getsetattr = kernel.trace("sys_enter")
+probe tp_syscall.mq_getsetattr = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_mq_getsetattr"), @const("__NR_compat_mq_getsetattr"))
 	@_SYSCALL_MQ_GETSETATTR_NAME
 	@_SYSCALL_MQ_GETSETATTR_REGARGS
@@ -138,10 +138,10 @@ probe nd2_syscall.mq_getsetattr.return =
 }
  
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.mq_getsetattr.return = kernel.trace("sys_exit")
+probe tp_syscall.mq_getsetattr.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_mq_getsetattr"), @const("__NR_compat_mq_getsetattr"))
 	@_SYSCALL_MQ_GETSETATTR_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

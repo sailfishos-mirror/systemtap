@@ -112,9 +112,9 @@ probe __nd2_syscall.eventfd = kprobe.function(@arch_syscall_prefix "sys_eventfd"
 probe tp_syscall.eventfd = __tp_syscall.eventfd2 ?, __tp_syscall.eventfd ?
 {
 }
-probe __tp_syscall.eventfd2 = kernel.trace("sys_enter")
+probe __tp_syscall.eventfd2 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_eventfd2"), @const("__NR_compat_eventfd2"))
 	name = "eventfd2"
 	count = uint_arg(1)
@@ -131,9 +131,9 @@ probe __tp_syscall.eventfd2 = kernel.trace("sys_enter")
 	  set_int_arg(2, flags)
 %)
 }
-probe __tp_syscall.eventfd = kernel.trace("sys_enter")
+probe __tp_syscall.eventfd = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_eventfd"), @const("__NR_compat_eventfd"))
 	name = "eventfd"
 	count = uint_arg(1)
@@ -185,15 +185,15 @@ probe __nd2_syscall.eventfd.return = kprobe.function(@arch_syscall_prefix "sys_e
 probe tp_syscall.eventfd.return = __tp_syscall.eventfd2.return ?,
                                   __tp_syscall.eventfd.return ?
 {
-	__set_syscall_pt_regs($regs)
-	@SYSC_RETVALSTR($ret)
+	@__set_syscall_pt_regs
+	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.eventfd2.return = kernel.trace("sys_exit")
+probe __tp_syscall.eventfd2.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
 	@__syscall_compat_gate(@const("__NR_eventfd2"), @const("__NR_compat_eventfd2"))
 	name = "eventfd2"
 }
-probe __tp_syscall.eventfd.return = kernel.trace("sys_exit")
+probe __tp_syscall.eventfd.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
 	@__syscall_compat_gate(@const("__NR_eventfd"), @const("__NR_compat_eventfd"))
 	name = "eventfd"

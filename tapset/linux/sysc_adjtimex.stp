@@ -89,9 +89,9 @@ probe nd2_syscall.adjtimex = kprobe.function(@arch_syscall_prefix "sys_adjtimex"
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.adjtimex = kernel.trace("sys_enter")
+probe tp_syscall.adjtimex = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_adjtimex"))
 	@_SYSCALL_ADJTIMEX_NAME
 	@_SYSCALL_ADJTIMEX_REGARGS
@@ -121,12 +121,12 @@ probe nd2_syscall.adjtimex.return = kprobe.function(@arch_syscall_prefix "sys_ad
 }
  
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.adjtimex.return = kernel.trace("sys_exit")
+probe tp_syscall.adjtimex.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_adjtimex"))
 	@_SYSCALL_ADJTIMEX_NAME
-        @SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 	retstr = _adjtimex_return_str(retval)
 }
 
@@ -155,9 +155,9 @@ probe nd2_syscall.compat_adjtimex = kprobe.function(@arch_syscall_prefix "compat
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_adjtimex = kernel.trace("sys_enter")
+probe tp_syscall.compat_adjtimex = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_adjtimex"))
 	@_SYSCALL_ADJTIMEX_NAME
 	@_SYSCALL_ADJTIMEX_REGARGS
@@ -184,11 +184,11 @@ probe nd2_syscall.compat_adjtimex.return = kprobe.function(@arch_syscall_prefix 
 }
  
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_adjtimex.return = kernel.trace("sys_exit")
+probe tp_syscall.compat_adjtimex.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_adjtimex"))
 	@_SYSCALL_ADJTIMEX_NAME
-        @SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 	retstr = _adjtimex_return_str(retval)
 }

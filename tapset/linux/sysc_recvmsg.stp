@@ -176,18 +176,18 @@ probe tp_syscall.recvmsg = __tp_syscall.recvmsg ?,
 	flags_str = _msg_flags_str(flags)
 	@_SYSCALL_RECVMSG_ARGSTR
 }
-probe __tp_syscall.recvmsg = kernel.trace("sys_enter")
+probe __tp_syscall.recvmsg = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_recvmsg"))
 	@_SYSCALL_RECVMSG_REGARGS
 },
 {
         %( @_IS_SREG_KERNEL %? @_SYSCALL_RECVMSG_REGARGS_STORE %)
 }
-probe __tp_syscall.socketcall.recvmsg = kernel.trace("sys_enter")
+probe __tp_syscall.socketcall.recvmsg = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_socketcall"))
 	if (int_arg(1) != @const("SYS_RECVMSG")) next;
 	@_SYSCALL_SOCKETCALL_RECVMSG_REGARGS
@@ -234,15 +234,15 @@ probe tp_syscall.recvmsg.return = __tp_syscall.recvmsg.return ?,
 {
 	@__syscall_gate_compat_simple
 	@_SYSCALL_RECVMSG_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.recvmsg.return = kernel.trace("sys_exit")
+probe __tp_syscall.recvmsg.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
 	@__syscall_gate(@const("__NR_recvmsg"))
 }
-probe __tp_syscall.socketcall.recvmsg.return = kernel.trace("sys_exit")
+probe __tp_syscall.socketcall.recvmsg.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_socketcall"))
 	if (int_arg(1) != @const("SYS_RECVMSG")) next;
 }
@@ -316,9 +316,9 @@ probe nd2_syscall.compat_sys_recvmsg =
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_sys_recvmsg = kernel.trace("sys_enter")
+probe tp_syscall.compat_sys_recvmsg = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_socketcall"))
 	if (int_arg(1) != @const("SYS_RECVMSG")) next;
 	@_SYSCALL_RECVMSG_NAME
@@ -348,11 +348,11 @@ probe nd2_syscall.compat_sys_recvmsg.return =
 }
 
 /* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_sys_recvmsg.return = kernel.trace("sys_exit")
+probe tp_syscall.compat_sys_recvmsg.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_socketcall"))
 	if (int_arg(1) != @const("SYS_RECVMSG")) next;
 	@_SYSCALL_RECVMSG_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }

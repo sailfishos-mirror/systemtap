@@ -123,7 +123,7 @@ probe tp_syscall.stat = __tp_syscall.stat,
                         __tp_syscall.stat64,
                         __tp_syscall.newstat
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@_SYSCALL_STAT_NAME
 	@_SYSCALL_STAT_REGARGS
 	@_SYSCALL_STAT_ARGSTR
@@ -131,15 +131,15 @@ probe tp_syscall.stat = __tp_syscall.stat,
 {
         %( @_IS_SREG_KERNEL %? @_SYSCALL_STAT_REGARGS_STORE %)
 }
-probe __tp_syscall.stat = kernel.trace("sys_enter")
+probe __tp_syscall.stat = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
 	@__syscall_compat_gate(@const("__NR_oldstat"), @const("__NR_compat_oldstat"))
 }
-probe __tp_syscall.stat64 = kernel.trace("sys_enter")
+probe __tp_syscall.stat64 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
 	@__syscall_compat_gate(@const("__NR_stat64"), @const("__NR_compat_stat64"))
 }
-probe __tp_syscall.newstat = kernel.trace("sys_enter")
+probe __tp_syscall.newstat = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
 {
 	@__syscall_compat_gate(@const("__NR_stat"), @const("__NR_compat_stat"))
 }
@@ -180,19 +180,19 @@ probe tp_syscall.stat.return = __tp_syscall.stat.return,
                                __tp_syscall.stat64.return,
                                __tp_syscall.newstat.return
 {
-	__set_syscall_pt_regs($regs)
+	@__set_syscall_pt_regs
 	@_SYSCALL_STAT_NAME
-	@SYSC_RETVALSTR($ret)
+	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.stat.return = kernel.trace("sys_exit")
+probe __tp_syscall.stat.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
 	@__syscall_compat_gate(@const("__NR_oldstat"), @const("__NR_compat_oldstat"))
 }
-probe __tp_syscall.stat64.return = kernel.trace("sys_exit")
+probe __tp_syscall.stat64.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
 	@__syscall_compat_gate(@const("__NR_stat64"), @const("__NR_compat_stat64"))
 }
-probe __tp_syscall.newstat.return = kernel.trace("sys_exit")
+probe __tp_syscall.newstat.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
 {
 	@__syscall_compat_gate(@const("__NR_stat"), @const("__NR_compat_stat"))
 }
