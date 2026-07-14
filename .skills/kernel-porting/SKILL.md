@@ -32,15 +32,24 @@ breakage is probe symbols or context variables, not C API shape.
 
 ## Diagnose first
 
-1. Reproduce with the same pass the failure uses:
+1. **Existence-check in Bunsen** when the report is from CI or “new kernel”
+   breakage. Bunsen holds months of Sourceware buildbot testruns across
+   kernels and architectures. Query it (MCP or
+   `https://builder.sourceware.org/testrun/<hash>`) to see whether the
+   FAIL is new, limited to one kernel/arch, or already present elsewhere —
+   that frames whether you need a fresh port vs a latent bug. Useful MCP
+   moves: find testruns by kernel/`uname` metadata, list FAIL cases for a
+   run, diff two testruns, open the per-case log. See also `AGENTS.md`
+   (**Sourceware upstream CI and Bunsen**).
+2. Reproduce with the same pass the failure uses:
    - semantic / DWARF: `stap -p2 ...` or `make check RUNTESTFLAGS="semok.exp" CHECK_ONLY="..."`
    - module compile: `stap -p4 ...` or `make check RUNTESTFLAGS="buildok.exp" CHECK_ONLY="..."`
-2. Keep temps: `stap -k -p4 ...` and inspect `/tmp/stap*/` generated C plus
+3. Keep temps: `stap -k -p4 ...` and inspect `/tmp/stap*/` generated C plus
    kbuild errors.
-3. **Identify the kernel patch(es)** that changed the type, field, function,
+4. **Identify the kernel patch(es)** that changed the type, field, function,
    or macro you must work around (see below). Do not guess from version
    numbers alone.
-4. Prefer **fixing** the code path over disabling tests. Before adding a
+5. Prefer **fixing** the code path over disabling tests. Before adding a
    kfail, read the comments above the `switch` in
    `testsuite/systemtap.pass1-4/buildok.exp`.
 

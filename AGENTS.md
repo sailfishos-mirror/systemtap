@@ -179,11 +179,20 @@ For porting the runtime/tapsets across kernel versions (STAPCONF
 autoconf, probe fallbacks, folio migration, buildok/semok triage),
 use the **kernel-porting** skill (`.skills/kernel-porting/`).
 
-## Sourceware upstream CI
+## Sourceware upstream CI and Bunsen
 
 [builder.sourceware.org](https://builder.sourceware.org) runs fedrawhide
 on slow emulated non-x86_64 VMs, so most arches get a stripped smoke
 `make check` only (`cu-decl.exp`, `warnings.exp`, etc.) — not
 `buildok.exp`. Full `buildok`/`check` coverage is on the native x86_64
-installcheck builder. Bunsen stores those testrun logs if you have MCP
-access; otherwise use local `make check`.
+installcheck builder.
+
+**Bunsen** archives months of those build/test testruns across kernels
+and architectures. Use it for **existence checks** before (or while)
+debugging: whether a FAIL is new, kernel-specific, arch-specific, or
+already gone on other configs. Web UI testrun pages are
+`https://builder.sourceware.org/testrun/<commit-hash>`. With bunsen MCP
+tools available, query testruns/metadata, list PASS/FAIL cases, diff two
+runs, and pull per-case logs; otherwise fall back to local `make check`.
+Detailed triage for kernel-porting failures is in
+`.skills/kernel-porting/SKILL.md`.
