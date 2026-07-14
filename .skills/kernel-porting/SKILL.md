@@ -37,14 +37,36 @@ breakage is probe symbols or context variables, not C API shape.
    - module compile: `stap -p4 ...` or `make check RUNTESTFLAGS="buildok.exp" CHECK_ONLY="..."`
 2. Keep temps: `stap -k -p4 ...` and inspect `/tmp/stap*/` generated C plus
    kbuild errors.
-3. Locate the kernel change (nearby kernel tree, lore, or bunsen/buildbot
-   logs). Note renames, signature changes, moved headers, and removed aliases.
+3. **Identify the kernel patch(es)** that changed the type, field, function,
+   or macro you must work around (see below). Do not guess from version
+   numbers alone.
 4. Prefer **fixing** the code path over disabling tests. Before adding a
    kfail, read the comments above the `switch` in
    `testsuite/systemtap.pass1-4/buildok.exp`.
 
 Do not declare victory on a hand-run alone; run the relevant dejagnu `.exp`
 (and `make install` + `sudo -E make installcheck` when the case is runtime).
+
+### Find the responsible kernel commit
+
+Before writing a shim, learn *what* upstream changed and *why*:
+
+1. Need a **kernel git tree** (full history preferred). Common locals:
+   `/home/*/linux`, nearby checkouts, or the running build's source under
+   `/lib/modules/$(uname -r)/source` or `.../build` (often not a full git
+   repo). If none is available or history is too shallow/grafted, **ask the
+   user** for a path to a usable kernel git checkout.
+2. Search for the rename or removal, e.g.:
+   ```bash
+   git -C "$KERNEL_TREE" log -S'old_ident' --oneline -- include/linux/foo.h
+   git -C "$KERNEL_TREE" log -G'relevant_pattern' --oneline -- path
+   git -C "$KERNEL_TREE" log -p -1 <commit> -- path
+   ```
+   Compare tags around the breakage (`v6.12` vs `v7.0`) when bisecting by
+   content is awkward.
+3. Record commit subject/hash (and new vs old names) in the compatibility
+   comment next to the shim. Lore/bunsen/buildbot logs help when git history
+   is unavailable, but prefer the actual patch when possible.
 
 ## Prefer STAPCONF over KERNEL_VERSION
 
@@ -97,7 +119,7 @@ Examples: `STAPCONF_FILES_LOOKUP_FD_RAW`, `STAPCONF_DO_SOCK_GETSOCKOPT`,
   `runtime/compatdefs.h`, subsystem headers under `runtime/linux/`).
 - Prefer `#ifndef old_alias` shims when the kernel only dropped a compatibility
   macro (e.g. `rdmsrl` → `rdmsrq`) over version gates.
-- Match existing style: short comments naming the kernel change, then
+- Match existing style: short comments citing the kernel commit/rename, then
   `#ifdef STAPCONF_*` branches.
 - After changing runtime used by installcheck, `make install` so `$prefix`
   picks up the new files.
@@ -150,6 +172,7 @@ captured output can FAIL matchers even when a manual `stap` looks fine.
 ## Anti-patterns
 
 - Blind `KERNEL_VERSION` gates for APIs that enterprise kernels backport
+- Shimming without identifying the kernel patch that forced the change
 - Disabling or kfailing an entire tapset test for one probe — extract or fix
   the broken path
 - Declaring done after `stap -p4` without the matching dejagnu run
