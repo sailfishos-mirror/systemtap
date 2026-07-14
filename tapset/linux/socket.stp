@@ -819,10 +819,14 @@ function sock_flags_num2str:string(flags:long)
 #ifndef SOCK_PASSSEC
 #define SOCK_PASSSEC 4   /* introduced in 2.6.18 */
 #endif
-#ifndef SOCKWQ_ASYNC_NOSPACE /* renamed in 4.4 */
+/* Pre-4.4 kernels used SOCK_ASYNC_*; later SOCKWQ_* (macro, then enum).
+ * #ifndef SOCKWQ_* is useless for enum constants, and would #define
+ * SOCKWQ_* to the long-dead SOCK_ASYNC_* names. Map only when the old
+ * macros still exist. */
+#ifdef SOCK_ASYNC_NOSPACE
 #define SOCKWQ_ASYNC_NOSPACE SOCK_ASYNC_NOSPACE
 #endif
-#ifndef SOCKWQ_ASYNC_WAITDATA /* renamed in 4.4 */
+#ifdef SOCK_ASYNC_WAITDATA
 #define SOCKWQ_ASYNC_WAITDATA SOCK_ASYNC_WAITDATA
 #endif
 	unsigned long flags = STAP_ARG_flags;
