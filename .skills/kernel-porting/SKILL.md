@@ -138,6 +138,22 @@ Examples: `STAPCONF_FILES_LOOKUP_FD_RAW`, `STAPCONF_DO_SOCK_GETSOCKOPT`,
 - Forward-declared pointers:  
   `@cast(ptr, "struct nsproxy", "kernel<linux/nsproxy.h>")->mnt_ns`
 
+### Retain old-kernel compatibility
+
+SystemTap still targets enterprise kernels back to **RHEL8-era 4.18**.
+When porting for a new upstream kernel, **keep** the old symbols, fields,
+and probe aliases whenever they are harmless on newer kernels:
+
+- Prefer additive fallbacks (`!` / `?` chains, extra optional aliases,
+  `@choose_defined`, `@defined`, `@type_member_defined` if/else) over
+  deleting the pre-change path.
+- Optional probe aliases that simply fail to resolve on modern kernels
+  are fine (e.g. keep `scsi_prep_fn` beside `scsi_prepare_cmd`).
+- Do not replace an old-only path with a new-only path unless the old
+  API is truly gone *and* no optional fallback can express it.
+- STAPCONF `#else` arms and legacy `#ifdef` shims exist for the same
+  reason in runtime C — extend them, do not strip the old side.
+
 ### Folio / VFS migration notes
 
 - Page helpers: prefer `@choose_defined($page, $folio)` with existing
@@ -173,6 +189,8 @@ captured output can FAIL matchers even when a manual `stap` looks fine.
 
 - Blind `KERNEL_VERSION` gates for APIs that enterprise kernels backport
 - Shimming without identifying the kernel patch that forced the change
+- Dropping old-kernel fallbacks (RHEL8 / 4.18) when an optional alias or
+  `@choose_defined` would keep them working
 - Disabling or kfailing an entire tapset test for one probe — extract or fix
   the broken path
 - Declaring done after `stap -p4` without the matching dejagnu run
