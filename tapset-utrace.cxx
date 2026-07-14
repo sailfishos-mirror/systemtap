@@ -304,7 +304,8 @@ utrace_var_expanding_visitor::visit_target_symbol_cached (target_symbol* e)
 		      + e->sym_name()
 		      + "_" + lex_cast(tick++));
       vardecl* vd = new vardecl;
-      vd->name = aname;
+      vd->name = vd->unmangled_name = aname;
+      vd->synthetic = true;
       vd->tok = e->tok;
       sess.globals.push_back (vd);
 
@@ -447,7 +448,7 @@ utrace_var_expanding_visitor::visit_target_symbol_cached (target_symbol* e)
 
 	   vardecl* vd = new vardecl;
 	   vd->tok = e->tok;
-	   vd->name = tidsym->name;
+	   vd->name = vd->unmangled_name = tidsym->name;
 	   vd->type = pe_long;
 	   vd->set_arity(0, e->tok);
 	   add_probe->locals.push_back(vd);
