@@ -75,6 +75,18 @@
 	( @iov_iter_count(@msg->msg_iter) )
 %)
 
+/* iov_iter->type (bitmask) became iter_type (enum); iov became __iov. */
+@__private30 function __socket_iov_iter_is_iovec:long (iter:long)
+{
+	if (@type_member_defined("struct iov_iter", iter_type))
+		return @cast(iter, "iov_iter", "kernel")->iter_type ==
+			@const("ITER_IOVEC")
+	if (@type_member_defined("struct iov_iter", type))
+		return @cast(iter, "iov_iter", "kernel")->type &
+			@const("ITER_IOVEC")
+	return 0
+}
+
 #################
 # PROBE ALIASES #
 #################
@@ -419,9 +431,9 @@ probe socket.write_iter = kernel.function("sock_write_iter") ?
 {
 	name = "socket.write_iter"
 	_sock = _get_sock_addr($iocb->ki_filp)
-	if ($from->type & @const("ITER_IOVEC"))	
-		size = __iov_length($from->iov, $from->nr_segs, 1,
-				    @const("VERIFY_READ"))
+	if (__socket_iov_iter_is_iovec($from))
+		size = __iov_length(@choose_defined($from->iov, $from->__iov),
+				    $from->nr_segs, 1, @const("VERIFY_READ"))
 	else
 		size = 0
 	protocol = @_sock_prot_num(@cast(_sock, "socket", "kernel"))
@@ -485,9 +497,9 @@ probe socket.read_iter = kernel.function("sock_read_iter") ?
 {
 	name = "socket.read_iter"
 	_sock = _get_sock_addr($iocb->ki_filp)
-	if ($to->type & @const("ITER_IOVEC"))
-		size = __iov_length($to->iov, $to->nr_segs, 1,
-				    @const("VERIFY_WRITE"))
+	if (__socket_iov_iter_is_iovec($to))
+		size = __iov_length(@choose_defined($to->iov, $to->__iov),
+				    $to->nr_segs, 1, @const("VERIFY_WRITE"))
  	else
 		size = 0
 	protocol = @_sock_prot_num(@cast(_sock, "socket", "kernel"))
@@ -707,7 +719,8 @@ probe socket.create.return = kernel.function("__sock_create").return
  *
  * Fires at the beginning of closing a socket.
  */
-probe socket.close = kernel.function("sock_release")
+probe socket.close = kernel.function("__sock_release") !,
+                     kernel.function("sock_release")
 {
 	name = "socket.close"
 	protocol = @_sock_prot_num($sock)
@@ -726,7 +739,8 @@ probe socket.close = kernel.function("sock_release")
  *
  * Fires at the conclusion of closing a socket.
  */
-probe socket.close.return = kernel.function("sock_release").return
+probe socket.close.return = kernel.function("__sock_release").return !,
+                            kernel.function("sock_release").return
 {
 	name = "socket.close.return"
 	/* void return */
