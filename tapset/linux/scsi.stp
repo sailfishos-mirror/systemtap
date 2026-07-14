@@ -70,25 +70,49 @@ function get_scsi_request:long(scsi_cmd:long)
   * @device_state: The current state of the device
   * @device_state_str: The current state of the device, as a string
   * @req_addr: The current struct request pointer, as a number
+  *
+  * Keep every historical prep hook as its own optional alias so RHEL8-era
+  * 4.18 still matches, while newer kernels use the blk-mq names:
+  * - scsi_prep_fn / sd_prep_fn / sr_prep_fn: request_fn blk_queue_prep_rq
+  *   (v4.18/4.19; gone by v5.0)
+  * - scsi_mq_prep_fn: early blk-mq prep (v4.18 through ~6.x)
+  * - scsi_prepare_cmd: current name (renamed from scsi_mq_prep_fn)
   */
 probe scsi.ioentry.scsilib =
-      module("scsi_mod").function("scsi_prep_fn")!, kernel.function("scsi_prep_fn")? { }
+      module("scsi_mod").function("scsi_prep_fn")!,
+      kernel.function("scsi_prep_fn")? { }
 probe scsi.ioentry.sd =
-      module("sd_mod").function("sd_prep_fn")!, kernel.function("sd_prep_fn")? { }
+      module("sd_mod").function("sd_prep_fn")!,
+      kernel.function("sd_prep_fn")? { }
 probe scsi.ioentry.sr =
-      module("sr_mod").function("sr_prep_fn")!, kernel.function("sr_prep_fn")? { }
+      module("sr_mod").function("sr_prep_fn")!,
+      kernel.function("sr_prep_fn")? { }
+probe scsi.ioentry.mq_prep =
+      module("scsi_mod").function("scsi_mq_prep_fn")!,
+      kernel.function("scsi_mq_prep_fn")? { }
+probe scsi.ioentry.prepare =
+      module("scsi_mod").function("scsi_prepare_cmd")!,
+      kernel.function("scsi_prepare_cmd")? { }
 
 probe scsi.ioentry = scsi.ioentry.* ?
 {
-        req_addr = @choose_defined($req, $rq);
-	if(@cast(req_addr,"request")->rq_disk == 0)  {
+	req_addr = @choose_defined($req, $rq)
+	/* scsi_prep_fn(q, req); mq/prepare_cmd(req) only — derive q */
+	q = @choose_defined($q, @cast(req_addr, "request")->q)
+	/* 4.18 has request->rq_disk; later kernels use request_queue->disk */
+	if (@defined(@cast(req_addr, "request")->rq_disk) &&
+	    @cast(req_addr, "request")->rq_disk != 0) {
+		disk_major = @cast(req_addr, "request")->rq_disk->major
+		disk_minor = @cast(req_addr, "request")->rq_disk->first_minor
+	} else if (@defined(@cast(q, "request_queue")->disk) &&
+		   @cast(q, "request_queue")->disk != 0) {
+		disk_major = @cast(q, "request_queue")->disk->major
+		disk_minor = @cast(q, "request_queue")->disk->first_minor
+	} else {
 		disk_major = -1
 		disk_minor = -1
-	} else {
-		disk_major = @cast(req_addr,"request")->rq_disk->major
-		disk_minor = @cast(req_addr,"request")->rq_disk->first_minor
 	}
-	device_state = get_devstate_from_req($q)
+	device_state = get_devstate_from_req(q)
 	device_state_str = describe_device_state(device_state)
 }
 
@@ -235,9 +259,18 @@ function get_devstate_from_req:long(var:long)
  * @request_bufflen: The data buffer buffer length
  * @timeout: Request timeout in seconds
  * @retries: Number of times to retry request
+ *
+ * Prefer modern scsi_execute_cmd, but keep __scsi_execute / scsi_execute
+ * so RHEL8-era 4.18 still resolves (scsi_execute was often only a macro
+ * around __scsi_execute). 994724e6b3f0 introduced scsi_execute_cmd
+ * (opf / ml_retries instead of data_direction / retries).
  */
 probe scsi.ioexecute
-	= module("scsi_mod").function("scsi_execute")!,
+	= module("scsi_mod").function("scsi_execute_cmd")!,
+	  kernel.function("scsi_execute_cmd")!,
+	  module("scsi_mod").function("__scsi_execute")!,
+	  kernel.function("__scsi_execute")!,
+	  module("scsi_mod").function("scsi_execute")!,
 	  kernel.function("scsi_execute")?
 {
 	host_no = $sdev->host->host_no
@@ -246,12 +279,12 @@ probe scsi.ioexecute
 	dev_id = $sdev->id
 	device_state = $sdev->sdev_state
 	device_state_str = describe_device_state(device_state)
-	data_direction = $data_direction
+	data_direction = @choose_defined($data_direction, 0)
 	data_direction_str = describe_data_direction(data_direction)
 	request_buffer = $buffer
 	request_bufflen = $bufflen
 	timeout = $timeout
-	retries = $retries
+	retries = @choose_defined($retries, $ml_retries)
 }
 
 /**
