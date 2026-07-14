@@ -98,14 +98,30 @@
 %)    
 
 
-/* Get file handle data from struct svc_fh. */
+/* Get file handle data from struct svc_fh.
+ * d8b26071e65e ("NFSD: simplify struct nfsfh") replaced fh_base.fh_pad
+ * with fh_raw[]; later kernels keep only fh_size + fh_raw. */
 @__private30 function __svc_fh:string(fhp:long)
 {
 	svc_fh = &@cast(fhp, "svc_fh", "kernel:nfsd")->fh_handle
-	return sprintf("%d: %08x %08x %08x %08x %08x %08x", svc_fh->fh_size,
-		       svc_fh->fh_base->fh_pad[0], svc_fh->fh_base->fh_pad[1],
-		       svc_fh->fh_base->fh_pad[2], svc_fh->fh_base->fh_pad[3],
-		       svc_fh->fh_base->fh_pad[4], svc_fh->fh_base->fh_pad[5])
+	if (@type_member_defined("struct knfsd_fh", fh_base))
+		return sprintf("%d: %08x %08x %08x %08x %08x %08x",
+			       svc_fh->fh_size,
+			       svc_fh->fh_base->fh_pad[0],
+			       svc_fh->fh_base->fh_pad[1],
+			       svc_fh->fh_base->fh_pad[2],
+			       svc_fh->fh_base->fh_pad[3],
+			       svc_fh->fh_base->fh_pad[4],
+			       svc_fh->fh_base->fh_pad[5])
+	else {
+		/* fh_raw is u8[]; overlay as u32 words like old fh_pad[]. */
+		raw = &svc_fh->fh_raw
+		return sprintf("%d: %08x %08x %08x %08x %08x %08x",
+			       svc_fh->fh_size,
+			       @cast(raw, "u32")[0], @cast(raw, "u32")[1],
+			       @cast(raw, "u32")[2], @cast(raw, "u32")[3],
+			       @cast(raw, "u32")[4], @cast(raw, "u32")[5])
+	}
 }
 
 function nfs3_cmode:string(cmode:long) %{ /* pure */
@@ -484,15 +500,17 @@ probe nfsd.proc2.read = kernel.function("nfsd_proc_read") !,
 		fh = & @nfsd2_readargs($rqstp->rq_argp)->fh
 		count = @nfsd2_readargs($rqstp->rq_argp)->count 
 		offset = @nfsd2_readargs($rqstp->rq_argp)->offset 
-		vec = $rqstp->rq_vec
-		vlen = @nfsd2_readargs($rqstp->rq_argp)->vlen
+		/* 1259560b988c removed svc_rqst::rq_vec; vlen dropped from
+		 * nfsd*_readargs during NFSD xdr_stream conversion (~5.15). */
+		vec = @choose_defined($rqstp->rq_vec, 0)
+		vlen = @choose_defined(@nfsd2_readargs($rqstp->rq_argp)->vlen, 0)
 	}
 	else {
 		fh = & @nfsd2_readargs($argp)->fh
 		count = $argp->count 
 		offset = $argp->offset 
-		vec = @choose_defined($rqstp->rq_vec, $argp->vec)
-		vlen = $argp->vlen
+		vec = @choose_defined($rqstp->rq_vec, @choose_defined($argp->vec, 0))
+		vlen = @choose_defined($argp->vlen, 0)
 	}
 
 	uid = __rqstp_uid($rqstp)
@@ -526,15 +544,17 @@ probe nfsd.proc3.read = kernel.function("nfsd3_proc_read") !,
 		fh = & @nfsd3_readargs($rqstp->rq_argp)->fh
 		count = @nfsd3_readargs($rqstp->rq_argp)->count 
 		offset = @nfsd3_readargs($rqstp->rq_argp)->offset 
-		vec = $rqstp->rq_vec
-		vlen = @nfsd3_readargs($rqstp->rq_argp)->vlen
+		/* 1259560b988c removed svc_rqst::rq_vec; vlen dropped from
+		 * nfsd3_readargs during NFSD xdr_stream conversion (~5.15). */
+		vec = @choose_defined($rqstp->rq_vec, 0)
+		vlen = @choose_defined(@nfsd3_readargs($rqstp->rq_argp)->vlen, 0)
 	}
 	else {
 		fh = & @nfsd3_readargs($argp)->fh
 		count = $argp->count 
 		offset = $argp->offset 
-		vec = @choose_defined($rqstp->rq_vec, $argp->vec)
-		vlen = $argp->vlen
+		vec = @choose_defined($rqstp->rq_vec, @choose_defined($argp->vec, 0))
+		vlen = @choose_defined($argp->vlen, 0)
 	}
 
 	uid = __rqstp_uid($rqstp)
@@ -569,13 +589,13 @@ probe nfsd.proc4.read = kernel.function("nfsd4_read").call !,
         if (@defined($u)) {
              count = $u->read->rd_length
              offset = $u->read->rd_offset
-             vec = $rqstp->rq_vec
-             vlen = $u->read->rd_vlen
+             vec = @choose_defined($rqstp->rq_vec, 0)
+             vlen = @choose_defined($u->read->rd_vlen, 0)
         } else {
              count = $read->rd_length
              offset = $read->rd_offset
-             vec = $rqstp->rq_vec
-             vlen = $read->rd_vlen
+             vec = @choose_defined($rqstp->rq_vec, 0)
+             vlen = @choose_defined($read->rd_vlen, 0)
         }
 
 	uid = __rqstp_uid($rqstp)
@@ -636,14 +656,14 @@ probe nfsd.proc2.write = kernel.function("nfsd_proc_write") !,
 		fh = & @nfsd2_writeargs($rqstp->rq_argp)->fh
 		count = @nfsd2_writeargs($rqstp->rq_argp)->len
 		offset = @nfsd2_writeargs($rqstp->rq_argp)->offset 
-		vec = $rqstp->rq_vec
+		vec = @choose_defined($rqstp->rq_vec, 0)
 		vlen = @choose_defined(@nfsd2_writeargs($rqstp->rq_argp)->vlen, 0)
 	}
 	else {
 		fh = & @nfsd2_writeargs($argp)->fh
 		count = $argp->len
 		offset = $argp->offset 
-		vec = @choose_defined($rqstp->rq_vec, $argp->vec)
+		vec = @choose_defined($rqstp->rq_vec, @choose_defined($argp->vec, 0))
 		vlen = @choose_defined($argp->vlen, 0)
 	}
 
@@ -689,7 +709,7 @@ probe nfsd.proc3.write = kernel.function("nfsd3_proc_write") !,
 		fh = & @nfsd3_writeargs($rqstp->rq_argp)->fh
 		count = @nfsd3_writeargs($rqstp->rq_argp)->count 
 		offset = @nfsd3_writeargs($rqstp->rq_argp)->offset 
-		vec = $rqstp->rq_vec
+		vec = @choose_defined($rqstp->rq_vec, 0)
 		vlen = @choose_defined(@nfsd3_writeargs($rqstp->rq_argp)->vlen, 0)
 		stable = @nfsd3_writeargs($rqstp->rq_argp)->stable
 	}
@@ -697,7 +717,7 @@ probe nfsd.proc3.write = kernel.function("nfsd3_proc_write") !,
 		fh = & @nfsd3_writeargs($argp)->fh
 		count = $argp->count 
 		offset = $argp->offset 
-		vec = @choose_defined($rqstp->rq_vec, $argp->vec)
+		vec = @choose_defined($rqstp->rq_vec, @choose_defined($argp->vec, 0))
 		vlen = @choose_defined($argp->vlen, 0)
 		stable = $argp->stable
 	}
@@ -738,7 +758,8 @@ probe nfsd.proc4.write = kernel.function("nfsd4_write").call !,
 	proto = $rqstp->rq_prot
 	version = 4
 	fh = & @nfsd4_compound_state($cstate)->current_fh
-	vec = $rqstp->rq_vec
+	/* 1259560b988c ("SUNRPC: Remove svc_rqst :: rq_vec") */
+	vec = @choose_defined($rqstp->rq_vec, 0)
 	if (@defined($u)) {
 		count = $u->write->wr_buflen
 		offset = $u->write->wr_offset
@@ -1420,8 +1441,9 @@ probe nfsd.read = kernel.function("nfsd_read") !,
 	file = @choose_defined($file, 0)
 	count = kernel_long($count)
 	offset = $offset
-	vec = $vec
-	vlen = $vlen
+	/* nfsd_read no longer takes kvec/vlen; I/O uses rq_bvec / xdr_buf. */
+	vec = @choose_defined($vec, 0)
+	vlen = @choose_defined($vlen, 0)
 
 	name = "nfsd.read"
 	argstr = sprintf("count: %d offset: %d",count,offset)
@@ -1465,8 +1487,9 @@ probe nfsd.write = kernel.function("nfsd_write") !,
 	count = $cnt
 %)
 	offset = $offset
-	vec = $vec
-	vlen = $vlen
+	/* nfsd_write likewise dropped kvec/vlen in favor of xdr_buf payload. */
+	vec = @choose_defined($vec, 0)
+	vlen = @choose_defined($vlen, 0)
 
 	name = "nfsd.write"
 	argstr = sprintf("count: %d  offset: %d",count,offset)
@@ -1575,8 +1598,9 @@ probe nfsd.create = kernel.function("nfsd_create") !,
 	filelen = $flen
 	filename = kernel_string_n($fname, $flen)
 	type = $type
-	iap_valid = $iap->ia_valid
-	iap_mode = $iap->ia_mode
+	/* 7fe2a71dda34 ("NFSD: introduce struct nfsd_attrs") — $iap → $attrs */
+	iap_valid = @choose_defined($iap->ia_valid, $attrs->na_iattr->ia_valid)
+	iap_mode = @choose_defined($iap->ia_mode, $attrs->na_iattr->ia_mode)
 
 	name = "nfsd.create"
 	argstr = sprintf("name: %s type: %s", kernel_string_n($fname, $flen), 
@@ -1619,8 +1643,9 @@ probe nfsd.createv3 = kernel.function("do_nfsd_create") !,
 
 	filelen = $flen
 	filename = kernel_string_n($fname, $flen)
-	iap_valid = $iap->ia_valid
-	iap_mode = $iap->ia_mode
+	/* 7fe2a71dda34 ("NFSD: introduce struct nfsd_attrs") — $iap → $attrs */
+	iap_valid = @choose_defined($iap->ia_valid, $attrs->na_iattr->ia_valid)
+	iap_mode = @choose_defined($iap->ia_mode, $attrs->na_iattr->ia_mode)
 	truncp = $truncp
 	verifier = $verifier
 	createmode = $createmode
