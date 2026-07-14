@@ -175,85 +175,15 @@ characters per line to conform with standard Git formatting practices.
 
 ## Kernel Compatibility Portability
 
-When `buildok` / `semok` etc. tests fail on a new kernel, prefer fixing
-scripts and tapsets over disabling tests. Reproduce locally with the same
-pass the test uses (`-p2` for semok, `-p4` for buildok); see **Testing
-Quirk** above for `RUNTESTFLAGS` / `CHECK_ONLY`.
+For porting the runtime/tapsets across kernel versions (STAPCONF
+autoconf, probe fallbacks, folio migration, buildok/semok triage),
+use the **kernel-porting** skill (`.skills/kernel-porting/`).
 
-Before adding kfails, read the comments in
-`testsuite/systemtap.pass1-4/buildok.exp` above the `switch` block.
+## Sourceware upstream CI
 
-**Sourceware upstream CI only:** [builder.sourceware.org](https://builder.sourceware.org)
-runs fedrawhide on slow emulated non-x86_64 VMs, so most arches get a
-stripped smoke `make check` only (`cu-decl.exp`, `warnings.exp`, etc.) —
-not `buildok.exp`. Full `buildok`/`check` coverage is on the native
-x86_64 installcheck builder. Bunsen stores those testrun logs if you have
-MCP access; otherwise use local `make check`.
-
-### Diagnose failures
-
-1. Reproduce locally (`stap -p2` / `-p4`, or `make check` with
-   `CHECK_ONLY`).
-2. On sourceware CI, check bunsen/buildbot logs for `buildok/*` and
-   `semok/*` FAIL results.
-3. Ask about a nearby kernel source tree for struct/function renames
-   (e.g. `fs/mpage.c`, `fs/mount.h`).
-
-### Kernel API detection (autoconf vs KERNEL_VERSION)
-
-Prefer **STAPCONF autoconf probes** over `LINUX_VERSION_CODE` /
-`KERNEL_VERSION()` checks in embedded C (`%{ ... %}`) and tapset helpers.
-Autoconf compiles small probe snippets against the **target kernel's
-headers** at module build time, so backported APIs on older version
-numbers (common in enterprise and longterm kernels) are detected
-correctly.
-
-- **Script-level:** `@defined($var)`, `@type_member_defined("struct foo", bar)`,
-  and probe `!` fallback chains (see below).
-- **Embedded C:** `#ifdef STAPCONF_*` from runtime autoconf, not version
-  thresholds.
-
-To add a probe:
-
-1. Add `runtime/linux/autoconf-<name>.c` — a minimal snippet that uses
-   the API or struct field (must compile with kernel `-Werror`).
-2. Register it in `buildrun.cxx` via `output_autoconf(..., "STAPCONF_*", NULL)`.
-3. Guard script/tapset C with `#ifdef STAPCONF_*`.
-
-Examples: `STAPCONF_FILES_LOOKUP_FD_RAW`, `STAPCONF_FILE_LOCK_CORE`,
-`STAPCONF_DO_SOCK_GETSOCKOPT`. Use `output_exportconf` when the probe
-must verify a **linkable exported symbol**, not just a header declaration.
-
-Reserve `KERNEL_VERSION` for cases autoconf cannot express (e.g. very
-old pre-autoconf behavior with no compile-time hook).
-
-### Probe resolution
-
-- List candidates: `stap -l 'kernel.function("*pattern*")'` (existence).
-- Inspect context variables: `stap -L 'kernel.function("fn")'` (DWARF locals).
-- Chain fallbacks with `!` (required final alternative), not `?` on every arm:
-  `kernel.function("old_name") !, kernel.function("new_name")`
-
-### Context variables
-
-- Use `@choose_defined($old, $new)` when parameter names differ across kernels
-  (e.g. `$__argv` vs `$argv`, `$offset` vs `$index`, `$page` vs `$folio`).
-- Use `@defined($var)` guards when a symbol disappears entirely (e.g.
-  `do_mpage_readpage` now passes `struct mpage_readpage_args` with `$args->folio`
-  instead of `$page`).
-- Cast through the proper header when a pointer type is forward-declared only:
-  `@cast(...->nsproxy, "struct nsproxy", "kernel<linux/nsproxy.h>")->mnt_ns`
-
-### Tapset / folio migration
-
-- Page helpers: prefer `@choose_defined($page, $folio)` with existing
-  `__page_*` helpers where possible.
-- `vfs.remove_from_page_cache`: add `filemap_remove_folio` fallbacks; folio-era
-  kernels removed `__delete_from_page_cache`.
-- `nfs.aop.writepage`: add `nfs_do_writepage` fallbacks (`$folio` not `$page`).
-- Embedded C (`%{ ... %}`): use `#ifdef FOLIO_MAPPING_ANON` for
-  `PAGE_MAPPING_ANON` / `PageSwapCache` → `folio_test_*` / `page_folio()`
-  transitions in `ioblock.stp`-style helpers.
-- `struct mount` iteration: `mnt_instance` + `list_head` `s_mounts` on older
-  kernels; walk `sb->s_mounts` via `mnt_next_for_sb` when
-  `@type_member_defined("struct mount", mnt_instance)` is false.
+[builder.sourceware.org](https://builder.sourceware.org) runs fedrawhide
+on slow emulated non-x86_64 VMs, so most arches get a stripped smoke
+`make check` only (`cu-decl.exp`, `warnings.exp`, etc.) — not
+`buildok.exp`. Full `buildok`/`check` coverage is on the native x86_64
+installcheck builder. Bunsen stores those testrun logs if you have MCP
+access; otherwise use local `make check`.
