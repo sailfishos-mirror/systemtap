@@ -7,11 +7,25 @@
 #
 # NB: This is abusing the fact that -l/-L work by wrapping the input string
 # with "probe " and "{}"
+#
+# Probe name: sys_poll -> __do_sys_poll under SYSCALL_DEFINE.  Do not use
+# do_sys_poll here — that is a different helper without $timeout_msecs.
+# Drop .call: __do_sys_poll has no distinct .call PC, and a failed -L
+# prints nothing (grep then exits 1 with an empty dejagnu log).
 
-stap $@ -L '
-my_syscall.poll = kernel.function("sys_poll").call
+out=$(stap $@ -L '
+my_syscall.poll = kernel.function("sys_poll") !, kernel.function("__do_sys_poll")
 {
   timeout = (@defined($timeout_msecs) ? $timeout_msecs : $timeout)
 }
 probe my_syscall.poll
-' | grep " timeout:long"
+' 2>&1)
+ec=$?
+echo "$out" | grep " timeout:long" >/dev/null
+gec=$?
+if [ $ec -ne 0 ] || [ $gec -ne 0 ]; then
+  echo "defined_list_vars: stap -L ec=$ec grep ec=$gec" >&2
+  echo "$out" >&2
+  exit 1
+fi
+exit 0
