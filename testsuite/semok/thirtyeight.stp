@@ -3,8 +3,13 @@
 # Each of the @defined should be a valid symbol, and sometimes their expansion
 # leads to a new function declaration.  We don't want to get warnings when such
 # functions turn out to be unused and are elided.
+#
+# Prefer $flags over $mode on do_sys_open: modern kernels still declare
+# umode_t mode, but after build_open_how() the mode parameter is often
+# optimized out of DWARF at probe PCs while $flags remains available.
+# (@defined($mode) then false → $nosuchvar is elaborated → semok FAIL.)
 
-probe kernel.function("do_sys_open") { println(@defined($mode) ? 1 : $nosuchvar) }
+probe kernel.function("do_sys_open") { println(@defined($flags) ? 1 : $nosuchvar) }
 probe kernel.trace("sched_switch")? { println(@defined($next->pid) ? 1 : $nosuchvar) }
 probe procfs.write { println(@defined($value) ? 1 : $nosuchvar) }
 probe begin { println(@defined(@cast(0, "task_struct", "kernel")->pid) ? 1 : $nosuchvar) }
