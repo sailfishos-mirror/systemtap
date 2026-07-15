@@ -28,7 +28,10 @@ proc run_conv_test {filename expected_errs} {
 	# Turn off the duplication elimination to get an accurate
 	# count (PR12168). Turn off overload protection so that we get
 	# the right errors (not a "probe took too long" error).
-	spawn stap -g --suppress-time-limits -vv -DMAXSKIPPED=99999 -DMAXERRORS=40 $filename $value
+	# -u disables PR34161 probe-handler combining: that optimization
+	# merges same-point handlers and rethrows only one ERROR, which
+	# collapses the per-access ERROR/WARNING count this test checks.
+	spawn stap -g -u --suppress-time-limits -vv -DMAXSKIPPED=99999 -DMAXERRORS=40 $filename $value
 	set errs 0
 	set unexpectedly_reached 0
 	verbose -log "exp $test $errs"
