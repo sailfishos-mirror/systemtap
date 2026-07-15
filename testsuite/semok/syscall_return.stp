@@ -1,4 +1,13 @@
 #!/bin/sh
 # Per bz6588, this should get through the semantic pass without warnings.
-stap $@ -p2 -e 'probe syscall.*.return { printf("%s returns %s\n", name, retstr) }' 2>&1 | grep -q WARNING && exit 1
+#
+# Only WARNING fails the test (stap may error on dyninst where syscall.*
+# is unavailable).  Print matching lines so dejagnu logs are not empty.
+out=$(stap $@ -p2 -e 'probe syscall.*.return { printf("%s returns %s\n", name, retstr) }' 2>&1)
+warns=$(printf '%s\n' "$out" | grep WARNING || true)
+if [ -n "$warns" ]; then
+  echo "syscall_return: unexpected WARNING(s):" >&2
+  printf '%s\n' "$warns" >&2
+  exit 1
+fi
 exit 0

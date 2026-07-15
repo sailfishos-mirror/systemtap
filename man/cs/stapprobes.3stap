@@ -516,6 +516,12 @@ Může obsahovat zástupné symboly "*", "[]" a "?".  Skládá se ze tří čás
 První část je jméno funkce, tak, jak je zobrazí program
 .I nm .
 V této části lze použít zástupné symboly "*" a "?" k zadání více jmen.
+Jádro může vedle skutečných funkcí nabízet i linkerové stuby s prefixem
+\fB__pfx_\fR (např. \fB__pfx_sys_read\fR vedle \fBsys_read\fR).
+Tyto stuby se při použití zástupných symbolů vynechají, pokud PATTERN
+o \fB__pfx_\fR výslovně nežádá (přesné jméno \fB__pfx_…\fR, nebo zástupný
+vzor začínající \fB__pfx\fR či obsahující \fB__pfx_\fR, např.
+\fB__pfx_*\fR nebo \fB*__pfx_*\fR).
 .IP \(bu 4
 Druhá část je volitelná a začíná znakem "@".  Následuje cesta ke zdrojovému
 souboru, který danou funkci obsahuje.  Cesta může obsahovat zástupné znaky jako

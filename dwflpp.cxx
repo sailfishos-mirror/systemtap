@@ -279,6 +279,17 @@ dwflpp::module_name_final_match(const string& pattern)
 bool
 dwflpp::function_name_matches_pattern(const string& name, const string& pattern)
 {
+  // Modern kernels expose linker stubs named __pfx_SYM alongside SYM.
+  // Wildcard patterns such as "*foo" would otherwise match those stubs,
+  // which lack useful DWARF and confuse probe elaboration.  Skip them
+  // unless the pattern explicitly requests the __pfx_ prefix (exact
+  // "__pfx_foo", or wildcards like "__pfx_*" / "*__pfx_*").
+  if (name_has_wildcard(pattern)
+      && startswith(name, "__pfx_")
+      && !startswith(pattern, "__pfx")
+      && pattern.find("__pfx_") == string::npos)
+    return false;
+
   bool t = (fnmatch(pattern.c_str(), name.c_str(), 0) == 0);
   if (t && sess.verbose>3)
     clog << _F("pattern '%s' matches function '%s'\n", pattern.c_str(), name.c_str());

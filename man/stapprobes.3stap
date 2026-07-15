@@ -552,6 +552,12 @@ The first part is the name of a function, as would appear in the
 .I nm
 program's output.  This part may use the "*" and "?" wildcarding
 operators to match multiple names.
+Kernel builds may also expose linker stubs named with a
+\fB__pfx_\fR prefix (e.g. \fB__pfx_sys_read\fR beside \fBsys_read\fR).
+Those stubs are omitted from wildcard matches unless the PATTERN
+explicitly requests them (an exact \fB__pfx_…\fR name, or a wildcard
+that begins with \fB__pfx\fR or otherwise contains \fB__pfx_\fR, such as
+\fB__pfx_*\fR or \fB*__pfx_*\fR).
 .IP \(bu 4
 The second part is optional and begins with the "@" character. 
 It is followed by the path to the source file containing the function,

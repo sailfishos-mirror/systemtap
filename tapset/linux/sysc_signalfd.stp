@@ -25,6 +25,14 @@ probe syscall.compat_signalfd.return = dw_syscall.compat_signalfd.return !,
 %)
 
 # dw_signalfd _____________________________________________________
+#
+# SYSCALL_DEFINE wrappers are named differently per arch/era
+# (__do_sys_*, __x64_sys_*, __ia32_compat_*, …).  Prefer globs over
+# spelling each prefix.  For .return, the expander skips inlined hits
+# (no WARNING).  Entry probes that read $ufd/$flags stick to
+# __do_/__se_/do_compat_* (arch pt_regs wrappers lack those locals).
+# (__pfx_* stubs are omitted from wildcards by the translator unless
+# PATTERN explicitly requests them; see stapprobes(3stap).)
 
 probe dw_syscall.signalfd = __syscall.signalfd4 !, __syscall.signalfd ?
 {
@@ -39,11 +47,15 @@ probe dw_syscall.signalfd = __syscall.signalfd4 !, __syscall.signalfd ?
 		       	 	 $sizemask, _signalfd4_flags_str(flags))
 	}
 }
-probe __syscall.signalfd4 = kernel.function("sys_signalfd4").call
+probe __syscall.signalfd4 = kernel.function("sys_signalfd4").call !,
+			    kernel.function("__do_sys_signalfd4") !,
+			    kernel.function("__se_sys_signalfd4") ?
 {
 	@__syscall_gate(@const("__NR_signalfd4"))
 }
-probe __syscall.signalfd = kernel.function("sys_signalfd").call
+probe __syscall.signalfd = kernel.function("sys_signalfd").call !,
+			   kernel.function("__do_sys_signalfd") !,
+			   kernel.function("__se_sys_signalfd") ?
 {
 	@__syscall_gate(@const("__NR_signalfd"))
 }
@@ -52,26 +64,34 @@ probe dw_syscall.signalfd.return = __syscall.signalfd4.return !,
 {
 	@SYSC_RETVALSTR($return)
 }
-probe __syscall.signalfd4.return = kernel.function("sys_signalfd4").return
+# Broad *sys_signalfd4 catches arch wrappers; skip compat (handled below).
+probe __syscall.signalfd4.return = kernel.function("sys_signalfd4").return !,
+				   kernel.function("*sys_signalfd4").return ?
 {
+	if (probefunc() =~ "compat") next
 	@__syscall_gate(@const("__NR_signalfd4"))
-	flags = __int32(@entry($flags))
+	flags = __int32(@entry(@choose_defined($flags, 0)))
 	name = (flags == 0) ? "signalfd" : "signalfd4"
 }
-probe __syscall.signalfd.return = kernel.function("sys_signalfd").return
+probe __syscall.signalfd.return = kernel.function("sys_signalfd").return !,
+				  kernel.function("*sys_signalfd").return ?
 {
+	if (probefunc() =~ "compat") next
 	@__syscall_gate(@const("__NR_signalfd"))
 	flags = 0
 	name = "signalfd"
 }
+# do_compat_signalfd4 has useful entry DWARF; do not use its .return (often
+# inlined → WARNING).  Globs cover SYSCALL_DEFINE / arch compat wrappers.
 probe dw_syscall.compat_signalfd = kernel.function("do_compat_signalfd4") !,
-                                kernel.function("compat_sys_signalfd4").call !,
-                                kernel.function("compat_sys_signalfd").call ?
+				kernel.function("__do_compat_sys_signalfd4") !,
+				kernel.function("__se_compat_sys_signalfd4") !,
+				kernel.function("compat_sys_signalfd4").call !,
+				kernel.function("compat_sys_signalfd").call ?
 {
 	flags = __int32(@choose_defined($flags, 0))
-	__sigmask = 0
-	if (@defined($sigmask))
-		__sigmask = @__pointer($sigmask)
+	# Legacy compat_sys_* used $sigmask; do_compat / __do_compat use $user_mask.
+	__sigmask = @__pointer(@choose_defined($sigmask, $user_mask))
 	if (flags == 0) {
 		name = "signalfd"
 		argstr = sprintf("%d, %p, %d", __int32($ufd), __sigmask,
@@ -83,9 +103,8 @@ probe dw_syscall.compat_signalfd = kernel.function("do_compat_signalfd4") !,
 	}
 }
 probe dw_syscall.compat_signalfd.return =
-		kernel.function("do_compat_signalfd4").return !,
-		kernel.function("compat_sys_signalfd4").return !,
-		kernel.function("compat_sys_signalfd").return ?
+		kernel.function("*compat_sys_signalfd4").return !,
+		kernel.function("*compat_sys_signalfd").return ?
 {
 	flags = __int32(@entry(@choose_defined($flags, 0)))
 	name = (flags == 0) ? "signalfd" : "signalfd4"
