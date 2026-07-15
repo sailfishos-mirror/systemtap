@@ -2,7 +2,9 @@
 
 # these will ultimately be somehow associated with "providers"
 # and have a syntax of their own
-global kernel_jiffies, kernel_current_comm
+# Initialize as strings so -u type resolution succeeds (never-assigned
+# scalars used with "." otherwise get "unresolved type").
+global kernel_jiffies = "", kernel_current_comm = ""
 
 function kernel_netlink(a, b) {
   # this should be a builtin function
