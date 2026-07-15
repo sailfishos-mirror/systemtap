@@ -6,8 +6,8 @@ global symbols = 0;
 
 probe kernel.function("kallsyms_expand_symbol")
 {
-  /* We are only interested in the head -10 symbols for comparison. */
-  if (target() != pid()) next;
+  /* Match -c command and its children (e.g. head under a shell redirect). */
+  if (!target_set_pid(pid())) next;
 
   skipped_first = 0;
 

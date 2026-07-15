@@ -3,10 +3,14 @@
 set test "kallsyms_expand_symbol"
 
 # Test that the script can decode the kallsyms table to produce
-# the first ten elements.
-set plain_head [exec head /proc/kallsyms]
+# the first ten symbol names.
+#
+# Redirect head's stdout away from stapio. Otherwise probe printf
+# (unbuffered via stapio) races with head's stdio-buffered kallsyms
+# lines on the same pipe, and under load the decoded names can appear
+# before the head block — flaky exact-order matches in stap_run2.
 set syms_head [exec head /proc/kallsyms | cut -f3 -d\ ]
-set ::result_string ${plain_head}\n${syms_head}
+set ::result_string ${syms_head}
 verbose -log "Expecting:\n$::result_string"
 
-stap_run2 $srcdir/$subdir/$test.stp -c {head /proc/kallsyms}
+stap_run2 $srcdir/$subdir/$test.stp -c {head /proc/kallsyms >/dev/null}
