@@ -2,6 +2,9 @@
 
 # PR11346: We shouldn't even see a warning when a would-be skip-badvars
 # replacement is masked by a @defined condition.
+#
+# Probe name drifted with SYSCALL_DEFINE wrappers:
+# sys_getxattr -> do_sys_getxattr -> __do_sys_getxattr.
 
-stap $@ -W -p2 --skip-badvars -e 'probe kernel.function("do_sys_getxattr")
+stap $@ -W -p2 --skip-badvars -e 'probe kernel.function("sys_getxattr") !, kernel.function("do_sys_getxattr") !, kernel.function("__do_sys_getxattr")
 { printf("%s\n", user_string(@defined($pathname) ? $pathname : $path)) }'
