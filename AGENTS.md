@@ -72,6 +72,9 @@ make check RUNTESTFLAGS="check.exp" CHECK_ONLY="badname fntimes"
   break `.exp` matchers even when a hand-run looks fine.
 - After changing the translator/runtime, installcheck uses `$prefix`;
   rebuild with `make install` so it exercises the code you actually changed.
+- For load-sensitive flakes (stdout ordering, timing races), check whether
+  `stress-ng` (or `stress`) is on `PATH` and re-run the test under CPU
+  load, e.g. `stress-ng --cpu 0 --timeout 60s` in the background.
 
 ## Debugging Quirks
 
