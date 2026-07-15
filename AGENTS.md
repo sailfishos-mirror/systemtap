@@ -27,6 +27,12 @@ make all install                # Installs to ./INST/
 
 After a `make install`, either ./INST/bin/stap or ./stap may be used.
 
+**Always use `make install` to refresh `$prefix` (e.g. `./INST/`).** Do not
+`cp` individual tapset, runtime, or binary files into the install tree.
+`installcheck` and installed `stap` load tapsets, runtime headers, and
+auxiliary tools from `$prefix` together; a one-off copy can leave mixed
+old/new trees and produce misleading results.
+
 ## Testing Quirk
 
 SystemTap has two different test modes:
@@ -70,8 +76,9 @@ make check RUNTESTFLAGS="check.exp" CHECK_ONLY="badname fntimes"
 - Read `testsuite/systemtap.log` (or the per-test `.log`) before
   finishing; stderr from kbuild/gcc can appear in captured output and
   break `.exp` matchers even when a hand-run looks fine.
-- After changing the translator/runtime, installcheck uses `$prefix`;
-  rebuild with `make install` so it exercises the code you actually changed.
+- After changing the translator, tapsets, runtime, or helper binaries,
+  installcheck uses `$prefix`; run `make install` (not ad-hoc `cp`) so
+  the install tree stays consistent and exercises the code you changed.
 - For load-sensitive flakes (stdout ordering, timing races), check whether
   `stress-ng` (or `stress`) is on `PATH` and re-run the test under CPU
   load, e.g. `stress-ng --cpu 0 --timeout 60s` in the background.

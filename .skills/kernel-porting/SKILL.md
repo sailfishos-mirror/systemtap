@@ -130,8 +130,9 @@ Examples: `STAPCONF_FILES_LOOKUP_FD_RAW`, `STAPCONF_DO_SOCK_GETSOCKOPT`,
   macro (e.g. `rdmsrl` → `rdmsrq`) over version gates.
 - Match existing style: short comments citing the kernel commit/rename, then
   `#ifdef STAPCONF_*` branches.
-- After changing runtime used by installcheck, `make install` so `$prefix`
-  picks up the new files.
+- After changing translator, tapsets, runtime, or helper binaries used by
+  installcheck, run `make install` so `$prefix` stays consistent. Do not
+  `cp` isolated files into the install tree.
 
 ## Script / tapset side (when buildok is not "just C")
 
