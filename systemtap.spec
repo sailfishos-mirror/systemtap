@@ -821,6 +821,14 @@ done
 %py3_shebang_fix %{buildroot}%{python3_sitearch} %{buildroot}%{_bindir}/*
 %endif
 
+%if %{with_python3_probes}
+# setuptools may install classic egg-info or PEP 376 dist-info; package whichever exists
+: > helpersdt-metadata.files
+find %{buildroot}%{python3_sitearch} -mindepth 1 -maxdepth 1 \
+  \( -name 'HelperSDT-*.egg-info' -o -name 'helpersdt-*.dist-info' \) \
+  -printf '%%p\n' | sed "s|^%{buildroot}||" >> helpersdt-metadata.files
+%endif
+
 %check
 %if %{with_check}
 make check RUNTESTFLAGS=environment_sanity.exp
@@ -1238,9 +1246,8 @@ exit 0
 %endif
 
 %if %{with_python3_probes}
-%files runtime-python3
+%files runtime-python3 -f helpersdt-metadata.files
 %{python3_sitearch}/HelperSDT
-%{python3_sitearch}/HelperSDT-*.egg-info
 %endif
 
 %if %{with_virthost}
