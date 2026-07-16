@@ -8,5 +8,6 @@
 # shortlog will canonicalize the names using the file .mailmap.
 # Disable signature verification: log.showSignature would make a full
 # history shortlog extremely slow.
-git -c log.showSignature=false shortlog -s ${1-} |
-cut -b8- # strip the commit counts
+GIT_PAGER=cat
+export GIT_PAGER
+git -c log.showSignature=false shortlog -s ${1-} | cut -b8- # strip the commit counts
