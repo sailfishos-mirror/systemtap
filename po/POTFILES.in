@@ -28,8 +28,6 @@ dwflpp.cxx
 dwflpp.h
 elaborate.cxx
 elaborate.h
-foo2.c
-foo.c
 hash.cxx
 hash.h
 interactive.cxx
@@ -97,7 +95,6 @@ tapset-been.cxx
 tapset-debuginfod.cxx
 tapset-dynprobe.cxx
 tapset-dynprobe.h
-tapset-mark.cxx
 tapset-method.cxx
 tapset-netfilter.cxx
 tapset-perfmon.cxx
@@ -109,14 +106,8 @@ tapset-timers.cxx
 tapset-utrace.cxx
 task_finder.cxx
 task_finder.h
-test_f64.c
-test_f64_math2.c
-test_f64_math3.c
-test_f64_math4.c
-test_f64_math5.c
-test_f64_math6.c
-test_f64_math.c
-test_grisu.c
+tracepoint-vmlinux.cxx
+tracepoint-vmlinux.h
 translate.cxx
 translate.h
 translator-output.cxx
