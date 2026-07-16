@@ -4,8 +4,8 @@ description: >-
   Carry out SystemTap pre-release build checks and compile release notes per
   the SystemTapReleaseGuide. Use when preparing a release, checking the build
   before tagging, drafting announcement notes, or when the user mentions
-  pre-release, release notes, NEWS, AUTHORS, make rpm, or installcheck for a
-  release.
+  pre-release, release notes, NEWS, AUTHORS, make rpm, or Bunsen coverage for
+  a release.
 ---
 
 # Pre-release (build check + release notes)
@@ -27,14 +27,15 @@ top-level tree; see `AGENTS.md` for install/test quirks.
 ```
 Pre-release:
 - [ ] make update-po; commit po/* if changed
-- [ ] Update AUTHORS via AUTHORS.sh
+- [ ] ./AUTHORS.sh > AUTHORS
 - [ ] Review PRERELEASE markers (leave them in place)
 - [ ] Copyright years in banner sources (if needed)
 - [ ] Book_Info.xml productnumber matches release
 - [ ] ./scripts/update-docs; bump doc copyrights if changed
 - [ ] Regenerate examples index
-- [ ] NEWS current with major changes
-- [ ] Fuller build: configure + make rpm + all install + installcheck
+- [ ] NEWS current (cross-check git history for user-visible gaps)
+- [ ] Fuller build: configure + make rpm + all install
+- [ ] Bunsen/CI coverage for this commit (or ask user to trigger)
 - [ ] stap-jupyter-container --build (advise user to --publish)
 - [ ] Draft release notes from template sections below
 ```
@@ -52,7 +53,7 @@ make update-po   # may update po/* in the source tree; commit those changes
 ./AUTHORS.sh > AUTHORS
 ```
 
-Review the `AUTHORS` diff; commit when appropriate.
+Review diffs; commit when appropriate.
 
 ### 2. PRERELEASE markers
 
@@ -104,21 +105,57 @@ change. (`make example_index` only warns when stale.)
 Ensure `NEWS` lists the major changes for this release. It is the primary
 input for the release notes.
 
+Cross-check commit history since `${OLD_RELEASE}` for significant
+**user-visible** changes that belong in `NEWS` but are missing (new options,
+probe types, removed features, security-relevant behavior, packaging UX).
+Skim subjects first, then dig into promising commits:
+
+```bash
+git log --oneline "${OLD_RELEASE}.."
+git log --oneline "${OLD_RELEASE}.." -- tapset/ runtime/ staprun/ initscript/
+```
+
+Propose `NEWS` additions for gaps; do not silently invent marketing blurbs for
+purely internal cleanups.
+
 ### 8. Fuller-than-usual build
 
 ```bash
 configure --enable-dejazilla --enable-testapps=all
 make rpm    # on several OS generations, for dependency/build-tool differences
 make all install
-sudo -E make installcheck
 ```
 
 `--enable-testapps=all` matters especially if **`sys/sdt.h`** changed: other
 apps compile against it; avoid regressions in compilability or performance.
 
-Prefer `sudo -E` so debuginfod / env vars survive (see `AGENTS.md`).
+Do **not** run a full local `sudo make installcheck` as the release gate — it
+takes many hours. Use Bunsen/CI coverage instead (next step).
 
-### 9. Interactive container image
+### 9. Test coverage via Bunsen (not local installcheck)
+
+Search Bunsen for testruns already built against **this** SystemTap git
+commit (or an equivalent `source.gitdescribe` / `systemtap_version` close to
+the release tip). With Bunsen MCP:
+
+```text
+find_testruns metadata_key=source.gitname metadata_value_glob=<full-or-prefix-hash>
+# also useful:
+#   source.gitdescribe  (e.g. release-5.5-148-g*)
+#   systemtap_version
+return_metadata_keys: source.gitdescribe, systemtap_version, uname-r,
+  architecture, osver, testrun.authored.time
+```
+
+Web UI: `https://builder.sourceware.org/testrun/<testrun-hash>`.
+
+If suitable testruns exist, summarize PASS/FAIL posture across arches/distros
+for the release notes “tested kernels” section (and call out concerning
+regressions). If none exist yet for this tip, **ask the user** to push/send a
+build into the Sourceware buildbot (or otherwise produce Bunsen testruns)
+rather than starting a multi-hour local installcheck.
+
+### 10. Interactive container image
 
 Build locally only:
 
@@ -144,8 +181,9 @@ Before drafting, fetch recent notes from
 [SystemTapReleases](https://sourceware.org/systemtap/wiki/SystemTapReleases)
 and match their structure, section headings, wording habits, and overall
 tone. Use the previous release as the primary template; skim one or two
-older notes if style drifted. Draft locally in a file the user can edit
-(e.g. `/tmp/systemtap-VERSION-notes.txt`); do not mail or update the wiki.
+older notes if style drifted. Draft locally in the top-level source tree
+(e.g. `systemtap-VERSION-notes.txt`); do not mail or update the wiki.
+Leave the draft untracked / uncommitted unless the user asks otherwise.
 
 ### Sections to fill
 
@@ -185,8 +223,8 @@ older notes if style drifted. Draft locally in a file the user can edit
    git diff "${OLD_RELEASE}" -- AUTHORS   # specially welcome newcomers
    ```
 
-8. **Tested kernels** — platforms used for this release (local
-   installcheck, buildbot/Bunsen, Fedora/RHEL matrices, etc.).
+8. **Tested kernels** — platforms evidenced by Bunsen/buildbot testruns for
+   this tip (see §9), not a hand-waved local installcheck.
 
 9. **Known issues** — keep prior issues that still apply; add new ones.
 
