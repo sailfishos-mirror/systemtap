@@ -29,8 +29,8 @@ expect {
 		# Skip virtual tracepoint unusable by stap.
 		exp_continue
 	    }
-	    {^ftrace:function$} {
-		# Skip virtual tracepoint unusable by stap.
+	    {^ftrace:} {
+		# Skip ftrace synthetic/virtual events unusable by stap.
 		exp_continue
 	    }
 	    {^powerpc:hcall_(entry|exit)$} {
@@ -61,16 +61,16 @@ if ([llength $perf_tracepoints]) {
 } else {
     fail "$test perf list"
     return
-}    
+}
 
 # Get systemtap to enumerate tracepoints, but collect detailed logs for
 # later analysis
 catch {exec stap --poison-cache --vp 04 -l {kernel.trace("*")} 2>@ stdout} result
 verbose -log "$result"
 pass "$test verbose listing tracepoints"
-    
 
-# Now gather stap's tracepoint list.
+
+# Now gather stap's classic (header-based) tracepoint list.
 set stap_tracepoints {}
 spawn stap -l {kernel.trace("*")}
 expect {
@@ -88,11 +88,11 @@ if ([llength $stap_tracepoints]) {
 } else {
     fail "$test stap list"
     return
-}    
+}
 
 # Sort both lists.
-set $perf_tracepoints [lsort -increasing $perf_tracepoints]
-set $stap_tracepoints [lsort -increasing $stap_tracepoints]
+set perf_tracepoints [lsort -increasing $perf_tracepoints]
+set stap_tracepoints [lsort -increasing $stap_tracepoints]
 
 # Look for perf tracepoints not found by stap. Note that stap will
 # find more tracepoints than perf, since stap will find tracepoints in
@@ -130,4 +130,121 @@ foreach stp $stap_tracepoints {
 
     set script [format $script_template "${group}:${tracepoint}"]
     stap_compile "$test: group '$group' solo" 1 $script
+}
+
+#
+# BTF census: kernel.tracepoint("*") plus module("foo").tracepoint("*")
+# for each loaded module.  BTF -l output uses bare registration names
+# (not subsystem:name).  module("*").tracepoint("*") does not expand,
+# so we walk /proc/modules ourselves and merge bare names.
+#
+
+proc kernel_vmlinux_h_p {} {
+    if {[catch {exec uname -r} krel]} {
+	return 0
+    }
+    set path "/lib/modules/$krel/build/vmlinux.h"
+    if {![file exists $path]} {
+	set path "/usr/src/kernels/$krel/vmlinux.h"
+    }
+    return [file exists $path]
+}
+
+if {![kernel_vmlinux_h_p]} {
+    untested "$test btf (no vmlinux.h)"
+    return
+}
+pass "$test btf vmlinux.h"
+
+# Kernel BTF catalog.
+set btf_tracepoints {}
+spawn stap -l {kernel.tracepoint("*")}
+expect {
+    -timeout 300
+    -re {^kernel.tracepoint\("([^\r\n"]+)"\)\r\n} {
+	lappend btf_tracepoints $expect_out(1,string)
+	exp_continue
+    }
+    -re {^[^\r\n]+\r\n} {
+	exp_continue
+    }
+    timeout {}
+    eof {}
+}
+catch {close}; catch {wait}
+if {[llength $btf_tracepoints] == 0} {
+    fail "$test btf kernel list"
+    return
+}
+pass "$test btf kernel list ([llength $btf_tracepoints])"
+
+# Merge BTF tracepoints from loaded modules (skip modules without
+# debuginfo / btf_trace_* typedefs).
+set mod_btf_ok 0
+set mod_btf_skip 0
+if {[catch {open /proc/modules r} modf]} {
+    fail "$test btf /proc/modules"
+} else {
+    set modnames {}
+    while {[gets $modf line] >= 0} {
+	if {[regexp {^([^ ]+)} $line -> m]} {
+	    lappend modnames $m
+	}
+    }
+    close $modf
+    foreach m $modnames {
+	set pp "module(\"$m\").tracepoint(\"*\")"
+	verbose -log "$test btf listing $pp"
+	if {[catch {exec stap -l $pp} out]} {
+	    incr mod_btf_skip
+	    verbose -log "$test btf skip module $m: $out"
+	    continue
+	}
+	set got 0
+	foreach line [split $out "\n"] {
+	    if {[regexp {^module\("[^"]+"\)\.tracepoint\("([^"]+)"\)$} $line -> bare]} {
+		lappend btf_tracepoints $bare
+		incr got
+	    }
+	}
+	if {$got > 0} {
+	    incr mod_btf_ok
+	    verbose -log "$test btf module $m: $got tracepoints"
+	} else {
+	    incr mod_btf_skip
+	}
+    }
+    pass "$test btf module merge (ok=$mod_btf_ok skip=$mod_btf_skip)"
+}
+
+# Unique sorted bare-name set.
+set btf_tracepoints [lsort -unique -increasing $btf_tracepoints]
+pass "$test btf merged list ([llength $btf_tracepoints])"
+
+# Every perf event's bare name (after subsystem:) should appear in the
+# merged BTF set.  Stap may still list extras (BTF-only, or modules
+# without a matching perf line).
+set btf_found 0
+foreach ptp $perf_tracepoints {
+    set bare $ptp
+    regexp {^[^:]+:(.+)$} $ptp -> bare
+    if {[lsearch -exact -sorted -increasing $btf_tracepoints $bare] >= 0} {
+	incr btf_found
+	pass "$test btf: finding perf tracepoint $ptp"
+    } else {
+	fail "$test btf: finding perf tracepoint $ptp"
+    }
+}
+if {$btf_found > 0} {
+    pass "$test btf: some common tracepoints ($btf_found)"
+} else {
+    fail "$test btf: some common tracepoints"
+}
+
+# Light compile smoke for a known kernel BTF probe if present.
+# (Quote like script_template above so stap_compile's concat keeps
+# the whole -e argument as one list element.)
+if {[lsearch -exact -sorted -increasing $btf_tracepoints "sched_switch"] >= 0} {
+    set btf_script {"probe kernel.tracepoint(\"sched_switch\") { exit() }"}
+    stap_compile "$test btf: sched_switch solo" 1 $btf_script
 }
