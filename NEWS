@@ -63,6 +63,19 @@
   Helps trace errors through tapsets and deduplicated functions.
   (PR#34320)
 
+- @cast() operations now implicitly dereference typedef chains when
+  resolving the named type.  (PR#34199)
+
+- Pass-2 optimizer can combine multiple probe handlers that share the
+  same probe point, reducing registration overhead.  (PR#34161)
+
+- Runtime and tapset porting for Linux 7.2-rc kernels (NFS/VFS/socket/
+  SCSI/signal/futex and related DWARF drift), while keeping older
+  enterprise-kernel fallbacks.  (PR#34318)
+
+- Clang build compatibility tweaks for building SystemTap itself.
+  (PR#34283)
+
 * What's new in version 5.5, 2026-05-01
 
 - New @enum() operator for accessing enumeration constants from
