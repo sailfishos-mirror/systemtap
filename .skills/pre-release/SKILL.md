@@ -254,5 +254,6 @@ Leave the draft untracked / uncommitted unless the user asks otherwise.
 
 Leave for the user: `git push`, signed tags, `make dist-gzip` upload,
 `stap-jupyter-container --publish`, Fedora packaging, `update-htmldocs`,
-mailing the announcement, wiki HomePage / SystemTapReleases updates, or
-starting the next version bump cycle.
+mailing the announcement, or wiki HomePage / SystemTapReleases updates.
+For starting the next version bump cycle, use the **post-release** skill
+(`.skills/post-release/`).
