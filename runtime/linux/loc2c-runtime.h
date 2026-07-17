@@ -333,8 +333,9 @@ static void ursl_store64 (const struct usr_regset_lut* lut,unsigned lutsize,  in
   check_fetch_register(c->uregs,regno,pt_regs_maxno,pt_regs_fetch_register)
 
 #else
+/* Parenthesize: bare '&' binds tighter than '+' in SDT EA expressions. */
 #define u_fetch_register(regno) \
-  check_fetch_register(c->uregs,regno,pt_regs_maxno,pt_regs_fetch_register) & (_stp_is_compat_task() ? 0xffffffff : ~(int64_t)0)
+  (check_fetch_register(c->uregs,regno,pt_regs_maxno,pt_regs_fetch_register) & (_stp_is_compat_task() ? 0xffffffff : ~(int64_t)0))
 #endif
 
 #endif /* STAPCONF_REGSET */

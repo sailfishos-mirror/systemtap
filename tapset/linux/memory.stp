@@ -145,7 +145,13 @@ function addr_to_node:long(addr:long) %{ /* pure */
  */
 probe vm.write_shared = kernel.function("do_wp_page") {
     name = "write_shared"
-    address = @choose_defined($vmf->address,$address)
+    /* Prefer vmf->address; bare $address is gone on modern kernels. */
+    if (@defined($vmf->address))
+	address = $vmf->address
+    else if (@defined($address))
+	address = $address
+    else
+	address = 0
 }
 
 /**
@@ -439,8 +445,14 @@ probe __vm.kmalloc.tp = kernel.trace("kmalloc")
  * later when fix for bugs bz#6961 and bz#6580 is available.
  */ 
 
-probe __vm.kmalloc.kp = kernel.function("kmem_cache_alloc_notrace").return !,
-			kernel.function("kmem_cache_alloc").return
+/*
+ * kmalloc often goes through kmem_cache_alloc*.  That symbol is now a
+ * macro around kmem_cache_alloc_noprof (alloc_hooks); keep old names
+ * optional and prefer the real function when present.
+ */
+probe __vm.kmalloc.kp = kernel.function("kmem_cache_alloc_notrace").return ?,
+			kernel.function("kmem_cache_alloc").return ?,
+			kernel.function("kmem_cache_alloc_noprof").return ?
 {
 	call_site = 0
 	caller_function = "unknown"
@@ -482,7 +494,8 @@ probe __vm.kmalloc.kp = kernel.function("kmem_cache_alloc_notrace").return !,
  * @gfp_flag_name: type of kmemory to allocate (in String format)
  * @ptr: pointer to the kmemory allocated
  */
-probe vm.kmalloc = __vm.kmalloc.tp !, __vm.kmalloc.kp
+/* Tracepoint is primary; kprobe fallback is best-effort. */
+probe vm.kmalloc = __vm.kmalloc.tp !, __vm.kmalloc.kp ?
 {
 	name = "kmalloc"
 }
@@ -501,7 +514,8 @@ probe __vm.kmem_cache_alloc.tp = kernel.trace("kmem_cache_alloc")
 	ptr = $ptr
 }
 
-probe __vm.kmem_cache_alloc.kp = kernel.function("kmem_cache_alloc").return
+probe __vm.kmem_cache_alloc.kp = kernel.function("kmem_cache_alloc").return ?,
+				 kernel.function("kmem_cache_alloc_noprof").return ?
 {
 	call_site = 0
 	caller_function = "unknown"
@@ -545,7 +559,7 @@ probe __vm.kmem_cache_alloc.kp = kernel.function("kmem_cache_alloc").return
  */
 
 probe vm.kmem_cache_alloc = __vm.kmem_cache_alloc.tp !,
-			    __vm.kmem_cache_alloc.kp
+			    __vm.kmem_cache_alloc.kp ?
 {
 	name = "kmem_cache_alloc"
 }
@@ -608,7 +622,8 @@ probe __vm.kmem_cache_alloc_node.tp = kernel.trace("kmem_cache_alloc_node") ?
 }
 
 probe __vm.kmem_cache_alloc_node.kp =
-		kernel.function("kmem_cache_alloc_node").return ?
+		kernel.function("kmem_cache_alloc_node").return !,
+		kernel.function("kmem_cache_alloc_node_noprof").return ?
 {
 	call_site = 0
 	caller_function = "unknown"
@@ -664,7 +679,15 @@ probe __vm.kfree.kp = kernel.function("kfree").return
 {
 	call_site = 0
 	caller_function = "unknown"
-	ptr = @entry(@choose_defined($x, $objp))
+	/* Param renamed over time: objp -> x -> object */
+	if (@defined(@entry($x)))
+		ptr = @entry($x)
+	else if (@defined(@entry($objp)))
+		ptr = @entry($objp)
+	else if (@defined(@entry($object)))
+		ptr = @entry($object)
+	else
+		ptr = 0
 }
 
 /**
@@ -690,7 +713,13 @@ probe __vm.kmem_cache_free.kp = kernel.function("kmem_cache_free").return
 {
 	call_site = 0
 	caller_function = "unknown"
-	ptr = @entry(@choose_defined($x, $objp))
+	/* Param renamed over time: objp -> x */
+	if (@defined(@entry($x)))
+		ptr = @entry($x)
+	else if (@defined(@entry($objp)))
+		ptr = @entry($objp)
+	else
+		ptr = 0
 }
 
 /**

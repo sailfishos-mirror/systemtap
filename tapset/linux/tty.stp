@@ -21,7 +21,8 @@
 probe tty.open = kernel.function("tty_open")
 {
 	inode_number = $inode->i_ino
-	inode_state = $inode->i_state
+	/* 2ed81b4bef9b: i_state became struct inode_state_flags.__state */
+	inode_state = @choose_defined($inode->i_state->__state, $inode->i_state)
 	inode_flags = $inode->i_flags
 
 	file_name = d_name(@choose_defined($filp->f_path->dentry,
@@ -46,7 +47,8 @@ probe tty.release = kernel.function("tty_release")
 	// sure $inode is defined.
 	if (@defined($inode)) {
 		inode_number = $inode->i_ino
-		inode_state = $inode->i_state
+		/* 2ed81b4bef9b: i_state became struct inode_state_flags.__state */
+		inode_state = @choose_defined($inode->i_state->__state, $inode->i_state)
 		inode_flags = $inode->i_flags
 	}
 	else {
@@ -107,13 +109,8 @@ probe tty.resize = kernel.function("tiocswinsz")
  */
 probe tty.ioctl = kernel.function("tty_ioctl")
 {
-%(systemtap_v < "2.8" %?
-	name = kernel_string(@choose_defined($file->f_path->dentry->d_iname,
-					     $file->f_dentry->d_iname))
-%:
-	name = kernel_string_quoted(@choose_defined($file->f_path->dentry->d_iname,
-						    $file->f_dentry->d_iname))
-%)
+	/* 58cf9c383c5c: d_iname is a macro over d_shortname; use d_name() */
+	name = d_name(@choose_defined($file->f_path->dentry, $file->f_dentry))
 	cmd = $cmd
 	arg = $arg
 }

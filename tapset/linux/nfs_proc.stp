@@ -651,12 +651,20 @@ probe nfs.proc3.commit = kernel.function ("nfs3_proc_commit") !,
 			 module("nfs").function("nfs3_proc_commit") ?,
 			 module("nfsv3").function("nfs3_proc_commit") ?
 {
-	server_ip = @_nfs_data_server_ip($cdata)
-	prot = @_nfs_data_prot($cdata)
+	/* Older kernels pass struct nfs_commit_data *cdata. */
+	if (@defined($cdata)) {
+		server_ip = @_nfs_data_server_ip($cdata)
+		prot = @_nfs_data_prot($cdata)
+		count = @_nfs_data_args_count($cdata)
+		offset = $cdata->args->offset
+	} else {
+		/* Fallback: treat like nfs4-style (file, offset, count). */
+		server_ip = get_ip_from_client(NFS_CLIENT($dst->f_inode))
+		prot = get_prot_from_client(NFS_CLIENT($dst->f_inode))
+		count = $count
+		offset = $offset
+	}
 	version = 3
-
-	count = @_nfs_data_args_count($cdata)
-	offset = $cdata->args->offset
 	bitmask0 = 0
 	bitmask1 = 0
 
@@ -687,14 +695,23 @@ probe nfs.proc4.commit = kernel.function ("nfs4_proc_commit") !,
 			 module("nfs").function("nfs4_proc_commit") ?,
 			 module("nfsv4").function("nfs4_proc_commit") ?
 {
-	server_ip = @_nfs_data_server_ip($cdata)
-	prot = @_nfs_data_prot($cdata)
+	/* Older: nfs_commit_data *cdata. Newer: (file *dst, offset, count, res). */
+	if (@defined($cdata)) {
+		server_ip = @_nfs_data_server_ip($cdata)
+		prot = @_nfs_data_prot($cdata)
+		count = @_nfs_data_args_count($cdata)
+		offset = $cdata->args->offset
+		bitmask0 = __nfsv4_bitmask($cdata->inode, 0)
+		bitmask1 = __nfsv4_bitmask($cdata->inode, 1)
+	} else {
+		server_ip = get_ip_from_client(NFS_CLIENT($dst->f_inode))
+		prot = get_prot_from_client(NFS_CLIENT($dst->f_inode))
+		count = $count
+		offset = $offset
+		bitmask0 = __nfsv4_bitmask($dst->f_inode, 0)
+		bitmask1 = __nfsv4_bitmask($dst->f_inode, 1)
+	}
 	version = 4
-
-	count = @_nfs_data_args_count($cdata)
-	offset = $cdata->args->offset
-	bitmask0 = __nfsv4_bitmask($cdata->inode, 0)
-	bitmask1 = __nfsv4_bitmask($cdata->inode, 1)
 
 	name = "nfs.proc4.commit"
 	argstr = sprintf("%d,%d", count, offset)
@@ -1442,11 +1459,12 @@ probe nfs.proc3.commit_done = kernel.function("nfs3_commit_done") !,
 		valid = @_nfs_data_valid($data)
 	}
 	else {
-                _tk_calldata=@choose_defined($task->tk_calldata, @cast($task, "rpc_task", "kernel:nfs")->tk_calldata)
-                server_ip = @_nfs_data_server_ip(_tk_calldata)
-                prot = @_nfs_data_prot(_tk_calldata)
-                count = @_nfs_data_res_count(_tk_calldata)
-                valid = @_nfs_data_valid(_tk_calldata)
+		/* tk_calldata is void*; cast back to nfs_commit_data */
+		_cdata = &@cast($task->tk_calldata, "nfs_commit_data", "kernel:nfs")
+		server_ip = @_nfs_data_server_ip(_cdata)
+		prot = @_nfs_data_prot(_cdata)
+		count = @_nfs_data_res_count(_cdata)
+		valid = @_nfs_data_valid(_cdata)
 	}
 	timestamp = 0
 	version = 3
@@ -1478,11 +1496,12 @@ probe nfs.proc4.commit_done = kernel.function("nfs4_commit_done") !,
 		timestamp = @_nfs_data_timestamp($data)
 	}
 	else {
-		server_ip = @_nfs_data_server_ip($task->tk_calldata)
-		prot = @_nfs_data_prot($task->tk_calldata)
-		count = @_nfs_data_res_count($task->tk_calldata)
-		valid = @_nfs_data_valid($task->tk_calldata)
-		timestamp = @_nfs_data_timestamp($task->tk_calldata)
+		_cdata = &@cast($task->tk_calldata, "nfs_commit_data", "kernel:nfs")
+		server_ip = @_nfs_data_server_ip(_cdata)
+		prot = @_nfs_data_prot(_cdata)
+		count = @_nfs_data_res_count(_cdata)
+		valid = @_nfs_data_valid(_cdata)
+		timestamp = @_nfs_data_timestamp(_cdata)
 	}
 	version = 4
 	status = $task->tk_status
@@ -1552,11 +1571,17 @@ probe nfs.proc3.rename_setup =
 	module("nfs").function("nfs3_proc_rename_setup") ?,
 	module("nfsv3").function("nfs3_proc_rename_setup") ?
 {
-	client = NFS_CLIENT($dir)
+	/* Newer NFS passes same_parent instead of dir. */
+	if (@defined($dir)) {
+		client = NFS_CLIENT($dir)
+		fh = NFS_FH($dir)
+	} else {
+		client = NFS_CLIENT($same_parent)
+		fh = NFS_FH($same_parent)
+	}
 	server_ip = get_ip_from_client(client)
 	prot = get_prot_from_client(client)
 	version = 3
-	fh = NFS_FH($dir)
 
 	name = "nfs.proc3.rename_setup"
 	argstr = sprintf("%d", fh)
@@ -1576,11 +1601,17 @@ probe nfs.proc4.rename_setup =
 	module("nfs").function("nfs4_proc_rename_setup") ?,
 	module("nfsv4").function("nfs4_proc_rename_setup") ?
 {
-	client = NFS_CLIENT($dir)
+	/* Newer NFS passes same_parent instead of dir. */
+	if (@defined($dir)) {
+		client = NFS_CLIENT($dir)
+		fh = NFS_FH($dir)
+	} else {
+		client = NFS_CLIENT($same_parent)
+		fh = NFS_FH($same_parent)
+	}
 	server_ip = get_ip_from_client(client)
 	prot = get_prot_from_client(client)
 	version = 4
-	fh = NFS_FH($dir)
 
 	name = "nfs.proc4.rename_setup"
 	argstr = sprintf("%d", fh)
@@ -1969,8 +2000,9 @@ probe _nfs.proc2.remove = kernel.function("nfs_proc_remove") !,
 	prot = get_prot_from_client(client)
 
 	fh = NFS_FH($dir)
-	filelen = $name->len
-	filename = kernel_string_n($name->name, filelen)
+	/* Prefer $name (qstr*); else dentry->d_name after NFS arg rework. */
+	filelen = @choose_defined($name->len, $dentry->d_name->len)
+	filename = kernel_string_n(@choose_defined($name->name, $dentry->d_name->name), filelen)
 }
 probe _nfs.proc2.missing_remove = never
 {
@@ -2008,8 +2040,8 @@ probe nfs.proc3.remove = kernel.function("nfs3_proc_remove") !,
 	version = 3
 
 	fh = NFS_FH($dir)
-	filelen = $name->len
-	filename = kernel_string_n($name->name, filelen)
+	filelen = @choose_defined($name->len, $dentry->d_name->len)
+	filename = kernel_string_n(@choose_defined($name->name, $dentry->d_name->name), filelen)
 
 	name = "nfs.proc3.remove"
 	argstr = sprintf("%s", filename)
@@ -2035,8 +2067,8 @@ probe nfs.proc4.remove = kernel.function("nfs4_proc_remove") !,
 	version = 4
 
 	fh = NFS_FH($dir)
-	filelen = $name->len
-	filename = kernel_string_n($name->name, filelen)
+	filelen = @choose_defined($name->len, $dentry->d_name->len)
+	filename = kernel_string_n(@choose_defined($name->name, $dentry->d_name->name), filelen)
 
 	name = "nfs.proc4.remove"
 	argstr = sprintf("%s", filename)

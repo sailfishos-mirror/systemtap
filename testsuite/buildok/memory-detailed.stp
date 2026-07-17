@@ -36,10 +36,10 @@ probe vm.kmalloc
 	       bytes_alloc, gfp_flags, gfp_flag_name)
 }
 
-# Normally we don't test "internal" probes, but let's make sure the
-# kprobes-based fallback probes actually work.
+# Normally we don't test "internal" probes, but exercise the kprobe
+# fallbacks when the underlying symbols exist (optional: may be macros).
 
-probe __vm.kmalloc.kp
+probe __vm.kmalloc.kp ?
 {
         printf("%-15s %-15p %-15s %-15p %-15d %-15d %-15d %-15s\n",
 	       execname(), call_site, caller_function, ptr, bytes_req,
@@ -53,7 +53,7 @@ probe vm.kmem_cache_alloc
                execname(), call_site, caller_function, ptr, bytes_req,
                bytes_alloc, gfp_flags, gfp_flag_name)
 }
-probe __vm.kmem_cache_alloc.kp
+probe __vm.kmem_cache_alloc.kp ?
 {
         printf("%-15s %-15p %-15s %-15p %-15d %-15d %-15d %-15s \n",
                execname(), call_site, caller_function, ptr, bytes_req,

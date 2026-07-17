@@ -572,20 +572,31 @@ probe sunrpc.clnt.call_async.return =
 probe sunrpc.clnt.restart_call = kernel.function("rpc_restart_call") !,
       	module("sunrpc").function("rpc_restart_call")
 {
-	if (@defined($task->tk_client->cl_server))
-		servername = __rpc_format_servername($task->tk_client->cl_server,
-						     &$task->tk_client->cl_xprt->addr)
-	else {
-		__xprt = rcu_dereference($task->tk_client->cl_xprt)
-		servername = __rpc_format_servername(@cast(__xprt, "rpc_xprt")->servername,
-						     &@cast(__xprt, "rpc_xprt")->addr)
+	/* Heavily inlined; $task often unavailable in DWARF. */
+	if (@defined($task)) {
+		if (@defined($task->tk_client->cl_server))
+			servername = __rpc_format_servername($task->tk_client->cl_server,
+							     &$task->tk_client->cl_xprt->addr)
+		else {
+			__xprt = rcu_dereference($task->tk_client->cl_xprt)
+			servername = __rpc_format_servername(@cast(__xprt, "rpc_xprt")->servername,
+							     &@cast(__xprt, "rpc_xprt")->addr)
+		}
+		prog = prog_from_clnt($task->tk_client)
+		xid = $task->tk_rqstp->rq_xid
+		tk_pid = $task->tk_pid
+		tk_flags = $task->tk_flags
+		tk_priority = $task->tk_priority
+		tk_runstate = $task->tk_runstate
+	} else {
+		servername = ""
+		prog = 0
+		xid = 0
+		tk_pid = 0
+		tk_flags = 0
+		tk_priority = 0
+		tk_runstate = 0
 	}
-	prog = prog_from_clnt($task->tk_client)
-	xid = $task->tk_rqstp->rq_xid
-	tk_pid = $task->tk_pid
-	tk_flags = $task->tk_flags
-	tk_priority = $task->tk_priority
-	tk_runstate = $task->tk_runstate
 
 	name = "sunrpc.clnt.restart_call"
 	argstr = sprintf("%s %d %d %d %d %d %d", servername, prog, xid, tk_pid, 
@@ -622,7 +633,7 @@ probe sunrpc.svc.return =
 	sunrpc.svc.authorise.return,
 	sunrpc.svc.recv.return,
 	sunrpc.svc.send.return,
-	sunrpc.svc.drop.return
+	sunrpc.svc.drop.return ?
 {}
 
 /**
@@ -640,8 +651,14 @@ probe sunrpc.svc.register = kernel.function("svc_register") !,
       	module("sunrpc").function("svc_register")
 {
 	sv_name = kernel_string($serv->sv_name)
-	progname = kernel_string($serv->sv_program->pg_name)
-	prog = $serv->sv_program->pg_prog
+	/* 86ab08beb3f0: sv_program list became sv_programs array */
+	if (@defined($serv->sv_program)) {
+		progname = kernel_string($serv->sv_program->pg_name)
+		prog = $serv->sv_program->pg_prog
+	} else {
+		progname = kernel_string($serv->sv_programs[0]->pg_name)
+		prog = $serv->sv_programs[0]->pg_prog
+	}
 	prot = $proto
 	port = $port
 
@@ -701,8 +718,14 @@ probe sunrpc.svc.destroy = kernel.function("svc_destroy") !,
 {
 	serv = (@defined($servp) ? $servp : $serv)
 	sv_name = kernel_string(serv->sv_name) /* service name */
-	sv_progname = kernel_string(serv->sv_program->pg_name)
-	sv_prog = serv->sv_program->pg_prog
+	/* 86ab08beb3f0: sv_program list became sv_programs array */
+	if (@type_member_defined("struct svc_serv", sv_program)) {
+		sv_progname = kernel_string(serv->sv_program->pg_name)
+		sv_prog = serv->sv_program->pg_prog
+	} else {
+		sv_progname = kernel_string(serv->sv_programs[0]->pg_name)
+		sv_prog = serv->sv_programs[0]->pg_prog
+	}
 	sv_nrthreads = serv->sv_nrthreads
 
 	/* RPC statistics */
@@ -741,12 +764,18 @@ probe sunrpc.svc.process = kernel.function("svc_process") !,
 {
 	if (! @defined($serv)) {
 		sv_name = kernel_string($rqstp->rq_server->sv_name)
-		sv_prog = $rqstp->rq_server->sv_program->pg_prog
+		if (@defined($rqstp->rq_server->sv_program))
+			sv_prog = $rqstp->rq_server->sv_program->pg_prog
+		else
+			sv_prog = $rqstp->rq_server->sv_programs[0]->pg_prog
 		sv_nrthreads = $rqstp->rq_server->sv_nrthreads
 	}
 	else {
 		sv_name = kernel_string($serv->sv_name) /* service name */
-		sv_prog = $serv->sv_program->pg_prog
+		if (@defined($serv->sv_program))
+			sv_prog = $serv->sv_program->pg_prog
+		else
+			sv_prog = $serv->sv_programs[0]->pg_prog
 		sv_nrthreads = $serv->sv_nrthreads
 	}
 	peer_ip = addr_from_rqst($rqstp)
@@ -814,13 +843,19 @@ probe sunrpc.svc.recv = kernel.function("svc_recv") !,
       	module("sunrpc").function("svc_recv")
 {
 	if (! @defined($serv)) {
-	        sv_name = kernel_string($rqstp->rq_server->sv_name) 
-        	sv_prog = $rqstp->rq_server->sv_program->pg_prog
+	        sv_name = kernel_string($rqstp->rq_server->sv_name)
+		if (@defined($rqstp->rq_server->sv_program))
+			sv_prog = $rqstp->rq_server->sv_program->pg_prog
+		else
+			sv_prog = $rqstp->rq_server->sv_programs[0]->pg_prog
 	        sv_nrthreads = $rqstp->rq_server->sv_nrthreads
 	}
 	else {
-		sv_name = kernel_string($serv->sv_name)	
-		sv_prog = $serv->sv_program->pg_prog
+		sv_name = kernel_string($serv->sv_name)
+		if (@defined($serv->sv_program))
+			sv_prog = $serv->sv_program->pg_prog
+		else
+			sv_prog = $serv->sv_programs[0]->pg_prog
 		sv_nrthreads = $serv->sv_nrthreads
 	}
 	timeout = @choose_defined($timeout,0)
@@ -897,8 +932,9 @@ probe sunrpc.svc.drop = kernel.function("svc_drop") !,
 			rq_xid, rq_prog, rq_vers, rq_proc, rq_prot)
 }
 
-probe sunrpc.svc.drop.return = kernel.function("svc_drop").return !,
-      	module("sunrpc").function("svc_drop").return
+/* f2b27e1d7252: svc_drop is static and often inlined; .return may be unavailable */
+probe sunrpc.svc.drop.return = kernel.function("svc_drop").return ?,
+      	module("sunrpc").function("svc_drop").return ?
 {
 	name = "sunrpc.svc.drop.return"
 	retstr = "N/A"
