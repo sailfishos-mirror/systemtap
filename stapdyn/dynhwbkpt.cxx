@@ -58,12 +58,15 @@ find_dynhwbkpts(void* module, vector<dynhwbkpt_location>& probes)
   decltype(&stp_dyninst_hwbkpt_address) address_fn = NULL;
   decltype(&stp_dyninst_hwbkpt_length) length_fn = NULL;
   decltype(&stp_dyninst_hwbkpt_access) access_fn = NULL;
+  decltype(&stp_dyninst_hwbkpt_symbol) symbol_fn = NULL;
 
   try
     {
       set_dlsym(address_fn, module, "stp_dyninst_hwbkpt_address");
       set_dlsym(length_fn, module, "stp_dyninst_hwbkpt_length");
       set_dlsym(access_fn, module, "stp_dyninst_hwbkpt_access");
+      // Soft: older modules lack symbol-name process.data support.
+      set_dlsym(symbol_fn, module, "stp_dyninst_hwbkpt_symbol", false);
     }
   catch (runtime_error& e)
     {
@@ -74,11 +77,14 @@ find_dynhwbkpts(void* module, vector<dynhwbkpt_location>& probes)
   const uint64_t n = count_fn();
   for (uint64_t i = 0; i < n; ++i)
     {
-      dynhwbkpt_location p(i, address_fn(i), length_fn(i), access_fn(i));
+      const char* sym = symbol_fn ? symbol_fn(i) : NULL;
+      dynhwbkpt_location p(i, address_fn(i), length_fn(i), access_fn(i), sym);
       staplog(3) << "hwbkpt index:" << i
                  << " addr:" << lex_cast_hex(p.address)
                  << " len:" << p.length
-                 << " access:" << p.access << endl;
+                 << " access:" << p.access
+                 << " symbol:" << (p.symbol.empty() ? "(none)" : p.symbol)
+                 << endl;
       probes.push_back(p);
     }
 
@@ -87,8 +93,10 @@ find_dynhwbkpts(void* module, vector<dynhwbkpt_location>& probes)
 
 
 dynhwbkpt_location::dynhwbkpt_location(uint64_t index, uint64_t address,
-                                       uint64_t length, uint64_t access):
-  index(index), address(address), length(length), access(access)
+                                       uint64_t length, uint64_t access,
+                                       const char* symbol):
+  index(index), address(address), length(length), access(access),
+  symbol(symbol ? symbol : "")
 {
 }
 

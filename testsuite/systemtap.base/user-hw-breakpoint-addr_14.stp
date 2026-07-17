@@ -1,0 +1,7 @@
+probe process.data("a").write {
+    println("Hit");
+}
+
+probe timer.s(1) {
+    exit();
+}

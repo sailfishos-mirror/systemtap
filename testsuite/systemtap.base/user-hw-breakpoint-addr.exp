@@ -25,7 +25,8 @@ if {$res ne ""} {
         foreach runtime [get_runtime_list] {
             if {$runtime eq ""} {
                 set runtime "kernel"
-            }            set test_name "$test: $subtest1 ($runtime)"
+            }
+            set test_name "$test: $subtest1 ($runtime)"
             set cmd "stap --ldd --runtime=$runtime -c ./a.out './${test}_1.stp'"
             set exit_code [run_cmd_2way_as_root $cmd out stderr]
             set out_pat "\\smain\\+0x\[^\\n\]+\\w\\.c:3\\s.*?\\n.*?\\smain\\+0x.*?\\w\\.c:4\\s"
@@ -55,7 +56,8 @@ if {$res ne ""} {
         foreach runtime [get_runtime_list] {
             if {$runtime eq ""} {
                 set runtime "kernel"
-            }            set test_name "$test: $subtest2 ($runtime)"
+            }
+            set test_name "$test: $subtest2 ($runtime)"
             set cmd "stap --runtime=$runtime -c ./a.out './${test}_2.stp'"
             set exit_code [run_cmd_2way_as_root $cmd out stderr]
             # kernel: execve write + a++ load + a++ store; dyninst: load + store
@@ -95,7 +97,8 @@ if {$res ne ""} {
         foreach runtime [get_runtime_list] {
             if {$runtime eq ""} {
                 set runtime "kernel"
-            }            set test_name "$test: $subtest3 ($runtime)"
+            }
+            set test_name "$test: $subtest3 ($runtime)"
             set cmd "stap --runtime=$runtime -c ./a.out './${test}_3.stp'"
             set exit_code [run_cmd_2way_as_root $cmd out stderr]
             # kernel: execve write + a++ store; dyninst: store only
@@ -173,7 +176,8 @@ if {$res ne ""} {
         foreach runtime [get_runtime_list] {
             if {$runtime eq ""} {
                 set runtime "kernel"
-            }            set test_name "$test: $subtest5 ($runtime)"
+            }
+            set test_name "$test: $subtest5 ($runtime)"
             set cmd "stap --runtime=$runtime -c ./a.out './${test}_5.stp'"
             set exit_code [run_cmd_2way_as_root $cmd out stderr]
             if {$runtime eq "dyninst"} {
@@ -210,7 +214,8 @@ if {$res ne ""} {
         foreach runtime [get_runtime_list] {
             if {$runtime eq ""} {
                 set runtime "kernel"
-            }            set test_name "$test: $subtest6 ($runtime)"
+            }
+            set test_name "$test: $subtest6 ($runtime)"
             set cmd "stap --runtime=$runtime -c ./a.out './${test}_5.stp'"
             set exit_code [run_cmd_2way_as_root $cmd out stderr]
             # Only the execve-time write hits length(1) at a[0]; dyninst sees none.
@@ -245,7 +250,8 @@ if {$res ne ""} {
         foreach runtime [get_runtime_list] {
             if {$runtime eq ""} {
                 set runtime "kernel"
-            }            set test_name "$test: $subtest7 ($runtime)"
+            }
+            set test_name "$test: $subtest7 ($runtime)"
             set cmd "stap --runtime=$runtime -c ./a.out './${test}_7.stp'"
             set exit_code [run_cmd_2way_as_root $cmd out stderr]
             if {$runtime eq "dyninst"} {
@@ -282,7 +288,8 @@ if {$res ne ""} {
         foreach runtime [get_runtime_list] {
             if {$runtime eq ""} {
                 set runtime "kernel"
-            }            set test_name "$test: $subtest8 ($runtime)"
+            }
+            set test_name "$test: $subtest8 ($runtime)"
             set cmd "stap --runtime=$runtime -c ./a.out './${test}_7.stp'"
             set exit_code [run_cmd_2way_as_root $cmd out stderr]
             if {$runtime eq "dyninst"} {
@@ -316,7 +323,8 @@ if {$res ne ""} {
         foreach runtime [get_runtime_list] {
             if {$runtime eq ""} {
                 set runtime "kernel"
-            }            set test_name "$test: $subtest9 ($runtime)"
+            }
+            set test_name "$test: $subtest9 ($runtime)"
             set cmd "stap --runtime=$runtime -c ./a.out './${test}_9.stp'"
             set exit_code [run_cmd_2way_as_root $cmd out stderr]
             if {$runtime eq "dyninst"} {
@@ -353,7 +361,8 @@ if {$res ne ""} {
         foreach runtime [get_runtime_list] {
             if {$runtime eq ""} {
                 set runtime "kernel"
-            }            set test_name "$test: $subtest10 ($runtime)"
+            }
+            set test_name "$test: $subtest10 ($runtime)"
             set cmd "stap --runtime=$runtime -c ./a.out './${test}_9.stp'"
             set exit_code [run_cmd_2way_as_root $cmd out stderr]
             if {$runtime eq "dyninst"} {
@@ -389,7 +398,8 @@ if {$res ne ""} {
         foreach runtime [get_runtime_list] {
             if {$runtime eq ""} {
                 set runtime "kernel"
-            }            set test_name "$test: $subtest11 ($runtime)"
+            }
+            set test_name "$test: $subtest11 ($runtime)"
             set cmd "stap --ldd --runtime=$runtime -c ./a.out './${test}_11.stp'"
             set exit_code [run_cmd_2way_as_root $cmd out stderr]
             set out_pat " 0x\[0-9a-f\]+ : main\\+0x\[0-9a-f\]+/0x\[0-9a-f\]+ at \[^\\n\]+\\w\\.c:7 \\\[\[^\\\[\\n\]+\\\]"
@@ -421,7 +431,8 @@ if {$res ne ""} {
         foreach runtime [get_runtime_list] {
             if {$runtime eq ""} {
                 set runtime "kernel"
-            }            set test_name "$test: $subtest12 ($runtime)"
+            }
+            set test_name "$test: $subtest12 ($runtime)"
             set cmd "stap --ldd --runtime=$runtime -c ./a.out './${test}_11.stp'"
             set exit_code [run_cmd_2way_as_root $cmd out stderr]
             set out_pat " 0x\[0-9a-f\]+ : main\\+0x\[0-9a-f\]+/0x\[0-9a-f\]+ at \[^\\n\]+\\w\\.c:7 \\\[\[^\\\[\\n\]+\\\]"
@@ -469,6 +480,38 @@ if {$res ne ""} {
             if {$stderr ne ""} {
                 send_log "stderr:\n$stderr"
             }
+        }
+    }
+}
+
+# --- TEST 14 ---
+# Dyninst-only: resolve process.data("a") by symbol name at run time.
+# PIC/PIE is fine here — stapdyn uses Dyninst's live address, not nm.
+
+set subtest14 "TEST 14: process.data(\"a\").write hit count okay (dyninst symbol)"
+
+set res [target_compile ${testpath}/${test}_1.c ./a.out executable \
+    "additional_flags=-O additional_flags=-g additional_flags=-O0 additional_flags=-g additional_flags=-fPIC additional_flags=-pie"]
+if {$res ne ""} {
+    verbose "target_compile failed: $res" 2
+    fail "$test: $subtest14: unable to compile ${test}_1.c"
+} else {
+    foreach runtime [get_runtime_list] {
+        if {$runtime eq ""} {
+            set runtime "kernel"
+        }
+        if {$runtime ne "dyninst"} {
+            continue
+        }
+        set test_name "$test: $subtest14 ($runtime)"
+        set cmd "stap --runtime=$runtime -c ./a.out '$srcdir/$subdir/${test}_14.stp'"
+        set exit_code [run_cmd_2way_as_root $cmd out stderr]
+        set exp_out "Hit
+"
+        is "${test_name}: stdout" $out $exp_out
+        is "${test_name}: exit code" $exit_code 0
+        if {$stderr ne ""} {
+            send_log "stderr:\n$stderr"
         }
     }
 }

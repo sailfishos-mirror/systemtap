@@ -23,6 +23,7 @@ extern "C" {
 #include <dyninst/BPatch_image.h>
 #include <dyninst/BPatch_module.h>
 #include <dyninst/BPatch_point.h>
+#include <dyninst/BPatch_snippet.h>
 #include <dyninst/BPatch_thread.h>
 
 #include "dynutil.h"
@@ -844,14 +845,19 @@ mutatee::remove_instrumentation()
 }
 
 
+// Map a requested watch length onto an x86 HW breakpoint size (1/2/4/8).
 static unsigned
-dyninst_hwbkpt_size(uint64_t len)
+dyninst_hwbkpt_size(uint64_t len, bool* weird_p)
 {
-  // Match runtime/linux/stap-hw-breakpoint.h length mapping.
-  if (len <= 1) return 1;
-  if (len == 2) return 2;
-  if (len <= 4) return 4;
-  return 8;
+  unsigned size;
+  if (len <= 1) size = 1;
+  else if (len == 2) size = 2;
+  else if (len <= 4) size = 4;
+  else size = 8;
+
+  if (weird_p)
+    *weird_p = !(len == 1 || len == 2 || len == 4 || len == 8);
+  return size;
 }
 
 
@@ -887,20 +893,88 @@ mutatee::instrument_hwbkpts(const vector<dynhwbkpt_location>& probes)
       return false;
     }
 
+  BPatch_image* image = process->getImage();
+
   for (size_t i = 0; i < probes.size(); ++i)
     {
       const dynhwbkpt_location& p = probes[i];
+      Dyninst::Address addr = (Dyninst::Address)p.address;
+      uint64_t req_len = p.length;
+
+      if (!p.symbol.empty())
+        {
+          if (!image)
+            {
+              stapwarn() << "process.data(\"" << p.symbol
+                         << "\"): no Dyninst image for pid " << pid
+                         << "; skipping" << endl;
+              continue;
+            }
+          BPatch_variableExpr* var =
+            image->findVariable(p.symbol.c_str(), false);
+          if (!var)
+            {
+              stapwarn() << "process.data(\"" << p.symbol
+                         << "\"): symbol not found in pid " << pid
+                         << "; skipping" << endl;
+              continue;
+            }
+          void* base = var->getBaseAddr();
+          if (!base)
+            {
+              stapwarn() << "process.data(\"" << p.symbol
+                         << "\"): no address for symbol in pid " << pid
+                         << "; skipping" << endl;
+              continue;
+            }
+          addr = (Dyninst::Address)(uintptr_t)base;
+          if (req_len == 0)
+            {
+              unsigned int vsz = var->getSize();
+              if (vsz == 0)
+                {
+                  stapwarn() << "process.data(\"" << p.symbol
+                             << "\"): Dyninst reports zero size; using 1"
+                             << endl;
+                  req_len = 1;
+                }
+              else
+                req_len = vsz;
+            }
+          staplog(2) << "resolved process.data(\"" << p.symbol
+                     << "\") to " << lex_cast_hex(addr)
+                     << " size " << req_len << " in pid " << pid << endl;
+        }
+      else if (addr == 0)
+        {
+          stapwarn() << "process.data: empty address and symbol; skipping"
+                     << endl;
+          continue;
+        }
+      else if (req_len == 0)
+        req_len = 1;
+
       unsigned mode = Breakpoint::BP_W;
       if (p.access == STAPDYN_HWBKPT_RW)
         mode = Breakpoint::BP_R | Breakpoint::BP_W;
 
-      unsigned size = dyninst_hwbkpt_size(p.length);
+      bool weird_len = false;
+      unsigned size = dyninst_hwbkpt_size(req_len, &weird_len);
+      if (weird_len)
+        stapwarn() << "process.data"
+                   << (p.symbol.empty() ? string()
+                       : ("(\"" + p.symbol + "\")"))
+                   << ": length " << req_len
+                   << " is not a hardware breakpoint size (1/2/4/8);"
+                   << " using " << size << " at "
+                   << lex_cast_hex(addr) << endl;
+
       if (!pc->numHardwareBreakpointsAvail(mode))
         {
           // Dyninst returns 0 here on arches without HW watchpoint support
           // (only Linux/x86 implements debug-register watchpoints today).
           staperror() << "Dyninst reports no hardware breakpoints available"
-                      << " for process.data at " << lex_cast_hex(p.address)
+                      << " for process.data at " << lex_cast_hex(addr)
                       << endl;
           return false;
         }
@@ -909,17 +983,16 @@ mutatee::instrument_hwbkpts(const vector<dynhwbkpt_location>& probes)
       // Cookie is index+1 so NULL remains "not ours".
       bp->setData((void*)(uintptr_t)(p.index + 1));
 
-      Dyninst::Address addr = (Dyninst::Address)p.address;
       if (!pc->addBreakpoint(addr, bp))
         {
           staperror() << "addBreakpoint failed for process.data at "
-                      << lex_cast_hex(p.address) << ": "
+                      << lex_cast_hex(addr) << ": "
                       << pc->getLastErrorMsg() << endl;
           return false;
         }
 
       staplog(2) << "installed process.data watchpoint at "
-                 << lex_cast_hex(p.address) << " len " << size
+                 << lex_cast_hex(addr) << " len " << size
                  << " in pid " << pid << endl;
       hwbkpt_bps.push_back(make_pair(addr, bp));
     }

@@ -1702,20 +1702,35 @@ probe process.data(ADDRESS).write
 probe process.data(ADDRESS).rw
 probe process.data(ADDRESS).length(LEN).write
 probe process.data(ADDRESS).length(LEN).rw
+probe process.data("SYMBOL").write
+probe process.data("SYMBOL").rw
+probe process.data("SYMBOL").length(LEN).write
+probe process.data("SYMBOL").length(LEN).rw
 .ESAMPLE
 
 Currently, only the target process specified by -x PID or -c CMD has
 the watchpoints registered. The ADDRESS must be a valid virtual memory
 address in that process's address space.
 
-These probes are supported with the default kernel runtime and with
-.BR \-\-runtime=dyninst
-when Dyninst's ProcControl layer provides hardware watchpoints on the
-host (Linux/x86 with debug registers today).  On other architectures
-registration fails at startup if no hardware breakpoints are available.
+Numeric ADDRESS forms work with the default kernel runtime and with
+.BR \-\-runtime=dyninst .
+String
+.B SYMBOL
+forms (a global variable name) require
+.BR \-\-runtime=dyninst ;
+stapdyn resolves the name in the target via Dyninst at startup.  If the
+symbol is missing, a warning is printed and that watchpoint is skipped.
+When
+.B .length
+is omitted for a symbol probe, the variable's size from Dyninst is used
+and then rounded to a hardware breakpoint width (1, 2, 4, or 8 bytes),
+with a warning if the size was not already one of those values.
 .B kernel.data
 probes are not available with
 .BR \-\-runtime=dyninst .
+HW watchpoints also depend on Dyninst/host support (Linux/x86 with debug
+registers today); elsewhere registration fails at startup if none are
+available.
 
 With the kernel runtime, a
 .B process.data

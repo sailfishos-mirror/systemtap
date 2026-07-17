@@ -145,6 +145,8 @@ extern uint64_t stp_dyninst_hwbkpt_count(void);
 extern uint64_t stp_dyninst_hwbkpt_address(uint64_t index);
 extern uint64_t stp_dyninst_hwbkpt_length(uint64_t index);
 extern uint64_t stp_dyninst_hwbkpt_access(uint64_t index);
+/* Optional symbol name for process.data("name"); NULL if unused. */
+extern const char *stp_dyninst_hwbkpt_symbol(uint64_t index);
 
 extern int enter_dyninst_hwbkpt_probe(uint64_t index, struct pt_regs *regs);
 

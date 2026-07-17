@@ -5,7 +5,9 @@
   support (Linux/x86 today); kernel.data remains kernel-runtime only.
   Dyninst attaches after exec, so it does not see the kernel runtime's
   execve-time image-init write that can fire process.data once before
-  main.
+  main.  Also supported: process.data("SYMBOL") under dyninst, with
+  run-time name resolution and optional length taken from the variable
+  size (rounded to a HW breakpoint width).
 
 - Added a new option to trace execution of systemtap scripts
   statement-by-statement. Not yet  available with --bpf backend.

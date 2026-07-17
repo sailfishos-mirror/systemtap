@@ -10,17 +10,21 @@
 #define DYNHWBKPT_H
 
 #include <cstdint>
+#include <cstddef>
+#include <string>
 #include <vector>
 
 // One process.data watchpoint described by the stap module.
 struct dynhwbkpt_location {
   uint64_t index;
-  uint64_t address;
-  uint64_t length;
+  uint64_t address; // 0 => resolve symbol at install time
+  uint64_t length;  // 0 => use Dyninst variable size when symbol set
   uint64_t access; // STAPDYN_HWBKPT_WRITE or STAPDYN_HWBKPT_RW
+  std::string symbol; // empty if address-based
 
   dynhwbkpt_location(uint64_t index, uint64_t address,
-                     uint64_t length, uint64_t access);
+                     uint64_t length, uint64_t access,
+                     const char* symbol = NULL);
 };
 
 // Query the stap module for process.data watchpoints.

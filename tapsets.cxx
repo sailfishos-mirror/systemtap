@@ -10910,7 +10910,7 @@ hwbkpt_derived_probe::hwbkpt_derived_probe (probe *base,
   this->tok = base->tok;
 
   vector<probe_point::component*> comps;
-  comps.push_back (new probe_point::component(TOK_KERNEL));
+  comps.push_back (new probe_point::component(kernel_p ? TOK_KERNEL : TOK_PROCESS));
 
   if (hwbkpt_addr)
     comps.push_back (new probe_point::component (TOK_HWBKPT,
@@ -10918,7 +10918,9 @@ hwbkpt_derived_probe::hwbkpt_derived_probe (probe *base,
   else if (symbol_name.size())
     comps.push_back (new probe_point::component (TOK_HWBKPT, new literal_string(symbol_name)));
 
-  comps.push_back (new probe_point::component (TOK_LENGTH, new literal_number(hwbkpt_len)));
+  // length 0 means "derive from symbol size" (dyninst process.data("name")).
+  if (hwbkpt_len)
+    comps.push_back (new probe_point::component (TOK_LENGTH, new literal_number(hwbkpt_len)));
 
   if (has_only_read_access)
     this->hwbkpt_access = HWBKPT_READ ;
@@ -10970,9 +10972,10 @@ hwbkpt_derived_probe_group::emit_module_dyninst_decls (systemtap_session& s)
   s.op->newline() << "static struct pt_regs stap_hwbkpt_dummy_uregs;";
 
   s.op->newline() << "struct stapdu_hwbkpt_probe {";
-  s.op->newline(1) << "uint64_t address;";
-  s.op->newline() << "uint64_t length;";
+  s.op->newline(1) << "uint64_t address; /* 0 => resolve .symbol at run time */";
+  s.op->newline() << "uint64_t length;  /* 0 => use Dyninst variable size */";
   s.op->newline() << "uint64_t access; /* STAPDYN_HWBKPT_* */";
+  s.op->newline() << "const char *symbol; /* optional; for process.data(\"name\") */";
   s.op->newline() << "const struct stap_probe * const probe;";
   s.op->newline(-1) << "};";
 
@@ -10995,6 +10998,11 @@ hwbkpt_derived_probe_group::emit_module_dyninst_decls (systemtap_session& s)
           s.op->line() << " .access=STAPDYN_HWBKPT_RW,";
           break;
         }
+      if (p->symbol_name.size())
+        s.op->line() << " .symbol=\""
+                     << escaped_literal_string(p->symbol_name) << "\",";
+      else
+        s.op->line() << " .symbol=NULL,";
       s.op->line() << " .probe=" << common_probe_init (p) << ",";
       s.op->line() << " },";
     }
@@ -11017,6 +11025,11 @@ hwbkpt_derived_probe_group::emit_module_dyninst_decls (systemtap_session& s)
   s.op->newline() << "uint64_t stp_dyninst_hwbkpt_access(uint64_t index) {";
   s.op->newline(1) << "if (index >= " << hwbkpt_probes.size() << "ULL) return 0;";
   s.op->newline() << "return stapdu_hwbkpt_probes[index].access;";
+  s.op->newline(-1) << "}";
+
+  s.op->newline() << "const char *stp_dyninst_hwbkpt_symbol(uint64_t index) {";
+  s.op->newline(1) << "if (index >= " << hwbkpt_probes.size() << "ULL) return NULL;";
+  s.op->newline() << "return stapdu_hwbkpt_probes[index].symbol;";
   s.op->newline(-1) << "}";
 
   s.op->newline() << "int enter_dyninst_hwbkpt_probe "
@@ -11273,6 +11286,12 @@ hwbkpt_builder::build(systemtap_session & sess,
   has_write = (parameters.find(TOK_HWBKPT_WRITE) != parameters.end());
   has_rw = (parameters.find(TOK_HWBKPT_RW) != parameters.end());
 
+  // process.data("name") is resolved at run time by stapdyn/Dyninst.
+  if (!kernel_p && has_symbol_str && !sess.runtime_usermode_p())
+    throw SEMANTIC_ERROR (_("process.data(\"name\") requires --runtime=dyninst "
+                            "(or use process.data(ADDRESS))"),
+                          location->components[0]->tok);
+
   // Make an intermediate pp that is well-formed. It's pretty much the same as
   // the user-provided one, except that the addr literal is well-typed.
   probe_point* well_formed_loc = new probe_point(*location);
@@ -11290,7 +11309,14 @@ hwbkpt_builder::build(systemtap_session & sess,
   probe *new_base = new probe (base, well_formed_loc);
 
   if (!has_len)
-	len = 1;
+    {
+      // Address probes default to 1 byte.  Symbol probes under dyninst
+      // leave length 0 so stapdyn can use BPatch_variableExpr::getSize().
+      if (has_symbol_str && sess.runtime_usermode_p())
+        len = 0;
+      else
+        len = 1;
+    }
 
   if (has_addr)
       finished_results.push_back (new hwbkpt_derived_probe (new_base,
@@ -14523,19 +14549,31 @@ register_standard_tapsets(systemtap_session & s)
     ->bind_num(TOK_LENGTH)->bind(TOK_HWBKPT_RW)->bind(new hwbkpt_builder(true));
   // length supported with address only, not symbol names
 
-  //Hwbkpt based process probe
-  // NB: we don't support symbol names in the probe spec (yet).
+  // Hwbkpt based process probe.  Numeric ADDRESS works with kernel and
+  // dyninst runtimes; string names resolve at run time under dyninst.
   // pr_all: needed for --runtime=dyninst (always unprivileged).
   s.pattern_root->bind(TOK_PROCESS)->bind_num(TOK_HWBKPT)
+    ->bind(TOK_HWBKPT_WRITE)->bind_privilege(pr_all)
+    ->bind(new hwbkpt_builder(false));
+  s.pattern_root->bind(TOK_PROCESS)->bind_str(TOK_HWBKPT)
     ->bind(TOK_HWBKPT_WRITE)->bind_privilege(pr_all)
     ->bind(new hwbkpt_builder(false));
   s.pattern_root->bind(TOK_PROCESS)->bind_num(TOK_HWBKPT)
     ->bind(TOK_HWBKPT_RW)->bind_privilege(pr_all)
     ->bind(new hwbkpt_builder(false));
+  s.pattern_root->bind(TOK_PROCESS)->bind_str(TOK_HWBKPT)
+    ->bind(TOK_HWBKPT_RW)->bind_privilege(pr_all)
+    ->bind(new hwbkpt_builder(false));
   s.pattern_root->bind(TOK_PROCESS)->bind_num(TOK_HWBKPT)
     ->bind_num(TOK_LENGTH)->bind(TOK_HWBKPT_WRITE)->bind_privilege(pr_all)
     ->bind(new hwbkpt_builder(false));
+  s.pattern_root->bind(TOK_PROCESS)->bind_str(TOK_HWBKPT)
+    ->bind_num(TOK_LENGTH)->bind(TOK_HWBKPT_WRITE)->bind_privilege(pr_all)
+    ->bind(new hwbkpt_builder(false));
   s.pattern_root->bind(TOK_PROCESS)->bind_num(TOK_HWBKPT)
+    ->bind_num(TOK_LENGTH)->bind(TOK_HWBKPT_RW)->bind_privilege(pr_all)
+    ->bind(new hwbkpt_builder(false));
+  s.pattern_root->bind(TOK_PROCESS)->bind_str(TOK_HWBKPT)
     ->bind_num(TOK_LENGTH)->bind(TOK_HWBKPT_RW)->bind_privilege(pr_all)
     ->bind(new hwbkpt_builder(false));
 
