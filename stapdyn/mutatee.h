@@ -66,6 +66,8 @@ class mutatee {
 
     pid_t process_id() { return pid; }
 
+    BPatch_process* bpatch_process() { return process; }
+
     bool operator==(BPatch_process* other) { return process == other; }
 
     // Inject the stap module into the target process

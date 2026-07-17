@@ -151,6 +151,15 @@ extern const char *stp_dyninst_hwbkpt_symbol(uint64_t index);
 extern int enter_dyninst_hwbkpt_probe(uint64_t index, struct pt_regs *regs);
 
 
+/**** STAP 5.x : third-party ubacktrace stash (stapdyn StackwalkerAPI) ****/
+
+/* Max bytes for a formatted user backtrace written by stapdyn. */
+#define STAPDYN_UBACKTRACE_MAX	8192
+
+/* Copy a formatted backtrace into the module stash (empty clears). */
+extern void stp_dyninst_ubacktrace_set(const char *bt);
+
+
 #pragma GCC visibility pop
 
 #ifdef __cplusplus

@@ -1,0 +1,85 @@
+// User context unwind tapset (dyninst runtime)
+// Copyright (C) 2026 Red Hat Inc.
+//
+// This file is part of systemtap, and is free software.  You can
+// redistribute it and/or modify it under the terms of the GNU General
+// Public License (GPL); either version 2, or (at your option) any
+// later version.
+//
+// Under --runtime=dyninst, user backtraces are collected third-party by
+// stapdyn (StackwalkerAPI) while the mutatee is stopped, then printed
+// from a stash.  This replaces the linux uregs/dwarf unwinder path.
+
+/**
+ * sfunction print_ubacktrace - Print stack back trace for current user-space task.
+ *
+ * Prints a backtrace previously captured by stapdyn for this probe hit.
+ * Returns nothing.  See print_backtrace() for kernel backtrace.
+ */
+function print_ubacktrace () %{
+/* myproc-unprivileged */
+	_stp_dyninst_ubacktrace_print();
+%}
+
+/**
+ * sfunction print_ubacktrace - Print stack back trace for current user-space task.
+ * @pc: override PC (ignored under dyninst; stash is used)
+ * @sp: override SP (ignored under dyninst; stash is used)
+ * @fp: override FP (ignored under dyninst; stash is used)
+ */
+function print_ubacktrace (pc:long, sp:long, fp:long) %{
+/* myproc-unprivileged */
+	_stp_dyninst_ubacktrace_print();
+%}
+
+/**
+ * sfunction sprint_ubacktrace - Return stack back trace for current user-space task as string.
+ *
+ * Returns the stapdyn-captured backtrace truncated to MAXSTRINGLEN.
+ */
+function sprint_ubacktrace:string () %{
+/* pure */ /* myproc-unprivileged */
+	_stp_dyninst_ubacktrace_sprint(STAP_RETVALUE, MAXSTRINGLEN);
+%}
+
+/**
+ * sfunction print_ubacktrace_brief - Print stack back trace for current user-space task.
+ *
+ * Same stash as print_ubacktrace() under dyninst.
+ */
+function print_ubacktrace_brief () %{
+/* myproc-unprivileged */
+	_stp_dyninst_ubacktrace_print();
+%}
+
+/**
+ * sfunction print_ubacktrace_fileline - Print stack back trace for current user-space task.
+ *
+ * Prints the stapdyn-captured backtrace (includes file:line when available).
+ */
+function print_ubacktrace_fileline () %{
+/* myproc-unprivileged */
+	_stp_dyninst_ubacktrace_print();
+%}
+
+/**
+ * sfunction print_ubacktrace_fileline - Print stack back trace for current user-space task.
+ * @pc: override PC (ignored under dyninst; stash is used)
+ * @sp: override SP (ignored under dyninst; stash is used)
+ * @fp: override FP (ignored under dyninst; stash is used)
+ */
+function print_ubacktrace_fileline (pc:long, sp:long, fp:long) %{
+/* myproc-unprivileged */
+	_stp_dyninst_ubacktrace_print();
+%}
+
+/**
+ * sfunction ubacktrace - Hex backtrace of current user-space task stack.
+ *
+ * Under dyninst, returns the captured formatted backtrace (truncated),
+ * not a pure hex address list.
+ */
+function ubacktrace:string () %{
+/* pure */ /* myproc-unprivileged */
+	_stp_dyninst_ubacktrace_sprint(STAP_RETVALUE, MAXSTRINGLEN);
+%}

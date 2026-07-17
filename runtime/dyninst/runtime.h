@@ -174,6 +174,7 @@ static inline struct _stp_session_attributes *stp_session_attributes(void);
 #include "addr-map.c"
 #include "stat.c"
 #include "unwind.c"
+#include "ubacktrace.c"
 #include "session_attributes.c"
 
 /* Support function for int64_t module parameters. */

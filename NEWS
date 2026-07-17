@@ -7,7 +7,9 @@
   execve-time image-init write that can fire process.data once before
   main.  Also supported: process.data("SYMBOL") under dyninst, with
   run-time name resolution and optional length taken from the variable
-  size (rounded to a HW breakpoint width).
+  size (rounded to a HW breakpoint width).  print_ubacktrace* under
+  dyninst uses a third-party StackwalkerAPI/BPatch walk from stapdyn
+  (symbolized with elfutils) plus tapset/dyninst/ucontext-unwind.stp.
 
 - Added a new option to trace execution of systemtap scripts
   statement-by-statement. Not yet  available with --bpf backend.

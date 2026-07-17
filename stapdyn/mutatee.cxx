@@ -27,6 +27,7 @@ extern "C" {
 #include <dyninst/BPatch_thread.h>
 
 #include "dynutil.h"
+#include "dynubacktrace.h"
 #include "../staputil.h"
 
 extern "C" {
@@ -134,7 +135,15 @@ using namespace Dyninst::ProcControlAPI;
 static map<pid_t, mutatee*> g_hwbkpt_mutatees;
 
 // Watchpoints hit inside a ProcControl callback; drained after poll.
-static vector<pair<pid_t, uint64_t> > g_hwbkpt_pending;
+// Backtrace is captured while the mutatee is still stopped in the callback.
+struct hwbkpt_pending_hit {
+  pid_t pid;
+  uint64_t index;
+  string ubacktrace;
+  hwbkpt_pending_hit(pid_t p, uint64_t i, string bt)
+    : pid(p), index(i), ubacktrace(std::move(bt)) {}
+};
+static vector<hwbkpt_pending_hit> g_hwbkpt_pending;
 
 // Remember ProcControl Process handles discovered via event callbacks.
 static map<pid_t, Process::ptr> g_pc_processes;
@@ -160,6 +169,19 @@ stapdyn_hwbkpt_event_cb(Event::const_ptr ev)
 
   vector<Breakpoint::const_ptr> bps;
   ebp->getBreakpoints(bps);
+  pid_t pid = ev->getProcess() ? ev->getProcess()->getPid() : 0;
+  if (!pid || !g_hwbkpt_mutatees.count(pid))
+    return Process::cbDefault;
+
+  // Third-party walk while still stopped (before cbDefault continues).
+  Process::ptr pc = boost::const_pointer_cast<Process>(ev->getProcess());
+  Dyninst::THR_ID tid = NULL_THR_ID;
+  if (ev->getThread())
+    tid = ev->getThread()->getTID();
+  mutatee* m = g_hwbkpt_mutatees[pid];
+  string ubt = stapdyn_capture_ubacktrace(pc, tid,
+                                          m ? m->bpatch_process() : NULL);
+
   for (size_t i = 0; i < bps.size(); ++i)
     {
       // Non-null cookie => one of our process.data watchpoints.
@@ -167,9 +189,7 @@ stapdyn_hwbkpt_event_cb(Event::const_ptr ev)
       if (!data)
         continue;
       uint64_t index = (uint64_t)(uintptr_t)data - 1;
-      pid_t pid = ev->getProcess() ? ev->getProcess()->getPid() : 0;
-      if (pid && g_hwbkpt_mutatees.count(pid))
-        g_hwbkpt_pending.push_back(make_pair(pid, index));
+      g_hwbkpt_pending.push_back(hwbkpt_pending_hit(pid, index, ubt));
     }
 
   // Prefer letting the mutatee resume immediately.  With a shmem session
@@ -199,7 +219,7 @@ stapdyn_register_hwbkpt_callbacks(void)
 void
 stapdyn_drain_hwbkpt_hits(void)
 {
-  vector<pair<pid_t, uint64_t> > pending;
+  vector<hwbkpt_pending_hit> pending;
   pending.swap(g_hwbkpt_pending);
   // Resume each mutatee only after all of its queued hits are delivered
   // (relevant for the legacy oneTimeCode path).
@@ -208,15 +228,16 @@ stapdyn_drain_hwbkpt_hits(void)
     {
       // Preferred path: session lives in stapdyn (shmem).  No mutatee
       // stop/continue dance, so hit delivery cannot race process exit.
-      if (stapdyn_hwbkpt_fire_local(pending[i].second))
+      if (stapdyn_hwbkpt_fire_local(pending[i].index,
+                                    pending[i].ubacktrace))
         continue;
 
       map<pid_t, mutatee*>::iterator it =
-        g_hwbkpt_mutatees.find(pending[i].first);
+        g_hwbkpt_mutatees.find(pending[i].pid);
       if (it == g_hwbkpt_mutatees.end() || !it->second)
         continue;
-      it->second->fire_hwbkpt(pending[i].second);
-      resume[pending[i].first] = it->second;
+      it->second->fire_hwbkpt(pending[i].index);
+      resume[pending[i].pid] = it->second;
     }
   for (map<pid_t, mutatee*>::iterator it = resume.begin();
        it != resume.end(); ++it)

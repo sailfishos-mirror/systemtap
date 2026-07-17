@@ -18,6 +18,7 @@ using namespace std;
 
 static void* g_hwbkpt_local_module = NULL;
 static decltype(&enter_dyninst_hwbkpt_probe) g_hwbkpt_local_enter = NULL;
+static decltype(&stp_dyninst_ubacktrace_set) g_hwbkpt_ubacktrace_set = NULL;
 
 
 void
@@ -25,21 +26,26 @@ stapdyn_hwbkpt_set_local_module(void* module)
 {
   g_hwbkpt_local_module = module;
   g_hwbkpt_local_enter = NULL;
+  g_hwbkpt_ubacktrace_set = NULL;
   if (module)
     {
       // Soft failure: legacy modules without process.data simply leave
       // local firing disabled.
       set_dlsym(g_hwbkpt_local_enter, module,
                 "enter_dyninst_hwbkpt_probe", false);
+      set_dlsym(g_hwbkpt_ubacktrace_set, module,
+                "stp_dyninst_ubacktrace_set", false);
     }
 }
 
 
 bool
-stapdyn_hwbkpt_fire_local(uint64_t index)
+stapdyn_hwbkpt_fire_local(uint64_t index, const string& ubacktrace)
 {
   if (!g_hwbkpt_local_enter)
     return false;
+  if (g_hwbkpt_ubacktrace_set)
+    g_hwbkpt_ubacktrace_set(ubacktrace.empty() ? "" : ubacktrace.c_str());
   staplog(3) << "calling hwbkpt enter locally for probe index "
              << index << endl;
   g_hwbkpt_local_enter(index, NULL);

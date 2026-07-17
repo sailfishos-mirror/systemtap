@@ -34,7 +34,8 @@ int find_dynhwbkpts(void* module, std::vector<dynhwbkpt_location>& probes);
 // When the session runs in stapdyn (shared memory), fire watchpoint
 // probes locally instead of oneTimeCode in the mutatee.
 void stapdyn_hwbkpt_set_local_module(void* module);
-bool stapdyn_hwbkpt_fire_local(uint64_t index);
+// Optional ubacktrace: formatted text from stapdyn_capture_ubacktrace().
+bool stapdyn_hwbkpt_fire_local(uint64_t index, const std::string& ubacktrace = "");
 
 #endif // DYNHWBKPT_H
 
