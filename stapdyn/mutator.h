@@ -19,6 +19,7 @@
 #include <dyninst/BPatch_thread.h>
 
 #include "dynprobe.h"
+#include "dynhwbkpt.h"
 #include "dynutil.h"
 #include "mutatee.h"
 extern "C" {
@@ -36,6 +37,7 @@ class mutator {
     std::vector<std::string> modoptions; // custom globals from -G option
     std::string module_shmem; // the global name of this module's shared memory
     std::vector<dynprobe_target> targets; // the probe targets in the module
+    std::vector<dynhwbkpt_location> hwbkpts; // process.data watchpoints
 
     std::vector<std::shared_ptr<mutatee> > mutatees; // all attached target processes
     std::shared_ptr<mutatee> target_mutatee; // the main target process we created or attached

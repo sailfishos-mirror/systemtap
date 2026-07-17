@@ -1,5 +1,12 @@
 * What's new in version 5.6, PRERELEASE
 
+- process.data hardware watchpoints now work with --runtime=dyninst
+  (via Dyninst ProcControl).  Availability depends on Dyninst/host
+  support (Linux/x86 today); kernel.data remains kernel-runtime only.
+  Dyninst attaches after exec, so it does not see the kernel runtime's
+  execve-time image-init write that can fire process.data once before
+  main.
+
 - Added a new option to trace execution of systemtap scripts
   statement-by-statement. Not yet  available with --bpf backend.
   Enable it with stap -D STP_EXECTRACE

@@ -17,6 +17,18 @@ git add Makefile.am Makefile.in configure   # Commit BOTH
 git commit
 ```
 
+Some installed text files are produced from `*.in` templates by
+`config.status` (path/`$prefix` substitution), not checked into git as
+the final form.  Edit the template, then regenerate:
+
+```bash
+vim man/stap.1.in        # source of truth
+make -C man stap.1       # or: ./config.status man/stap.1
+```
+
+Examples: `man/stap.1.in` → `man/stap.1`, `man/stappaths.7.in`,
+`man/stap-onboot.8.in`.  Do **not** hand-edit the generated file alone.
+
 ## Installation Quirk
 
 Development builds may install to a local prefix for convenience:

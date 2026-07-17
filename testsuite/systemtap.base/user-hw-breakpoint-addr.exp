@@ -4,6 +4,10 @@ set testpath "$srcdir/$subdir"
 if {! [installtest_p]} { untested $test; return }
 if {! [uretprobes_p]} { untested $test; return }
 
+# Kernel process.data can fire during the target's execve (BSS / image
+# init).  Dyninst attaches after exec, so it only sees post-exec userspace
+# accesses; hit-count expectations below are therefore lower for dyninst.
+
 # --- TEST 1 ---
 
 set subtest1 "TEST 1: process.data(ADDR).rw ubacktrace okay"
@@ -21,12 +25,7 @@ if {$res ne ""} {
         foreach runtime [get_runtime_list] {
             if {$runtime eq ""} {
                 set runtime "kernel"
-            }
-            # Dyninst has no process.data / userspace data-breakpoint support.
-            if {$runtime eq "dyninst"} {
-                continue
-            }
-            set test_name "$test: $subtest1 ($runtime)"
+            }            set test_name "$test: $subtest1 ($runtime)"
             set cmd "stap --ldd --runtime=$runtime -c ./a.out './${test}_1.stp'"
             set exit_code [run_cmd_2way_as_root $cmd out stderr]
             set out_pat "\\smain\\+0x\[^\\n\]+\\w\\.c:3\\s.*?\\n.*?\\smain\\+0x.*?\\w\\.c:4\\s"
@@ -56,18 +55,20 @@ if {$res ne ""} {
         foreach runtime [get_runtime_list] {
             if {$runtime eq ""} {
                 set runtime "kernel"
-            }
-            # Dyninst has no process.data / userspace data-breakpoint support.
-            if {$runtime eq "dyninst"} {
-                continue
-            }
-            set test_name "$test: $subtest2 ($runtime)"
+            }            set test_name "$test: $subtest2 ($runtime)"
             set cmd "stap --runtime=$runtime -c ./a.out './${test}_2.stp'"
             set exit_code [run_cmd_2way_as_root $cmd out stderr]
-            set exp_out "Hit
+            # kernel: execve write + a++ load + a++ store; dyninst: load + store
+            if {$runtime eq "dyninst"} {
+                set exp_out "Hit
+Hit
+"
+            } else {
+                set exp_out "Hit
 Hit
 Hit
 "
+            }
             is "${test_name}: stdout" $out $exp_out
             is "${test_name}: exit code" $exit_code 0
             if {$stderr ne ""} {
@@ -94,17 +95,18 @@ if {$res ne ""} {
         foreach runtime [get_runtime_list] {
             if {$runtime eq ""} {
                 set runtime "kernel"
-            }
-            # Dyninst has no process.data / userspace data-breakpoint support.
-            if {$runtime eq "dyninst"} {
-                continue
-            }
-            set test_name "$test: $subtest3 ($runtime)"
+            }            set test_name "$test: $subtest3 ($runtime)"
             set cmd "stap --runtime=$runtime -c ./a.out './${test}_3.stp'"
             set exit_code [run_cmd_2way_as_root $cmd out stderr]
-            set exp_out "Hit
+            # kernel: execve write + a++ store; dyninst: store only
+            if {$runtime eq "dyninst"} {
+                set exp_out "Hit
+"
+            } else {
+                set exp_out "Hit
 Hit
 "
+            }
             is "${test_name}: stdout" $out $exp_out
             is "${test_name}: exit code" $exit_code 0
             if {$stderr ne ""} {
@@ -132,7 +134,7 @@ if {$res ne ""} {
             if {$runtime eq ""} {
                 set runtime "kernel"
             }
-            # Dyninst has no process.data / userspace data-breakpoint support.
+            # First hit is the kernel execve-time write; dyninst has no analogue.
             if {$runtime eq "dyninst"} {
                 continue
             }
@@ -171,17 +173,17 @@ if {$res ne ""} {
         foreach runtime [get_runtime_list] {
             if {$runtime eq ""} {
                 set runtime "kernel"
-            }
-            # Dyninst has no process.data / userspace data-breakpoint support.
-            if {$runtime eq "dyninst"} {
-                continue
-            }
-            set test_name "$test: $subtest5 ($runtime)"
+            }            set test_name "$test: $subtest5 ($runtime)"
             set cmd "stap --runtime=$runtime -c ./a.out './${test}_5.stp'"
             set exit_code [run_cmd_2way_as_root $cmd out stderr]
-            set exp_out "Hit
+            if {$runtime eq "dyninst"} {
+                set exp_out "Hit
+"
+            } else {
+                set exp_out "Hit
 Hit
 "
+            }
             is "${test_name}: stdout" $out $exp_out
             is "${test_name}: exit code" $exit_code 0
             if {$stderr ne ""} {
@@ -208,15 +210,15 @@ if {$res ne ""} {
         foreach runtime [get_runtime_list] {
             if {$runtime eq ""} {
                 set runtime "kernel"
-            }
-            # Dyninst has no process.data / userspace data-breakpoint support.
-            if {$runtime eq "dyninst"} {
-                continue
-            }
-            set test_name "$test: $subtest6 ($runtime)"
+            }            set test_name "$test: $subtest6 ($runtime)"
             set cmd "stap --runtime=$runtime -c ./a.out './${test}_5.stp'"
             set exit_code [run_cmd_2way_as_root $cmd out stderr]
-            set exp_out "Hit\n"
+            # Only the execve-time write hits length(1) at a[0]; dyninst sees none.
+            if {$runtime eq "dyninst"} {
+                set exp_out ""
+            } else {
+                set exp_out "Hit\n"
+            }
             is "${test_name}: stdout" $out $exp_out
             is "${test_name}: exit code" $exit_code 0
             if {$stderr ne ""} {
@@ -243,17 +245,17 @@ if {$res ne ""} {
         foreach runtime [get_runtime_list] {
             if {$runtime eq ""} {
                 set runtime "kernel"
-            }
-            # Dyninst has no process.data / userspace data-breakpoint support.
-            if {$runtime eq "dyninst"} {
-                continue
-            }
-            set test_name "$test: $subtest7 ($runtime)"
+            }            set test_name "$test: $subtest7 ($runtime)"
             set cmd "stap --runtime=$runtime -c ./a.out './${test}_7.stp'"
             set exit_code [run_cmd_2way_as_root $cmd out stderr]
-            set exp_out "Hit
+            if {$runtime eq "dyninst"} {
+                set exp_out "Hit
+"
+            } else {
+                set exp_out "Hit
 Hit
 "
+            }
             is "${test_name}: stdout" $out $exp_out
             is "${test_name}: exit code" $exit_code 0
             if {$stderr ne ""} {
@@ -280,15 +282,14 @@ if {$res ne ""} {
         foreach runtime [get_runtime_list] {
             if {$runtime eq ""} {
                 set runtime "kernel"
-            }
-            # Dyninst has no process.data / userspace data-breakpoint support.
-            if {$runtime eq "dyninst"} {
-                continue
-            }
-            set test_name "$test: $subtest8 ($runtime)"
+            }            set test_name "$test: $subtest8 ($runtime)"
             set cmd "stap --runtime=$runtime -c ./a.out './${test}_7.stp'"
             set exit_code [run_cmd_2way_as_root $cmd out stderr]
-            set exp_out "Hit\n"
+            if {$runtime eq "dyninst"} {
+                set exp_out ""
+            } else {
+                set exp_out "Hit\n"
+            }
             is "${test_name}: stdout" $out $exp_out
             is "${test_name}: exit code" $exit_code 0
             if {$stderr ne ""} {
@@ -315,17 +316,17 @@ if {$res ne ""} {
         foreach runtime [get_runtime_list] {
             if {$runtime eq ""} {
                 set runtime "kernel"
-            }
-            # Dyninst has no process.data / userspace data-breakpoint support.
-            if {$runtime eq "dyninst"} {
-                continue
-            }
-            set test_name "$test: $subtest9 ($runtime)"
+            }            set test_name "$test: $subtest9 ($runtime)"
             set cmd "stap --runtime=$runtime -c ./a.out './${test}_9.stp'"
             set exit_code [run_cmd_2way_as_root $cmd out stderr]
-            set exp_out "Hit
+            if {$runtime eq "dyninst"} {
+                set exp_out "Hit
+"
+            } else {
+                set exp_out "Hit
 Hit
 "
+            }
             is "${test_name}: stdout" $out $exp_out
             is "${test_name}: exit code" $exit_code 0
             if {$stderr ne ""} {
@@ -352,15 +353,14 @@ if {$res ne ""} {
         foreach runtime [get_runtime_list] {
             if {$runtime eq ""} {
                 set runtime "kernel"
-            }
-            # Dyninst has no process.data / userspace data-breakpoint support.
-            if {$runtime eq "dyninst"} {
-                continue
-            }
-            set test_name "$test: $subtest10 ($runtime)"
+            }            set test_name "$test: $subtest10 ($runtime)"
             set cmd "stap --runtime=$runtime -c ./a.out './${test}_9.stp'"
             set exit_code [run_cmd_2way_as_root $cmd out stderr]
-            set exp_out "Hit\n"
+            if {$runtime eq "dyninst"} {
+                set exp_out ""
+            } else {
+                set exp_out "Hit\n"
+            }
             is "${test_name}: stdout" $out $exp_out
             is "${test_name}: exit code" $exit_code 0
             if {$stderr ne ""} {
@@ -389,12 +389,7 @@ if {$res ne ""} {
         foreach runtime [get_runtime_list] {
             if {$runtime eq ""} {
                 set runtime "kernel"
-            }
-            # Dyninst has no process.data / userspace data-breakpoint support.
-            if {$runtime eq "dyninst"} {
-                continue
-            }
-            set test_name "$test: $subtest11 ($runtime)"
+            }            set test_name "$test: $subtest11 ($runtime)"
             set cmd "stap --ldd --runtime=$runtime -c ./a.out './${test}_11.stp'"
             set exit_code [run_cmd_2way_as_root $cmd out stderr]
             set out_pat " 0x\[0-9a-f\]+ : main\\+0x\[0-9a-f\]+/0x\[0-9a-f\]+ at \[^\\n\]+\\w\\.c:7 \\\[\[^\\\[\\n\]+\\\]"
@@ -426,12 +421,7 @@ if {$res ne ""} {
         foreach runtime [get_runtime_list] {
             if {$runtime eq ""} {
                 set runtime "kernel"
-            }
-            # Dyninst has no process.data / userspace data-breakpoint support.
-            if {$runtime eq "dyninst"} {
-                continue
-            }
-            set test_name "$test: $subtest12 ($runtime)"
+            }            set test_name "$test: $subtest12 ($runtime)"
             set cmd "stap --ldd --runtime=$runtime -c ./a.out './${test}_11.stp'"
             set exit_code [run_cmd_2way_as_root $cmd out stderr]
             set out_pat " 0x\[0-9a-f\]+ : main\\+0x\[0-9a-f\]+/0x\[0-9a-f\]+ at \[^\\n\]+\\w\\.c:7 \\\[\[^\\\[\\n\]+\\\]"
@@ -464,7 +454,7 @@ if {$res ne ""} {
             if {$runtime eq ""} {
                 set runtime "kernel"
             }
-            # Dyninst has no process.data / userspace data-breakpoint support.
+            # This case only fires on the kernel execve-time write.
             if {$runtime eq "dyninst"} {
                 continue
             }

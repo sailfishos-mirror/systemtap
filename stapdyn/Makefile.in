@@ -134,6 +134,7 @@ dynsdt_LINK = $(CXXLD) $(dynsdt_CXXFLAGS) $(CXXFLAGS) \
 @HAVE_DYNINST_TRUE@	stapdyn-mutator.$(OBJEXT) \
 @HAVE_DYNINST_TRUE@	stapdyn-mutatee.$(OBJEXT) \
 @HAVE_DYNINST_TRUE@	stapdyn-dynprobe.$(OBJEXT) \
+@HAVE_DYNINST_TRUE@	stapdyn-dynhwbkpt.$(OBJEXT) \
 @HAVE_DYNINST_TRUE@	stapdyn-dynutil.$(OBJEXT) \
 @HAVE_DYNINST_TRUE@	../stapdyn-staputil.$(OBJEXT)
 stapdyn_OBJECTS = $(am_stapdyn_OBJECTS)
@@ -157,9 +158,10 @@ depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__maybe_remake_depfiles = depfiles
 am__depfiles_remade = ../$(DEPDIR)/dynsdt-staputil.Po \
 	../$(DEPDIR)/stapdyn-staputil.Po ./$(DEPDIR)/dynsdt-dynsdt.Po \
-	./$(DEPDIR)/dynsdt-dynutil.Po ./$(DEPDIR)/stapdyn-dynprobe.Po \
-	./$(DEPDIR)/stapdyn-dynutil.Po ./$(DEPDIR)/stapdyn-mutatee.Po \
-	./$(DEPDIR)/stapdyn-mutator.Po ./$(DEPDIR)/stapdyn-stapdyn.Po
+	./$(DEPDIR)/dynsdt-dynutil.Po ./$(DEPDIR)/stapdyn-dynhwbkpt.Po \
+	./$(DEPDIR)/stapdyn-dynprobe.Po ./$(DEPDIR)/stapdyn-dynutil.Po \
+	./$(DEPDIR)/stapdyn-mutatee.Po ./$(DEPDIR)/stapdyn-mutator.Po \
+	./$(DEPDIR)/stapdyn-stapdyn.Po
 am__mv = mv -f
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -441,11 +443,11 @@ AM_CPPFLAGS = -D_GNU_SOURCE -I$(srcdir)/../includes \
 AM_LDFLAGS = @PIELDFLAGS@ @BOOST_SYSTEM_LIB@ $(am__append_4)
 @HAVE_DYNINST_TRUE@man_MANS = stapdyn.8
 @HAVE_DYNINST_TRUE@stapdyn_SOURCES = stapdyn.cxx mutator.cxx mutatee.cxx \
-@HAVE_DYNINST_TRUE@				  dynprobe.cxx dynutil.cxx ../staputil.cxx
+@HAVE_DYNINST_TRUE@				  dynprobe.cxx dynhwbkpt.cxx dynutil.cxx ../staputil.cxx
 
-@HAVE_DYNINST_TRUE@stapdyn_CXXFLAGS = $(AM_CXXFLAGS) @DYNINST_CXXFLAGS@ $(debuginfod_CFLAGS)
+@HAVE_DYNINST_TRUE@stapdyn_CXXFLAGS = $(AM_CXXFLAGS) @DYNINST_CXXFLAGS@ $(debuginfod_CFLAGS) -Wno-template-body
 @HAVE_DYNINST_TRUE@stapdyn_LDFLAGS = $(AM_LDFLAGS) @DYNINST_LDFLAGS@ $(debuginfod_LDFLAGS)
-@HAVE_DYNINST_TRUE@stapdyn_LDADD = -ldl -ldyninstAPI -lsymtabAPI -lpthread $(debuginfod_LIBS)
+@HAVE_DYNINST_TRUE@stapdyn_LDADD = -ldl -ldyninstAPI -lsymtabAPI -lpcontrol -lcommon -lpthread $(debuginfod_LIBS)
 @HAVE_DYNINST_TRUE@stapdyn_CFLAGS = $(debuginfod_CFLAGS)
 @HAVE_DYNINST_TRUE@dynsdt_SOURCES = dynsdt.cxx dynutil.cxx ../staputil.cxx
 @HAVE_DYNINST_TRUE@dynsdt_CPPFLAGS = $(AM_CPPFLAGS)
@@ -565,6 +567,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@../$(DEPDIR)/stapdyn-staputil.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dynsdt-dynsdt.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dynsdt-dynutil.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stapdyn-dynhwbkpt.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stapdyn-dynprobe.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stapdyn-dynutil.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stapdyn-mutatee.Po@am__quote@ # am--include-marker
@@ -690,6 +693,20 @@ stapdyn-dynprobe.obj: dynprobe.cxx
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='dynprobe.cxx' object='stapdyn-dynprobe.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(stapdyn_CXXFLAGS) $(CXXFLAGS) -c -o stapdyn-dynprobe.obj `if test -f 'dynprobe.cxx'; then $(CYGPATH_W) 'dynprobe.cxx'; else $(CYGPATH_W) '$(srcdir)/dynprobe.cxx'; fi`
+
+stapdyn-dynhwbkpt.o: dynhwbkpt.cxx
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(stapdyn_CXXFLAGS) $(CXXFLAGS) -MT stapdyn-dynhwbkpt.o -MD -MP -MF $(DEPDIR)/stapdyn-dynhwbkpt.Tpo -c -o stapdyn-dynhwbkpt.o `test -f 'dynhwbkpt.cxx' || echo '$(srcdir)/'`dynhwbkpt.cxx
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/stapdyn-dynhwbkpt.Tpo $(DEPDIR)/stapdyn-dynhwbkpt.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='dynhwbkpt.cxx' object='stapdyn-dynhwbkpt.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(stapdyn_CXXFLAGS) $(CXXFLAGS) -c -o stapdyn-dynhwbkpt.o `test -f 'dynhwbkpt.cxx' || echo '$(srcdir)/'`dynhwbkpt.cxx
+
+stapdyn-dynhwbkpt.obj: dynhwbkpt.cxx
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(stapdyn_CXXFLAGS) $(CXXFLAGS) -MT stapdyn-dynhwbkpt.obj -MD -MP -MF $(DEPDIR)/stapdyn-dynhwbkpt.Tpo -c -o stapdyn-dynhwbkpt.obj `if test -f 'dynhwbkpt.cxx'; then $(CYGPATH_W) 'dynhwbkpt.cxx'; else $(CYGPATH_W) '$(srcdir)/dynhwbkpt.cxx'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/stapdyn-dynhwbkpt.Tpo $(DEPDIR)/stapdyn-dynhwbkpt.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='dynhwbkpt.cxx' object='stapdyn-dynhwbkpt.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(stapdyn_CXXFLAGS) $(CXXFLAGS) -c -o stapdyn-dynhwbkpt.obj `if test -f 'dynhwbkpt.cxx'; then $(CYGPATH_W) 'dynhwbkpt.cxx'; else $(CYGPATH_W) '$(srcdir)/dynhwbkpt.cxx'; fi`
 
 stapdyn-dynutil.o: dynutil.cxx
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(stapdyn_CXXFLAGS) $(CXXFLAGS) -MT stapdyn-dynutil.o -MD -MP -MF $(DEPDIR)/stapdyn-dynutil.Tpo -c -o stapdyn-dynutil.o `test -f 'dynutil.cxx' || echo '$(srcdir)/'`dynutil.cxx
@@ -866,6 +883,7 @@ distclean: distclean-am
 	-rm -f ../$(DEPDIR)/stapdyn-staputil.Po
 	-rm -f ./$(DEPDIR)/dynsdt-dynsdt.Po
 	-rm -f ./$(DEPDIR)/dynsdt-dynutil.Po
+	-rm -f ./$(DEPDIR)/stapdyn-dynhwbkpt.Po
 	-rm -f ./$(DEPDIR)/stapdyn-dynprobe.Po
 	-rm -f ./$(DEPDIR)/stapdyn-dynutil.Po
 	-rm -f ./$(DEPDIR)/stapdyn-mutatee.Po
@@ -920,6 +938,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ../$(DEPDIR)/stapdyn-staputil.Po
 	-rm -f ./$(DEPDIR)/dynsdt-dynsdt.Po
 	-rm -f ./$(DEPDIR)/dynsdt-dynutil.Po
+	-rm -f ./$(DEPDIR)/stapdyn-dynhwbkpt.Po
 	-rm -f ./$(DEPDIR)/stapdyn-dynprobe.Po
 	-rm -f ./$(DEPDIR)/stapdyn-dynutil.Po
 	-rm -f ./$(DEPDIR)/stapdyn-mutatee.Po

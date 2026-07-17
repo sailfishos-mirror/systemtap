@@ -206,6 +206,10 @@ mutator::load ()
 
   if ((rc = find_dynprobes(module, targets)))
     return rc;
+  if ((rc = find_dynhwbkpts(module, hwbkpts)))
+    return rc;
+  if (!hwbkpts.empty())
+    stapdyn_register_hwbkpt_callbacks();
   if (!targets.empty())
     {
       // Always watch for new libraries to probe.
@@ -280,6 +284,8 @@ mutator::create_process(const string& command)
 
   if (!targets.empty())
     m->instrument_dynprobes(targets);
+  if (!hwbkpts.empty() && !m->instrument_hwbkpts(hwbkpts))
+    return false;
 
   return true;
 }
@@ -311,6 +317,8 @@ mutator::attach_process(pid_t pid)
 
   if (!targets.empty())
     m->instrument_dynprobes(targets);
+  if (!hwbkpts.empty() && !m->instrument_hwbkpts(hwbkpts))
+    return false;
 
   return true;
 }
@@ -497,6 +505,9 @@ mutator::run_module_init()
       vector<BPatch_snippet *> args;
       args.push_back(new BPatch_constExpr(module_shmem.c_str()));
       target_mutatee->call_function("stp_dyninst_shm_connect", args);
+      // Watchpoint probes can run in stapdyn; avoids mutatee oneTimeCode races.
+      if (!hwbkpts.empty())
+        stapdyn_hwbkpt_set_local_module(module);
     }
 
   return true;
@@ -611,7 +622,10 @@ mutator::run ()
           // other events from proccontrol (which clears the poll FD), without
           // actually processing those events yet.  Check before we sleep...
           if (patch.pollForStatusChange())
-            continue;
+            {
+              stapdyn_drain_hwbkpt_hits();
+              continue;
+            }
 
           int rc = ppoll (&pfd, 1, &timeout, &masked.old);
           if (rc < 0 && errno != EINTR)
@@ -619,11 +633,18 @@ mutator::run ()
 
           // Acknowledge and activate whatever events are waiting
           patch.pollForStatusChange();
+          stapdyn_drain_hwbkpt_hits();
         }
 #else
       while (update_mutatees())
-        patch.waitForStatusChange();
+        {
+          patch.waitForStatusChange();
+          stapdyn_drain_hwbkpt_hits();
+        }
 #endif
+      // Termination can race ahead of the loop condition; finish any hits
+      // already queued by the final watchpoint stop.
+      stapdyn_drain_hwbkpt_hits();
     }
   else // !target_mutatee
     {
@@ -724,6 +745,8 @@ mutator::post_fork_callback(BPatch_thread *parent, BPatch_thread *child)
       auto m = make_shared<mutatee>(child_process);
       mutatees.push_back(m);
       m->copy_forked_instrumentation(*mut);
+      if (!hwbkpts.empty())
+        m->instrument_hwbkpts(hwbkpts);
 
       // Trigger any process.begin probes.
       m->begin_callback(child);
@@ -757,6 +780,8 @@ mutator::exec_callback(BPatch_thread *thread)
         {
           if (!targets.empty())
             mut->instrument_dynprobes(targets);
+          if (!hwbkpts.empty())
+            mut->instrument_hwbkpts(hwbkpts);
 
           // Now we map the shared-memory into the target
           if (!module_shmem.empty())

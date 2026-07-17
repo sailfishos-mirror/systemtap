@@ -1708,6 +1708,25 @@ Currently, only the target process specified by -x PID or -c CMD has
 the watchpoints registered. The ADDRESS must be a valid virtual memory
 address in that process's address space.
 
+These probes are supported with the default kernel runtime and with
+.BR \-\-runtime=dyninst
+when Dyninst's ProcControl layer provides hardware watchpoints on the
+host (Linux/x86 with debug registers today).  On other architectures
+registration fails at startup if no hardware breakpoints are available.
+.B kernel.data
+probes are not available with
+.BR \-\-runtime=dyninst .
+
+With the kernel runtime, a
+.B process.data
+probe may also fire once during the target's
+.BR execve (2)
+while the new address space is initialized (for example BSS clearing),
+before
+.BR main .
+The dyninst runtime attaches after that phase, so it reports only later
+userspace accesses.
+
 .SS PERF
 
 This family of probe points interfaces to the kernel "perf event"

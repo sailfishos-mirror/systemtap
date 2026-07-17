@@ -10874,6 +10874,13 @@ struct hwbkpt_derived_probe_group: public derived_probe_group
 private:
   vector<hwbkpt_derived_probe*> hwbkpt_probes;
 
+  void emit_module_dyninst_decls (systemtap_session& s);
+  void emit_module_dyninst_init (systemtap_session& s);
+  void emit_module_dyninst_exit (systemtap_session& s);
+  void emit_module_kernel_decls (systemtap_session& s);
+  void emit_module_kernel_init (systemtap_session& s);
+  void emit_module_kernel_exit (systemtap_session& s);
+
 public:
   void enroll (hwbkpt_derived_probe* probe, systemtap_session& s);
   void emit_module_decls (systemtap_session& s);
@@ -10954,7 +10961,99 @@ void hwbkpt_derived_probe_group::enroll (hwbkpt_derived_probe* p, systemtap_sess
 }
 
 void
-hwbkpt_derived_probe_group::emit_module_decls (systemtap_session& s)
+hwbkpt_derived_probe_group::emit_module_dyninst_decls (systemtap_session& s)
+{
+  if (hwbkpt_probes.empty()) return;
+
+  s.op->newline() << "/* ---- dyninst hwbkpt / process.data ---- */";
+  s.op->newline() << "#include \"dyninst/stapdyn.h\"";
+  s.op->newline() << "static struct pt_regs stap_hwbkpt_dummy_uregs;";
+
+  s.op->newline() << "struct stapdu_hwbkpt_probe {";
+  s.op->newline(1) << "uint64_t address;";
+  s.op->newline() << "uint64_t length;";
+  s.op->newline() << "uint64_t access; /* STAPDYN_HWBKPT_* */";
+  s.op->newline() << "const struct stap_probe * const probe;";
+  s.op->newline(-1) << "};";
+
+  s.op->newline() << "static struct stapdu_hwbkpt_probe stapdu_hwbkpt_probes[] = {";
+  s.op->indent(1);
+  for (unsigned int it = 0; it < hwbkpt_probes.size(); it++)
+    {
+      hwbkpt_derived_probe* p = hwbkpt_probes.at(it);
+      s.op->newline() << "{";
+      s.op->line() << " .address=0x" << hex << p->hwbkpt_addr << dec << "ULL,";
+      s.op->line() << " .length=" << p->hwbkpt_len << "ULL,";
+      switch (p->hwbkpt_access)
+        {
+        case HWBKPT_WRITE:
+          s.op->line() << " .access=STAPDYN_HWBKPT_WRITE,";
+          break;
+        case HWBKPT_RW:
+        case HWBKPT_READ: /* x86 maps read-only to RW */
+        default:
+          s.op->line() << " .access=STAPDYN_HWBKPT_RW,";
+          break;
+        }
+      s.op->line() << " .probe=" << common_probe_init (p) << ",";
+      s.op->line() << " },";
+    }
+  s.op->newline(-1) << "};";
+
+  s.op->newline() << "uint64_t stp_dyninst_hwbkpt_count(void) {";
+  s.op->newline(1) << "return " << hwbkpt_probes.size() << "ULL;";
+  s.op->newline(-1) << "}";
+
+  s.op->newline() << "uint64_t stp_dyninst_hwbkpt_address(uint64_t index) {";
+  s.op->newline(1) << "if (index >= " << hwbkpt_probes.size() << "ULL) return 0;";
+  s.op->newline() << "return stapdu_hwbkpt_probes[index].address;";
+  s.op->newline(-1) << "}";
+
+  s.op->newline() << "uint64_t stp_dyninst_hwbkpt_length(uint64_t index) {";
+  s.op->newline(1) << "if (index >= " << hwbkpt_probes.size() << "ULL) return 0;";
+  s.op->newline() << "return stapdu_hwbkpt_probes[index].length;";
+  s.op->newline(-1) << "}";
+
+  s.op->newline() << "uint64_t stp_dyninst_hwbkpt_access(uint64_t index) {";
+  s.op->newline(1) << "if (index >= " << hwbkpt_probes.size() << "ULL) return 0;";
+  s.op->newline() << "return stapdu_hwbkpt_probes[index].access;";
+  s.op->newline(-1) << "}";
+
+  s.op->newline() << "int enter_dyninst_hwbkpt_probe "
+                  << "(uint64_t index, struct pt_regs *regs) {";
+  s.op->newline(1) << "struct stapdu_hwbkpt_probe *skp = &stapdu_hwbkpt_probes[index];";
+  common_probe_entryfn_prologue (s, "STAP_SESSION_RUNNING", "", "skp->probe",
+                                 "stp_probe_type_hwbkpt");
+  s.op->newline() << "c->uregs = regs ?: &stap_hwbkpt_dummy_uregs;";
+  s.op->newline() << "c->user_mode_p = 1;";
+  s.op->newline() << "(*skp->probe->ph) (c);";
+  common_probe_entryfn_epilogue (s, true, otf_safe_context(s));
+  s.op->newline() << "return 0;";
+  s.op->newline(-1) << "}";
+  s.op->assert_0_indent();
+}
+
+
+void
+hwbkpt_derived_probe_group::emit_module_dyninst_init (systemtap_session& s)
+{
+  if (hwbkpt_probes.empty()) return;
+  s.op->newline() << "/* ---- dyninst hwbkpt ---- */";
+  s.op->newline() << "/* stapdyn installs watchpoints via ProcControl */";
+}
+
+
+void
+hwbkpt_derived_probe_group::emit_module_dyninst_exit (systemtap_session& s)
+{
+  if (hwbkpt_probes.empty()) return;
+  s.op->newline() << "/* ---- dyninst hwbkpt ---- */";
+  s.op->newline() << "/* stapdyn removes watchpoints via ProcControl */";
+}
+
+
+void
+hwbkpt_derived_probe_group::emit_module_kernel_decls (systemtap_session& s)
 {
   if (hwbkpt_probes.empty()) return;
 
@@ -11055,19 +11154,52 @@ hwbkpt_derived_probe_group::emit_module_decls (systemtap_session& s)
 }
 
 void
-hwbkpt_derived_probe_group::emit_module_init (systemtap_session& s)
+hwbkpt_derived_probe_group::emit_module_kernel_init (systemtap_session& s)
 {
+  if (hwbkpt_probes.empty()) return;
   s.op->newline() << "rc = stap_hwbkpt_init(&enter_hwbkpt_probe, stap_hwbkpt_probes, "
     << hwbkpt_probes.size() << ", stap_hwbkpt_probe_array, "
     << "stap_hwbkpt_u_ret_array, stap_hwbkpt_k_ret_array, &probe_point);";
 }
 
 void
-hwbkpt_derived_probe_group::emit_module_exit (systemtap_session& s)
+hwbkpt_derived_probe_group::emit_module_kernel_exit (systemtap_session& s)
 {
+  if (hwbkpt_probes.empty()) return;
   // Unregister hwbkpt probes.
   s.op->newline() << "stap_hwbkpt_exit(stap_hwbkpt_probes, "
     << hwbkpt_probes.size() << ", stap_hwbkpt_u_ret_array, stap_hwbkpt_k_ret_array);";
+}
+
+
+
+void
+hwbkpt_derived_probe_group::emit_module_decls (systemtap_session& s)
+{
+  if (s.runtime_usermode_p())
+    emit_module_dyninst_decls (s);
+  else
+    emit_module_kernel_decls (s);
+}
+
+
+void
+hwbkpt_derived_probe_group::emit_module_init (systemtap_session& s)
+{
+  if (s.runtime_usermode_p())
+    emit_module_dyninst_init (s);
+  else
+    emit_module_kernel_init (s);
+}
+
+
+void
+hwbkpt_derived_probe_group::emit_module_exit (systemtap_session& s)
+{
+  if (s.runtime_usermode_p())
+    emit_module_dyninst_exit (s);
+  else
+    emit_module_kernel_exit (s);
 }
 
 
@@ -11110,19 +11242,30 @@ hwbkpt_builder::build(systemtap_session & sess,
   int64_t hwbkpt_address, len;
   bool has_addr, has_symbol_str, has_write, has_rw, has_len;
 
-  if (! (sess.kernel_config["CONFIG_PERF_EVENTS"] == string("y")))
-      throw SEMANTIC_ERROR (_("CONFIG_PERF_EVENTS not available on this kernel"),
-                            location->components[0]->tok);
-  if (! (sess.kernel_config["CONFIG_HAVE_HW_BREAKPOINT"] == string("y")))
-      throw SEMANTIC_ERROR (_("CONFIG_HAVE_HW_BREAKPOINT not available on this kernel"),
-                            location->components[0]->tok);
+  if (sess.runtime_usermode_p())
+    {
+      // Dyninst is userspace-only; HW watchpoint availability is decided
+      // at run time by ProcControlAPI (numHardwareBreakpointsAvail).
+      if (kernel_p)
+        throw SEMANTIC_ERROR (_("kernel.data probes are not supported with --runtime=dyninst"),
+                              location->components[0]->tok);
+    }
+  else
+    {
+      if (! (sess.kernel_config["CONFIG_PERF_EVENTS"] == string("y")))
+          throw SEMANTIC_ERROR (_("CONFIG_PERF_EVENTS not available on this kernel"),
+                                location->components[0]->tok);
+      if (! (sess.kernel_config["CONFIG_HAVE_HW_BREAKPOINT"] == string("y")))
+          throw SEMANTIC_ERROR (_("CONFIG_HAVE_HW_BREAKPOINT not available on this kernel"),
+                                location->components[0]->tok);
 
-  // See BZ1431263 (on aarch64, running the hw_watch_addr.stp
-  // systemtap examples cause a stuck CPU).
-  if (sess.architecture == string("arm64"))
-      throw SEMANTIC_ERROR (_F("%s.data probes are not supported on arm64 kernels",
-                               kernel_p ? "kernel" : "process"),
-                            location->components[0]->tok);
+      // See BZ1431263 (on aarch64, running the hw_watch_addr.stp
+      // systemtap examples cause a stuck CPU).
+      if (sess.architecture == string("arm64"))
+          throw SEMANTIC_ERROR (_F("%s.data probes are not supported on arm64 kernels",
+                                   kernel_p ? "kernel" : "process"),
+                                location->components[0]->tok);
+    }
 
   has_addr = get_param (parameters, TOK_HWBKPT, hwbkpt_address);
   has_symbol_str = get_param (parameters, TOK_HWBKPT, symbol_str_val);
@@ -14382,14 +14525,19 @@ register_standard_tapsets(systemtap_session & s)
 
   //Hwbkpt based process probe
   // NB: we don't support symbol names in the probe spec (yet).
+  // pr_all: needed for --runtime=dyninst (always unprivileged).
   s.pattern_root->bind(TOK_PROCESS)->bind_num(TOK_HWBKPT)
-    ->bind(TOK_HWBKPT_WRITE)->bind(new hwbkpt_builder(false));
+    ->bind(TOK_HWBKPT_WRITE)->bind_privilege(pr_all)
+    ->bind(new hwbkpt_builder(false));
   s.pattern_root->bind(TOK_PROCESS)->bind_num(TOK_HWBKPT)
-    ->bind(TOK_HWBKPT_RW)->bind(new hwbkpt_builder(false));
+    ->bind(TOK_HWBKPT_RW)->bind_privilege(pr_all)
+    ->bind(new hwbkpt_builder(false));
   s.pattern_root->bind(TOK_PROCESS)->bind_num(TOK_HWBKPT)
-    ->bind_num(TOK_LENGTH)->bind(TOK_HWBKPT_WRITE)->bind(new hwbkpt_builder(false));
+    ->bind_num(TOK_LENGTH)->bind(TOK_HWBKPT_WRITE)->bind_privilege(pr_all)
+    ->bind(new hwbkpt_builder(false));
   s.pattern_root->bind(TOK_PROCESS)->bind_num(TOK_HWBKPT)
-    ->bind_num(TOK_LENGTH)->bind(TOK_HWBKPT_RW)->bind(new hwbkpt_builder(false));
+    ->bind_num(TOK_LENGTH)->bind(TOK_HWBKPT_RW)->bind_privilege(pr_all)
+    ->bind(new hwbkpt_builder(false));
 
   //perf event based probe
   register_tapset_perf(s);

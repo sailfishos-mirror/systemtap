@@ -2734,7 +2734,11 @@ now includes two new prototype backends: \fI\-\-runtime=dyninst\fR and
 \fI\-\-runtime=dyninst\fR uses Dyninst to instrument a user's own processes
 at runtime. This backend does not use kernel modules, and does not require
 root privileges, but is restricted with respect to the kinds of probes and
-other constructs that a script may use. \fIdyninst\fR runtime operates in
+other constructs that a script may use.  Userspace
+.B process.data
+hardware watchpoints are supported when Dyninst provides them on the host;
+.B kernel.data
+probes are not.  \fIdyninst\fR runtime operates in
 target-attach mode, so it does require a \fI\-c COMMAND\fR or \fI\-x PID\fR
 process.  For example:
 .SAMPLE

@@ -10,13 +10,17 @@
 #define MUTATEE_H
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <dyninst/BPatch_object.h>
 #include <dyninst/BPatch_process.h>
 #include <dyninst/BPatch_snippet.h>
+#include <dyninst/PCProcess.h>
+#include <dyninst/Event.h>
 
 #include "dynprobe.h"
+#include "dynhwbkpt.h"
 #include "dynutil.h"
 
 
@@ -35,6 +39,11 @@ class mutatee {
 
     std::vector<dynprobe_location> attached_probes;
     BPatch_function* utrace_enter_function;
+    BPatch_function* hwbkpt_enter_function;
+
+    // Installed ProcControl hardware watchpoints (process.data).
+    std::vector<std::pair<Dyninst::Address,
+                          Dyninst::ProcControlAPI::Breakpoint::ptr> > hwbkpt_bps;
 
     // process.end probes saved to run after exec
     std::vector<dynprobe_location> exec_proc_end_probes;
@@ -78,6 +87,15 @@ class mutatee {
     // Look for probe matches in all objects.
     void instrument_dynprobes(const std::vector<dynprobe_target>& targets);
 
+    // Install process.data hardware watchpoints via ProcControlAPI.
+    bool instrument_hwbkpts(const std::vector<dynhwbkpt_location>& probes);
+
+    // Remove process.data hardware watchpoints.
+    void remove_hwbkpts();
+
+    // Run a pending hwbkpt hit (called outside ProcControl callbacks).
+    void fire_hwbkpt(uint64_t index);
+
     // Copy data for forked instrumentation
     void copy_forked_instrumentation(mutatee& other);
 
@@ -110,6 +128,12 @@ class mutatee {
 
     std::vector<dynprobe_location> find_attached_probes(uint64_t flag);
 };
+
+// Register ProcControl callbacks used for process.data watchpoints.
+void stapdyn_register_hwbkpt_callbacks(void);
+
+// Invoke pending process.data probe handlers after Dyninst event polling.
+void stapdyn_drain_hwbkpt_hits(void);
 
 #endif // MUTATEE_H
 

@@ -10,8 +10,14 @@
 
 extern "C" {
 #include <signal.h>
+#include <stdint.h>
 #include <sys/types.h>
 }
+
+#include <map>
+#include <utility>
+
+#include <boost/pointer_cast.hpp>
 
 #include <dyninst/BPatch_function.h>
 #include <dyninst/BPatch_image.h>
@@ -121,16 +127,121 @@ class mutatee_freezer {
 };
 
 
+using namespace Dyninst::ProcControlAPI;
+
+// Map mutatee PID -> mutatee* for ProcControl EventBreakpoint callbacks.
+static map<pid_t, mutatee*> g_hwbkpt_mutatees;
+
+// Watchpoints hit inside a ProcControl callback; drained after poll.
+static vector<pair<pid_t, uint64_t> > g_hwbkpt_pending;
+
+// Remember ProcControl Process handles discovered via event callbacks.
+static map<pid_t, Process::ptr> g_pc_processes;
+
+static Process::cb_ret_t
+stapdyn_capture_process_cb(Event::const_ptr ev)
+{
+  if (ev && ev->getProcess())
+    g_pc_processes[ev->getProcess()->getPid()] =
+      boost::const_pointer_cast<Process>(ev->getProcess());
+  return Process::cbDefault;
+}
+
+static Process::cb_ret_t
+stapdyn_hwbkpt_event_cb(Event::const_ptr ev)
+{
+  if (!ev)
+    return Process::cbDefault;
+
+  EventBreakpoint::const_ptr ebp = ev->getEventBreakpoint();
+  if (!ebp)
+    return Process::cbDefault;
+
+  vector<Breakpoint::const_ptr> bps;
+  ebp->getBreakpoints(bps);
+  for (size_t i = 0; i < bps.size(); ++i)
+    {
+      // Non-null cookie => one of our process.data watchpoints.
+      void* data = bps[i]->getData();
+      if (!data)
+        continue;
+      uint64_t index = (uint64_t)(uintptr_t)data - 1;
+      pid_t pid = ev->getProcess() ? ev->getProcess()->getPid() : 0;
+      if (pid && g_hwbkpt_mutatees.count(pid))
+        g_hwbkpt_pending.push_back(make_pair(pid, index));
+    }
+
+  // Prefer letting the mutatee resume immediately.  With a shmem session
+  // we fire probes locally in stapdyn_drain_hwbkpt_hits() and do not need
+  // to keep the process stopped for oneTimeCode.  If local firing is
+  // unavailable, drain will stop the process itself via mutatee_freezer.
+  return Process::cbDefault;
+}
+
+void
+stapdyn_register_hwbkpt_callbacks(void)
+{
+  static bool registered = false;
+  if (registered)
+    return;
+  registered = true;
+
+  // Capture Process::const_ptr as soon as ProcControl sees the mutatee.
+  Process::registerEventCallback(EventType(EventType::ThreadCreate),
+                                 stapdyn_capture_process_cb);
+  Process::registerEventCallback(EventType(EventType::Library),
+                                 stapdyn_capture_process_cb);
+  Process::registerEventCallback(EventType(EventType::Breakpoint),
+                                 stapdyn_hwbkpt_event_cb);
+}
+
+void
+stapdyn_drain_hwbkpt_hits(void)
+{
+  vector<pair<pid_t, uint64_t> > pending;
+  pending.swap(g_hwbkpt_pending);
+  // Resume each mutatee only after all of its queued hits are delivered
+  // (relevant for the legacy oneTimeCode path).
+  map<pid_t, mutatee*> resume;
+  for (size_t i = 0; i < pending.size(); ++i)
+    {
+      // Preferred path: session lives in stapdyn (shmem).  No mutatee
+      // stop/continue dance, so hit delivery cannot race process exit.
+      if (stapdyn_hwbkpt_fire_local(pending[i].second))
+        continue;
+
+      map<pid_t, mutatee*>::iterator it =
+        g_hwbkpt_mutatees.find(pending[i].first);
+      if (it == g_hwbkpt_mutatees.end() || !it->second)
+        continue;
+      it->second->fire_hwbkpt(pending[i].second);
+      resume[pending[i].first] = it->second;
+    }
+  for (map<pid_t, mutatee*>::iterator it = resume.begin();
+       it != resume.end(); ++it)
+    {
+      if (!it->second->is_terminated() && it->second->is_stopped())
+        it->second->continue_execution();
+    }
+}
+
+
 mutatee::mutatee(BPatch_process* process):
   pid(process? process->getPid() : 0),
   process(process), stap_dso(NULL),
-  utrace_enter_function(NULL)
+  utrace_enter_function(NULL),
+  hwbkpt_enter_function(NULL)
 {
   get_dwarf_registers(process, registers);
+  if (pid)
+    g_hwbkpt_mutatees[pid] = this;
 }
 
 mutatee::~mutatee()
 {
+  if (pid)
+    g_hwbkpt_mutatees.erase(pid);
+  remove_hwbkpts();
   remove_instrumentation();
   unload_stap_dso();
   if (process)
@@ -714,6 +825,8 @@ mutatee::exec_reset_instrumentation()
 void
 mutatee::remove_instrumentation()
 {
+  remove_hwbkpts();
+
   if (!process || snippets.empty())
     return;
 
@@ -728,6 +841,140 @@ mutatee::remove_instrumentation()
   semaphores.clear();
 
   unload_stap_dso();
+}
+
+
+static unsigned
+dyninst_hwbkpt_size(uint64_t len)
+{
+  // Match runtime/linux/stap-hw-breakpoint.h length mapping.
+  if (len <= 1) return 1;
+  if (len == 2) return 2;
+  if (len <= 4) return 4;
+  return 8;
+}
+
+
+bool
+mutatee::instrument_hwbkpts(const vector<dynhwbkpt_location>& probes)
+{
+  if (!process || probes.empty())
+    return true;
+
+  stapdyn_register_hwbkpt_callbacks();
+
+  Process::ptr pc = g_pc_processes[pid];
+  if (!pc)
+    {
+      // processCreate/Attach already ran; synthesize a stop so Library /
+      // ThreadCreate callbacks can populate g_pc_processes if needed.
+      mutatee_freezer mf(*this);
+      (void)mf;
+      pc = g_pc_processes[pid];
+    }
+  if (!pc)
+    {
+      staperror() << "Couldn't find ProcControl process for pid "
+                  << pid << " (process.data disabled)" << endl;
+      return false;
+    }
+
+  mutatee_freezer mf(*this);
+  if (!is_stopped())
+    {
+      staperror() << "Couldn't stop pid " << pid
+                  << " to install process.data watchpoints" << endl;
+      return false;
+    }
+
+  for (size_t i = 0; i < probes.size(); ++i)
+    {
+      const dynhwbkpt_location& p = probes[i];
+      unsigned mode = Breakpoint::BP_W;
+      if (p.access == STAPDYN_HWBKPT_RW)
+        mode = Breakpoint::BP_R | Breakpoint::BP_W;
+
+      unsigned size = dyninst_hwbkpt_size(p.length);
+      if (!pc->numHardwareBreakpointsAvail(mode))
+        {
+          // Dyninst returns 0 here on arches without HW watchpoint support
+          // (only Linux/x86 implements debug-register watchpoints today).
+          staperror() << "Dyninst reports no hardware breakpoints available"
+                      << " for process.data at " << lex_cast_hex(p.address)
+                      << endl;
+          return false;
+        }
+
+      Breakpoint::ptr bp = Breakpoint::newHardwareBreakpoint(mode, size);
+      // Cookie is index+1 so NULL remains "not ours".
+      bp->setData((void*)(uintptr_t)(p.index + 1));
+
+      Dyninst::Address addr = (Dyninst::Address)p.address;
+      if (!pc->addBreakpoint(addr, bp))
+        {
+          staperror() << "addBreakpoint failed for process.data at "
+                      << lex_cast_hex(p.address) << ": "
+                      << pc->getLastErrorMsg() << endl;
+          return false;
+        }
+
+      staplog(2) << "installed process.data watchpoint at "
+                 << lex_cast_hex(p.address) << " len " << size
+                 << " in pid " << pid << endl;
+      hwbkpt_bps.push_back(make_pair(addr, bp));
+    }
+
+  return true;
+}
+
+
+void
+mutatee::remove_hwbkpts()
+{
+  if (hwbkpt_bps.empty())
+    return;
+
+  Process::ptr pc = g_pc_processes[pid];
+  if (pc && process && !process->isTerminated())
+    {
+      mutatee_freezer mf(*this);
+      for (size_t i = 0; i < hwbkpt_bps.size(); ++i)
+        pc->rmBreakpoint(hwbkpt_bps[i].first, hwbkpt_bps[i].second);
+    }
+  hwbkpt_bps.clear();
+}
+
+
+void
+mutatee::fire_hwbkpt(uint64_t index)
+{
+  if (!stap_dso)
+    return;
+
+  if (hwbkpt_enter_function == NULL)
+    {
+      vector<BPatch_function *> functions;
+      stap_dso->findFunction("enter_dyninst_hwbkpt_probe", functions);
+      if (functions.empty())
+        {
+          stapwarn() << "Couldn't find enter_dyninst_hwbkpt_probe in pid "
+                     << pid << endl;
+          return;
+        }
+      hwbkpt_enter_function = functions[0];
+    }
+
+  mutatee_freezer mf(*this);
+  if (!is_stopped())
+    return;
+
+  vector<BPatch_snippet *> args;
+  args.push_back(new BPatch_constExpr((int64_t)index));
+  args.push_back(new BPatch_constExpr((void*)NULL)); // pt_regs
+  BPatch_funcCallExpr call(*hwbkpt_enter_function, args);
+  staplog(3) << "calling hwbkpt enter in pid " << pid
+             << " for probe index " << index << endl;
+  process->oneTimeCode(call);
 }
 
 
