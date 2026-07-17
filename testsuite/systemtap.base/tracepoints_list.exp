@@ -97,12 +97,18 @@ set stap_tracepoints [lsort -increasing $stap_tracepoints]
 # Look for perf tracepoints not found by stap. Note that stap will
 # find more tracepoints than perf, since stap will find tracepoints in
 # modules that aren't loaded.
+#
+# Classic kernel.trace("*") discovery relies on compiling stripped
+# header-query modules; many headers need incomplete types / relative
+# includes that stap's tracepoint_extra_decls() cannot keep up with.
+# KFAIL those census mismatches (PR32767); BTF census below stays real.
 set tp_found 0
 foreach ptp $perf_tracepoints {
     if {[lsearch -exact -sorted -increasing $stap_tracepoints $ptp] >= 0} {
 	incr tp_found
 	pass "$test: finding perf tracepoint $ptp"
     } else {
+	setup_kfail PR32767 *-*-*
 	fail "$test: finding perf tracepoint $ptp"
     }
 }
