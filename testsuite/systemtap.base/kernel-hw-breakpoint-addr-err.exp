@@ -22,6 +22,10 @@ if {$res ne ""} {
             if {$runtime eq ""} {
                 set runtime "kernel"
             }
+            # Dyninst is userspace-only; no kernel.data hw-breakpoints.
+            if {$runtime eq "dyninst"} {
+                continue
+            }
             set test_name "$test: $subtest1 ($runtime)"
             set cmd "stap --runtime=$runtime -c ./a.out './${test}_1.stp'"
             set exit_code [run_cmd_2way_as_root $cmd out stderr]
@@ -51,6 +55,10 @@ if {$res ne ""} {
         foreach runtime [get_runtime_list] {
             if {$runtime eq ""} {
                 set runtime "kernel"
+            }
+            # Dyninst is userspace-only; no kernel.data hw-breakpoints.
+            if {$runtime eq "dyninst"} {
+                continue
             }
             set test_name "$test: $subtest2 ($runtime)"
             set cmd "stap --runtime=$runtime -c ./a.out './${test}_2.stp'"

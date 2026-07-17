@@ -22,6 +22,10 @@ if {$res ne ""} {
             if {$runtime eq ""} {
                 set runtime "kernel"
             }
+            # Dyninst is userspace-only; no kernel.data hw-breakpoints.
+            if {$runtime eq "dyninst"} {
+                continue
+            }
             set test_name "$test: $subtest1 ($runtime)"
             set cmd "stap --ldd --runtime=$runtime -c ./a.out './${test}_1.stp'"
             set exit_code [run_cmd_2way_as_root $cmd out stderr]
@@ -52,6 +56,10 @@ if {$res ne ""} {
         foreach runtime [get_runtime_list] {
             if {$runtime eq ""} {
                 set runtime "kernel"
+            }
+            # Dyninst is userspace-only; no kernel.data hw-breakpoints.
+            if {$runtime eq "dyninst"} {
+                continue
             }
             set test_name "$test: $subtest2 ($runtime)"
             set cmd "stap --runtime=$runtime -c ./a.out './${test}_2.stp'"
@@ -87,6 +95,10 @@ if {$res ne ""} {
             if {$runtime eq ""} {
                 set runtime "kernel"
             }
+            # Dyninst is userspace-only; no kernel.data hw-breakpoints.
+            if {$runtime eq "dyninst"} {
+                continue
+            }
             set test_name "$test: $subtest3 ($runtime)"
             set cmd "stap --runtime=$runtime -c ./a.out './${test}_3.stp'"
             set exit_code [run_cmd_2way_as_root $cmd out stderr]
@@ -119,6 +131,10 @@ if {$res ne ""} {
         foreach runtime [get_runtime_list] {
             if {$runtime eq ""} {
                 set runtime "kernel"
+            }
+            # Dyninst is userspace-only; no kernel.data hw-breakpoints.
+            if {$runtime eq "dyninst"} {
+                continue
             }
             set test_name "$test: $subtest4 ($runtime)"
             set cmd "stap --ldd --runtime=$runtime -c ./a.out './${test}_4.stp'"
@@ -156,6 +172,10 @@ if {$res ne ""} {
             if {$runtime eq ""} {
                 set runtime "kernel"
             }
+            # Dyninst is userspace-only; no kernel.data hw-breakpoints.
+            if {$runtime eq "dyninst"} {
+                continue
+            }
             set test_name "$test: $subtest5 ($runtime)"
             set cmd "stap --runtime=$runtime -c ./a.out './${test}_5.stp'"
             set exit_code [run_cmd_2way_as_root $cmd out stderr]
@@ -189,6 +209,10 @@ if {$res ne ""} {
             if {$runtime eq ""} {
                 set runtime "kernel"
             }
+            # Dyninst is userspace-only; no kernel.data hw-breakpoints.
+            if {$runtime eq "dyninst"} {
+                continue
+            }
             set test_name "$test: $subtest6 ($runtime)"
             set cmd "stap --runtime=$runtime -c ./a.out './${test}_5.stp'"
             set exit_code [run_cmd_2way_as_root $cmd out stderr]
@@ -219,6 +243,10 @@ if {$res ne ""} {
         foreach runtime [get_runtime_list] {
             if {$runtime eq ""} {
                 set runtime "kernel"
+            }
+            # Dyninst is userspace-only; no kernel.data hw-breakpoints.
+            if {$runtime eq "dyninst"} {
+                continue
             }
             set test_name "$test: $subtest7 ($runtime)"
             set cmd "stap --runtime=$runtime -c ./a.out './${test}_7.stp'"
@@ -253,6 +281,10 @@ if {$res ne ""} {
             if {$runtime eq ""} {
                 set runtime "kernel"
             }
+            # Dyninst is userspace-only; no kernel.data hw-breakpoints.
+            if {$runtime eq "dyninst"} {
+                continue
+            }
             set test_name "$test: $subtest8 ($runtime)"
             set cmd "stap --runtime=$runtime -c ./a.out './${test}_7.stp'"
             set exit_code [run_cmd_2way_as_root $cmd out stderr]
@@ -283,6 +315,10 @@ if {$res ne ""} {
         foreach runtime [get_runtime_list] {
             if {$runtime eq ""} {
                 set runtime "kernel"
+            }
+            # Dyninst is userspace-only; no kernel.data hw-breakpoints.
+            if {$runtime eq "dyninst"} {
+                continue
             }
             set test_name "$test: $subtest9 ($runtime)"
             set cmd "stap --runtime=$runtime -c ./a.out './${test}_9.stp'"
@@ -316,6 +352,10 @@ if {$res ne ""} {
         foreach runtime [get_runtime_list] {
             if {$runtime eq ""} {
                 set runtime "kernel"
+            }
+            # Dyninst is userspace-only; no kernel.data hw-breakpoints.
+            if {$runtime eq "dyninst"} {
+                continue
             }
             set test_name "$test: $subtest10 ($runtime)"
             set cmd "stap --runtime=$runtime -c ./a.out './${test}_9.stp'"
@@ -351,6 +391,10 @@ if {$res ne ""} {
             if {$runtime eq ""} {
                 set runtime "kernel"
             }
+            # Dyninst is userspace-only; no kernel.data hw-breakpoints.
+            if {$runtime eq "dyninst"} {
+                continue
+            }
             set test_name "$test: $subtest11 ($runtime)"
             set cmd "stap --ldd --runtime=$runtime -c ./a.out './${test}_11.stp'"
             set exit_code [run_cmd_2way_as_root $cmd out stderr]
@@ -383,6 +427,10 @@ if {$res ne ""} {
         foreach runtime [get_runtime_list] {
             if {$runtime eq ""} {
                 set runtime "kernel"
+            }
+            # Dyninst is userspace-only; no kernel.data hw-breakpoints.
+            if {$runtime eq "dyninst"} {
+                continue
             }
             set test_name "$test: $subtest12 ($runtime)"
             set cmd "stap --ldd --runtime=$runtime -c ./a.out './${test}_11.stp'"
@@ -417,6 +465,10 @@ if {$res ne ""} {
         foreach runtime [get_runtime_list] {
             if {$runtime eq ""} {
                 set runtime "kernel"
+            }
+            # Dyninst is userspace-only; no kernel.data hw-breakpoints.
+            if {$runtime eq "dyninst"} {
+                continue
             }
             set test_name "$test: $subtest13 ($runtime)"
             set cmd "stap --ldd --runtime=$runtime -c ./a.out './${test}_11.stp'"
