@@ -178,6 +178,17 @@ AC_LANG_POP(C++)
 
 AC_SUBST(ALIGNEDNEW)
 
+dnl Dyninst headers can trigger GCC's -Wtemplate-body; suppress if the
+dnl compiler knows that option.  Clang does not (unknown-warning-option
+dnl under -Werror), so probe with -Werror like the other flag checks.
+AC_LANG_PUSH(C++)
+AX_CHECK_COMPILE_FLAG([-Wno-template-body],
+  [WNO_TEMPLATE_BODY="-Wno-template-body"],
+  [WNO_TEMPLATE_BODY=""],
+  [-Werror])
+AC_LANG_POP(C++)
+AC_SUBST(WNO_TEMPLATE_BODY)
+
 dnl Carry forward some empty PIE*FLAGS so we don't have to modify
 dnl all the Makefile.am's just now.
 AC_SUBST(PIELDFLAGS)

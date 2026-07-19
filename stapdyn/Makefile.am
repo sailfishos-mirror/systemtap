@@ -35,7 +35,7 @@ man_MANS = stapdyn.8
 stapdyn_SOURCES = stapdyn.cxx mutator.cxx mutatee.cxx \
 				  dynprobe.cxx dynhwbkpt.cxx dynubacktrace.cxx \
 				  dynutil.cxx ../staputil.cxx
-stapdyn_CXXFLAGS = $(AM_CXXFLAGS) @DYNINST_CXXFLAGS@ $(debuginfod_CFLAGS) -Wno-template-body
+stapdyn_CXXFLAGS = $(AM_CXXFLAGS) @DYNINST_CXXFLAGS@ $(debuginfod_CFLAGS) @WNO_TEMPLATE_BODY@
 stapdyn_LDFLAGS = $(AM_LDFLAGS) @DYNINST_LDFLAGS@ $(debuginfod_LDFLAGS)
 stapdyn_LDADD = -ldl -ldyninstAPI -lsymtabAPI -lpcontrol -lstackwalk -lcommon -ldw -lelf -lpthread $(debuginfod_LIBS)
 stapdyn_CFLAGS = $(debuginfod_CFLAGS)

@@ -330,6 +330,7 @@ STAP_PREFIX = @STAP_PREFIX@
 STRIP = @STRIP@
 USE_NLS = @USE_NLS@
 VERSION = @VERSION@
+WNO_TEMPLATE_BODY = @WNO_TEMPLATE_BODY@
 XGETTEXT = @XGETTEXT@
 XGETTEXT_015 = @XGETTEXT_015@
 XGETTEXT_EXTRA_OPTIONS = @XGETTEXT_EXTRA_OPTIONS@
@@ -448,7 +449,7 @@ AM_LDFLAGS = @PIELDFLAGS@ @BOOST_SYSTEM_LIB@ $(am__append_4)
 @HAVE_DYNINST_TRUE@				  dynprobe.cxx dynhwbkpt.cxx dynubacktrace.cxx \
 @HAVE_DYNINST_TRUE@				  dynutil.cxx ../staputil.cxx
 
-@HAVE_DYNINST_TRUE@stapdyn_CXXFLAGS = $(AM_CXXFLAGS) @DYNINST_CXXFLAGS@ $(debuginfod_CFLAGS) -Wno-template-body
+@HAVE_DYNINST_TRUE@stapdyn_CXXFLAGS = $(AM_CXXFLAGS) @DYNINST_CXXFLAGS@ $(debuginfod_CFLAGS) @WNO_TEMPLATE_BODY@
 @HAVE_DYNINST_TRUE@stapdyn_LDFLAGS = $(AM_LDFLAGS) @DYNINST_LDFLAGS@ $(debuginfod_LDFLAGS)
 @HAVE_DYNINST_TRUE@stapdyn_LDADD = -ldl -ldyninstAPI -lsymtabAPI -lpcontrol -lstackwalk -lcommon -ldw -lelf -lpthread $(debuginfod_LIBS)
 @HAVE_DYNINST_TRUE@stapdyn_CFLAGS = $(debuginfod_CFLAGS)
