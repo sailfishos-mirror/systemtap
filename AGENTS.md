@@ -29,6 +29,15 @@ make -C man stap.1       # or: ./config.status man/stap.1
 Examples: `man/stap.1.in` → `man/stap.1`, `man/stappaths.7.in`,
 `man/stap-onboot.8.in`.  Do **not** hand-edit the generated file alone.
 
+## Compatibility targets
+
+Floor for active support/CI is roughly **RHEL 8 and later** (kernel
+**4.18** through current upstream / Fedora rawhide).  Host builds use
+both **GCC and Clang**; some builders enable `-Werror`, so do not
+hardcode compiler-specific `-Wno-*` flags in `Makefile.am` — probe
+with `AX_CHECK_COMPILE_FLAG` in `configure.ac` (pass `[-Werror]` as
+extra flags) and `AC_SUBST`, same pattern as `ALIGNEDNEW`.
+
 ## Installation Quirk
 
 Development builds may install to a local prefix for convenience:
