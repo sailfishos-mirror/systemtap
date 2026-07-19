@@ -40,8 +40,13 @@ foreach runtime [get_runtime_list] {
     verbose -log "starting the stap script"
     if {$runtime != ""} {
         if {$runtime == "dyninst"} {
-            # PR17352 (dyninst: process probes require a target -c/-x)
+            # PR17352: dyninst process probes require -c/-x.  Do not
+            # call stap_run here — it waits 180s for startup then
+            # SIGKILLs stap, which leaks /tmp/stap* build directories on
+            # every installcheck (buildbots were filling /tmp this way).
             setup_kfail 17352 "*-*-*"
+            fail "$test_name ($runtime) process(PID) without -c/-x"
+            continue
         }
         set cur_test_name "$test_name ($runtime)"
         stap_run $cur_test_name sleep_twenty_secs $output_string --runtime=$runtime $srcdir/$subdir/${test_script} $pid2

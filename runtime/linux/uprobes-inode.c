@@ -250,6 +250,16 @@ stapiu_probe_prehandler (struct uprobe_consumer *inst,
 	return 0;
       }
     }
+  /* Future research: process(PID) sets finder.pid but does not use this
+     hit filter.  Inode uprobes are file-based, so every task mapping the
+     inode runs the handler; scripts that need a TGID check must do it
+     themselves (e.g. process_by_pid.exp).  Extending the filter to
+     `c->finder.pid` would change process(PID) from "resolve exe via
+     pid, probe that inode" into true per-TGID filtering — a semantic
+     change — and must not share the UPROBE_HANDLER_REMOVE path above:
+     a sibling with the same binary could unregister the uprobe for the
+     intended target.  If revisited, reject non-target hits with
+     return 0 only when filtering on finder.pid. */
 
 #ifdef STAPIU_NEEDS_REG_IP
   /* Make it look like the IP is set as it would in the actual user task
