@@ -110,8 +110,9 @@ proc stapbpf_run { TEST_NAME OUTPUT_STR options args } {
         }
         eof { set rc $eof_start  }
     }
-  # again for good measure with KILL after 3s
-  kill -KILL -$mypid 3
+  # INT first (tmpdir cleanup); KILL only if still alive after 3s.
+  # Was kill -KILL, which SIGKILL'd immediately and leaked /tmp/stap*.
+  kill -INT -$mypid 3
   catch close
   wait
   return $rc
