@@ -1016,44 +1016,77 @@ proc prelink { FILE ADDR } {
   return 1
 }
 
+# True if PID (or process group -$pgid) still has a live, non-zombie target.
+# Process groups: kill -0 the group (leader may be gone while members remain).
+# Single pids: /proc + zombie check.
+proc kill_still_alive { PID {AS_ROOT 0} } {
+   global kill_needs_doubledash
+
+   if {[regexp {^-([0-9]+)$} $PID]} {
+      set kill_pid $PID
+      if {$kill_needs_doubledash} {
+	 set kill_pid "-- $PID"
+      }
+      if {$AS_ROOT != 0} {
+	 # String form so "-- -$pgid" word-splits under eval exec
+	 if {[as_root "kill -0 $kill_pid"] != 0} {
+	    return 0
+	 }
+	 return 1
+      }
+      # ESRCH / "No such process" => group empty; EPERM etc. => still alive
+      if {[catch {eval exec kill -0 $kill_pid} err]} {
+	 if {[string match -nocase "*No such process*" $err]} {
+	    return 0
+	 }
+	 return 1
+      }
+      return 1
+   }
+
+   if {![file isdirectory /proc/$PID]} { return 0 }
+   if {[catch {exec cat /proc/$PID/stat} statout] == 0} {
+      # The 3rd field in /proc/<pid>/stat is the state (e.g., 'Z' for Zombie)
+      if {[lindex [split $statout] 2] eq "Z"} { return 0 }
+   }
+   return 1
+}
+
 # Send signal SIG to PID. If KILL_TIMEOUT > 0, waits KILL_TIMEOUT
 # seconds before also sending a SIGKILL signal to PID. SIG can be with
 # or without leading '-'. If AS_ROOT isn't 0, send the signal as root.
+# PID may be a process-group id (-pgid).
 proc kill { SIG PID {KILL_TIMEOUT 0} {AS_ROOT 0} } {
    global kill_needs_doubledash
 
+   set kill_arg $PID
    if {$kill_needs_doubledash} {
-      set PID "-- $PID"
+      set kill_arg "-- $PID"
    }
    if {![string match -* $SIG]} {
       set SIG "-$SIG"
    }
 
    if {$AS_ROOT != 0} {
-      as_root [list kill $SIG $PID]
+      as_root [list kill $SIG $kill_arg]
    } else {
-      verbose -log "Executing: kill $SIG $PID"
-      if {[catch {eval exec kill $SIG $PID} killout]} {
+      verbose -log "Executing: kill $SIG $kill_arg"
+      if {[catch {eval exec kill $SIG $kill_arg} killout]} {
 	 verbose -log "kill: $killout"
       }
    }
 
    if {$KILL_TIMEOUT > 0} {
       while {$KILL_TIMEOUT > 0} {
-          if {![file isdirectory /proc/$PID]} { return }
-          # detect successful death (zombie), to avoid waiting full $KILL_TIMEOUT
-          if {[catch {exec cat /proc/$PID/stat} statout] == 0} {
-              # The 3rd field in /proc/<pid>/stat is the state (e.g., 'Z' for Zombie)
-              if {[lindex [split $statout] 2] eq "Z"} { return }
-          }
-         sleep 1
-         incr KILL_TIMEOUT -1
+	 if {![kill_still_alive $PID $AS_ROOT]} { return }
+	 sleep 1
+	 incr KILL_TIMEOUT -1
       }
       if {$AS_ROOT != 0} {
-	 as_root [list kill -KILL $PID]
+	 as_root [list kill -KILL $kill_arg]
       } else {
-	 verbose -log "Executing: kill -KILL $PID"
-	 if {[catch {eval exec kill -KILL $PID} killout]} {
+	 verbose -log "Executing: kill -KILL $kill_arg"
+	 if {[catch {eval exec kill -KILL $kill_arg} killout]} {
 	    verbose -log "kill: $killout"
 	 }
       }
