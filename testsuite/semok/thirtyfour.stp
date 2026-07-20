@@ -1,9 +1,18 @@
 #! stap -p2
 # PR10495
 
-probe foo = kernel.function("do_sys_open") { name = "a" }
-probe foo = kernel.function("do_sys_close") { name = "c" }
-probe foo.bar = kernel.function("do_sys_exit") { name = "nothing" }
+# SYSCALL_DEFINE wrappers: do_sys_* became __do_sys_* (and sometimes
+# ksys_*).  Sufficiency marks keep the alias test itself intact.
+probe foo = kernel.function("do_sys_open") !,
+            kernel.function("__do_sys_open") !
+      { name = "a" }
+probe foo = kernel.function("do_sys_close") !,
+            kernel.function("__do_sys_close") !,
+            kernel.function("ksys_close") ?
+      { name = "c" }
+probe foo.bar = kernel.function("do_sys_exit") !,
+                kernel.function("__do_sys_exit") !
+      { name = "nothing" }
 
 probe foo { log(name) }
 probe foo.* { log(name) }
