@@ -3083,6 +3083,31 @@ var_expanding_visitor::visit_delete_statement (delete_statement* s)
 }
 
 
+// After @defined() collapses the condition via abort_provide(), the
+// default update_visitor ternary walk would skip both arms (aborted_p)
+// and leave the unused arm for a later pass to eagerly expand — so
+// @defined($x)?$x:$nosuchvar still died on $nosuchvar (semok/thirtysix).
+// Short-circuit: only expand the taken arm, and provide it directly.
+void
+var_expanding_visitor::visit_ternary_expression (ternary_expression* e)
+{
+  replace (e->cond);
+  literal_number* ln = dynamic_cast<literal_number*> (e->cond);
+  aborted_p = false;
+  if (ln)
+    {
+      expression*& taken = ln->value ? e->truevalue : e->falsevalue;
+      replace (taken);
+      provide (taken);
+    }
+  else
+    {
+      replace (e->truevalue);
+      replace (e->falsevalue);
+      provide (e);
+    }
+}
+
 void
 var_expanding_visitor::visit_defined_op (defined_op* e)
 {

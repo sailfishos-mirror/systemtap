@@ -139,6 +139,7 @@ struct var_expanding_visitor: public update_visitor
   void visit_post_crement (post_crement* e);
   void visit_delete_statement (delete_statement* s);
   void visit_defined_op (defined_op* e);
+  void visit_ternary_expression (ternary_expression* e);
 
   // PR25841: update through functions
   void visit_functioncall (functioncall* e);

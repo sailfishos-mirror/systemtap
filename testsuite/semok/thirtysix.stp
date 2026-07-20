@@ -1,9 +1,11 @@
 #! stap -p2
 
 probe kernel.function("do_sys_open") { println(@defined($foobar)?$foobar:0)  } # invalid
-probe kernel.function("do_sys_open") { println(@defined($mode)?$mode:$nosuchvar)  }  # valid
+# Prefer $flags over $mode: modern kernels often optimize $mode out at
+# some do_sys_open PCs, so @defined($mode) is not uniformly true.
+probe kernel.function("do_sys_open") { println(@defined($flags)?$flags:$nosuchvar)  }  # valid
 probe kernel.function("do_sys_open").return { println(@defined($foobar)?$foobar:0)  } # invalid
-probe kernel.function("do_sys_open").return { println(@defined($mode)?$mode:$nosuchvar)  } # valid
+probe kernel.function("do_sys_open").return { println(@defined($flags)?$flags:$nosuchvar)  } # valid
 probe kernel.trace("*")? { println(@defined($rw)?$rw:0) } # valid and invalid in places
 probe kernel.mark("*")? { println(@defined($foo)?$foo:0) } # invalid
 probe kernel.mark("*")? { println(@defined($name)?$name:$nosuchvar) } # valid
