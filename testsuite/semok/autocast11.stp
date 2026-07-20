@@ -4,7 +4,9 @@ probe kernel.function("schedule_tail").return ?
 {
     // Test the type propagated from a value saved at entry
     mm = $prev->mm
-    println(mm->mmap)
+    // mm->mmap VMA list removed when VMAs moved to maple tree mm_mt
+    // ("mm: remove the vma linked list", ~Linux 6.1).
+    println(@choose_defined(mm->mmap, &mm->mm_mt))
 }
 
 probe process("stap").function("main").return ?
