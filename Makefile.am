@@ -471,12 +471,6 @@ update-po:
 	@echo
 	(cd $(srcdir)/po; git status *.pot)
 	@echo
-	@echo ... then check in with zanata ...
-	@echo
-	@echo % cd $(srcdir)
-	@echo % zanata-cli -B push -s po -t po
-	@echo % zanata-cli -B pull -s po -t po
-	@echo
 	@echo if the .po files are shown as modified ...
 	@echo
 	(cd $(srcdir)/po; git status *.po)

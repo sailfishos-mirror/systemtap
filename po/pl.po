@@ -17,7 +17,6 @@ msgstr ""
 "|| n%100>=20) ? 1 : 2);\n"
 "X-Poedit-Language: Polish\n"
 "X-Poedit-Country: POLAND\n"
-"X-Generator: Zanata 3.6.2\n"
 
 #: analysis.cxx:257
 #, c-format
