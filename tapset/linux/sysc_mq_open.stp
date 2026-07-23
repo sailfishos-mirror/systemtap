@@ -55,46 +55,58 @@ probe syscall.mq_open.return = dw_syscall.mq_open.return !, nd_syscall.mq_open.r
 # dw_mq_open _____________________________________________________
 #
 # SYSCALL_DEFINE wrappers are named differently per arch/era
-# (__do_sys_*, @arch_syscall_prefix "sys_*", …).  Entry probes that
-# read $u_name/$oflag stick to __do_/__se_/do_compat_* (arch pt_regs
-# wrappers lack those locals).
+# (__do_sys_*, @arch_syscall_prefix "sys_*", …).  Prefer __se_sys_*
+# for entry: $mode is long (full syscall arg).  __do_sys_mq_open has
+# umode_t $mode (truncates 037777777777 → 0177777).  For .return, use
+# globs so inlined __do_/__se_ hits are skipped without WARNING.
 
-probe dw_syscall.mq_open = __syscall.mq_open,
-			kernel.function("compat_sys_mq_open").call ?,
-			kernel.function("__do_compat_sys_mq_open") ?,
-			kernel.function("__se_compat_sys_mq_open") ?
+# Native and compat are separate !-chains (a single !-chain would
+# skip compat once __se_sys_mq_open is sufficient).  Arg reads live in
+# the leaves so the compat alias is not empty-elided under -W.
+probe dw_syscall.mq_open = __syscall.mq_open, __syscall.compat_mq_open ?
 {
 	@_SYSCALL_MQ_OPEN_NAME
+}
+
+probe __syscall.mq_open = kernel.function("sys_mq_open").call !,
+			  kernel.function("__se_sys_mq_open") !,
+			  kernel.function("__do_sys_mq_open") ?
+{
+	@__syscall_gate_compat_simple
 	name_uaddr = @__pointer($u_name)
 	filename = user_string_quoted(name_uaddr)
 	u_attr_uaddr = @__pointer($u_attr)
 	oflag = __int32($oflag)
 	oflag_str = _sys_open_flag_str(oflag)
-	mode = (@__compat_task ? __ushort($mode) : __uint32($mode))
+	# __se_* exposes long $mode; full 32-bit syscall arg (not umode_t).
+	mode = __uint32($mode)
 	@_SYSCALL_MQ_OPEN_ARGSTR
 }
-
-probe __syscall.mq_open = kernel.function("sys_mq_open").call !,
-			  kernel.function("__do_sys_mq_open") !,
-			  kernel.function("__se_sys_mq_open") ?
+# Prefer __se_compat (long $mode) over __do_compat (compat_mode_t).
+probe __syscall.compat_mq_open = kernel.function("compat_sys_mq_open").call !,
+				 kernel.function("__se_compat_sys_mq_open") !,
+				 kernel.function("__do_compat_sys_mq_open") ?
 {
-	@__syscall_gate_compat_simple
+	name_uaddr = @__pointer($u_name)
+	filename = user_string_quoted(name_uaddr)
+	u_attr_uaddr = @__pointer($u_attr)
+	oflag = __int32($oflag)
+	oflag_str = _sys_open_flag_str(oflag)
+	mode = __uint32($mode)
+	@_SYSCALL_MQ_OPEN_ARGSTR
 }
+# Globs cover arch wrappers; skip inlined __do_/__se_ .return quietly.
 probe dw_syscall.mq_open.return =
 	__syscall.mq_open.return,
-	kernel.function("compat_sys_mq_open").return ?,
-	kernel.function("__do_compat_sys_mq_open").return ?,
-	kernel.function("__se_compat_sys_mq_open").return ?,
-	kernel.function(@arch_syscall_prefix "compat_sys_mq_open").return ?
+	kernel.function("*compat_sys_mq_open").return ?
 {
 	@_SYSCALL_MQ_OPEN_NAME
 	@SYSC_RETVALSTR($return)
 }
 probe __syscall.mq_open.return = kernel.function("sys_mq_open").return !,
-				 kernel.function("__do_sys_mq_open").return !,
-				 kernel.function("__se_sys_mq_open").return ?,
-				 kernel.function(@arch_syscall_prefix "sys_mq_open").return ?
+				 kernel.function("*sys_mq_open").return ?
 {
+	if (probefunc() =~ "compat") next
 	@__syscall_gate(@const("__NR_mq_open"))
 }
 
@@ -111,8 +123,9 @@ probe nd1_syscall.mq_open = __nd1_syscall.mq_open,
 	@_SYSCALL_MQ_OPEN_REGARGS
 	@_SYSCALL_MQ_OPEN_ARGSTR
 }
-probe __nd1_syscall.mq_open = kprobe.function("sys_mq_open") !,
-			      kprobe.function(@arch_syscall_prefix "sys_mq_open") ?
+# nd1 is asmlinkage (individual args).  Arch pt_regs wrappers belong
+# on nd2 (__set_syscall_pt_regs); do not bind them here with asmlinkage().
+probe __nd1_syscall.mq_open = kprobe.function("sys_mq_open")
 {
 	asmlinkage()
         @__syscall_gate(@const("__NR_mq_open"))
@@ -122,8 +135,7 @@ probe __nd1_syscall.mq_open = kprobe.function("sys_mq_open") !,
         mode = (uint_arg(3) & 0xffff)
 %)
 }
-probe __nd1_syscall.compat_mq_open = kprobe.function("compat_sys_mq_open") !,
-				     kprobe.function(@arch_syscall_prefix "compat_sys_mq_open") ?
+probe __nd1_syscall.compat_mq_open = kprobe.function("compat_sys_mq_open")
 {
 	asmlinkage()
 	mode = (uint_arg(3) & 0xffff)
@@ -187,14 +199,12 @@ probe nd_syscall.mq_open.return = nd1_syscall.mq_open.return!, nd2_syscall.mq_op
   
 probe nd1_syscall.mq_open.return =
         __nd1_syscall.mq_open.return ?,
-        kprobe.function("compat_sys_mq_open").return ?,
-        kprobe.function(@arch_syscall_prefix "compat_sys_mq_open").return ?
+        kprobe.function("compat_sys_mq_open").return ?
 {
 	@_SYSCALL_MQ_OPEN_NAME
 	@SYSC_RETVALSTR(returnval())
 }
-probe __nd1_syscall.mq_open.return = kprobe.function("sys_mq_open").return !,
-				     kprobe.function(@arch_syscall_prefix "sys_mq_open").return ?
+probe __nd1_syscall.mq_open.return = kprobe.function("sys_mq_open").return
 {
         @__syscall_gate(@const("__NR_mq_open"))
 }
