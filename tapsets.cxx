@@ -1021,17 +1021,22 @@ struct dwarf_builder: public derived_probe_builder
 {
   map <string,dwflpp*> kern_dw; /* NB: key string could be a wildcard */
   map <string,dwflpp*> user_dw;
-  interned_string user_path;
-  interned_string user_lib;
 
   // Holds modules to suggest functions from. NB: aggregates over
   // recursive calls to build() when deriving globby probes.
+  // Guarded by this->lock (also used by get_*_dw).
   set <string> modules_seen;
 
   dwarf_builder() {}
 
+  // Still uses match_node coarse serialize_builds() (default true): dwflpp
+  // objects in kern_dw/user_dw are not safe for concurrent use.  Member
+  // lock protects cache maps / modules_seen for a future finer-grained
+  // unlock; process/library glob parallel derive waits on that.
+
   dwflpp *get_kern_dw(systemtap_session& sess, const string& module, bool debuginfo_needed = true)
   {
+    lock_guard<recursive_mutex> g (lock);
     if (kern_dw[module] == 0)
       kern_dw[module] = new dwflpp(sess, module, true, debuginfo_needed); // might throw
     return kern_dw[module];
@@ -1039,6 +1044,7 @@ struct dwarf_builder: public derived_probe_builder
 
   dwflpp *get_user_dw(systemtap_session& sess, const string& module)
   {
+    lock_guard<recursive_mutex> g (lock);
     if (user_dw[module] == 0)
       user_dw[module] = new dwflpp(sess, module, false); // might throw
     return user_dw[module];
@@ -1047,6 +1053,7 @@ struct dwarf_builder: public derived_probe_builder
   /* NB: not virtual, so can be called from dtor too: */
   void dwarf_build_no_more (bool)
   {
+    lock_guard<recursive_mutex> g (lock);
     delete_map(kern_dw);
     delete_map(user_dw);
   }
@@ -8667,6 +8674,8 @@ resolve_library_by_path(base_query & q,
       if (contains_glob_chars (lib))
         {
           // Evaluate glob here, and call derive_probes recursively with each match.
+          // (Not parallelized yet: this runs under dwarf_builder's coarse lock;
+          // nested derive_probes_parallel would deadlock on that lock.)
           const auto& globs = glob_executable (lib);
           for (auto it = globs.begin(); it != globs.end(); ++it)
             {
@@ -8766,6 +8775,11 @@ dwarf_builder::build(systemtap_session & sess,
 
   dwflpp* dw = 0;
   literal_map_t filled_parameters = parameters;
+
+  // Per-invocation paths (formerly builder members); local so concurrent
+  // build() calls do not clobber each other.
+  interned_string user_path;
+  interned_string user_lib;
 
   interned_string module_name;
   int64_t proc_pid;
@@ -8901,6 +8915,8 @@ dwarf_builder::build(systemtap_session & sess,
           assert (lit);
 
           // Evaluate glob here, and call derive_probes recursively with each match.
+          // (Not parallelized yet: this runs under dwarf_builder's coarse lock;
+          // nested derive_probes_parallel would deadlock on that lock.)
           const auto& globs = glob_executable (sess.sysroot
 					       + string(module_name));
           unsigned results_pre = finished_results.size();
@@ -8952,6 +8968,7 @@ dwarf_builder::build(systemtap_session & sess,
               && get_param(filled_parameters, TOK_FUNCTION, func)
               && !func.empty())
             {
+              lock_guard<recursive_mutex> g (lock);
               string sugs = suggest_dwarf_functions(sess, modules_seen, func);
               modules_seen.clear();
               if (!sugs.empty())
@@ -8964,6 +8981,7 @@ dwarf_builder::build(systemtap_session & sess,
                    && get_param(filled_parameters, TOK_PLT, func)
                    && !func.empty())
             {
+              lock_guard<recursive_mutex> g (lock);
               string sugs = suggest_plt_functions(sess, modules_seen, func);
               modules_seen.clear();
               if (!sugs.empty())
@@ -8979,6 +8997,7 @@ dwarf_builder::build(systemtap_session & sess,
               interned_string provider;
               get_param(filled_parameters, TOK_PROVIDER, provider);
 
+              lock_guard<recursive_mutex> g (lock);
               string sugs = suggest_marks(sess, modules_seen, func, provider);
               modules_seen.clear();
               if (!sugs.empty())
@@ -9137,8 +9156,11 @@ dwarf_builder::build(systemtap_session & sess,
       dw->iterate_over_modules<base_query>(&query_module, &sdtq);
 
       // We need to update modules_seen with the modules we've visited
-      modules_seen.insert(sdtq.visited_modules.begin(),
-                          sdtq.visited_modules.end());
+      {
+        lock_guard<recursive_mutex> g (lock);
+        modules_seen.insert(sdtq.visited_modules.begin(),
+                            sdtq.visited_modules.end());
+      }
 
       if (results_pre == finished_results.size()
           && sdtq.has_library && !sdtq.resolved_library
@@ -9154,6 +9176,7 @@ dwarf_builder::build(systemtap_session & sess,
           interned_string provider;
           (void) get_param(filled_parameters, TOK_PROVIDER, provider);
 
+          lock_guard<recursive_mutex> g (lock);
           string sugs = suggest_marks(sess, modules_seen, dummy_mark_name, provider);
           modules_seen.clear();
           if (!sugs.empty())
@@ -9187,15 +9210,21 @@ dwarf_builder::build(systemtap_session & sess,
                                  q.statement_num_val, q.statement_num_val,
                                  q, 0);
       finished_results.push_back (p);
-      sess.unwindsym_modules.insert ("kernel");
+      {
+        lock_guard<recursive_mutex> gl (sess.session_data_mutex);
+        sess.unwindsym_modules.insert ("kernel");
+      }
       return;
     }
 
   dw->iterate_over_modules<base_query>(&query_module, &q);
 
   // We need to update modules_seen with the modules we've visited
-  modules_seen.insert(q.visited_modules.begin(),
-                      q.visited_modules.end());
+  {
+    lock_guard<recursive_mutex> g (lock);
+    modules_seen.insert(q.visited_modules.begin(),
+                        q.visited_modules.end());
+  }
 
   // PR11553 special processing: .return probes requested, but
   // some inlined function instances matched.
@@ -9253,6 +9282,7 @@ dwarf_builder::build(systemtap_session & sess,
       && get_param(filled_parameters, TOK_FUNCTION, func)
       && !func.empty())
     {
+      lock_guard<recursive_mutex> g (lock);
       string sugs = suggest_dwarf_functions(sess, modules_seen, func);
       modules_seen.clear();
       if (!sugs.empty())
@@ -9265,6 +9295,7 @@ dwarf_builder::build(systemtap_session & sess,
            && get_param(filled_parameters, TOK_PLT, func)
            && !func.empty())
     {
+      lock_guard<recursive_mutex> g (lock);
       string sugs = suggest_plt_functions(sess, modules_seen, func);
       modules_seen.clear();
       if (!sugs.empty())
@@ -9274,8 +9305,11 @@ dwarf_builder::build(systemtap_session & sess,
                                   sugs.c_str()));
     }
   else if (results_pre != results_post)
-    // Something was derived so we won't need to suggest something
-    modules_seen.clear();
+    {
+      // Something was derived so we won't need to suggest something
+      lock_guard<recursive_mutex> g (lock);
+      modules_seen.clear();
+    }
 }
 
 symbol_table::~symbol_table()

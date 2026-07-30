@@ -21,6 +21,7 @@
 #include <sstream>
 #include <map>
 #include <list>
+#include <mutex>
 
 extern "C" {
 #include <elfutils/libdw.h>
@@ -365,6 +366,17 @@ struct derived_probe_builder
   virtual bool is_alias () const { return false; }
   virtual std::string name() = 0;
 
+  // When true (default), match_node serializes concurrent build /
+  // build_with_suffix invocations on this builder instance.  Simple
+  // builders with no mutable member state may return false; they must
+  // still protect any shared session mutations via session_data_mutex.
+  virtual bool serialize_builds () const { return true; }
+
+  // Coarse per-builder lock for concurrent derive_probes().  Recursive
+  // because alias/glob/python/java paths re-enter derive_probes on the
+  // same builder from the same thread.
+  std::recursive_mutex lock;
+
   static bool has_null_param (literal_map_t const & parameters,
                               interned_string key);
   static bool get_param (literal_map_t const & parameters,
@@ -469,6 +481,12 @@ int semantic_pass (systemtap_session& s);
 void derive_probes (systemtap_session& s,
                     probe *p, std::vector<derived_probe*>& dps,
                     bool optional = false, bool rethrow_errors = false);
+// Derive each probe concurrently into results_per_probe[i].  Results
+// are ordered to match probes.  optional applies to every element.
+void derive_probes_parallel (systemtap_session& s,
+                             const std::vector<probe*>& probes,
+                             std::vector<std::vector<derived_probe*> >& results_per_probe,
+                             bool optional = false);
 
 // A helper we use here and in translate, for pulling symbols out of lvalue
 // expressions.

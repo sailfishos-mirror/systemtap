@@ -35,9 +35,43 @@ extern "C" {
 #include <algorithm>
 #include <iterator>
 #include <climits>
+#include <thread>
+#include <mutex>
+#include <atomic>
+#include <exception>
+
+#ifdef HAVE_BOOST_ASIO_THREAD_POOL_HPP
+#include <boost/asio/thread_pool.hpp>
+#else
+#error "need boost thread_pool.hpp"
+#endif
+
+#ifdef HAVE_BOOST_ASIO_POST_HPP
+#include <boost/asio/post.hpp>
+#else
+#error "need boost post.hpp"
+#endif
 
 
 using namespace std;
+
+// RAII bump for session.suppress_costly_diagnostics (atomic).
+struct suppress_costly_diagnostics_guard
+{
+  systemtap_session& s;
+  bool bumped;
+  suppress_costly_diagnostics_guard (systemtap_session& s_in, bool bump)
+    : s(s_in), bumped(bump)
+  {
+    if (bumped)
+      s.suppress_costly_diagnostics.fetch_add (1, std::memory_order_relaxed);
+  }
+  ~suppress_costly_diagnostics_guard ()
+  {
+    if (bumped)
+      s.suppress_costly_diagnostics.fetch_sub (1, std::memory_order_relaxed);
+  }
+};
 
 
 // ------------------------------------------------------------------------
@@ -433,9 +467,9 @@ match_node::find_and_build (systemtap_session& s,
                             vector<derived_probe *>& results,
                             set<string>& builders)
 {
-  save_and_restore<unsigned> costly(& s.suppress_costly_diagnostics,
-                                    s.suppress_costly_diagnostics + (loc->optional || loc->sufficient ? 1 : 0));
-  
+  suppress_costly_diagnostics_guard costly
+    (s, loc->optional || loc->sufficient);
+
   assert (pos <= loc->components.size());
   if (pos == loc->components.size()) // matched all probe point components so far
     {
@@ -468,6 +502,9 @@ match_node::find_and_build (systemtap_session& s,
       for (unsigned k=0; k<ends.size(); k++) 
         {
           derived_probe_builder *b = ends[k];
+          unique_lock<recursive_mutex> bl (b->lock, defer_lock);
+          if (b->serialize_builds ())
+            bl.lock ();
           b->build (s, p, loc, param_map, results);
         }
 
@@ -727,6 +764,9 @@ match_node::try_suffix_expansion (systemtap_session& s,
           derived_probe_builder *b = ends[k];
           try
             {
+              unique_lock<recursive_mutex> bl (b->lock, defer_lock);
+              if (b->serialize_builds ())
+                bl.lock ();
               b->build_with_suffix (s, p, loc, param_map, results, suffix);
             }
           catch (const recursive_expansion_error &e)
@@ -939,6 +979,7 @@ alias_expansion_builder::build_with_suffix(systemtap_session & sess,
   if (finished_results.size() > old_num_results)
     {
       stapfile *f = alias->tok->location.file;
+      lock_guard<recursive_mutex> gl (sess.session_data_mutex);
       if (find (sess.files.begin(), sess.files.end(), f)
 	  == sess.files.end())
 	sess.files.push_back (f);
@@ -978,11 +1019,13 @@ derive_probes (systemtap_session& s,
                bool optional,
                bool rethrow_errors)
 {
-  // We need a static to track whether the current probe is optional so that
-  // even if we recurse into derive_probes with optional = false, errors will
-  // still be ignored. The undo_parent_optional bool ensures we reset the
-  // static at the same level we had it set.
-  static bool parent_optional = false;
+  // Track whether the current probe is optional so that even if we
+  // recurse into derive_probes with optional = false, errors will
+  // still be ignored. thread_local so concurrent top-level
+  // derive_probes() calls do not clobber each other. The
+  // undo_parent_optional bool ensures we reset at the same nesting
+  // level we had it set.
+  static thread_local bool parent_optional = false;
   bool undo_parent_optional = false;
 
   if (optional && !parent_optional)
@@ -1101,6 +1144,63 @@ derive_probes (systemtap_session& s,
   if (undo_parent_optional)
     {
       parent_optional = false;
+    }
+}
+
+
+void
+derive_probes_parallel (systemtap_session& s,
+                        const vector<probe*>& probes,
+                        vector<vector<derived_probe*> >& results_per_probe,
+                        bool optional)
+{
+  results_per_probe.clear ();
+  results_per_probe.resize (probes.size ());
+
+  if (probes.empty ())
+    return;
+
+  // Single probe: avoid thread-pool overhead.
+  if (probes.size () == 1)
+    {
+      derive_probes (s, probes[0], results_per_probe[0], optional);
+      return;
+    }
+
+  unsigned nthreads = thread::hardware_concurrency ();
+  if (nthreads == 0)
+    nthreads = 1;
+  if (nthreads > probes.size ())
+    nthreads = probes.size ();
+
+  boost::asio::thread_pool TP (nthreads);
+  vector<exception_ptr> pending (probes.size ());
+  atomic<bool> failed (false);
+
+  for (size_t i = 0; i < probes.size (); i++)
+    {
+      boost::asio::post (TP, [i, &s, &probes, &results_per_probe, optional,
+                              &pending, &failed]() {
+        try
+          {
+            assert_no_interrupts ();
+            derive_probes (s, probes[i], results_per_probe[i], optional);
+          }
+        catch (...)
+          {
+            pending[i] = current_exception ();
+            failed.store (true);
+          }
+      });
+    }
+
+  TP.join ();
+
+  if (failed.load ())
+    {
+      for (size_t i = 0; i < pending.size (); i++)
+        if (pending[i])
+          rethrow_exception (pending[i]);
     }
 }
 
@@ -1933,17 +2033,16 @@ semantic_pass_symbols (systemtap_session& s)
         s.embeds.push_back (dome->embeds[i]);
 
       // Pass 2: derive probes and resolve any further symbols in the
-      // derived results.
+      // derived results.  Derivation of probes within one file is
+      // concurrent; symbol resolution stays serial (shared tables).
 
-      for (unsigned i=0; i<dome->probes.size(); i++)
+      vector<probe*> batch = dome->probes;
+      vector<vector<derived_probe*> > batch_results;
+      derive_probes_parallel (s, batch, batch_results);
+
+      for (unsigned i=0; i<batch.size(); i++)
         {
-          assert_no_interrupts();
-          probe* p = dome->probes [i];
-          vector<derived_probe*> dps;
-
-          // much magic happens here: probe alias expansion, wildcard
-          // matching, low-level derived_probe construction.
-          derive_probes (s, p, dps);
+          vector<derived_probe*>& dps = batch_results[i];
 
           for (unsigned j=0; j<dps.size(); j++)
             {

@@ -155,6 +155,7 @@ utrace_derived_probe::utrace_derived_probe (systemtap_session &s,
     {
       stapfile *f = new stapfile;
       f->probes.push_back(v.add_probe);
+      lock_guard<recursive_mutex> gl (s.session_data_mutex);
       s.files.push_back(f);
     }
 

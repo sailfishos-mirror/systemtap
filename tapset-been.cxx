@@ -84,6 +84,9 @@ struct be_builder: public derived_probe_builder
 
   be_builder(be_t t) : type(t) {}
 
+  // Stateless builder: safe for concurrent build() without coarse lock.
+  virtual bool serialize_builds () const { return false; }
+
   virtual void build(systemtap_session &,
                      probe * base,
                      probe_point * location,

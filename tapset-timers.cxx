@@ -591,6 +591,9 @@ warn_for_bpf(systemtap_session& s,
 
 struct timer_builder: public derived_probe_builder
 {
+    // No mutable member state; session mutations use session_data_mutex.
+    virtual bool serialize_builds () const { return false; }
+
     virtual void build(systemtap_session & sess,
                        probe * base, probe_point * location,
                        literal_map_t const & parameters,
@@ -624,7 +627,10 @@ timer_builder::build(systemtap_session & sess,
               || sess.kernel_exports.find("unregister_profile_notifier") == sess.kernel_exports.end()))
         throw SEMANTIC_ERROR (_("profiling timer support (register_timer_hook) not found in kernel!"));
 
-      sess.unwindsym_modules.insert ("kernel");
+      {
+        lock_guard<recursive_mutex> gl (sess.session_data_mutex);
+        sess.unwindsym_modules.insert ("kernel");
+      }
       finished_results.push_back
         (new profile_derived_probe(sess, base, location));
       return;

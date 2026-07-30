@@ -444,12 +444,17 @@ public:
   // NB: It is very important for all of the above (and below) fields
   // to be cleared in the systemtap_session ctor (session.cxx).
 
+  // Guards print_warning / print_error and their seen_* / suppressed_* counters.
   std::mutex print_warning_mutex;
   std::set<std::string> seen_warnings;
   int suppressed_warnings;
   std::map<std::string, int> seen_errors; // NB: can change to a set if threshold is 1
   int suppressed_errors;
   int warningerr_count; // see comment in systemtap_session::print_error
+
+  // Guards mutative access to shared session containers touched during
+  // concurrent derive_probes() (files, unwindsym_modules, etc.).
+  std::recursive_mutex session_data_mutex;
 
   // resource limits
   std::map<int, struct rlimit> rlimits;
@@ -470,7 +475,10 @@ public:
 
   int target_namespaces_pid;
 
-  unsigned suppress_costly_diagnostics; /* set during processing of optional probes */
+  // Incremented while resolving optional/sufficient probe points; read by
+  // builders to skip expensive diagnostics. Atomic so concurrent
+  // find_and_build() calls from derive_probes_parallel are safe.
+  std::atomic<unsigned> suppress_costly_diagnostics;
 
   const token* last_token;
 

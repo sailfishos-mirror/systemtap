@@ -2487,6 +2487,8 @@ systemtap_session::print_token (ostream& o, const token* tok)
 void
 systemtap_session::print_error (const semantic_error& se)
 {
+  std::lock_guard<std::mutex> g (print_warning_mutex);
+
   // skip error message printing for listing mode with low verbosity
   if (this->dump_mode && this->verbose <= 1)
     {
@@ -2657,6 +2659,8 @@ systemtap_session::print_error (const parse_error &pe,
                                 const std::string &input_name,
                                 bool is_warningerr)
 {
+  std::lock_guard<std::mutex> g (print_warning_mutex);
+
   // duplicate elimination
   if (verbose > 0 || seen_errors[pe.errsrc_chain()] < 1)
     {
