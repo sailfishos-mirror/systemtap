@@ -15,17 +15,39 @@ probe begin
 # Why not do '@cast(req_uaddr, "struct timespec")->tv_sec'? The pointer
 # isn't to kernel memory, but to user memory, so we have to read it
 # properly.
+#
+# struct timespec is often absent from kernel DWARF/vmlinux.h on modern
+# kernels (y2038); userspace layout matches struct __kernel_timespec
+# (see aux_syscalls.stp / STAPCONF_TIME_TYPES_H). Fall back to
+# timespec64 if needed. compat_timespec was renamed to old_timespec32.
 
-probe syscall.nanosleep
+function _target_set_tv_sec:long(uaddr:long)
+{
+	if (@defined(@cast(0, "struct timespec", "kernel")->tv_sec))
+		return user_long(&@cast(uaddr, "struct timespec", "kernel")->tv_sec)
+	if (@defined(@cast(0, "struct __kernel_timespec", "kernel")->tv_sec))
+		return user_long(&@cast(uaddr, "struct __kernel_timespec", "kernel")->tv_sec)
+	return user_long(&@cast(uaddr, "struct timespec64", "kernel")->tv_sec)
+}
+
+function _target_set_compat_tv_sec:long(uaddr:long)
+{
+	if (@defined(@cast(0, "struct compat_timespec", "kernel")->tv_sec))
+		return user_long(&@cast(uaddr, "struct compat_timespec", "kernel")->tv_sec)
+	return user_long(&@cast(uaddr, "struct old_timespec32", "kernel")->tv_sec)
+}
+
+# Modern coreutils sleep uses clock_nanosleep, not nanosleep.
+probe syscall.nanosleep, syscall.clock_nanosleep
 {
     if (target_set_pid(pid())
-	&& user_long(&@cast(req_uaddr, "struct timespec", "kernel")->tv_sec) == $1)
+	&& _target_set_tv_sec(req_uaddr) == $1)
 	target_set_report()
 }
-probe syscall.compat_nanosleep ?
+probe syscall.compat_nanosleep ?, syscall.compat_clock_nanosleep ?
 {
     if (target_set_pid(pid())
-	&& user_long(&@cast(req_uaddr, "struct compat_timespec", "kernel")->tv_sec) == $1)
+	&& _target_set_compat_tv_sec(req_uaddr) == $1)
 	target_set_report()
 }
 
