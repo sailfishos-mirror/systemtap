@@ -148,6 +148,7 @@ foreach_state_add(const foreach_info &fi, foreach_state &s,
 
   // copy and save key
   uint64_t *kp2 = (uint64_t *)malloc(fi.keysize);
+  if (!kp2) stapbpf_abort("map key allocation failed");
   memcpy(kp2, kp, fi.keysize);
   s.keys.push_back(kp2);
 
@@ -228,6 +229,7 @@ convert_key(const foreach_info &fi,
   // handle string composite keys being passed as pointers
   // allocate correctly sized buffer and store it in map_values:
   uint64_t *lookup_tmp = (uint64_t*)malloc(fi.keysize);
+  if (!lookup_tmp) stapbpf_abort("map key allocation failed");
   memcpy(lookup_tmp, kp, fi.keysize);
   map_values.push_back(lookup_tmp);
   *next_kp = reinterpret_cast<uint64_t>(map_values.back());
@@ -405,6 +407,7 @@ map_get_next_key(int fd_idx, int64_t key, int64_t next_key,
         {
           // allocate correctly sized buffer and store it in map_values:
           uint64_t *lookup_tmp = (uint64_t*)malloc(fi.keysize);
+          if (!lookup_tmp) stapbpf_abort("map key allocation failed");
           memcpy(lookup_tmp, _n, fi.keysize);
           map_values.push_back(lookup_tmp);
           *(uint64_t *)next_key =
