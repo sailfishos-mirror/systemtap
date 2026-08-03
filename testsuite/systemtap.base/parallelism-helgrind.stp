@@ -3,12 +3,21 @@
 #
 # Pass 1: pulls in many tapset files (parallel parse_all).
 # Pass 2: several probes / builders so derive_probes_parallel runs
-#         (begin/end/timer unlocked; dwarf under builder locks).
+#         (begin/end/timer unlocked; dwarf under builder locks;
+#         outer syscall.* globs; process.* uprobe globs).
 # Pass 3: -d /bin/sh (from the .exp) pulls extra unwind/symbol work
 #         that emit_symbol_data can parallelize.
 # Pass 4: compile to .ko (children not traced by helgrind).
 
-probe begin, begin(1), end, end(-1)
+# @1 is a per-invocation tag from the .exp so each stap command line
+# hashes to a distinct script .ko (shared typequery / buildrun caches
+# can still hit).
+probe begin
+{
+  printf("tag=%s %s\n", @1, pp())
+}
+
+probe begin(1), end, end(-1)
 {
   printf("%s\n", pp())
 }
@@ -18,14 +27,27 @@ probe timer.s(1), timer.ms(500), timer.us(1000)
   exit()
 }
 
+# Kernel dwarf: $$parms$ forces argument-location digging.
 probe kernel.function("vfs_read"),
       kernel.function("vfs_write"),
       kernel.function("schedule")
 {
-  printf("%s\n", probefunc())
+  printf("%s %s\n", probefunc(), $$parms$)
 }
 
 probe kernel.function("do_sys_open*") ?
+{
+  printf("%s %s\n", pp(), $$parms$)
+}
+
+# Outer-level alias globbing (syscall.* → many kernel.function expansions).
+probe syscall.sig*
+{
+  log(name)
+}
+
+# Userspace dwarf + function globbing against the running stap binary.
+probe process("stap").function("*derive*")
 {
   printf("%s\n", pp())
 }

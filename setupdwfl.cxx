@@ -60,6 +60,11 @@ static char *debuginfo_usr_path = (char *)(debuginfo_env_arr
 // This is a kludge.
 static systemtap_session* current_session_for_find_debuginfo;
 
+// Serializes all setup_dwfl_* entry points: file-static search state,
+// current_session_for_find_debuginfo, and libelf's one-time elf_version
+// init via dwfl_begin.  Recursive for the download-retry re-enter.
+static std::recursive_mutex setup_dwfl_mutex;
+
 static const Dwfl_Callbacks kernel_callbacks =
   {
     dwfl_linux_kernel_find_elf,
@@ -515,6 +520,7 @@ setup_dwfl_kernel(const std::string &name,
 		  unsigned *found,
 		  systemtap_session &s)
 {
+  lock_guard<recursive_mutex> g (setup_dwfl_mutex);
   current_session_for_find_debuginfo = &s;
   const char *modname = name.c_str();
   set<string> names; // Default to empty
@@ -538,6 +544,7 @@ setup_dwfl_kernel(const std::set<std::string> &names,
 		  unsigned *found,
 		  systemtap_session &s)
 {
+  lock_guard<recursive_mutex> g (setup_dwfl_mutex);
   current_session_for_find_debuginfo = &s;
 
   offline_search_modname = NULL;
@@ -548,6 +555,7 @@ setup_dwfl_kernel(const std::set<std::string> &names,
 Dwfl*
 setup_dwfl_user(const std::string &name)
 {
+  lock_guard<recursive_mutex> g (setup_dwfl_mutex);
   Dwfl *dwfl = dwfl_begin (&user_callbacks);
   DWFL_ASSERT("dwfl_begin", dwfl);
   dwfl_report_begin (dwfl);
@@ -574,6 +582,7 @@ setup_dwfl_user(std::vector<std::string>::const_iterator &begin,
 		const std::vector<std::string>::const_iterator &end,
 		bool all_needed, systemtap_session &s)
 {
+  lock_guard<recursive_mutex> g (setup_dwfl_mutex);
   current_session_for_find_debuginfo = &s;
   // See if we have this dwfl already cached
   set<string> modset(begin, end);
@@ -614,6 +623,7 @@ setup_dwfl_user(std::vector<std::string>::const_iterator &begin,
       string hex = hex_dump(bits, bits_length);
 
       //Store the build ID in the session
+      lock_guard<recursive_mutex> gl (s.session_data_mutex);
       s.build_ids.push_back(hex);
     }
 

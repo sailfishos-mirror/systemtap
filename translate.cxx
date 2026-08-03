@@ -8471,8 +8471,8 @@ emit_symbol_data (systemtap_session& s)
   // cpu (capped at one per module); otherwise a single worker, so at most
   // one thread is inside elfutils at a time.
 #ifdef _ELFUTILS_THREAD_SAFE
-  unsigned nthreads = thread::hardware_concurrency ();
-  if (nthreads == 0 || nthreads > tasks.size ())
+  unsigned nthreads = stap_nthreads ();
+  if (nthreads > tasks.size ())
     nthreads = tasks.size ();
 #else
   unsigned nthreads = 1;

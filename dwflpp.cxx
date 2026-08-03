@@ -335,8 +335,11 @@ dwflpp::function_scope_matches(const vector<string>& scopes)
 void
 dwflpp::setup_kernel(const string& name, systemtap_session & s, bool debuginfo_needed)
 {
-  if (! sess.module_cache)
-    sess.module_cache = new module_cache ();
+  {
+    lock_guard<recursive_mutex> gl (sess.session_data_mutex);
+    if (! sess.module_cache)
+      sess.module_cache = new module_cache ();
+  }
 
   unsigned offline_search_matches = 0;
   dwfl = setup_dwfl_kernel(name, &offline_search_matches, sess);
@@ -370,8 +373,11 @@ dwflpp::setup_kernel(const string& name, systemtap_session & s, bool debuginfo_n
 void
 dwflpp::setup_kernel(const vector<string> &names, bool debuginfo_needed)
 {
-  if (! sess.module_cache)
-    sess.module_cache = new module_cache ();
+  {
+    lock_guard<recursive_mutex> gl (sess.session_data_mutex);
+    if (! sess.module_cache)
+      sess.module_cache = new module_cache ();
+  }
 
   unsigned offline_search_matches = 0;
   set<string> offline_search_names(names.begin(), names.end());
@@ -397,8 +403,11 @@ dwflpp::setup_kernel(const vector<string> &names, bool debuginfo_needed)
 void
 dwflpp::setup_user(const vector<string>& modules, bool debuginfo_needed)
 {
-  if (! sess.module_cache)
-    sess.module_cache = new module_cache ();
+  {
+    lock_guard<recursive_mutex> gl (sess.session_data_mutex);
+    if (! sess.module_cache)
+      sess.module_cache = new module_cache ();
+  }
 
   auto it = modules.begin();
   dwfl = setup_dwfl_user(it, modules.end(), debuginfo_needed, sess);
@@ -5066,7 +5075,10 @@ dwflpp::add_module_build_id_to_hash (Dwfl_Module *m,
       string hex = hex_dump(bits, bits_length);
 
       // Store the build ID in the session
-      s->build_ids.push_back(hex);
+      {
+        lock_guard<recursive_mutex> gl (s->session_data_mutex);
+        s->build_ids.push_back(hex);
+      }
     }
 
   return DWARF_CB_OK;

@@ -69,6 +69,11 @@ extern "C" {
 #define PARSE_ERROR(...) parse_error(ERR_SRC, __VA_ARGS__)
 
 const char *get_home_directory(void);
+// Desired worker-thread count for translator parallelism (parse,
+// derive_probes_parallel, unwind dump) and kbuild -j.  Honors
+// STAP_NTHREADS if set to a positive integer; otherwise
+// std::thread::hardware_concurrency() (at least 1).
+unsigned stap_nthreads(void);
 size_t get_file_size(const std::string &path);
 size_t get_file_size(int fd);
 bool file_exists (const std::string &path);

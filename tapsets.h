@@ -15,6 +15,8 @@
 #include "stringtable.h"
 #include "dwflpp.h"
 
+#include <atomic>
+
 void check_process_probe_kernel_support(systemtap_session& s);
 
 void register_standard_tapsets(systemtap_session& sess);
@@ -148,7 +150,7 @@ protected:
   std::set<functiondecl*> early_resolution_in_progress;
   
   systemtap_session& sess;
-  static unsigned tick;
+  static std::atomic<unsigned> tick;
   std::stack<defined_op*> defined_ops;
   std::set<std::string> valid_ops;
   interned_string* op;

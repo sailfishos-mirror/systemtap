@@ -374,10 +374,15 @@ struct derived_probe_builder
   // any shared session mutations via session_data_mutex.
   virtual bool serialize_builds () const { return true; }
 
-  // Coarse per-builder lock for concurrent derive_probes().  Recursive
-  // because alias/glob/python/java paths re-enter derive_probes on the
-  // same builder from the same thread.
-  std::recursive_mutex lock;
+  // Coarse lock for concurrent derive_probes().  Recursive because
+  // alias/glob/python/java paths re-enter derive_probes on the same
+  // builder from the same thread.  By default each builder owns its
+  // lock; dwarf-family builders (dwarf/tracepoint/btf) share one so
+  // they serialize against setup_dwfl / module_cache / session tables.
+  std::recursive_mutex own_lock;
+  std::recursive_mutex& lock;
+  derived_probe_builder (): lock (own_lock) {}
+  explicit derived_probe_builder (std::recursive_mutex& shared): lock (shared) {}
 
   // match_node entry points: take lock (if serialize_builds) then
   // invoke the virtual build / build_with_suffix.

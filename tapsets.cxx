@@ -32,10 +32,12 @@
 
 #include <cstdlib>
 #include <algorithm>
+#include <atomic>
 #include <deque>
 #include <iostream>
 #include <fstream>
 #include <map>
+#include <mutex>
 #include <set>
 #include <sstream>
 #include <stdexcept>
@@ -1027,7 +1029,8 @@ struct dwarf_builder: public derived_probe_builder
   // Guarded by this->lock (also used by get_*_dw).
   set <string> modules_seen;
 
-  dwarf_builder() {}
+  explicit dwarf_builder(std::recursive_mutex& shared)
+    : derived_probe_builder(shared) {}
 
   // Coarse lock is taken in run_build().  Nested derive_probes for
   // process/library globs use temporarily_release_builder_lock so
@@ -2653,30 +2656,34 @@ query_module (Dwfl_Module *mod,
 {
   try
     {
-      module_info* mi = q->sess.module_cache->cache[name];
-      if (mi == 0)
-        {
-          mi = q->sess.module_cache->cache[name] = new module_info(name);
+      module_info* mi;
+      {
+        lock_guard<recursive_mutex> gl (q->sess.session_data_mutex);
+        mi = q->sess.module_cache->cache[name];
+        if (mi == 0)
+          {
+            mi = q->sess.module_cache->cache[name] = new module_info(name);
 
-          mi->mod = mod;
-          mi->addr = addr;
+            mi->mod = mod;
+            mi->addr = addr;
 
-          const char* debug_filename = "";
-          const char* main_filename = "";
-          (void) dwfl_module_info (mod, NULL, NULL,
-                                   NULL, NULL, NULL,
-                                   & main_filename,
-                                   & debug_filename);
+            const char* debug_filename = "";
+            const char* main_filename = "";
+            (void) dwfl_module_info (mod, NULL, NULL,
+                                     NULL, NULL, NULL,
+                                     & main_filename,
+                                     & debug_filename);
 
-          if (debug_filename || main_filename)
-            {
-              mi->elf_path = debug_filename ?: main_filename;
-            }
-          else if (name == TOK_KERNEL)
-            {
-              mi->dwarf_status = info_absent;
-            }
-        }
+            if (debug_filename || main_filename)
+              {
+                mi->elf_path = debug_filename ?: main_filename;
+              }
+            else if (name == TOK_KERNEL)
+              {
+                mi->dwarf_status = info_absent;
+              }
+          }
+      }
       // OK, enough of that module_info caching business.
 
       q->dw.focus_on_module(mod, mi);
@@ -2962,7 +2969,17 @@ private:
 };
 
 
-unsigned var_expanding_visitor::tick = 0;
+std::atomic<unsigned> var_expanding_visitor::tick {0};
+
+// Shared by dwarf / legacy-tracepoint / btf-tracepoint builders so they
+// serialize against setup_dwfl globals, module_cache, and session tables
+// mutated during $$parms$ / early function resolution.
+static std::recursive_mutex&
+dwarf_family_builder_lock ()
+{
+  static std::recursive_mutex m;
+  return m;
+}
 
 
 var_expanding_visitor::var_expanding_visitor (systemtap_session& s):
@@ -3230,6 +3247,11 @@ var_expanding_visitor::visit_functioncall (functioncall* e)
 {
   update_visitor::visit_functioncall(e); // for arguments etc.
 
+  // session_data_mutex: symbol_resolver pointer/fields, sess.functions,
+  // and find_functions() session-table mutations.  recursive_mutex so
+  // nested require() → visit_functioncall re-entry is fine.
+  lock_guard<recursive_mutex> gl (sess.session_data_mutex);
+
   if (strverscmp(sess.compatible.c_str(), "4.3") >= 0 && // PR25841 behaviour
       e->referents.size() == 0 && // first time seeing this functioncall
       sess.symbol_resolver && // from some sort of symbol-resolution context
@@ -3430,7 +3452,7 @@ dwarf_pretty_print::init_ts (const target_symbol& e)
 functioncall*
 dwarf_pretty_print::expand ()
 {
-  static unsigned tick = 0;
+  static std::atomic<unsigned> tick {0};
 
   // function pretty_print_X([pointer], [arg1, arg2, ...]) {
   //   try {
@@ -4164,7 +4186,7 @@ synthetic_embedded_deref_call(dwflpp& dw, location_context &ctx,
 expression*
 dwarf_pretty_print::deref (target_symbol* e)
 {
-  static unsigned tick = 0;
+  static std::atomic<unsigned> tick {0};
 
   if (!deref_p)
     {
@@ -4275,7 +4297,7 @@ gen_mapped_saved_return(systemtap_session &sess, expression* e,
 			block *& add_block, bool& add_block_tid,
 			block *& add_call_probe, bool& add_call_probe_tid)
 {
-  static unsigned tick = 0;
+  static std::atomic<unsigned> tick {0};
 
   // We've got to do several things here to handle target
   // variables in return probes.
@@ -5090,7 +5112,7 @@ struct dwarf_cast_query : public base_query
 void
 dwarf_cast_query::handle_query_module()
 {
-  static unsigned tick = 0;
+  static std::atomic<unsigned> tick {0};
 
   if (result)
     return;
@@ -5333,7 +5355,7 @@ exp_type_dwarf::exp_type_dwarf(dwflpp* dw, Dwarf_Die* die,
 functioncall *
 exp_type_dwarf::expand(autocast_op* e, bool lvalue)
 {
-  static unsigned tick = 0;
+  static std::atomic<unsigned> tick {0};
 
   try
     {
@@ -5411,13 +5433,13 @@ struct dwarf_atvar_query: public base_query
   atvar_op& e;
   const bool userspace_p, lvalue;
   functioncall*& result;
-  unsigned& tick;
+  std::atomic<unsigned>& tick;
   const string cu_name_pattern;
 
   dwarf_atvar_query(dwflpp& dw, const string& module, atvar_op& e,
                     const bool userspace_p, const bool lvalue,
                     functioncall*& result,
-                    unsigned& tick):
+                    std::atomic<unsigned>& tick):
     base_query(dw, module), e(e),
     userspace_p(userspace_p), lvalue(lvalue), result(result),
     tick(tick), cu_name_pattern(string("*/") + (string)e.cu_name) {}
@@ -6288,7 +6310,7 @@ void
 dwarf_derived_probe::register_patterns(systemtap_session& s)
 {
   match_node* root = s.pattern_root;
-  dwarf_builder *dw = new dwarf_builder();
+  dwarf_builder *dw = new dwarf_builder(dwarf_family_builder_lock());
 
   update_visitor *filter = new dwarf_cast_expanding_visitor(s, *dw);
   s.code_filters.push_back(filter);
@@ -7567,7 +7589,7 @@ sdt_uprobe_var_expanding_visitor::try_parse_arg_varname (target_symbol *e,
                                                          const string& asmarg,
                                                          long precision)
 {
-  static unsigned tick = 0;
+  static std::atomic<unsigned> tick {0};
   expression *argexpr = NULL;
 
   // test for [OFF+]VARNAME[+OFF][(REGISTER)], where VARNAME is a variable
@@ -13659,7 +13681,8 @@ private:
 
 public:
 
-  tracepoint_builder(): dw(0) {}
+  explicit tracepoint_builder(std::recursive_mutex& shared)
+    : derived_probe_builder(shared), dw(0) {}
   ~tracepoint_builder() { delete dw; }
 
   void build_no_more (systemtap_session& s)
@@ -14183,20 +14206,24 @@ focus_typequery_module_cb(Dwfl_Module *mod,
   if (fd->target_name && strcmp(name, fd->target_name) != 0)
     return DWARF_CB_OK;
 
-  module_info* mi = fd->sess.module_cache->cache[name];
-  if (mi == 0)
-    {
-      mi = fd->sess.module_cache->cache[name] = new module_info(name);
-      mi->mod = mod;
-      mi->addr = addr;
+  module_info* mi;
+  {
+    lock_guard<recursive_mutex> gl (fd->sess.session_data_mutex);
+    mi = fd->sess.module_cache->cache[name];
+    if (mi == 0)
+      {
+        mi = fd->sess.module_cache->cache[name] = new module_info(name);
+        mi->mod = mod;
+        mi->addr = addr;
 
-      const char* debug_filename = "";
-      const char* main_filename = "";
-      (void) dwfl_module_info(mod, NULL, NULL, NULL, NULL, NULL,
-                              &main_filename, &debug_filename);
-      if (debug_filename || main_filename)
-        mi->elf_path = debug_filename ?: main_filename;
-    }
+        const char* debug_filename = "";
+        const char* main_filename = "";
+        (void) dwfl_module_info(mod, NULL, NULL, NULL, NULL, NULL,
+                                &main_filename, &debug_filename);
+        if (debug_filename || main_filename)
+          mi->elf_path = debug_filename ?: main_filename;
+      }
+  }
 
   fd->dw.focus_on_module(mod, mi);
   fd->focused = true;
@@ -14216,7 +14243,8 @@ struct btf_tracepoint_builder: public derived_probe_builder
 {
   dwflpp *dw;
 
-  btf_tracepoint_builder(): dw(0) {}
+  explicit btf_tracepoint_builder(std::recursive_mutex& shared)
+    : derived_probe_builder(shared), dw(0) {}
   ~btf_tracepoint_builder() { delete dw; }
 
   bool init_dw(systemtap_session& s)
@@ -14331,7 +14359,8 @@ struct module_btf_tracepoint_builder: public derived_probe_builder
 {
   map<string, dwflpp*> mod_dw;
 
-  module_btf_tracepoint_builder() {}
+  explicit module_btf_tracepoint_builder(std::recursive_mutex& shared)
+    : derived_probe_builder(shared) {}
   ~module_btf_tracepoint_builder() { delete_map(mod_dw); }
 
   dwflpp* init_dw(systemtap_session& s, const string& module_name)
@@ -14578,15 +14607,15 @@ register_standard_tapsets(systemtap_session & s)
 
   // kernel tracepoint probes (header/tracequery DWARF)
   s.pattern_root->bind(TOK_KERNEL)->bind_str(TOK_TRACE)
-    ->bind(new tracepoint_builder());
+    ->bind(new tracepoint_builder(dwarf_family_builder_lock()));
 
   // kernel.tracepoint() from vmlinux.h BTF callback typedefs ($arg1..$argN)
   s.pattern_root->bind(TOK_KERNEL)->bind_str(TOK_TRACEPOINT)
-    ->bind(new btf_tracepoint_builder());
+    ->bind(new btf_tracepoint_builder(dwarf_family_builder_lock()));
 
   // module("foo").tracepoint() from module BTF/DWARF ($arg1..$argN)
   s.pattern_root->bind_str(TOK_MODULE)->bind_str(TOK_TRACEPOINT)
-    ->bind(new module_btf_tracepoint_builder());
+    ->bind(new module_btf_tracepoint_builder(dwarf_family_builder_lock()));
 
   // LSM hook probes (BPF runtime only, requires libbpf for BTF)
 #ifdef HAVE_LIBBPF

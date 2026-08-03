@@ -1,77 +1,123 @@
-# Run stap -p4 under Helgrind to catch races in translator
-# parallelism (pass-1 parse_all, pass-2 derive_probes_parallel,
-# pass-3 emit_symbol_data).  Module build subprocesses are not
-# traced (--trace-children=no).
+# Sequential translator-parallelism checks on the same .stp -p4 job:
+#   1) helgrind              — correctness under concurrent derive/parse/unwind
+#   2) noparallel            — STAP_NTHREADS=1, shared caches warm, unique @1
+#   3) parallel              — default STAP_NTHREADS, unique @1
+#   4) noparallel-poison     — STAP_NTHREADS=1 --poison-cache, unique @1
+#   5) parallel-poison       — default STAP_NTHREADS --poison-cache, unique @1
+#
+# Workload (see .stp): kernel.$$parms$, syscall.sig* outer globs,
+# process("stap").function("*derive*") uprobe globs.
+#
+# Each invocation passes a distinct @1 string after "--" so the script
+# .ko cache key changes (forces re-translate/recompile) while leaving
+# separately cached typequery / buildrun artifacts reusable — except
+# when --poison-cache is used.
+#
+# Dejagnu TIMESTAMP_MS lines (via record_test) around each pass/fail
+# give wall-clock deltas in systemtap.log for the timed variants.
+#
+# Helgrind uses --trace-children=no (translator only, not kbuild).
+# STAP_NTHREADS also caps kbuild -j.
 
 set test "parallelism-helgrind"
+set stpfile "$srcdir/$subdir/$test.stp"
+set stap_base_args [list -p4 -d /bin/sh $stpfile]
 
-# Locate valgrind with helgrind support.
+proc parallelism_run_stap {label cmd timeout_s} {
+    verbose -log "spawn $cmd"
+    eval spawn $cmd
+
+    set timed_out 0
+    expect {
+	-timeout $timeout_s
+	-re {[^\r\n]*\r\n} { exp_continue }
+	timeout { set timed_out 1 }
+	eof { }
+    }
+    catch { close }
+    set results [wait]
+    verbose -log "wait results ($label): $results"
+
+    if {$timed_out} {
+	fail "$label (timeout)"
+	return -1
+    }
+
+    set exit_code -1
+    if {[llength $results] >= 4 && ![lindex $results 2]} {
+	set exit_code [lindex $results 3]
+    }
+    return $exit_code
+}
+
+proc parallelism_timed_p4 {label nthreads_env poison tag} {
+    global stap_base_args
+
+    set args $stap_base_args
+    if {$poison} {
+	set args [linsert $args 0 --poison-cache]
+    }
+    # Distinct @1 → distinct script hash / .ko cache entry.
+    lappend args -- $tag
+
+    # Clear any inherited STAP_NTHREADS, then apply nthreads_env (may be empty).
+    set cmd [concat {env -u STAP_NTHREADS CCACHE_DISABLE=1} \
+		 $nthreads_env stap $args]
+    set exit_code [parallelism_run_stap $label $cmd 600]
+    if {$exit_code == 0} {
+	pass $label
+    } elseif {$exit_code >= 0} {
+	fail "$label (exit $exit_code)"
+    }
+}
+
+# ---------------------------------------------------------------------------
+# 1) Helgrind (optional)
+# ---------------------------------------------------------------------------
 set vg ""
 if {[catch {exec /usr/bin/which valgrind} vg] || $vg == ""} {
     untested "$test (no valgrind)"
-    return
-}
-if {[catch {exec $vg --tool=helgrind --help}]} {
+} elseif {[catch {exec $vg --tool=helgrind --help}]} {
     untested "$test (no helgrind tool)"
-    return
-}
-
-if {[catch {exec mktemp -t stap-$test.XXXXXX.log} hglog]} {
-    fail "$test (mktemp failed: $hglog)"
-    return
-}
-
-set stap_args [list -p4 -d /bin/sh $srcdir/$subdir/$test.stp]
-# --history-level=approx: much faster; still catches conflicting
-# accesses.  --trace-children=no: only the stap translator (passes
-# 1-3); ignore kbuild/gcc under -p4.
-set vg_args [list --tool=helgrind --history-level=approx \
-		  --trace-children=no --error-exitcode=42 \
-		  --log-file=$hglog]
-
-verbose -log "spawn $vg $vg_args stap $stap_args"
-eval spawn $vg $vg_args stap $stap_args
-
-set timed_out 0
-expect {
-    -timeout 1800
-    -re {[^\r\n]*\r\n} { exp_continue }
-    timeout { set timed_out 1 }
-    eof { }
-}
-catch { close }
-set results [wait]
-verbose -log "wait results: $results"
-
-if {$timed_out} {
-    fail "$test (timeout)"
-    return
-}
-
-# Child exit status: wait returns {pid spawnid os_error exit_code}
-# or a longer list if killed by a signal.
-set exit_code -1
-if {[llength $results] >= 4 && ![lindex $results 2]} {
-    set exit_code [lindex $results 3]
-}
-
-if {![file exists $hglog]} {
-    fail "$test (missing helgrind log)"
-    return
-}
-
-set hgtext [read [open $hglog]]
-verbose -log "helgrind log tail:\n[string range $hgtext end-2000 end]"
-
-if {![regexp {ERROR SUMMARY: ([0-9]+) errors} $hgtext -> nerrors]} {
-    fail "$test (no ERROR SUMMARY in helgrind log)"
-    return
-}
-
-if {$exit_code == 0 && $nerrors == 0} {
-    pass $test
-} elseif {$exit_code == 42 || $nerrors > 0} {
-    fail "$test (helgrind: $nerrors errors, exit $exit_code)"
 } else {
-    fail "$test (stap/helgrind exit $exit_code, $nerrors errors)"
+    if {[catch {exec mktemp -t stap-$test.XXXXXX.log} hglog]} {
+	fail "$test (mktemp failed: $hglog)"
+    } else {
+	set vg_args [list --tool=helgrind --history-level=approx \
+			  --trace-children=no --error-exitcode=42 \
+			  --log-file=$hglog]
+	set cmd [concat $vg $vg_args stap $stap_base_args -- helgrind]
+	set exit_code [parallelism_run_stap $test $cmd 1800]
+
+	if {$exit_code >= 0} {
+	    if {![file exists $hglog]} {
+		fail "$test (missing helgrind log)"
+	    } else {
+		set hgtext [read [open $hglog]]
+		verbose -log "helgrind log tail:\n[string range $hgtext end-2000 end]"
+
+		if {![regexp {ERROR SUMMARY: ([0-9]+) errors} $hgtext -> nerrors]} {
+		    fail "$test (no ERROR SUMMARY in helgrind log)"
+		} elseif {$exit_code == 0 && $nerrors == 0} {
+		    pass $test
+		} elseif {$exit_code == 42 || $nerrors > 0} {
+		    fail "$test (helgrind: $nerrors errors, exit $exit_code)"
+		} else {
+		    fail "$test (stap/helgrind exit $exit_code, $nerrors errors)"
+		}
+	    }
+	}
+    }
 }
+
+# ---------------------------------------------------------------------------
+# 2–3) Warm shared caches, unique script @1 (forces script .ko rebuild)
+# ---------------------------------------------------------------------------
+parallelism_timed_p4 "parallelism-timing (noparallel)" {STAP_NTHREADS=1} 0 noparallel
+parallelism_timed_p4 "parallelism-timing (parallel)" {} 0 parallel
+
+# ---------------------------------------------------------------------------
+# 4–5) Cold (--poison-cache), unique script @1
+# ---------------------------------------------------------------------------
+parallelism_timed_p4 "parallelism-timing (noparallel-poison)" {STAP_NTHREADS=1} 1 noparallel-poison
+parallelism_timed_p4 "parallelism-timing (parallel-poison)" {} 1 parallel-poison

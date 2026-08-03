@@ -30,6 +30,8 @@
 #include <cctype>
 #include <locale>
 #include <memory>
+#include <thread>
+#include <cstdlib>
 
 extern "C" {
 #include <elf.h>
@@ -73,6 +75,22 @@ get_home_directory(void)
 
   cerr << _("Unable to determine home directory") << endl;
   return "/";
+}
+
+
+unsigned
+stap_nthreads(void)
+{
+  const char *env = getenv("STAP_NTHREADS");
+  if (env && env[0])
+    {
+      char *end = 0;
+      unsigned long n = strtoul(env, &end, 10);
+      if (end != env && *end == '\0' && n >= 1)
+        return (unsigned) n;
+    }
+  unsigned n = thread::hardware_concurrency();
+  return n ? n : 1;
 }
 
 

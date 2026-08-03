@@ -1221,9 +1221,7 @@ derive_probes_parallel (systemtap_session& s,
       return results_per_probe;
     }
 
-  unsigned nthreads = thread::hardware_concurrency ();
-  if (nthreads == 0)
-    nthreads = 1;
+  unsigned nthreads = stap_nthreads ();
   if (nthreads > probes.size ())
     nthreads = probes.size ();
 
@@ -2818,6 +2816,7 @@ symresolution_info::symresolution_info (systemtap_session& s, bool omniscient_un
   // made safe via our dtor usage
   #pragma GCC diagnostic ignored "-Wdangling-pointer"
   #endif
+  lock_guard<recursive_mutex> gl (s.session_data_mutex);
   saved_session_symbol_resolver = s.symbol_resolver;
   s.symbol_resolver = this; // save resolver for early PR25841 function resolution
   #pragma GCC diagnostic pop
@@ -2826,6 +2825,7 @@ symresolution_info::symresolution_info (systemtap_session& s, bool omniscient_un
 
 symresolution_info::~symresolution_info()
 {
+  lock_guard<recursive_mutex> gl (session.session_data_mutex);
   session.symbol_resolver = saved_session_symbol_resolver;
 }
 
@@ -3402,6 +3402,10 @@ public:
 vector<functiondecl*>
 symresolution_info::find_functions (functioncall *call, const string& name, unsigned arity, const token *tok)
 {
+  // Protect session.functions / session.files mutations against concurrent
+  // var_expanding early-resolution.  recursive: callers may already hold it.
+  lock_guard<recursive_mutex> gl (session.session_data_mutex);
+
   vector<functiondecl*> functions;
   functiondecl* last = 0; // used for error message
 

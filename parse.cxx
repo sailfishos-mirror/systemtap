@@ -4494,7 +4494,7 @@ parser::parse_target_symbol_components (target_symbol* e)
 void parse_all (systemtap_session &session,
                 const std::vector<std::pair<std::string,unsigned>> &files)
 {
-  boost::asio::thread_pool TP (thread::hardware_concurrency());
+  boost::asio::thread_pool TP (stap_nthreads());
   vector<stapfile*> results (files.size()); // allocate/initialize with null pointers
 
   // fork all threads, operating on now-final-shaped vectors

@@ -61,8 +61,8 @@ run_make_cmd(systemtap_session& s, vector<string>& make_cmd,
       make_cmd.push_back("--no-print-directory");
     }
 
-  // Exploit SMP parallelism, if available.
-  long smp = thread::hardware_concurrency();
+  // Exploit SMP parallelism, if available (honors STAP_NTHREADS).
+  long smp = stap_nthreads();
   if (smp <= 0) smp = 1;
   // PR16276: but only if we're not running severely nproc-rlimited
   struct rlimit rlim;
