@@ -1817,6 +1817,8 @@ load_bpf_file(const char *module)
 
   /* Extract basename: */
   char *buf = (char *)malloc(BPF_MAXSTRINGLEN * sizeof(char));
+  if (!buf)
+    fatal("Out of memory allocating module basename\n");
   // NB: If module doesn't contain a single '/', then the behaviour
   // of rfind (-1) and substr (-1 + 1) will default to module_str.
   string module_basename_str
@@ -1827,6 +1829,8 @@ load_bpf_file(const char *module)
 
   /* Extract name: */
   buf = (char*) malloc(BPF_MAXSTRINGLEN * sizeof(char));
+  if (!buf)
+    fatal("Out of memory allocating module name\n");
   string suffix = ".bo";
   string module_name_str
     = module_basename_str.substr(0, module_basename_str.rfind(suffix)); // name
@@ -2253,6 +2257,8 @@ perf_event_loop(pthread_t main_thread)
     fatal("Too many active CPUs for pollfd allocation\n");
   struct pollfd *pmu_fds
     = (struct pollfd *)malloc(n_active_cpus * sizeof(struct pollfd));
+  if (n_active_cpus && !pmu_fds)
+    fatal("Out of memory allocating pollfd array\n");
   vector<unsigned> cpuids;
 
   assert(ncpus == perf_fds.size());
