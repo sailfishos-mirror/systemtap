@@ -227,8 +227,8 @@ debuginfod_builder::build(systemtap_session & sess, probe * base,
                  m_file.to_string().c_str())
            << endl;
     
-    vector<derived_probe *> results;
-    derive_probes(sess, derived_p, results, false, true);
+    vector<derived_probe *> results
+      = derive_probes(sess, derived_p, false, true);
     finished_results.insert(finished_results.end(), results.begin(), results.end());
   }
 }

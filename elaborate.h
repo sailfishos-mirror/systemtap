@@ -366,16 +366,34 @@ struct derived_probe_builder
   virtual bool is_alias () const { return false; }
   virtual std::string name() = 0;
 
-  // When true (default), match_node serializes concurrent build /
-  // build_with_suffix invocations on this builder instance.  Simple
-  // builders with no mutable member state may return false; they must
-  // still protect any shared session mutations via session_data_mutex.
+  // When true (default), run_build() / run_build_with_suffix() hold
+  // lock across the virtual build* call.  Builders may temporarily
+  // release it (see temporarily_release_builder_lock) around nested
+  // derive_probes / derive_probes_parallel.  Simple builders with no
+  // mutable member state may return false; they must still protect
+  // any shared session mutations via session_data_mutex.
   virtual bool serialize_builds () const { return true; }
 
   // Coarse per-builder lock for concurrent derive_probes().  Recursive
   // because alias/glob/python/java paths re-enter derive_probes on the
   // same builder from the same thread.
   std::recursive_mutex lock;
+
+  // match_node entry points: take lock (if serialize_builds) then
+  // invoke the virtual build / build_with_suffix.
+  void run_build(systemtap_session & sess,
+                 probe* base,
+                 probe_point* location,
+                 literal_map_t const & parameters,
+                 std::vector<derived_probe*> & finished_results);
+  void run_build_with_suffix(systemtap_session & sess,
+                             probe * use,
+                             probe_point * location,
+                             literal_map_t const & parameters,
+                             std::vector<derived_probe *>
+                               & finished_results,
+                             std::vector<probe_point::component *>
+                               const & suffix);
 
   static bool has_null_param (literal_map_t const & parameters,
                               interned_string key);
@@ -385,6 +403,28 @@ struct derived_probe_builder
                          interned_string key, int64_t& value);
   static bool has_param (literal_map_t const & parameters,
                          interned_string key);
+};
+
+
+// RAII: drop this builder's serialize lock for a nested derive window,
+// then reacquire.  No-op when serialize_builds() is false.  Assumes the
+// calling thread already holds exactly one run_build lock level.
+struct temporarily_release_builder_lock
+{
+  std::recursive_mutex* m;
+  explicit temporarily_release_builder_lock (derived_probe_builder& b)
+    : m (b.serialize_builds () ? &b.lock : 0)
+  {
+    if (m)
+      m->unlock ();
+  }
+  ~temporarily_release_builder_lock ()
+  {
+    if (m)
+      m->lock ();
+  }
+  temporarily_release_builder_lock (const temporarily_release_builder_lock&) = delete;
+  temporarily_release_builder_lock& operator= (const temporarily_release_builder_lock&) = delete;
 };
 
 
@@ -478,15 +518,17 @@ alias_expansion_builder
 /* struct systemtap_session moved to session.h */
 
 int semantic_pass (systemtap_session& s);
-void derive_probes (systemtap_session& s,
-                    probe *p, std::vector<derived_probe*>& dps,
-                    bool optional = false, bool rethrow_errors = false);
-// Derive each probe concurrently into results_per_probe[i].  Results
-// are ordered to match probes.  optional applies to every element.
-void derive_probes_parallel (systemtap_session& s,
-                             const std::vector<probe*>& probes,
-                             std::vector<std::vector<derived_probe*> >& results_per_probe,
-                             bool optional = false);
+// Derive probes for one script probe; returns a fresh result vector
+// (never mutates a caller-owned / shared accumulator).
+std::vector<derived_probe*> derive_probes (systemtap_session& s,
+                                           probe *p,
+                                           bool optional = false,
+                                           bool rethrow_errors = false);
+// Derive each probe concurrently.  results[i] corresponds to probes[i].
+std::vector<std::vector<derived_probe*> >
+derive_probes_parallel (systemtap_session& s,
+                        const std::vector<probe*>& probes,
+                        bool optional = false);
 
 // A helper we use here and in translate, for pulling symbols out of lvalue
 // expressions.

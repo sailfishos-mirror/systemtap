@@ -253,6 +253,64 @@ derived_probe::print_dupe_stamp_unprivileged_process_owner(ostream& o)
 // Members of derived_probe_builder
 
 void
+derived_probe_builder::run_build(systemtap_session & sess,
+                                 probe* base,
+                                 probe_point* location,
+                                 literal_map_t const & parameters,
+                                 vector<derived_probe*> & finished_results)
+{
+  // Prefer plain lock/unlock over unique_lock so build() can
+  // temporarily_release_builder_lock without fighting a unique_lock
+  // that still thinks it owns the mutex.
+  bool took = false;
+  if (serialize_builds ())
+    {
+      lock.lock ();
+      took = true;
+    }
+  try
+    {
+      build (sess, base, location, parameters, finished_results);
+    }
+  catch (...)
+    {
+      if (took)
+        lock.unlock ();
+      throw;
+    }
+  if (took)
+    lock.unlock ();
+}
+
+void
+derived_probe_builder::run_build_with_suffix(systemtap_session & sess,
+                                             probe * use,
+                                             probe_point * location,
+                                             literal_map_t const & parameters,
+                                             vector<derived_probe *> & finished_results,
+                                             vector<probe_point::component *> const & suffix)
+{
+  bool took = false;
+  if (serialize_builds ())
+    {
+      lock.lock ();
+      took = true;
+    }
+  try
+    {
+      build_with_suffix (sess, use, location, parameters, finished_results, suffix);
+    }
+  catch (...)
+    {
+      if (took)
+        lock.unlock ();
+      throw;
+    }
+  if (took)
+    lock.unlock ();
+}
+
+void
 derived_probe_builder::build_with_suffix(systemtap_session &,
                                          probe *,
                                          probe_point *,
@@ -502,10 +560,7 @@ match_node::find_and_build (systemtap_session& s,
       for (unsigned k=0; k<ends.size(); k++) 
         {
           derived_probe_builder *b = ends[k];
-          unique_lock<recursive_mutex> bl (b->lock, defer_lock);
-          if (b->serialize_builds ())
-            bl.lock ();
-          b->build (s, p, loc, param_map, results);
+          b->run_build (s, p, loc, param_map, results);
         }
 
       // Collect names of builders attempted for error reporting
@@ -764,10 +819,7 @@ match_node::try_suffix_expansion (systemtap_session& s,
           derived_probe_builder *b = ends[k];
           try
             {
-              unique_lock<recursive_mutex> bl (b->lock, defer_lock);
-              if (b->serialize_builds ())
-                bl.lock ();
-              b->build_with_suffix (s, p, loc, param_map, results, suffix);
+              b->run_build_with_suffix (s, p, loc, param_map, results, suffix);
             }
           catch (const recursive_expansion_error &e)
             {
@@ -969,14 +1021,15 @@ alias_expansion_builder::build_with_suffix(systemtap_session & sess,
   probewrite_evaluator pw_eval(sess, use->body);
   pw_eval.replace(n->body);
 
-  unsigned old_num_results = finished_results.size();
   // If expanding for an alias suffix, be sure to pass on any errors
   // to the caller instead of printing them in derive_probes():
-  derive_probes (sess, n, finished_results, location->optional, !suffix.empty());
+  vector<derived_probe*> dps
+    = derive_probes (sess, n, location->optional, !suffix.empty());
+  finished_results.insert (finished_results.end (), dps.begin (), dps.end ());
 
   // Check whether we resolved something. If so, put the
   // whole library into the queue if not already there.
-  if (finished_results.size() > old_num_results)
+  if (! dps.empty ())
     {
       stapfile *f = alias->tok->location.file;
       lock_guard<recursive_mutex> gl (sess.session_data_mutex);
@@ -1013,9 +1066,9 @@ alias_expansion_builder::checkForRecursiveExpansion (probe *use)
 // ------------------------------------------------------------------------
 
 // The match-and-expand loop.
-void
+vector<derived_probe*>
 derive_probes (systemtap_session& s,
-               probe *p, vector<derived_probe*>& dps,
+               probe *p,
                bool optional,
                bool rethrow_errors)
 {
@@ -1034,6 +1087,7 @@ derive_probes (systemtap_session& s,
       undo_parent_optional = true;
     }
 
+  vector<derived_probe*> dps;
   vector <semantic_error> optional_errs;
 
   for (unsigned i = 0; i < p->locations.size(); ++i)
@@ -1145,26 +1199,26 @@ derive_probes (systemtap_session& s,
     {
       parent_optional = false;
     }
+
+  return dps;
 }
 
 
-void
+vector<vector<derived_probe*> >
 derive_probes_parallel (systemtap_session& s,
                         const vector<probe*>& probes,
-                        vector<vector<derived_probe*> >& results_per_probe,
                         bool optional)
 {
-  results_per_probe.clear ();
-  results_per_probe.resize (probes.size ());
+  vector<vector<derived_probe*> > results_per_probe (probes.size ());
 
   if (probes.empty ())
-    return;
+    return results_per_probe;
 
   // Single probe: avoid thread-pool overhead.
   if (probes.size () == 1)
     {
-      derive_probes (s, probes[0], results_per_probe[0], optional);
-      return;
+      results_per_probe[0] = derive_probes (s, probes[0], optional);
+      return results_per_probe;
     }
 
   unsigned nthreads = thread::hardware_concurrency ();
@@ -1184,7 +1238,7 @@ derive_probes_parallel (systemtap_session& s,
         try
           {
             assert_no_interrupts ();
-            derive_probes (s, probes[i], results_per_probe[i], optional);
+            results_per_probe[i] = derive_probes (s, probes[i], optional);
           }
         catch (...)
           {
@@ -1202,6 +1256,8 @@ derive_probes_parallel (systemtap_session& s,
         if (pending[i])
           rethrow_exception (pending[i]);
     }
+
+  return results_per_probe;
 }
 
 
@@ -1761,8 +1817,7 @@ semantic_pass_conditions (systemtap_session & sess)
       if (!p)
         throw SEMANTIC_ERROR (_("can't create cond initializer probe"), tok);
 
-      vector<derived_probe*> dps;
-      derive_probes(sess, p, dps);
+      vector<derived_probe*> dps = derive_probes(sess, p);
 
       // there should only be one
       assert(dps.size() == 1);
@@ -2037,8 +2092,8 @@ semantic_pass_symbols (systemtap_session& s)
       // concurrent; symbol resolution stays serial (shared tables).
 
       vector<probe*> batch = dome->probes;
-      vector<vector<derived_probe*> > batch_results;
-      derive_probes_parallel (s, batch, batch_results);
+      vector<vector<derived_probe*> > batch_results
+        = derive_probes_parallel (s, batch);
 
       for (unsigned i=0; i<batch.size(); i++)
         {
@@ -2297,8 +2352,7 @@ void add_global_var_display (systemtap_session& s)
       if (!p)
 	throw SEMANTIC_ERROR (_("can't create global var display"), l->tok);
 
-      vector<derived_probe*> dps;
-      derive_probes (s, p, dps);
+      vector<derived_probe*> dps = derive_probes (s, p);
       for (unsigned i = 0; i < dps.size(); i++)
 	{
 	  derived_probe* dp = dps[i];
@@ -2375,8 +2429,7 @@ static void gen_monitor_data(systemtap_session& s)
   if (!p)
     throw SEMANTIC_ERROR (_("can't create begin probe"), 0);
 
-  vector<derived_probe*> dps;
-  derive_probes (s, p, dps);
+  vector<derived_probe*> dps = derive_probes (s, p);
 
   derived_probe* dp = dps[0];
   s.probes.push_back (dp);
@@ -2522,8 +2575,7 @@ static void monitor_mode_read(systemtap_session& s)
   if (!p)
     throw SEMANTIC_ERROR (_("can't create procfs probe"), 0);
 
-  vector<derived_probe*> dps;
-  derive_probes (s, p, dps);
+  vector<derived_probe*> dps = derive_probes (s, p);
 
   derived_probe* dp = dps[0];
   s.probes.push_back (dp);
@@ -2639,8 +2691,7 @@ static void monitor_mode_write(systemtap_session& s)
   if (!p)
     throw SEMANTIC_ERROR (_("can't create procfs probe"), 0);
 
-  vector<derived_probe*> dps;
-  derive_probes (s, p, dps);
+  vector<derived_probe*> dps = derive_probes (s, p);
 
   derived_probe* dp = dps[0];
   s.probes.push_back (dp);
@@ -2663,8 +2714,7 @@ static void setup_timeout(systemtap_session& s)
   if (!p)
     throw SEMANTIC_ERROR (_("can't create timer probe"), 0);
 
-  vector<derived_probe*> dps;
-  derive_probes (s, p, dps);
+  vector<derived_probe*> dps = derive_probes (s, p);
 
   derived_probe* dp = dps[0];
   s.probes.push_back (dp);

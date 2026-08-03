@@ -1,0 +1,31 @@
+#! stap
+# Parallelism stress for translator passes under helgrind (-p4).
+#
+# Pass 1: pulls in many tapset files (parallel parse_all).
+# Pass 2: several probes / builders so derive_probes_parallel runs
+#         (begin/end/timer unlocked; dwarf under builder locks).
+# Pass 3: -d /bin/sh (from the .exp) pulls extra unwind/symbol work
+#         that emit_symbol_data can parallelize.
+# Pass 4: compile to .ko (children not traced by helgrind).
+
+probe begin, begin(1), end, end(-1)
+{
+  printf("%s\n", pp())
+}
+
+probe timer.s(1), timer.ms(500), timer.us(1000)
+{
+  exit()
+}
+
+probe kernel.function("vfs_read"),
+      kernel.function("vfs_write"),
+      kernel.function("schedule")
+{
+  printf("%s\n", probefunc())
+}
+
+probe kernel.function("do_sys_open*") ?
+{
+  printf("%s\n", pp())
+}

@@ -1029,10 +1029,10 @@ struct dwarf_builder: public derived_probe_builder
 
   dwarf_builder() {}
 
-  // Still uses match_node coarse serialize_builds() (default true): dwflpp
-  // objects in kern_dw/user_dw are not safe for concurrent use.  Member
-  // lock protects cache maps / modules_seen for a future finer-grained
-  // unlock; process/library glob parallel derive waits on that.
+  // Coarse lock is taken in run_build().  Nested derive_probes for
+  // process/library globs use temporarily_release_builder_lock so
+  // workers can re-enter via run_build without deadlock.  Member lock
+  // also guards kern_dw/user_dw/modules_seen cache updates.
 
   dwflpp *get_kern_dw(systemtap_session& sess, const string& module, bool debuginfo_needed = true)
   {
@@ -2802,7 +2802,9 @@ query_one_library (const char *library, dwflpp & dw,
       // because users expect wildcarded probe points to only apply to a subset
       // of matching libraries, in the sense of "any", rather than "all", just
       // like module("*") and process("*"). See also dwarf_builder::build().
-      derive_probes(dw.sess, new_base, results, true /* optional */ );
+      vector<derived_probe*> dps
+        = derive_probes(dw.sess, new_base, true /* optional */ );
+      results.insert(results.end(), dps.begin(), dps.end());
 
       if (dw.sess.verbose > 2)
         clog << _("module=") << library_path << endl;
@@ -8657,7 +8659,8 @@ resolve_library_by_path(base_query & q,
                         probe * base,
                         probe_point * location,
                         literal_map_t const & parameters,
-                        vector<derived_probe *> & finished_results)
+                        vector<derived_probe *> & finished_results,
+                        derived_probe_builder & builder)
 {
   size_t results_pre = finished_results.size();
   systemtap_session & sess = q.sess;
@@ -8673,10 +8676,11 @@ resolve_library_by_path(base_query & q,
 
       if (contains_glob_chars (lib))
         {
-          // Evaluate glob here, and call derive_probes recursively with each match.
-          // (Not parallelized yet: this runs under dwarf_builder's coarse lock;
-          // nested derive_probes_parallel would deadlock on that lock.)
+          // Evaluate glob, then derive in parallel with the builder
+          // lock released so nested run_build() calls can proceed.
           const auto& globs = glob_executable (lib);
+          vector<probe*> batch;
+          batch.reserve (globs.size ());
           for (auto it = globs.begin(); it != globs.end(); ++it)
             {
               assert_no_interrupts();
@@ -8685,9 +8689,6 @@ resolve_library_by_path(base_query & q,
               if (sess.verbose > 1)
                 clog << _F("Expanded library(\"%s\") to library(\"%s\")",
                            lib.to_string().c_str(), globbed.c_str()) << endl;
-
-              probe *new_base = build_library_probe(dw, globbed,
-                                                    base, location);
 
               // We override "optional = true" here, as if the
               // wildcarded probe point was given a "?" suffix.
@@ -8698,9 +8699,18 @@ resolve_library_by_path(base_query & q,
               // than "all", sort of similarly how
               // module("*").function("...") patterns work.
 
-              derive_probes (sess, new_base, finished_results,
-                             true /* NB: not location->optional */ );
+              batch.push_back (build_library_probe(dw, globbed,
+                                                   base, location));
             }
+          vector<vector<derived_probe*> > per;
+          {
+            temporarily_release_builder_lock unlock (builder);
+            per = derive_probes_parallel (sess, batch,
+                                          true /* NB: not location->optional */ );
+          }
+          for (size_t i = 0; i < per.size (); i++)
+            finished_results.insert (finished_results.end (),
+                                     per[i].begin (), per[i].end ());
         }
       else
         {
@@ -8710,7 +8720,13 @@ resolve_library_by_path(base_query & q,
             {
               probe *new_base = build_library_probe(dw, resolved_lib,
                                                     base, location);
-              derive_probes(sess, new_base, finished_results);
+              vector<derived_probe*> dps;
+              {
+                temporarily_release_builder_lock unlock (builder);
+                dps = derive_probes(sess, new_base);
+              }
+              finished_results.insert(finished_results.end(),
+                                      dps.begin(), dps.end());
               if (lib.find('/') == string::npos)
                 sess.print_warning(_F("'%s' is not a needed library of '%s'. "
                                       "Specify the full path to squelch this warning.",
@@ -8914,12 +8930,13 @@ dwarf_builder::build(systemtap_session & sess,
           literal_string* lit = dynamic_cast<literal_string*>(location->components[0]->arg);
           assert (lit);
 
-          // Evaluate glob here, and call derive_probes recursively with each match.
-          // (Not parallelized yet: this runs under dwarf_builder's coarse lock;
-          // nested derive_probes_parallel would deadlock on that lock.)
+          // Evaluate glob, then derive in parallel with the builder
+          // lock released so nested run_build() calls can proceed.
           const auto& globs = glob_executable (sess.sysroot
 					       + string(module_name));
           unsigned results_pre = finished_results.size();
+          vector<probe*> batch;
+          batch.reserve (globs.size ());
           for (auto it = globs.begin(); it != globs.end(); ++it)
             {
               assert_no_interrupts();
@@ -8944,8 +8961,6 @@ dwarf_builder::build(systemtap_session & sess,
               ppc->tok = location->components[0]->tok; // overwrite [0] slot, pattern matched above
               pp->components[0] = ppc;
 
-              probe* new_probe = new probe (base, pp);
-
               // We override "optional = true" here, as if the
               // wildcarded probe point was given a "?" suffix.
 
@@ -8955,9 +8970,17 @@ dwarf_builder::build(systemtap_session & sess,
               // than "all", sort of similarly how
               // module("*").function("...") patterns work.
 
-              derive_probes (sess, new_probe, finished_results,
-                             true /* NB: not location->optional */ );
+              batch.push_back (new probe (base, pp));
             }
+          vector<vector<derived_probe*> > per;
+          {
+            temporarily_release_builder_lock unlock (*this);
+            per = derive_probes_parallel (sess, batch,
+                                          true /* NB: not location->optional */ );
+          }
+          for (size_t i = 0; i < per.size (); i++)
+            finished_results.insert (finished_results.end (),
+                                     per[i].begin (), per[i].end ());
 
           unsigned results_post = finished_results.size();
 
@@ -9093,7 +9116,9 @@ dwarf_builder::build(systemtap_session & sess,
 
                   probe* new_probe = new probe (base, pp);
 
-                  derive_probes (sess, new_probe, finished_results);
+                  vector<derived_probe*> dps = derive_probes (sess, new_probe);
+                  finished_results.insert (finished_results.end (),
+                                           dps.begin (), dps.end ());
 
                   script_file.close();
                   return;
@@ -9166,7 +9191,7 @@ dwarf_builder::build(systemtap_session & sess,
           && sdtq.has_library && !sdtq.resolved_library
           && resolve_library_by_path (sdtq, sdtq.visited_libraries,
                                       base, location, filled_parameters,
-                                      finished_results))
+                                      finished_results, *this))
         return;
 
       // Did we fail to find a mark?
@@ -9269,7 +9294,7 @@ dwarf_builder::build(systemtap_session & sess,
       && q.has_library && !q.resolved_library
       && resolve_library_by_path (q, q.visited_libraries,
                                   base, location, filled_parameters,
-                                  finished_results))
+                                  finished_results, *this))
     return;
 
   // If we just failed to resolve a function/plt by name, we can suggest

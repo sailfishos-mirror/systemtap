@@ -1,0 +1,77 @@
+# Run stap -p4 under Helgrind to catch races in translator
+# parallelism (pass-1 parse_all, pass-2 derive_probes_parallel,
+# pass-3 emit_symbol_data).  Module build subprocesses are not
+# traced (--trace-children=no).
+
+set test "parallelism-helgrind"
+
+# Locate valgrind with helgrind support.
+set vg ""
+if {[catch {exec /usr/bin/which valgrind} vg] || $vg == ""} {
+    untested "$test (no valgrind)"
+    return
+}
+if {[catch {exec $vg --tool=helgrind --help}]} {
+    untested "$test (no helgrind tool)"
+    return
+}
+
+if {[catch {exec mktemp -t stap-$test.XXXXXX.log} hglog]} {
+    fail "$test (mktemp failed: $hglog)"
+    return
+}
+
+set stap_args [list -p4 -d /bin/sh $srcdir/$subdir/$test.stp]
+# --history-level=approx: much faster; still catches conflicting
+# accesses.  --trace-children=no: only the stap translator (passes
+# 1-3); ignore kbuild/gcc under -p4.
+set vg_args [list --tool=helgrind --history-level=approx \
+		  --trace-children=no --error-exitcode=42 \
+		  --log-file=$hglog]
+
+verbose -log "spawn $vg $vg_args stap $stap_args"
+eval spawn $vg $vg_args stap $stap_args
+
+set timed_out 0
+expect {
+    -timeout 1800
+    -re {[^\r\n]*\r\n} { exp_continue }
+    timeout { set timed_out 1 }
+    eof { }
+}
+catch { close }
+set results [wait]
+verbose -log "wait results: $results"
+
+if {$timed_out} {
+    fail "$test (timeout)"
+    return
+}
+
+# Child exit status: wait returns {pid spawnid os_error exit_code}
+# or a longer list if killed by a signal.
+set exit_code -1
+if {[llength $results] >= 4 && ![lindex $results 2]} {
+    set exit_code [lindex $results 3]
+}
+
+if {![file exists $hglog]} {
+    fail "$test (missing helgrind log)"
+    return
+}
+
+set hgtext [read [open $hglog]]
+verbose -log "helgrind log tail:\n[string range $hgtext end-2000 end]"
+
+if {![regexp {ERROR SUMMARY: ([0-9]+) errors} $hgtext -> nerrors]} {
+    fail "$test (no ERROR SUMMARY in helgrind log)"
+    return
+}
+
+if {$exit_code == 0 && $nerrors == 0} {
+    pass $test
+} elseif {$exit_code == 42 || $nerrors > 0} {
+    fail "$test (helgrind: $nerrors errors, exit $exit_code)"
+} else {
+    fail "$test (stap/helgrind exit $exit_code, $nerrors errors)"
+}

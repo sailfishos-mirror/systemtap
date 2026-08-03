@@ -479,8 +479,7 @@ python_builder::build(systemtap_session & sess, probe * base,
 	  if (!base_probe)
 	    throw SEMANTIC_ERROR (_("can't create python3 procfs probe"),
 				  tok);
-	  vector<derived_probe *> results;
-	  derive_probes(sess, base_probe, results);
+	  vector<derived_probe *> results = derive_probes(sess, base_probe);
 	  if (results.size() != 1)
 	    throw SEMANTIC_ERROR (_F("wrong number of probes derived (%d),"
 				     " should be 1", (int)results.size()));
@@ -508,7 +507,9 @@ python_builder::build(systemtap_session & sess, probe * base,
 	  if (!mark_probe)
 	      throw SEMANTIC_ERROR (_("can't create python init mark probe"),
 				    tok);
-	  derive_probes(sess, mark_probe, finished_results);
+	  vector<derived_probe *> mark_dps = derive_probes(sess, mark_probe);
+	  finished_results.insert(finished_results.end(),
+				  mark_dps.begin(), mark_dps.end());
       }
 
       stringstream code;
@@ -595,7 +596,11 @@ python_builder::build(systemtap_session & sess, probe * base,
       // const-fold-loop will be done as a part of the uprobe building
       // var_expand_const_fold_loop (sess, mark_probe->body, pvev);
 
-      derive_probes(sess, mark_probe, finished_results);
+      {
+	vector<derived_probe *> mark_dps = derive_probes(sess, mark_probe);
+	finished_results.insert(finished_results.end(),
+				mark_dps.begin(), mark_dps.end());
+      }
 
       // Create a python_derived_probe, but don't return it in
       // 'finished_results'. Instead just add it to the

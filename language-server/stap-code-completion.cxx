@@ -335,8 +335,8 @@ void lsp_method_text_document_completion::complete_string()
             pp->components.push_back(&c);
             p.locations.push_back(pp);
 
-            vector<derived_probe *> dps;
-            derive_probes(*lang_server->s, &p, dps, false /* Not optional */, true /* Rethrow semantic errors */);
+            vector<derived_probe *> dps
+              = derive_probes(*lang_server->s, &p, false /* Not optional */, true /* Rethrow semantic errors */);
             for (auto it = dps.begin(); it != dps.end(); ++it)
             {
                 derived_probe *dp = *it;
@@ -405,8 +405,8 @@ void lsp_method_text_document_completion::complete(string code)
                 probe p;
                 p.locations.push_back(lang_server->c_state->pp);
                 p.body = new block();
-                vector<derived_probe *> dps;
-                derive_probes(*lang_server->s, &p, dps, false /* Not optional */, true /* Rethrow semantic errors */);
+                vector<derived_probe *> dps
+                  = derive_probes(*lang_server->s, &p, false /* Not optional */, true /* Rethrow semantic errors */);
                 if (0 != dps.size()) // Should only have 1 derived probe
                 {
                     list<string> args;
