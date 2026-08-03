@@ -24,9 +24,11 @@ if {$ok == 1} { fail "$test_name ($ok)" } { pass "$test_name" }
 
 # Test the fix for PR19021 - the tapset function task_dentry_path()
 # should handle more than just files.
+# Use dd (read_iter) rather than cat: modern coreutils cat splices and
+# never reaches anon_pipe_read / pipe_read.
 set test "${test_base}2"
 set test_name "$test_base (synthetic files)"
-spawn stap $srcdir/$subdir/$test.stp -c "echo hi | cat > /dev/null"
+spawn stap $srcdir/$subdir/$test.stp -c "echo hi | dd bs=1 count=2 of=/dev/null 2>/dev/null"
 set ok 0
 expect {
     -timeout 150
