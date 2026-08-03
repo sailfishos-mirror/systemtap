@@ -4688,6 +4688,8 @@ output_stapbpf_script_name(BPF_Output &eo, const std::string script_name)
   Elf_Data *data = so->data;
   size_t script_name_len = strlen(script_name.c_str());
   data->d_buf = (void *)malloc(script_name_len + 1);
+  if (!data->d_buf)
+    throw SEMANTIC_ERROR(_("out of memory allocating BPF script name"));
   char *script_name_buf = (char *)data->d_buf;
   script_name.copy(script_name_buf, script_name_len);
   script_name_buf[script_name_len] = '\0';
@@ -4848,6 +4850,8 @@ output_interned_aggregates(BPF_Output &eo, globals& glob)
   unsigned n_aggregates =
     glob.scalar_stats.empty() ? glob.aggregates.size() : glob.aggregates.size() + 1;
   data->d_buf = (void *)calloc(n_aggregates, interned_aggregate_len);
+  if (!data->d_buf)
+    throw SEMANTIC_ERROR(_("out of memory allocating BPF aggregate metadata"));
   data->d_size = interned_aggregate_len * n_aggregates;
   size_t ofs = 0; // XXX after glob.scalar_stats
   if (!glob.scalar_stats.empty())
@@ -4883,6 +4887,8 @@ output_foreach_loop_info(BPF_Output &eo, globals& glob)
     sizeof(uint64_t) * globals::n_foreach_info_fields;
   unsigned n_foreach_loops = glob.foreach_loop_info.size();
   data->d_buf = (void *)calloc(n_foreach_loops, interned_foreach_info_len);
+  if (!data->d_buf)
+    throw SEMANTIC_ERROR(_("out of memory allocating BPF foreach metadata"));
   data->d_size = interned_foreach_info_len * n_foreach_loops;
   size_t ofs = 0;
   uint64_t *ix = (uint64_t *)data->d_buf;
