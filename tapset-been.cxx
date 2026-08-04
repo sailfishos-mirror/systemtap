@@ -87,11 +87,10 @@ struct be_builder: public derived_probe_builder
   // Stateless builder: safe for concurrent build() without coarse lock.
   virtual bool serialize_builds () const { return false; }
 
-  virtual void build(systemtap_session &,
-                     probe * base,
-                     probe_point * location,
-                     literal_map_t const & parameters,
-                     vector<derived_probe *> & finished_results)
+  virtual vector<derived_probe *> build(systemtap_session &,
+                                        probe * base,
+                                        probe_point * location,
+                                        literal_map_t const & parameters)
   {
     int64_t priority = 0;
     if (type == BEGIN)
@@ -101,8 +100,10 @@ struct be_builder: public derived_probe_builder
     else if (type == ERROR)
       get_param(parameters, TOK_ERROR, priority);
 
-    finished_results.push_back
+    vector<derived_probe *> results;
+    results.push_back
       (new be_derived_probe(base, location, type, priority));
+    return results;
   }
 
   virtual string name() { return "begin/end builder"; }
@@ -238,13 +239,14 @@ struct never_derived_probe: public derived_probe
 struct never_builder: public derived_probe_builder
 {
   never_builder() {}
-  virtual void build(systemtap_session &,
-                     probe * base,
-                     probe_point * location,
-                     literal_map_t const &,
-                     vector<derived_probe *> & finished_results)
+  virtual vector<derived_probe *> build(systemtap_session &,
+                                        probe * base,
+                                        probe_point * location,
+                                        literal_map_t const &)
   {
-    finished_results.push_back(new never_derived_probe(base, location));
+    vector<derived_probe *> results;
+    results.push_back(new never_derived_probe(base, location));
+    return results;
   }
 
   virtual string name() { return "never builder"; }

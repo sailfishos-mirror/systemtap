@@ -280,10 +280,9 @@ perf_derived_probe_group::emit_module_exit (systemtap_session& s)
 
 struct perf_builder: public derived_probe_builder
 {
-    virtual void build(systemtap_session & sess,
-                       probe * base, probe_point * location,
-                       literal_map_t const & parameters,
-                       vector<derived_probe *> & finished_results);
+    virtual vector<derived_probe *> build(systemtap_session & sess,
+                                            probe * base, probe_point * location,
+                                            literal_map_t const & parameters);
 
     static void register_patterns(systemtap_session& s);
 
@@ -291,12 +290,11 @@ struct perf_builder: public derived_probe_builder
 };
 
 
-void
+vector<derived_probe *>
 perf_builder::build(systemtap_session & sess,
 		    probe * base,
 		    probe_point * location,
-		    literal_map_t const & parameters,
-		    vector<derived_probe *> & finished_results)
+		    literal_map_t const & parameters)
 {
   // XXX need additional version checks too?
   // --- perhaps look for export of perf_event_create_kernel_counter
@@ -382,12 +380,14 @@ perf_builder::build(systemtap_session & sess,
   new_location->well_formed = true;
   probe *new_base = new probe(base, new_location);
 
-  finished_results.push_back
+  vector<derived_probe *> results;
+  results.push_back
     (new perf_derived_probe(new_base, location, type, config,
                             has_freq ? freq : period, proc_p,
 			    has_counter, has_freq, proc_n, var));
   if (!var.empty())
     sess.perf_counters.push_back(make_pair (var, proc_n));
+  return results;
 }
 
 

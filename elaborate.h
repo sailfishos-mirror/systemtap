@@ -348,17 +348,16 @@ typedef std::map<interned_string, literal*> literal_map_t;
 
 struct derived_probe_builder
 {
-  virtual void build(systemtap_session & sess,
+  // Returns a fresh result vector (never mutates a caller-owned
+  // accumulator).  Nested helpers may still take a local vector& sink.
+  virtual std::vector<derived_probe*> build(systemtap_session & sess,
 		     probe* base,
 		     probe_point* location,
-		     literal_map_t const & parameters,
-		     std::vector<derived_probe*> & finished_results) = 0;
-  virtual void build_with_suffix(systemtap_session & sess,
+		     literal_map_t const & parameters) = 0;
+  virtual std::vector<derived_probe*> build_with_suffix(systemtap_session & sess,
                                  probe * use,
                                  probe_point * location,
                                  literal_map_t const & parameters,
-                                 std::vector<derived_probe *>
-                                   & finished_results,
                                  std::vector<probe_point::component *>
                                    const & suffix);
   virtual ~derived_probe_builder() {}
@@ -386,17 +385,14 @@ struct derived_probe_builder
 
   // match_node entry points: take lock (if serialize_builds) then
   // invoke the virtual build / build_with_suffix.
-  void run_build(systemtap_session & sess,
+  std::vector<derived_probe*> run_build(systemtap_session & sess,
                  probe* base,
                  probe_point* location,
-                 literal_map_t const & parameters,
-                 std::vector<derived_probe*> & finished_results);
-  void run_build_with_suffix(systemtap_session & sess,
+                 literal_map_t const & parameters);
+  std::vector<derived_probe*> run_build_with_suffix(systemtap_session & sess,
                              probe * use,
                              probe_point * location,
                              literal_map_t const & parameters,
-                             std::vector<derived_probe *>
-                               & finished_results,
                              std::vector<probe_point::component *>
                                const & suffix);
 
@@ -499,17 +495,14 @@ alias_expansion_builder
     : alias(a)
   {}
 
-  virtual void build(systemtap_session & sess,
+  virtual std::vector<derived_probe*> build(systemtap_session & sess,
 		     probe * use,
 		     probe_point * location,
-		     literal_map_t const &,
-		     std::vector<derived_probe *> & finished_results);
-  virtual void build_with_suffix(systemtap_session & sess,
+		     literal_map_t const &);
+  virtual std::vector<derived_probe*> build_with_suffix(systemtap_session & sess,
                                  probe * use,
                                  probe_point * location,
                                  literal_map_t const &,
-                                 std::vector<derived_probe *>
-                                   & finished_results,
                                  std::vector<probe_point::component *>
                                    const & suffix);
   virtual bool is_alias () const { return true; }

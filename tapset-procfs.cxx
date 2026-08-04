@@ -658,22 +658,20 @@ struct procfs_builder: public derived_probe_builder
   procfs_builder() {}
   // No mutable member state; concurrent build() is safe.
   virtual bool serialize_builds () const { return false; }
-  virtual void build(systemtap_session & sess,
-                     probe * base,
-                     probe_point * location,
-                     literal_map_t const & parameters,
-                     vector<derived_probe *> & finished_results);
+  virtual vector<derived_probe *> build(systemtap_session & sess,
+                                        probe * base,
+                                        probe_point * location,
+                                        literal_map_t const & parameters);
 
   virtual string name() { return "procfs builder"; }
 };
 
 
-void
+vector<derived_probe *>
 procfs_builder::build(systemtap_session & sess,
                       probe * base,
                       probe_point * location,
-                      literal_map_t const & parameters,
-                      vector<derived_probe *> & finished_results)
+                      literal_map_t const & parameters)
 {
   interned_string path;
   bool has_procfs = get_param(parameters, TOK_PROCFS, path);
@@ -748,9 +746,11 @@ procfs_builder::build(systemtap_session & sess,
   if (!(has_read ^ has_write))
     throw SEMANTIC_ERROR (_("need read/write component"), location->components.front()->tok);
 
-  finished_results.push_back(new procfs_derived_probe(sess, base, location,
-                                                      path, has_write,
-						      maxsize_val, umask_val));
+  vector<derived_probe *> results;
+  results.push_back(new procfs_derived_probe(sess, base, location,
+                                             path, has_write,
+					     maxsize_val, umask_val));
+  return results;
 }
 
 

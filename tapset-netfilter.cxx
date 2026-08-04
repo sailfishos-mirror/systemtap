@@ -496,10 +496,9 @@ netfilter_var_expanding_visitor::visit_target_symbol (target_symbol* e)
 
 struct netfilter_builder: public derived_probe_builder
 {
-    virtual void build(systemtap_session & sess,
-                       probe * base, probe_point * location,
-                       literal_map_t const & parameters,
-                       vector<derived_probe *> & finished_results);
+    virtual vector<derived_probe *> build(systemtap_session & sess,
+                                            probe * base, probe_point * location,
+                                            literal_map_t const & parameters);
 
     static void register_patterns(systemtap_session& s);
 
@@ -507,12 +506,11 @@ struct netfilter_builder: public derived_probe_builder
 };
 
 
-void
+vector<derived_probe *>
 netfilter_builder::build(systemtap_session & sess,
     probe * base,
     probe_point * location,
-    literal_map_t const & parameters,
-    vector<derived_probe *> & finished_results)
+    literal_map_t const & parameters)
 {
   interned_string hook;                // no default
   interned_string pf; // no default
@@ -526,7 +524,9 @@ netfilter_builder::build(systemtap_session & sess,
 
   get_param(parameters, TOK_PRIORITY, priority);
 
-  finished_results.push_back(new netfilter_derived_probe(sess, base, location, hook, pf, priority));
+  vector<derived_probe *> results;
+  results.push_back(new netfilter_derived_probe(sess, base, location, hook, pf, priority));
+  return results;
 }
 
 void

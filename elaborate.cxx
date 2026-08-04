@@ -252,12 +252,11 @@ derived_probe::print_dupe_stamp_unprivileged_process_owner(ostream& o)
 // ------------------------------------------------------------------------
 // Members of derived_probe_builder
 
-void
+vector<derived_probe*>
 derived_probe_builder::run_build(systemtap_session & sess,
                                  probe* base,
                                  probe_point* location,
-                                 literal_map_t const & parameters,
-                                 vector<derived_probe*> & finished_results)
+                                 literal_map_t const & parameters)
 {
   // Prefer plain lock/unlock over unique_lock so build() can
   // temporarily_release_builder_lock without fighting a unique_lock
@@ -270,7 +269,11 @@ derived_probe_builder::run_build(systemtap_session & sess,
     }
   try
     {
-      build (sess, base, location, parameters, finished_results);
+      vector<derived_probe*> got
+        = build (sess, base, location, parameters);
+      if (took)
+        lock.unlock ();
+      return got;
     }
   catch (...)
     {
@@ -278,16 +281,13 @@ derived_probe_builder::run_build(systemtap_session & sess,
         lock.unlock ();
       throw;
     }
-  if (took)
-    lock.unlock ();
 }
 
-void
+vector<derived_probe*>
 derived_probe_builder::run_build_with_suffix(systemtap_session & sess,
                                              probe * use,
                                              probe_point * location,
                                              literal_map_t const & parameters,
-                                             vector<derived_probe *> & finished_results,
                                              vector<probe_point::component *> const & suffix)
 {
   bool took = false;
@@ -298,7 +298,11 @@ derived_probe_builder::run_build_with_suffix(systemtap_session & sess,
     }
   try
     {
-      build_with_suffix (sess, use, location, parameters, finished_results, suffix);
+      vector<derived_probe*> got
+        = build_with_suffix (sess, use, location, parameters, suffix);
+      if (took)
+        lock.unlock ();
+      return got;
     }
   catch (...)
     {
@@ -306,23 +310,15 @@ derived_probe_builder::run_build_with_suffix(systemtap_session & sess,
         lock.unlock ();
       throw;
     }
-  if (took)
-    lock.unlock ();
 }
 
-void
+vector<derived_probe*>
 derived_probe_builder::build_with_suffix(systemtap_session &,
                                          probe *,
                                          probe_point *,
                                          literal_map_t const &,
-                                         std::vector<derived_probe *> &,
                                          std::vector<probe_point::component *>
                                            const &) {
-  // XXX perhaps build the probe if suffix is empty?
-  // if (suffix.empty()) {
-  //   build (sess, use, location, parameters, finished_results);
-  //   return;
-  // }
   throw SEMANTIC_ERROR (_("invalid suffix for probe"));
 }
 
@@ -560,7 +556,9 @@ match_node::find_and_build (systemtap_session& s,
       for (unsigned k=0; k<ends.size(); k++) 
         {
           derived_probe_builder *b = ends[k];
-          b->run_build (s, p, loc, param_map, results);
+          vector<derived_probe*> got
+            = b->run_build (s, p, loc, param_map);
+          results.insert (results.end (), got.begin (), got.end ());
         }
 
       // Collect names of builders attempted for error reporting
@@ -819,7 +817,9 @@ match_node::try_suffix_expansion (systemtap_session& s,
           derived_probe_builder *b = ends[k];
           try
             {
-              b->run_build_with_suffix (s, p, loc, param_map, results, suffix);
+              vector<derived_probe*> got
+                = b->run_build_with_suffix (s, p, loc, param_map, suffix);
+              results.insert (results.end (), got.begin (), got.end ());
             }
           catch (const recursive_expansion_error &e)
             {
@@ -940,25 +940,21 @@ alias_derived_probe::sole_location () const
 }
 
 
-void
+vector<derived_probe*>
 alias_expansion_builder::build(systemtap_session & sess,
 			       probe * use,
 			       probe_point * location,
-			       literal_map_t const & parameters,
-			       vector<derived_probe *> & finished_results)
+			       literal_map_t const & parameters)
 {
   vector<probe_point::component *> empty_suffix;
-  build_with_suffix (sess, use, location, parameters,
-                     finished_results, empty_suffix);
+  return build_with_suffix (sess, use, location, parameters, empty_suffix);
 }
 
-void
+vector<derived_probe*>
 alias_expansion_builder::build_with_suffix(systemtap_session & sess,
                                            probe * use,
                                            probe_point * location,
                                            literal_map_t const &,
-                                           vector<derived_probe *>
-                                             & finished_results,
                                            vector<probe_point::component *>
                                              const & suffix)
 {
@@ -1025,7 +1021,6 @@ alias_expansion_builder::build_with_suffix(systemtap_session & sess,
   // to the caller instead of printing them in derive_probes():
   vector<derived_probe*> dps
     = derive_probes (sess, n, location->optional, !suffix.empty());
-  finished_results.insert (finished_results.end (), dps.begin (), dps.end ());
 
   // Check whether we resolved something. If so, put the
   // whole library into the queue if not already there.
@@ -1037,6 +1032,7 @@ alias_expansion_builder::build_with_suffix(systemtap_session & sess,
 	  == sess.files.end())
 	sess.files.push_back (f);
     }
+  return dps;
 }
 
 bool

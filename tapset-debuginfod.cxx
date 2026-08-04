@@ -121,27 +121,25 @@ get_buildids(bool has_archive, string archive, string process_path) {
 struct debuginfod_builder: public derived_probe_builder
 {
 public:
-  void build(systemtap_session & sess, probe * base,
+  std::vector<derived_probe*> build(systemtap_session & sess, probe * base,
     probe_point * location,
-    literal_map_t const & parameters,
-    vector<derived_probe *> & finished_results);
+    literal_map_t const & parameters);
 
-  void build_with_suffix(systemtap_session & sess, probe * base,
+  std::vector<derived_probe*> build_with_suffix(systemtap_session & sess, probe * base,
     probe_point * location,
     literal_map_t const & parameters,
-    std::vector<derived_probe *> & finished_results,
     std::vector<probe_point::component *> const & suffix);
 
   virtual string name() { return "debuginfod builder"; }
 };
 
 
-void
+std::vector<derived_probe*>
 debuginfod_builder::build(systemtap_session & sess, probe * base,
   probe_point * location,
-  literal_map_t const & parameters,
-  vector<derived_probe *> & finished_results)
+  literal_map_t const & parameters)
 {
+  vector<derived_probe*> finished_results;
   interned_string archive;
   interned_string process_path;
   bool has_debuginfod = has_null_param (parameters, TOK_DEBUGINFOD);
@@ -231,13 +229,14 @@ debuginfod_builder::build(systemtap_session & sess, probe * base,
       = derive_probes(sess, derived_p, false, true);
     finished_results.insert(finished_results.end(), results.begin(), results.end());
   }
+
+  return finished_results;
 }
 
-void
+std::vector<derived_probe*>
 debuginfod_builder::build_with_suffix(systemtap_session & sess, probe * base,
     probe_point * location,
     literal_map_t const &,
-    std::vector<derived_probe *> & finished_results,
     std::vector<probe_point::component *> const & suffix){
 
     /* Extract the parameters for the head of the probe
@@ -252,8 +251,7 @@ debuginfod_builder::build_with_suffix(systemtap_session & sess, probe * base,
     for (unsigned i=0; i<num_param; i++)
       param_map[location->components[i]->functor] = location->components[i]->arg;
 
-    build(sess, base, location, param_map, finished_results);
-    return;
+    return build(sess, base, location, param_map);
 }
 
 

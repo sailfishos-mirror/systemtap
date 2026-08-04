@@ -104,10 +104,9 @@ public:
   python_builder() : python3_procfs_probe(NULL),
 		     python3_key(0) {}
 
-  void build(systemtap_session & sess, probe * base,
+  std::vector<derived_probe*> build(systemtap_session & sess, probe * base,
 	     probe_point * location,
-	     literal_map_t const & parameters,
-	     vector<derived_probe *> & finished_results);
+	     literal_map_t const & parameters);
   virtual string name() { return "python builder"; }
 };
 
@@ -405,12 +404,12 @@ python_builder::resolve(systemtap_session& s,
   return stap_waitpid(s.verbose, child);
 }
 
-void
+std::vector<derived_probe*>
 python_builder::build(systemtap_session & sess, probe * base,
 		      probe_point * location,
-		      literal_map_t const & parameters,
-		      vector<derived_probe *> & finished_results)
+		      literal_map_t const & parameters)
 {
+  vector<derived_probe*> finished_results;
   interned_string module, function;
   bool has_module = get_param (parameters, TOK_MODULE, module);
   bool has_function = get_param (parameters, TOK_FUNCTION, function);
@@ -588,7 +587,10 @@ python_builder::build(systemtap_session & sess, probe * base,
       mark_probe->body = new block(mark_probe->body, base_copy->body);
 
       if (sess.symbol_resolver)
-        sess.symbol_resolver->current_probe = mark_probe;
+        {
+          lock_guard<recursive_mutex> gl (sess.session_data_mutex);
+          sess.symbol_resolver->current_probe = mark_probe;
+        }
       
       // apply pvev ONCE only, to map $$$var -> $var (and later -> sdt.h)
       // rather than $$$var -> $var -> python-tapset-call (now)
@@ -617,6 +619,8 @@ python_builder::build(systemtap_session & sess, probe * base,
       delete *iter;
       iter = results.erase(iter);
     }
+
+  return finished_results;
 }
 
 

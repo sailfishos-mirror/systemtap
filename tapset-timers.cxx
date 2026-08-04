@@ -594,24 +594,23 @@ struct timer_builder: public derived_probe_builder
     // No mutable member state; session mutations use session_data_mutex.
     virtual bool serialize_builds () const { return false; }
 
-    virtual void build(systemtap_session & sess,
-                       probe * base, probe_point * location,
-                       literal_map_t const & parameters,
-                       vector<derived_probe *> & finished_results);
+    virtual vector<derived_probe *> build(systemtap_session & sess,
+                                          probe * base, probe_point * location,
+                                          literal_map_t const & parameters);
 
     static void register_patterns(systemtap_session& s);
 
     virtual string name() { return "timer builder"; }
 };
 
-void
+vector<derived_probe *>
 timer_builder::build(systemtap_session & sess,
     probe * base,
     probe_point * location,
-    literal_map_t const & parameters,
-    vector<derived_probe *> & finished_results)
+    literal_map_t const & parameters)
 {
   int64_t scale=1, period, rand=0;
+  vector<derived_probe *> results;
 
   if (has_null_param(parameters, "profile"))
     {
@@ -631,9 +630,9 @@ timer_builder::build(systemtap_session & sess,
         lock_guard<recursive_mutex> gl (sess.session_data_mutex);
         sess.unwindsym_modules.insert ("kernel");
       }
-      finished_results.push_back
+      results.push_back
         (new profile_derived_probe(sess, base, location));
-      return;
+      return results;
     }
 
   if (!get_param(parameters, "randomize", rand))
@@ -645,9 +644,9 @@ timer_builder::build(systemtap_session & sess,
 	throw SEMANTIC_ERROR (_("jiffies timer probes not available with the dyninst runtime"));
 
       // always use basic timers for jiffies
-      finished_results.push_back
+      results.push_back
         (new timer_derived_probe(base, location, period, rand, false));
-      return;
+      return results;
     }
   else if (get_param(parameters, "hz", period))
     {
@@ -692,12 +691,13 @@ timer_builder::build(systemtap_session & sess,
       period = (period + 1000000 - 1)/1000000;
       rand = (rand + 1000000 - 1)/1000000;
 
-      finished_results.push_back
+      results.push_back
         (new timer_derived_probe(base, location, period, rand, true));
     }
   else
-    finished_results.push_back
+    results.push_back
       (new hrtimer_derived_probe(base, location, period, rand, scale));
+  return results;
 }
 
 void

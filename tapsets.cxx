@@ -1072,11 +1072,10 @@ struct dwarf_builder: public derived_probe_builder
     dwarf_build_no_more (false);
   }
 
-  virtual void build(systemtap_session & sess,
+  virtual vector<derived_probe *> build(systemtap_session & sess,
 		     probe * base,
 		     probe_point * location,
-		     literal_map_t const & parameters,
-		     vector<derived_probe *> & finished_results);
+		     literal_map_t const & parameters);
 
   virtual string name() { return "DWARF builder"; }
 };
@@ -5793,7 +5792,10 @@ dwarf_derived_probe::dwarf_derived_probe(interned_string funcname,
       // a mini relaxation loop here.
       dwarf_var_expanding_visitor v (q, scope_die, handler_dwfl_addr);
       if (q.sess.symbol_resolver)
-        q.sess.symbol_resolver->current_probe = this;
+        {
+          lock_guard<recursive_mutex> gl (q.sess.session_data_mutex);
+          q.sess.symbol_resolver->current_probe = this;
+        }
       var_expand_const_fold_loop (q.sess, this->body, v);
       
       // Propagate perf.counters so we can emit later
@@ -8032,7 +8034,10 @@ sdt_query::handle_probe_entry()
                                         provider_name, probe_name, probe_type,
                                         arg_string, arg_count);
   if (sess.symbol_resolver) // trigger an early var_expanding_visitor::visit_functioncall pass
-    sess.symbol_resolver->current_probe = new_base;
+    {
+      lock_guard<recursive_mutex> gl (sess.session_data_mutex);
+      sess.symbol_resolver->current_probe = new_base;
+    }
   // We can't do this the normal DWARF PR25841 way, because here we
   // don't have the derived_probe yet, just a new copy of a new base
   // probe.  Yet we can't wait to do this mapping until later, because
@@ -8800,13 +8805,13 @@ handle_module_token(systemtap_session &sess, interned_string &module_token_val)
     }
 }
 
-void
+vector<derived_probe *>
 dwarf_builder::build(systemtap_session & sess,
 		     probe * base,
 		     probe_point * location,
-		     literal_map_t const & parameters,
-		     vector<derived_probe *> & finished_results)
+		     literal_map_t const & parameters)
 {
+  vector<derived_probe *> finished_results;
   // NB: the kernel/user dwlfpp objects are long-lived.
   // XXX: but they should be per-session, as this builder object
   // may be reused if we try to cross-instrument multiple targets.
@@ -9052,7 +9057,7 @@ dwarf_builder::build(systemtap_session & sess,
                                           sugs.c_str()));
             }
 
-          return; // avoid falling through
+          return finished_results; // avoid falling through
         }
 
       // PR13338: unquote glob results
@@ -9143,7 +9148,7 @@ dwarf_builder::build(systemtap_session & sess,
                                            dps.begin (), dps.end ());
 
                   script_file.close();
-                  return;
+                  return finished_results;
                 }
               }
            }
@@ -9214,7 +9219,7 @@ dwarf_builder::build(systemtap_session & sess,
           && resolve_library_by_path (sdtq, sdtq.visited_libraries,
                                       base, location, filled_parameters,
                                       finished_results, *this))
-        return;
+        return finished_results;
 
       // Did we fail to find a mark?
       if (results_pre == finished_results.size()
@@ -9233,7 +9238,7 @@ dwarf_builder::build(systemtap_session & sess,
                                       sugs.c_str()));
         }
 
-      return;
+      return finished_results;
     }
 
   dwarf_query q(base, location, *dw, filled_parameters, finished_results, user_path, user_lib);
@@ -9261,7 +9266,7 @@ dwarf_builder::build(systemtap_session & sess,
         lock_guard<recursive_mutex> gl (sess.session_data_mutex);
         sess.unwindsym_modules.insert ("kernel");
       }
-      return;
+      return finished_results;
     }
 
   dw->iterate_over_modules<base_query>(&query_module, &q);
@@ -9317,7 +9322,7 @@ dwarf_builder::build(systemtap_session & sess,
       && resolve_library_by_path (q, q.visited_libraries,
                                   base, location, filled_parameters,
                                   finished_results, *this))
-    return;
+    return finished_results;
 
   // If we just failed to resolve a function/plt by name, we can suggest
   // something. We only suggest things for probe points that were not
@@ -9357,6 +9362,7 @@ dwarf_builder::build(systemtap_session & sess,
       lock_guard<recursive_mutex> g (lock);
       modules_seen.clear();
     }
+  return finished_results;
 }
 
 symbol_table::~symbol_table()
@@ -9815,12 +9821,12 @@ uprobe_derived_probe::emit_perf_read_handler (systemtap_session &s,
 struct uprobe_builder: public derived_probe_builder
 {
   uprobe_builder() {}
-  virtual void build(systemtap_session & sess,
+  virtual vector<derived_probe *> build(systemtap_session & sess,
 		     probe * base,
 		     probe_point * location,
-		     literal_map_t const & parameters,
-		     vector<derived_probe *> & finished_results)
+		     literal_map_t const & parameters)
   {
+    vector<derived_probe *> finished_results;
     int64_t process, address;
 
     if (kernel_supports_inode_uprobes(sess))
@@ -9834,6 +9840,7 @@ struct uprobe_builder: public derived_probe_builder
     assert (b1 && b2); // by pattern_root construction
 
     finished_results.push_back(new uprobe_derived_probe(base, location, process, address, rr));
+    return finished_results;
   }
 
   virtual string name() { return "uprobe builder"; }
@@ -10760,11 +10767,10 @@ public:
 
   void build_no_more (systemtap_session &) {}
 
-  virtual void build(systemtap_session & sess,
+  virtual vector<derived_probe *> build(systemtap_session & sess,
 		     probe * base,
 		     probe_point * location,
-		     literal_map_t const & parameters,
-		     vector<derived_probe *> & finished_results);
+		     literal_map_t const & parameters);
   virtual string name() { return "kprobe builder"; }
 };
 
@@ -10789,13 +10795,13 @@ suggest_kernel_functions(const systemtap_session& session, interned_string funct
   return levenshtein_suggest(function, kernel_functions, 5); // print top 5 only
 }
 
-void
+vector<derived_probe *>
 kprobe_builder::build(systemtap_session & sess,
 		      probe * base,
 		      probe_point * location,
-		      literal_map_t const & parameters,
-		      vector<derived_probe *> & finished_results)
+		      literal_map_t const & parameters)
 {
+  vector<derived_probe *> finished_results;
   interned_string function_string_val, module_string_val;
   interned_string path, library, path_tgt, library_tgt;
   int64_t statement_num_val = 0, maxactive_val = 0;
@@ -10920,6 +10926,7 @@ kprobe_builder::build(systemtap_session & sess,
 							    path_tgt,
 							    library_tgt));
     }
+  return finished_results;
 }
 
 
@@ -11341,22 +11348,21 @@ struct hwbkpt_builder: public derived_probe_builder
   bool kernel_p;
 
   hwbkpt_builder(bool is_kernel): kernel_p(is_kernel) {}
-  virtual void build(systemtap_session & sess,
+  virtual vector<derived_probe *> build(systemtap_session & sess,
 		     probe * base,
 		     probe_point * location,
-		     literal_map_t const & parameters,
-		     vector<derived_probe *> & finished_results);
+		     literal_map_t const & parameters);
 
   virtual string name() { return "hwbkpt builder"; }
 };
 
-void
+vector<derived_probe *>
 hwbkpt_builder::build(systemtap_session & sess,
 		      probe * base,
 		      probe_point * location,
-		      literal_map_t const & parameters,
-		      vector<derived_probe *> & finished_results)
+		      literal_map_t const & parameters)
 {
+  vector<derived_probe *> finished_results;
   interned_string symbol_str_val;
   int64_t hwbkpt_address, len;
   bool has_addr, has_symbol_str, has_write, has_rw, has_len;
@@ -11442,6 +11448,7 @@ hwbkpt_builder::build(systemtap_session & sess,
 							    kernel_p));
   else
     assert (0);
+  return finished_results;
 }
 
 // ------------------------------------------------------------------------
@@ -13695,10 +13702,9 @@ public:
     delete_session_module_cache (s);
   }
 
-  void build(systemtap_session& s,
+  vector<derived_probe*> build(systemtap_session& s,
              probe *base, probe_point *location,
-             literal_map_t const& parameters,
-             vector<derived_probe*>& finished_results);
+             literal_map_t const& parameters);
 
   virtual string name() { return "tracepoint builder"; }
 };
@@ -14127,12 +14133,12 @@ tracepoint_builder::init_dw(systemtap_session& s)
   return true;
 }
 
-void
+vector<derived_probe*>
 tracepoint_builder::build(systemtap_session& s,
                           probe *base, probe_point *location,
-                          literal_map_t const& parameters,
-                          vector<derived_probe*>& finished_results)
+                          literal_map_t const& parameters)
 {
+  vector<derived_probe*> finished_results;
   if (s.runtime_mode == systemtap_session::bpf_runtime &&
        strverscmp(s.compatible.c_str(), "4.2") >= 0) {
          s.use_bpf_raw_tracepoint =
@@ -14144,7 +14150,7 @@ tracepoint_builder::build(systemtap_session& s,
   }
 
   if (!init_dw(s))
-    return;
+    return finished_results;
 
   interned_string tracepoint;
   assert(get_param (parameters, TOK_TRACE, tracepoint));
@@ -14167,6 +14173,7 @@ tracepoint_builder::build(systemtap_session& s,
                                   sugs.find(',') == string::npos,
                                   sugs.c_str()));
     }
+  return finished_results;
 }
 
 bool
@@ -14274,20 +14281,19 @@ struct btf_tracepoint_builder: public derived_probe_builder
     return true;
   }
 
-  void build(systemtap_session& s,
+  vector<derived_probe*> build(systemtap_session& s,
              probe *base, probe_point *location,
-             literal_map_t const& parameters,
-             vector<derived_probe*>& finished_results);
+             literal_map_t const& parameters);
 
   virtual string name() { return "btf tracepoint builder"; }
 };
 
-void
+vector<derived_probe*>
 btf_tracepoint_builder::build(systemtap_session& s,
                               probe *base, probe_point *location,
-                              literal_map_t const& parameters,
-                              vector<derived_probe*>& finished_results)
+                              literal_map_t const& parameters)
 {
+  vector<derived_probe*> finished_results;
   if (s.runtime_mode == systemtap_session::bpf_runtime)
     throw SEMANTIC_ERROR (_("kernel.tracepoint() is not supported with --runtime=bpf yet"),
                           location->components[0]->tok);
@@ -14353,6 +14359,7 @@ btf_tracepoint_builder::build(systemtap_session& s,
                                 pat.c_str()),
                             location->components[0]->tok);
     }
+  return finished_results;
 }
 
 struct module_btf_tracepoint_builder: public derived_probe_builder
@@ -14380,20 +14387,19 @@ struct module_btf_tracepoint_builder: public derived_probe_builder
     return dw;
   }
 
-  void build(systemtap_session& s,
+  vector<derived_probe*> build(systemtap_session& s,
              probe *base, probe_point *location,
-             literal_map_t const& parameters,
-             vector<derived_probe*>& finished_results);
+             literal_map_t const& parameters);
 
   virtual string name() { return "module btf tracepoint builder"; }
 };
 
-void
+vector<derived_probe*>
 module_btf_tracepoint_builder::build(systemtap_session& s,
                                      probe *base, probe_point *location,
-                                     literal_map_t const& parameters,
-                                     vector<derived_probe*>& finished_results)
+                                     literal_map_t const& parameters)
 {
+  vector<derived_probe*> finished_results;
   if (s.runtime_mode == systemtap_session::bpf_runtime)
     throw SEMANTIC_ERROR (_("module.tracepoint() is not supported with --runtime=bpf yet"),
                           location->components[0]->tok);
@@ -14477,6 +14483,7 @@ module_btf_tracepoint_builder::build(systemtap_session& s,
                                 mod.c_str(), pat.c_str()),
                             location->components[0]->tok);
     }
+  return finished_results;
 }
 
 bool
@@ -14501,20 +14508,19 @@ struct lsm_builder: public derived_probe_builder
 {
   lsm_builder() {}
 
-  virtual void build(systemtap_session& s,
+  virtual vector<derived_probe*> build(systemtap_session& s,
                      probe* base, probe_point* location,
-                     literal_map_t const& parameters,
-                     vector<derived_probe*>& finished_results);
+                     literal_map_t const& parameters);
 
   virtual string name() { return "lsm builder"; }
 };
 
-void
+vector<derived_probe*>
 lsm_builder::build(systemtap_session& s,
                    probe* base, probe_point* location,
-                   literal_map_t const& parameters,
-                   vector<derived_probe*>& finished_results)
+                   literal_map_t const& parameters)
 {
+  vector<derived_probe*> finished_results;
   interned_string hook_name;
   assert(get_param(parameters, TOK_LSM, hook_name));
 
@@ -14576,6 +14582,7 @@ lsm_builder::build(systemtap_session& s,
     }
 
   finished_results.push_back(new lsm_derived_probe(s, hook_name, base, location));
+  return finished_results;
 }
 
 // ------------------------------------------------------------------------

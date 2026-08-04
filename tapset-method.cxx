@@ -75,22 +75,21 @@ private:
 public:
   java_builder () {}
 
-  void build (systemtap_session & sess,
+  std::vector<derived_probe*> build (systemtap_session & sess,
 	      probe * base,
 	      probe_point * location,
-	      literal_map_t const & parameters,
-	      vector <derived_probe *> & finished_results);
+	      literal_map_t const & parameters);
 
   virtual string name() { return "java builder"; }
 };
 
-void
+std::vector<derived_probe*>
 java_builder::build (systemtap_session & sess,
 		     probe * base,
 		     probe_point * loc,
-		     literal_map_t const & parameters,
-		     vector <derived_probe *> & finished_results)
+		     literal_map_t const & parameters)
 {
+  vector<derived_probe*> finished_results;
   interned_string method_str_val;
   interned_string method_line_val;
   bool has_method_str = get_param (parameters, TOK_METHOD, method_str_val);
@@ -348,6 +347,8 @@ java_builder::build (systemtap_session & sess,
     vector<derived_probe*> dps = derive_probes (sess, new_end_probe);
     finished_results.insert(finished_results.end(), dps.begin(), dps.end());
   }
+
+  return finished_results;
 }
 
 void
