@@ -14516,6 +14516,29 @@ if test ! -d "$with_java"; then
 printf '%s\n' "$as_me: directory $with_java not found, disabling java support" >&6;}
    with_java=no
 fi
+
+if test "$with_java" != "no"; then
+  { printf '%s\n' "$as_me:${as_lineno-$LINENO}: checking whether javac can compile HelperSDT" >&5
+printf %s "checking whether javac can compile HelperSDT... " >&6; }
+  rm -rf conftest.javac
+  mkdir -p conftest.javac/org/systemtap/byteman/helper
+  sed 's|@pkglibexecdir@|/tmp|g' \
+    "$srcdir/java/org/systemtap/byteman/helper/HelperSDT.java.in" \
+    > conftest.javac/org/systemtap/byteman/helper/HelperSDT.java
+  if (cd conftest.javac && javac -d . org/systemtap/byteman/helper/HelperSDT.java) >conftest.javac.out 2>&1; then
+    { printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+printf '%s\n' "yes" >&6; }
+  else
+    { printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf '%s\n' "no" >&6; }
+    cat conftest.javac.out >&5
+    { printf '%s\n' "$as_me:${as_lineno-$LINENO}: javac cannot compile HelperSDT.java, disabling java support" >&5
+printf '%s\n' "$as_me: javac cannot compile HelperSDT.java, disabling java support" >&6;}
+    with_java=no
+  fi
+  rm -rf conftest.javac conftest.javac.out
+fi
+
 JAVADIR="${with_java}"
  # always needed to compile
 

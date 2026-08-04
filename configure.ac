@@ -919,6 +919,29 @@ if test ! -d "$with_java"; then
    AC_MSG_NOTICE([directory $with_java not found, disabling java support])
    with_java=no
 fi
+
+dnl PR34475: some JDKs ship javac but fail at VM init (e.g.
+dnl java-25-openjdk-25-0.1.0.8-1.0.riscv64.fc42 with SV57 satp).  Also
+dnl catch language-level rejection of the real HelperSDT sources before
+dnl we commit to building java support.
+if test "$with_java" != "no"; then
+  AC_MSG_CHECKING([whether javac can compile HelperSDT])
+  rm -rf conftest.javac
+  mkdir -p conftest.javac/org/systemtap/byteman/helper
+  sed 's|@pkglibexecdir@|/tmp|g' \
+    "$srcdir/java/org/systemtap/byteman/helper/HelperSDT.java.in" \
+    > conftest.javac/org/systemtap/byteman/helper/HelperSDT.java
+  if (cd conftest.javac && javac -d . org/systemtap/byteman/helper/HelperSDT.java) >conftest.javac.out 2>&1; then
+    AC_MSG_RESULT([yes])
+  else
+    AC_MSG_RESULT([no])
+    cat conftest.javac.out >&AS_MESSAGE_LOG_FD
+    AC_MSG_NOTICE([javac cannot compile HelperSDT.java, disabling java support])
+    with_java=no
+  fi
+  rm -rf conftest.javac conftest.javac.out
+fi
+
 AC_SUBST(JAVADIR, "${with_java}") # always needed to compile
 
 if test "$with_java" != "no"; then
