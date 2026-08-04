@@ -2,7 +2,7 @@ SYSTEMTAP EXAMPLES INDEX BY KEYWORD
 (see also index.txt)
 
 
-For systemtap version 5.5.
+For systemtap version 5.6.
 
 = _BEST =
 
@@ -452,6 +452,15 @@ keywords: prometheus syscall bpf
 
   The syscallsrw.stp script tallies the read and write syscalls. This
   is a demo script for stapbpf prometheus-exporter scripts.
+
+
+security-band-aids/cve-2026-31431bpf.stp - cve-2026-31431 security band-aid (BPF LSM version)
+keywords: security guru bpf lsm
+
+  EXPERIMENTAL emergency security band-aid using BPF LSM hooks, blocks
+  AF_ALG AEAD socket binds
+
+  # stap -g --runtime=bpf -p4 cve-2026-31431bpf.stp
 
 
 = CALLGRAPH =
@@ -968,6 +977,29 @@ security-band-aids/cve-2023-4911.stp - cve-2023-4911 security band-aid
 keywords: security guru
 
   historical emergency security band-aid, for reference/education only
+
+
+security-band-aids/cve-2026-31431.stp - cve-2026-31431 security band-aid
+keywords: security guru
+
+  EXPERIMENTAL emergency security band-aid, for reference/education
+  only
+
+
+security-band-aids/cve-2026-31431bpf.stp - cve-2026-31431 security band-aid (BPF LSM version)
+keywords: security guru bpf lsm
+
+  EXPERIMENTAL emergency security band-aid using BPF LSM hooks, blocks
+  AF_ALG AEAD socket binds
+
+  # stap -g --runtime=bpf -p4 cve-2026-31431bpf.stp
+
+
+security-band-aids/cve-2026-64600.stp - cve-2026-64600 security band-aid
+keywords: security guru
+
+  EXPERIMENTAL emergency security band-aid, for reference/education
+  only
 
 
 = INTERACTIVE =
@@ -1558,6 +1590,17 @@ keywords: process locking
   Prints a timed trace of semop(2)/semtimedop(2) syscalls
 
   # stap semop-watch.stp -c 'sleep 2'
+
+
+= LSM =
+
+security-band-aids/cve-2026-31431bpf.stp - cve-2026-31431 security band-aid (BPF LSM version)
+keywords: security guru bpf lsm
+
+  EXPERIMENTAL emergency security band-aid using BPF LSM hooks, blocks
+  AF_ALG AEAD socket binds
+
+  # stap -g --runtime=bpf -p4 cve-2026-31431bpf.stp
 
 
 = MEMORY =
@@ -3262,6 +3305,29 @@ security-band-aids/cve-2023-4911.stp - cve-2023-4911 security band-aid
 keywords: security guru
 
   historical emergency security band-aid, for reference/education only
+
+
+security-band-aids/cve-2026-31431.stp - cve-2026-31431 security band-aid
+keywords: security guru
+
+  EXPERIMENTAL emergency security band-aid, for reference/education
+  only
+
+
+security-band-aids/cve-2026-31431bpf.stp - cve-2026-31431 security band-aid (BPF LSM version)
+keywords: security guru bpf lsm
+
+  EXPERIMENTAL emergency security band-aid using BPF LSM hooks, blocks
+  AF_ALG AEAD socket binds
+
+  # stap -g --runtime=bpf -p4 cve-2026-31431bpf.stp
+
+
+security-band-aids/cve-2026-64600.stp - cve-2026-64600 security band-aid
+keywords: security guru
+
+  EXPERIMENTAL emergency security band-aid, for reference/education
+  only
 
 
 = SIGNALS =

@@ -210,6 +210,13 @@ For porting the runtime/tapsets across kernel versions (STAPCONF
 autoconf, probe fallbacks, folio migration, buildok/semok triage),
 use the **kernel-porting** skill (`.skills/kernel-porting/`).
 
+## Security band-aid examples
+
+For importing or templatizing CVE emergency band-aids under
+`testsuite/systemtap.examples/security-band-aids/` (including
+regenerating indexes with `examples-index-gen.pl`), use the
+**security-band-aid** skill (`.skills/security-band-aid/`).
+
 ## Sourceware upstream CI and Bunsen
 
 [builder.sourceware.org](https://builder.sourceware.org) runs fedrawhide

@@ -2,7 +2,7 @@ SYSTEMTAP EXAMPLES INDEX
 (see also keyword-index.txt)
 
 
-For systemtap version 5.5.
+For systemtap version 5.6.
 
 apps/gmalloc_watch.stp - Tracing glib2 memory allocations
 keywords: trace
@@ -2070,6 +2070,29 @@ security-band-aids/cve-2023-4911.stp - cve-2023-4911 security band-aid
 keywords: security guru
 
   historical emergency security band-aid, for reference/education only
+
+
+security-band-aids/cve-2026-31431.stp - cve-2026-31431 security band-aid
+keywords: security guru
+
+  EXPERIMENTAL emergency security band-aid, for reference/education
+  only
+
+
+security-band-aids/cve-2026-31431bpf.stp - cve-2026-31431 security band-aid (BPF LSM version)
+keywords: security guru bpf lsm
+
+  EXPERIMENTAL emergency security band-aid using BPF LSM hooks, blocks
+  AF_ALG AEAD socket binds
+
+  # stap -g --runtime=bpf -p4 cve-2026-31431bpf.stp
+
+
+security-band-aids/cve-2026-64600.stp - cve-2026-64600 security band-aid
+keywords: security guru
+
+  EXPERIMENTAL emergency security band-aid, for reference/education
+  only
 
 
 stapgames/2048.stp - 2048
