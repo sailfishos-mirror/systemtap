@@ -13,17 +13,5 @@ AM_MAINTAINER_MODE
 AC_SUBST([python3], [${python3}])
 AC_SUBST([py3execdir], [${py3execdir}])
 
-apps=
-for exp in $srcdir/systemtap.apps/*.exp
-do
-    app=`basename $exp .exp`
-    apps="$app $apps"
-done
-AC_ARG_ENABLE([testapps],
-  AS_HELP_STRING([--enable-testapps=foo bar or all],
-    [enable rebuilding of large external apps for testing <sdt.h> markers]))
-AC_MSG_NOTICE([Will test ${enable_testapps-no} apps from: $apps])
-AC_SUBST(enable_testapps)
-
 AC_CONFIG_FILES(Makefile)
 AC_OUTPUT

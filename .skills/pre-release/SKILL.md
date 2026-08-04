@@ -121,13 +121,10 @@ purely internal cleanups.
 ### 8. Fuller-than-usual build
 
 ```bash
-configure --enable-dejazilla --enable-testapps=all
+configure --enable-dejazilla
 make rpm    # on several OS generations, for dependency/build-tool differences
 make all install
 ```
-
-`--enable-testapps=all` matters especially if **`sys/sdt.h`** changed: other
-apps compile against it; avoid regressions in compilability or performance.
 
 Do **not** run a full local `sudo make installcheck` as the release gate — it
 takes many hours. Use Bunsen/CI coverage instead (next step).

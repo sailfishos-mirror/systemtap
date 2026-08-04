@@ -594,7 +594,6 @@ PACKAGE_URL=''
 
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
-enable_testapps
 py3execdir
 python3
 MAINT
@@ -676,7 +675,6 @@ ac_user_opts='
 enable_option_checking
 enable_silent_rules
 enable_maintainer_mode
-enable_testapps
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1309,9 +1307,6 @@ Optional Features:
   --enable-maintainer-mode
                           enable make rules and dependencies not useful (and
                           sometimes confusing) to the casual installer
-  --enable-testapps=foo bar or all
-                          enable rebuilding of large external apps for testing
-                          <sdt.h> markers
 
 Report bugs to <systemtap@sourceware.org>.
 _ACEOF
@@ -2822,22 +2817,6 @@ fi
 python3=${python3}
 
 py3execdir=${py3execdir}
-
-
-apps=
-for exp in $srcdir/systemtap.apps/*.exp
-do
-    app=`basename $exp .exp`
-    apps="$app $apps"
-done
-# Check whether --enable-testapps was given.
-if test ${enable_testapps+y}
-then :
-  enableval=$enable_testapps;
-fi
-
-{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: Will test ${enable_testapps-no} apps from: $apps" >&5
-printf '%s\n' "$as_me: Will test ${enable_testapps-no} apps from: $apps" >&6;}
 
 
 ac_config_files="$ac_config_files Makefile"
