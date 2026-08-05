@@ -223,6 +223,9 @@ functiondecl::join (systemtap_session& s)
 {
   if (!synthetic)
     throw SEMANTIC_ERROR (_("internal error, joining a non-synthetic function"), tok);
+  // Concurrent derive_probes (e.g. unlocked procfs_builder) may join
+  // helpers from multiple threads; protect the shared function maps.
+  lock_guard<recursive_mutex> gl (s.session_data_mutex);
   if (!s.functions.insert (make_pair (name, this)).second)
     throw SEMANTIC_ERROR (_F("synthetic function '%s' conflicts with an existing function",
                              name.to_string().c_str()), tok);

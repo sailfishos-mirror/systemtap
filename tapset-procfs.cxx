@@ -656,7 +656,8 @@ procfs_var_expanding_visitor::visit_target_symbol (target_symbol* e)
 struct procfs_builder: public derived_probe_builder
 {
   procfs_builder() {}
-  // No mutable member state; concurrent build() is safe.
+  // No mutable builder state; session mutations (e.g. functiondecl::join)
+  // take session_data_mutex. Concurrent build() is safe.
   virtual bool serialize_builds () const { return false; }
   virtual vector<derived_probe *> build(systemtap_session & sess,
                                         probe * base,
