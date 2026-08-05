@@ -3365,7 +3365,7 @@ struct dwarf_pretty_print
                       const target_symbol& e, bool lvalue):
     dw(dw), local(local), scopes(scopes), pc(pc),
     pointer(NULL), pointer_type(),
-    userspace_p(userspace_p), deref_p(true)
+    userspace_p(userspace_p), deref_p(true), entry_probes(NULL)
   {
     init_ts (e);
     dw.type_die_for_local (scopes, pc, local, ts, &base_type, lvalue);
@@ -3375,7 +3375,7 @@ struct dwarf_pretty_print
                       bool userspace_p, const target_symbol& e, bool lvalue):
     dw(dw), scopes(1, *scope_die), pc(pc),
     pointer(NULL), pointer_type(),
-    userspace_p(userspace_p), deref_p(true)
+    userspace_p(userspace_p), deref_p(true), entry_probes(NULL)
   {
     init_ts (e);
     dw.type_die_for_return (&scopes[0], pc, ts, &base_type, lvalue);
@@ -3385,7 +3385,7 @@ struct dwarf_pretty_print
                       bool deref_p, bool userspace_p, const target_symbol& e,
 		      bool lvalue):
     dw(dw), pc(0), pointer(pointer), pointer_type(*type_die),
-    userspace_p(userspace_p), deref_p(deref_p)
+    userspace_p(userspace_p), deref_p(deref_p), entry_probes(NULL)
   {
     init_ts (e);
     dw.type_die_for_pointer (type_die, ts, &base_type, lvalue);
@@ -3393,6 +3393,11 @@ struct dwarf_pretty_print
 
   functioncall* expand ();
   ~dwarf_pretty_print () { delete ts; }
+
+  // When set (dwarf_var_expanding_visitor), DW_OP_entry_value synthetic
+  // entry probes are merged here — same sink as the non-pretty $var path.
+  void set_entry_probes (unordered_map<Dwarf_Addr, block *> *ep)
+    { entry_probes = ep; }
 
 private:
   dwflpp& dw;
@@ -3408,6 +3413,7 @@ private:
   Dwarf_Die pointer_type;
 
   const bool userspace_p, deref_p;
+  unordered_map<Dwarf_Addr, block *> *entry_probes;
 
   void recurse (Dwarf_Die* type, target_symbol* e,
                 print_format* pf, bool top=false);
@@ -4207,6 +4213,29 @@ dwarf_pretty_print::deref (target_symbol* e)
   else
     dw.literal_stmt_for_return (ctx, &scopes[0], ctx.e, lvalue_p, &endtype);
 
+  // DW_OP_entry_value synthesizes tid-indexed globals + entry probes.
+  // The non-pretty $var path merges these in visit_target_symbol; do
+  // the same here so $$parms$ / $foo$ pretty-print does not leave
+  // unresolved __global_tvar_entry_value_* arrays.
+  dw.sess.globals.insert(dw.sess.globals.end(),
+                         ctx.globals.begin(),
+                         ctx.globals.end());
+  if (entry_probes)
+    {
+      for (auto it = ctx.entry_probes.begin();
+           it != ctx.entry_probes.end(); ++it)
+        {
+          auto res = entry_probes->find(it->first);
+          if (res == entry_probes->end())
+            entry_probes->insert(*it);
+          else
+            res->second = new block(res->second, it->second);
+        }
+    }
+  else if (!ctx.entry_probes.empty() && dw.sess.verbose > 2)
+    dw.sess.print_warning(_("DW_OP_entry_value probes not collected for "
+                            "pretty-printed target symbol"), e->tok);
+
   string name = "_dwarf_pretty_print_deref_" + lex_cast(tick++);
   return synthetic_embedded_deref_call(dw, ctx, name, &endtype, userspace_p,
 				       lvalue_p, pointer);
@@ -4832,6 +4861,7 @@ dwarf_var_expanding_visitor::visit_target_symbol (target_symbol *e)
             {
               dwarf_pretty_print dpp (q.dw, scope_die, addr,
                                       q.has_process, *e, lvalue);
+              dpp.set_entry_probes (&entry_probes);
               dpp.expand()->visit(this);
             }
           else
@@ -4839,6 +4869,7 @@ dwarf_var_expanding_visitor::visit_target_symbol (target_symbol *e)
               dwarf_pretty_print dpp (q.dw, getscopes(e), addr,
                                       e->sym_name(),
                                       q.has_process, *e, lvalue);
+              dpp.set_entry_probes (&entry_probes);
               dpp.expand()->visit(this);
             }
           return;

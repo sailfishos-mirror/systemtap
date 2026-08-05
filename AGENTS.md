@@ -210,6 +210,12 @@ For porting the runtime/tapsets across kernel versions (STAPCONF
 autoconf, probe fallbacks, folio migration, buildok/semok triage),
 use the **kernel-porting** skill (`.skills/kernel-porting/`).
 
+## DWARF / loc2stap challenges
+
+For hard DWARF cases (`DW_OP_entry_value`, pretty-printed `$$parms$` /
+`$$vars$`, hunting probe PCs with `readelf --debug-dump=loc`), use the
+**dwarf-challenges** skill (`.skills/dwarf-challenges/`).
+
 ## Security band-aid examples
 
 For importing or templatizing CVE emergency band-aids under

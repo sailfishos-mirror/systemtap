@@ -19,6 +19,8 @@
 #include "dwflpp.h"
 #include "tapsets.h"
 
+#include <atomic>
+
 #if ! _ELFUTILS_PREREQ(0, 153)
 #define DW_OP_GNU_entry_value 0xf3
 #endif
@@ -1677,7 +1679,7 @@ location_context::handle_GNU_entry_value (Dwarf_Op expr)
   op_loc = translate(op, op_len, 0, NULL, true, false);
 
   // Generate a tid-indexed global variable to store the entry value
-  static int tick = 0;
+  static std::atomic<unsigned> tick {0};
   std::string name = std::string("__global_tvar_entry_value_")
 	             + "_" + escaped_identifier_string (e->sym_name())
 		     + "_" + lex_cast(tick++);
