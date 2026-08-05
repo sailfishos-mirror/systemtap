@@ -17,6 +17,8 @@
 #include <dyninst/Function.h>
 #include <dyninst/liveness.h>
 #include <dyninst/dyn_regs.h>
+#include <mutex>
+#include <thread>
 
 using namespace Dyninst;
 using namespace SymtabAPI;
@@ -24,7 +26,12 @@ using namespace ParseAPI;
 using namespace std;
 
 
-// Data structures to cache dyninst parsing of binaries
+// Data structures to cache dyninst parsing of binaries.
+// Dyninst ParseAPI / LivenessAnalyzer are not thread-safe: concurrent
+// calls corrupt libparseAPI, and even mutex-serialized calls misbehave
+// if a CodeObject or LivenessAnalyzer created on one stap worker thread
+// is reused on another (PR34432 / test_unused).  Guard all use with
+// analysis_mutex and drop caches when the owning thread changes.
 class bin_info {
 public:
   bin_info(SymtabCodeSource *s=NULL, CodeObject *c=NULL, SymtabAPI::Symtab *sym=NULL): symtab(sym), sts(s), co(c) {};
@@ -35,9 +42,15 @@ public:
 };
 typedef map<string, bin_info> parsed_bin;
 static parsed_bin cached_info;
+static mutex analysis_mutex;
+static thread::id analysis_cache_owner;
 
-// Clean things up when analysis no longer needs the cached dyninst objects
-void flush_analysis_caches()
+// Data structures to cache dyninst liveness analysis of a function
+typedef map<string, LivenessAnalyzer*> precomputed_liveness;
+static precomputed_liveness cached_liveness;
+
+static void
+flush_analysis_caches_unlocked ()
 {
   for(auto i: cached_info) {
     delete i.second.co;
@@ -45,6 +58,29 @@ void flush_analysis_caches()
     SymtabAPI::Symtab::closeSymtab(i.second.symtab);
   }
   cached_info.clear();
+  for (auto i: cached_liveness)
+    delete i.second;
+  cached_liveness.clear();
+  analysis_cache_owner = thread::id ();
+}
+
+// Clean things up when analysis no longer needs the cached dyninst objects
+void flush_analysis_caches()
+{
+  lock_guard<mutex> g (analysis_mutex);
+  flush_analysis_caches_unlocked ();
+}
+
+static void
+claim_analysis_cache ()
+{
+  thread::id self = this_thread::get_id ();
+  if (analysis_cache_owner != self)
+    {
+      if (analysis_cache_owner != thread::id ())
+	flush_analysis_caches_unlocked ();
+      analysis_cache_owner = self;
+    }
 }
 
 
@@ -235,16 +271,14 @@ static const MachRegister dyninst_register_32[] = {
 };
 #endif
 
-// Data structures to cache dyninst liveness analysis of a function
-typedef map<string, LivenessAnalyzer*> precomputed_liveness;
-static precomputed_liveness cached_liveness;
-
 int liveness(systemtap_session& s,
 	     target_symbol *e,
 	     string executable,
 	     Dwarf_Addr addr,
 	     location_context ctx)
 {
+  lock_guard<mutex> g (analysis_mutex);
+  claim_analysis_cache ();
   try{
 	// Doing this inside a try/catch because dyninst may require
 	// too much memory to parse the binary.
