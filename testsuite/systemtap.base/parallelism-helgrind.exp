@@ -93,8 +93,13 @@ if {[catch {exec /usr/bin/which valgrind} vg] || $vg == ""} {
 	    if {![file exists $hglog]} {
 		fail "$test (missing helgrind log)"
 	    } else {
-		set hgtext [read [open $hglog]]
-		verbose -log "helgrind log tail:\n[string range $hgtext end-2000 end]"
+		# Keep the whole Helgrind log in systemtap.log — on
+		# failure the interesting races are rarely in the tail.
+		set hgfd [open $hglog]
+		set hgtext [read $hgfd]
+		close $hgfd
+		verbose -log "helgrind log:\n$hgtext"
+		catch {file delete -- $hglog}
 
 		if {![regexp {ERROR SUMMARY: ([0-9]+) errors} $hgtext -> nerrors]} {
 		    fail "$test (no ERROR SUMMARY in helgrind log)"
