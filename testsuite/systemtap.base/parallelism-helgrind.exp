@@ -18,10 +18,42 @@
 #
 # Helgrind uses --trace-children=no (translator only, not kbuild).
 # STAP_NTHREADS also caps kbuild -j.
+#
+# Older Boost.Asio (RHEL 8 / 1.66) triggers large Helgrind false-positive
+# cascades around thread_pool; see parallelism-helgrind-asio.supp and
+# parallelism-helgrind-errorcheck-mutex.c (manual LD_PRELOAD diagnosis).
+# Newer Boost (RHEL 9 / 1.75+) is left unsuppressed.
 
 set test "parallelism-helgrind"
 set stpfile "$srcdir/$subdir/$test.stp"
 set stap_base_args [list -p4 -d /bin/sh $stpfile]
+
+# BOOST_VERSION = major*100000 + minor*100 + patch (see boost/version.hpp).
+# Suppress asio Helgrind noise for Boost older than 1.75.0.
+set parallelism_asio_supp_max_boost 107500
+
+proc parallelism_boost_version {} {
+    set cxx "c++"
+    if {[info exists ::env(CXX)] && $::env(CXX) != ""} {
+	set cxx $::env(CXX)
+    }
+    # Preprocess a one-liner so we see the same boost headers the
+    # toolchain uses for stap, not only /usr/include.
+    if {[catch {
+	set out [exec sh -c \
+	    "printf '%s\\n' '#include <boost/version.hpp>' 'BOOST_VERSION' \
+	     | $cxx -E -P -x c++ - 2>/dev/null"]
+    }]} {
+	return 0
+    }
+    set ver 0
+    foreach tok [split $out] {
+	if {[regexp {^\d+$} $tok] && $tok > 100000} {
+	    set ver $tok
+	}
+    }
+    return $ver
+}
 
 proc parallelism_run_stap {label cmd timeout_s} {
     verbose -log "spawn $cmd"
@@ -86,6 +118,18 @@ if {[catch {exec /usr/bin/which valgrind} vg] || $vg == ""} {
 	set vg_args [list --tool=helgrind --history-level=approx \
 			  --trace-children=no --error-exitcode=42 \
 			  --log-file=$hglog]
+	set boost_ver [parallelism_boost_version]
+	set asio_supp "$srcdir/$subdir/parallelism-helgrind-asio.supp"
+	if {$boost_ver > 0 \
+		&& $boost_ver < $parallelism_asio_supp_max_boost \
+		&& [file exists $asio_supp]} {
+	    verbose -log "helgrind: BOOST_VERSION=$boost_ver < $parallelism_asio_supp_max_boost; using $asio_supp"
+	    lappend vg_args "--suppressions=$asio_supp"
+	} elseif {$boost_ver > 0} {
+	    verbose -log "helgrind: BOOST_VERSION=$boost_ver; no asio suppressions"
+	} else {
+	    verbose -log "helgrind: BOOST_VERSION unknown; no asio suppressions"
+	}
 	set cmd [concat $vg $vg_args stap $stap_base_args -- helgrind]
 	set exit_code [parallelism_run_stap $test $cmd 1800]
 

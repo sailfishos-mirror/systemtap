@@ -1,0 +1,198 @@
+# Helgrind suppressions for Boost.Asio thread_pool / scheduler noise on
+# older Boost (e.g. RHEL 8's 1.66).  Verified false positives: native
+# runs with PTHREAD_MUTEX_ERRORCHECK LD_PRELOAD stay clean, while
+# Helgrind alone reports "recursive write lock granted",
+# UnlockUnlocked, Dubious cond-signal, and related cascades inside
+# asio — not SystemTap session races (no Possible data race).
+#
+# Applied from parallelism-helgrind.exp only when BOOST_VERSION < 107500
+# (1.75), via --suppressions=$srcdir/$subdir/parallelism-helgrind-asio.supp.
+#
+# Matching notes: Valgrind matches mangled symbol names.  On RHEL 8 /
+# gcc 8, asio is often fully inlined into parse_all / derive_probes_*,
+# so fun:*asio* alone misses many frames — hence the caller-symbol
+# rules below.  Helgrind:Race is intentionally NOT suppressed.
+# Remaining "pthread_cond_*: dubious" reports are Helgrind:Dubious
+# (unlock-then-signal; POSIX-legal, optional check on some Valgrinds).
+#
+# ---------------------------------------------------------------------------
+# Diagnosing "is this real UB or Helgrind noise?" on a host
+# ---------------------------------------------------------------------------
+# Sibling source: parallelism-helgrind-errorcheck-mutex.c
+#
+#   gcc -shared -fPIC -o /tmp/errorcheck_mutex.so \
+#       $srcdir/systemtap.base/parallelism-helgrind-errorcheck-mutex.c -ldl
+#
+#   # 1) Native + ERRORCHECK: real recursive lock => EDEADLK / abort
+#   LD_PRELOAD=/tmp/errorcheck_mutex.so \
+#     ./stap -p4 -e 'probe syscall.e* {log(name)}'
+#
+#   # 2) Helgrind + ERRORCHECK: often goes clean if Helgrind's DEFAULT
+#   #    mutex model was confused (as on RHEL 8 / Valgrind 3.22)
+#   valgrind --tool=helgrind --trace-children=no --error-exitcode=42 \
+#     env LD_PRELOAD=/tmp/errorcheck_mutex.so \
+#     ./stap -p4 -e 'probe syscall.e* {log(name)}'
+#
+#   # 3) Helgrind + these suppressions (old Boost only):
+#   valgrind --tool=helgrind --trace-children=no --error-exitcode=42 \
+#     --suppressions=$srcdir/systemtap.base/parallelism-helgrind-asio.supp \
+#     ./stap -p4 -e 'probe syscall.e* {log(name)}'
+# ---------------------------------------------------------------------------
+
+# --- When asio symbols survive inlining ---
+{
+   stap_boost_asio_misc
+   Helgrind:Misc
+   ...
+   fun:*asio*
+}
+
+{
+   stap_boost_asio_unlock_unlocked
+   Helgrind:UnlockUnlocked
+   ...
+   fun:*asio*
+}
+
+{
+   stap_boost_asio_pthapi
+   Helgrind:PthAPIerror
+   ...
+   fun:*asio*
+}
+
+{
+   stap_boost_asio_dubious
+   Helgrind:Dubious
+   ...
+   fun:*asio*
+}
+
+{
+   stap_boost_asio_unlock_foreign
+   Helgrind:UnlockForeign
+   ...
+   fun:*asio*
+}
+
+{
+   stap_boost_asio_unlock_bogus
+   Helgrind:UnlockBogus
+   ...
+   fun:*asio*
+}
+
+{
+   stap_boost_asio_do_use_service_misc
+   Helgrind:Misc
+   ...
+   fun:*do_use_service*
+}
+
+{
+   stap_boost_asio_do_use_service_unlock
+   Helgrind:UnlockUnlocked
+   ...
+   fun:*do_use_service*
+}
+
+{
+   stap_boost_asio_do_use_service_pthapi
+   Helgrind:PthAPIerror
+   ...
+   fun:*do_use_service*
+}
+
+{
+   stap_boost_asio_do_use_service_dubious
+   Helgrind:Dubious
+   ...
+   fun:*do_use_service*
+}
+
+# --- Inlined into stap thread-pool call sites (mangled = caller) ---
+{
+   stap_boost_asio_parse_all_misc
+   Helgrind:Misc
+   ...
+   fun:*parse_all*
+}
+
+{
+   stap_boost_asio_parse_all_unlock
+   Helgrind:UnlockUnlocked
+   ...
+   fun:*parse_all*
+}
+
+{
+   stap_boost_asio_parse_all_pthapi
+   Helgrind:PthAPIerror
+   ...
+   fun:*parse_all*
+}
+
+{
+   stap_boost_asio_parse_all_dubious
+   Helgrind:Dubious
+   ...
+   fun:*parse_all*
+}
+
+{
+   stap_boost_asio_derive_misc
+   Helgrind:Misc
+   ...
+   fun:*derive_probes*
+}
+
+{
+   stap_boost_asio_derive_unlock
+   Helgrind:UnlockUnlocked
+   ...
+   fun:*derive_probes*
+}
+
+{
+   stap_boost_asio_derive_pthapi
+   Helgrind:PthAPIerror
+   ...
+   fun:*derive_probes*
+}
+
+{
+   stap_boost_asio_derive_dubious
+   Helgrind:Dubious
+   ...
+   fun:*derive_probes*
+}
+
+# Worker-thread stacks often end at the C wrapper (no parse_all frame).
+{
+   stap_boost_asio_posix_thread_fn_dubious
+   Helgrind:Dubious
+   ...
+   fun:*boost_asio_detail_posix_thread_function*
+}
+
+{
+   stap_boost_asio_posix_thread_fn_misc
+   Helgrind:Misc
+   ...
+   fun:*boost_asio_detail_posix_thread_function*
+}
+
+{
+   stap_boost_asio_posix_thread_fn_unlock
+   Helgrind:UnlockUnlocked
+   ...
+   fun:*boost_asio_detail_posix_thread_function*
+}
+
+# Dyninst ParseAPI teardown under Helgrind (process exit).
+{
+   stap_dyninst_parseapi_mutex_destroy
+   Helgrind:Misc
+   ...
+   obj:*libparseAPI.so*
+}
