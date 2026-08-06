@@ -116,6 +116,9 @@
 /* Define to 1 if libxml2 development libraries are installed */
 #undef HAVE_LIBXML2
 
+/* Define to 1 if you have zlib. */
+#undef HAVE_LIBZ
+
 /* Define to 1 if you have the <minix/config.h> header file. */
 #undef HAVE_MINIX_CONFIG_H
 

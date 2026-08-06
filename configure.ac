@@ -584,6 +584,17 @@ if test $enable_translator = yes; then
       [-Wl,--start-group -ldw $ebl_LIBS -Wl,--end-group -lelf])
     stap_LIBS="$stap_LIBS -Wl,--start-group -ldw $ebl_LIBS -Wl,--end-group -lelf"
     LIBS="$save_LIBS"
+
+    # zlib: used to unwrap aarch64 EFI-zboot / s390x zipl vmlinuz images
+    # when hunting for the kernel NT_GNU_BUILD_ID (elfutils can't).
+    save_LIBS="$LIBS"
+    AC_CHECK_LIB(z, inflate, [
+      stap_LIBS="$stap_LIBS -lz"
+      AC_DEFINE([HAVE_LIBZ], [1], [Define to 1 if you have zlib.])
+    ], [
+      AC_MSG_WARN([zlib not found; kernel vmlinuz build-id extraction disabled])
+    ])
+    LIBS="$save_LIBS"
 fi
 
 AC_SUBST(stap_LIBS)

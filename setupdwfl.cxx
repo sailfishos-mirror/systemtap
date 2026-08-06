@@ -1,5 +1,5 @@
 // Setup routines for creating fully populated DWFLs. Used in pass 2 and 3.
-// Copyright (C) 2009-2018 Red Hat, Inc.
+// Copyright (C) 2009-2018, 2026 Red Hat, Inc.
 //
 // This file is part of systemtap, and is free software.  You can
 // redistribute it and/or modify it under the terms of the GNU General
@@ -21,6 +21,10 @@
 #include <sstream>
 #include <set>
 #include <string>
+#include <vector>
+#include <iterator>
+#include <cstring>
+#include <cstdint>
 
 extern "C" {
 #include <fnmatch.h>
@@ -35,10 +39,25 @@ extern "C" {
 #include <limits.h>
 #include <sys/utsname.h>
 #include <unistd.h>
+#include <byteswap.h>
+#include <endian.h>
+#include <elfutils/libdwelf.h>
+#if defined(HAVE_LIBZ)
+#include <zlib.h>
+#endif
 }
 
 #if defined(HAVE_LIBDEBUGINFOD)
 #include <elfutils/debuginfod.h>
+#endif
+
+// Linux ELF note types found in vmlinux .notes (see include/linux/build-salt.h,
+// include/linux/elfnote-lto.h).  Fedora stores the uts release in BUILD_SALT.
+#ifndef LINUX_ELFNOTE_BUILD_SALT
+#define LINUX_ELFNOTE_BUILD_SALT 0x100
+#endif
+#ifndef LINUX_ELFNOTE_LTO_INFO
+#define LINUX_ELFNOTE_LTO_INFO 0x101
 #endif
 
 // XXX: also consider adding $HOME/.debug/ for perf build-id-cache
@@ -844,84 +863,588 @@ execute_abrt_action_install_debuginfo_to_abrt_cache (string hex)
   return 0;
 }
 
+/* Read an entire file into BUF.  Returns false on any error.  */
+static bool
+read_whole_file (const string &path, vector<unsigned char> &buf)
+{
+  ifstream f (path.c_str (), ios::binary);
+  if (!f)
+    return false;
+  buf.assign (istreambuf_iterator<char> (f), istreambuf_iterator<char> ());
+  // Note: draining via istreambuf_iterator does not reliably set eofbit,
+  // so don't require f.eof() here — only reject hard stream errors.
+  return !f.bad () && !buf.empty ();
+}
+
+/* Locate a vmlinuz image for the session's kernel release / sysroot.  */
+static string
+find_vmlinuz_path (systemtap_session &s)
+{
+  vector<string> candidates;
+  candidates.push_back (s.sysroot + "/lib/modules/" + s.kernel_release
+                        + "/vmlinuz");
+  candidates.push_back (s.sysroot + "/boot/vmlinuz-" + s.kernel_release);
+  // Some layouts keep a plain "vmlinuz" next to the build tree.
+  if (!s.kernel_build_tree.empty ())
+    {
+      string bt = s.kernel_build_tree;
+      // .../lib/modules/REL/build -> .../lib/modules/REL/vmlinuz
+      if (endswith (bt, "/build"))
+        candidates.push_back (bt.substr (0, bt.size () - 5) + "vmlinuz");
+      candidates.push_back (bt + "/vmlinuz");
+    }
+
+  for (size_t i = 0; i < candidates.size (); i++)
+    if (access (candidates[i].c_str (), R_OK) == 0)
+      return candidates[i];
+  return "";
+}
+
+/* Try dwelf_elf_gnu_build_id on an ELF vmlinuz (works on ppc64le).  */
+static string
+build_id_from_elf_vmlinuz (const string &path, int verbose)
+{
+  int fd = open (path.c_str (), O_RDONLY);
+  if (fd < 0)
+    return "";
+
+  Elf *elf = elf_begin (fd, ELF_C_READ_MMAP_PRIVATE, NULL);
+  if (elf == NULL)
+    {
+      close (fd);
+      return "";
+    }
+
+  const void *build_id = NULL;
+  ssize_t len = dwelf_elf_gnu_build_id (elf, &build_id);
+  string hex;
+  if (len > 0 && build_id != NULL)
+    {
+      hex = hex_dump ((const unsigned char *) build_id, (size_t) len);
+      if (verbose > 1)
+        clog << _F("Extracted kernel build ID %s from ELF notes in %s",
+                   hex.c_str (), path.c_str ()) << endl;
+    }
+
+  elf_end (elf);
+  close (fd);
+  return hex;
+}
+
+#if defined(HAVE_LIBZ)
+/* Decompress a gzip member; trailing garbage after the stream is OK
+   (s390x zipl images append a " zIPL" marker).  */
+static bool
+gzip_decompress (const unsigned char *src, size_t src_len,
+                 vector<unsigned char> &dst)
+{
+  z_stream strm;
+  memset (&strm, 0, sizeof strm);
+  if (inflateInit2 (&strm, 16 + MAX_WBITS) != Z_OK)
+    return false;
+
+  dst.clear ();
+  strm.next_in = const_cast<Bytef *> (src);
+  strm.avail_in = src_len;
+
+  int ret = Z_OK;
+  while (ret == Z_OK)
+    {
+      size_t have = dst.size ();
+      dst.resize (have + (1u << 20));
+      strm.next_out = dst.data () + have;
+      strm.avail_out = dst.size () - have;
+      ret = inflate (&strm, Z_NO_FLUSH);
+      dst.resize (have + ((dst.size () - have) - strm.avail_out));
+      if (ret == Z_STREAM_END)
+        break;
+      if (ret != Z_OK)
+        {
+          inflateEnd (&strm);
+          dst.clear ();
+          return false;
+        }
+    }
+
+  inflateEnd (&strm);
+  return ret == Z_STREAM_END && !dst.empty ();
+}
+
+/* Peel an aarch64 EFI zboot PE image down to the raw ARM64 Image, or
+   an s390x zipl image down to vmlinux.bin.  Returns false if the file
+   does not look like either (caller may still scan the raw bytes).  */
+static bool
+peel_boot_image (const vector<unsigned char> &in,
+                 vector<unsigned char> &out, string &kind, int verbose)
+{
+  // EFI zboot: MZ + "zimg" + little-endian payload_{offset,size} +
+  // compression method string at +0x18 (see drivers/firmware/efi/libstub).
+  if (in.size () >= 0x38
+      && in[0] == 'M' && in[1] == 'Z'
+      && in[4] == 'z' && in[5] == 'i' && in[6] == 'm' && in[7] == 'g')
+    {
+      uint32_t payload_off, payload_size;
+      memcpy (&payload_off, &in[8], 4);
+      memcpy (&payload_size, &in[12], 4);
+      string comp;
+      for (size_t i = 0x18; i < 0x38 && in[i]; i++)
+        comp.push_back ((char) in[i]);
+
+      if (verbose > 2)
+        clog << _F("vmlinuz looks like EFI zboot (%s payload at %#x size %#x)",
+                   comp.c_str (), payload_off, payload_size) << endl;
+
+      if (comp == "gzip"
+          && payload_off < in.size ()
+          && payload_size > 0
+          && (size_t) payload_off + (size_t) payload_size <= in.size ()
+          && gzip_decompress (&in[payload_off], payload_size, out))
+        {
+          kind = "aarch64-zboot";
+          return true;
+        }
+      return false;
+    }
+
+  // s390x zipl bzImage: boot wrapper + gzip(vmlinux.bin), trailing " zIPL".
+  if (in.size () >= 16
+      && memcmp (&in[in.size () - 5], " zIPL", 5) == 0)
+    {
+      size_t off = 0;
+      while (off + 3 < in.size ())
+        {
+          // memchr for 0x1f then check gzip header — cheaper than per-byte.
+          const void *hit = memchr (&in[off], 0x1f, in.size () - off);
+          if (hit == NULL)
+            break;
+          off = (const unsigned char *) hit - in.data ();
+          if (off + 3 < in.size ()
+              && in[off + 1] == 0x8b && in[off + 2] == 0x08
+              && gzip_decompress (&in[off], in.size () - off, out)
+              && out.size () > (1u << 20))
+            {
+              if (verbose > 2)
+                clog << _F("vmlinuz looks like s390x zipl (gzip piggy at %#zx -> %zu bytes)",
+                           off, out.size ()) << endl;
+              kind = "s390x-zipl";
+              return true;
+            }
+          out.clear ();
+          off++;
+        }
+    }
+
+  return false;
+}
+
+static uint32_t
+read_note_u32 (const unsigned char *p, bool be)
+{
+  uint32_t v;
+  memcpy (&v, p, 4);
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+  if (be)
+    v = bswap_32 (v);
+#elif __BYTE_ORDER == __BIG_ENDIAN
+  if (!be)
+    v = bswap_32 (v);
+#else
+#error Bad host __BYTE_ORDER
+#endif
+  return v;
+}
+
+/* Rough extent of an embedded ELF at OFF, based on phdr/shdr tables.
+   Returns 0 if OFF does not look like a plausible ELF header.  Used only
+   to decide whether a build-id note belongs to a small embedded blob
+   (vdso, etc.) vs. the flat vmlinux image.  */
+static size_t
+embedded_elf_size (const vector<unsigned char> &blob, size_t off)
+{
+  if (off + 64 > blob.size ()
+      || blob[off] != 0x7f || blob[off + 1] != 'E'
+      || blob[off + 2] != 'L' || blob[off + 3] != 'F')
+    return 0;
+
+  unsigned char ei_class = blob[off + 4];
+  unsigned char ei_data = blob[off + 5];
+  bool be = (ei_data == 2);
+  auto u16 = [&] (size_t o) -> uint32_t {
+    uint16_t v;
+    memcpy (&v, &blob[o], 2);
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+    if (be) v = bswap_16 (v);
+#elif __BYTE_ORDER == __BIG_ENDIAN
+    if (!be) v = bswap_16 (v);
+#endif
+    return v;
+  };
+  auto u32 = [&] (size_t o) -> uint64_t {
+    return read_note_u32 (&blob[o], be);
+  };
+  auto u64 = [&] (size_t o) -> uint64_t {
+    uint64_t v;
+    memcpy (&v, &blob[o], 8);
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+    if (be) v = bswap_64 (v);
+#elif __BYTE_ORDER == __BIG_ENDIAN
+    if (!be) v = bswap_64 (v);
+#endif
+    return v;
+  };
+
+  uint64_t e_phoff, e_shoff;
+  uint32_t e_phentsize, e_phnum, e_shentsize, e_shnum;
+  if (ei_class == 2) // ELFCLASS64
+    {
+      e_phoff = u64 (off + 32);
+      e_shoff = u64 (off + 40);
+      e_phentsize = u16 (off + 54);
+      e_phnum = u16 (off + 56);
+      e_shentsize = u16 (off + 58);
+      e_shnum = u16 (off + 60);
+    }
+  else if (ei_class == 1) // ELFCLASS32
+    {
+      e_phoff = u32 (off + 28);
+      e_shoff = u32 (off + 32);
+      e_phentsize = u16 (off + 42);
+      e_phnum = u16 (off + 44);
+      e_shentsize = u16 (off + 46);
+      e_shnum = u16 (off + 48);
+    }
+  else
+    return 0;
+
+  // Cap absurd tables so a corrupt header can't run away.
+  if (e_phnum > 512 || e_shnum > 1024
+      || e_phentsize > 1024 || e_shentsize > 1024)
+    return 0;
+
+  uint64_t end = 64;
+  if (e_shoff && e_shnum && e_shentsize)
+    end = max (end, e_shoff + (uint64_t) e_shnum * e_shentsize);
+  if (e_phoff && e_phnum && e_phentsize)
+    {
+      end = max (end, e_phoff + (uint64_t) e_phnum * e_phentsize);
+      for (uint32_t i = 0; i < e_phnum; i++)
+        {
+          size_t poff = off + (size_t) e_phoff + i * e_phentsize;
+          if (poff + e_phentsize > blob.size ())
+            break;
+          uint64_t p_offset, p_filesz;
+          if (ei_class == 2)
+            {
+              p_offset = u64 (poff + 8);
+              p_filesz = u64 (poff + 32);
+            }
+          else
+            {
+              p_offset = u32 (poff + 4);
+              p_filesz = u32 (poff + 16);
+            }
+          if (p_filesz > blob.size ())
+            continue;
+          end = max (end, p_offset + p_filesz);
+        }
+    }
+
+  if (end > blob.size () - off)
+    end = blob.size () - off;
+  // Reject "ELFs" that claim to span most of a kernel image — those are
+  // almost certainly false-positive magics inside .rodata.
+  if (end > blob.size () / 4 && end > (16u << 20))
+    return 0;
+  return (size_t) end;
+}
+
+/* Find embedded ELF [start, start+size) ranges inside the flat image.  */
+static void
+find_embedded_elves (const vector<unsigned char> &blob,
+                     vector<pair<size_t, size_t> > &elves)
+{
+  elves.clear ();
+  for (size_t off = 0; off + 4 <= blob.size (); )
+    {
+      const void *hit = memchr (&blob[off], 0x7f, blob.size () - off);
+      if (hit == NULL)
+        break;
+      off = (const unsigned char *) hit - blob.data ();
+      if (off + 4 <= blob.size ()
+          && blob[off + 1] == 'E' && blob[off + 2] == 'L'
+          && blob[off + 3] == 'F')
+        {
+          size_t sz = embedded_elf_size (blob, off);
+          if (sz > 0)
+            elves.push_back (make_pair (off, sz));
+        }
+      off++;
+    }
+}
+
+/* Size of the object that "owns" a note at HDR.  Notes that fall inside
+   an embedded ELF (vdso, …) get that ELF's size; notes in the flat
+   objcopy -O binary image itself get the whole blob size — i.e. the
+   kernel, which is almost certainly the largest thing in the bundle.  */
+static size_t
+note_owner_size (size_t hdr, size_t blob_size,
+                 const vector<pair<size_t, size_t> > &elves)
+{
+  for (size_t i = 0; i < elves.size (); i++)
+    if (hdr >= elves[i].first
+        && hdr < elves[i].first + elves[i].second)
+      return elves[i].second;
+  return blob_size;
+}
+
+/* Scan a raw (possibly non-ELF) kernel image for NT_GNU_BUILD_ID notes.
+   Prefer notes that belong to the largest owning object (the flat
+   vmlinux image beats embedded vdso/etc. ELFs), then break ties with
+   Linux BUILD_SALT / LTO_INFO neighbour affinity.  */
+static string
+build_id_from_raw_notes (const vector<unsigned char> &blob,
+                         const string &kernel_release, int verbose)
+{
+  struct cand {
+    size_t owner_size;
+    int score;
+    size_t off;
+    string hex;
+  };
+  vector<cand> cands;
+  vector<pair<size_t, size_t> > elves;
+  find_embedded_elves (blob, elves);
+
+  for (int pass = 0; pass < 2; pass++)
+    {
+      bool be = (pass == 1);
+      // Walk looking for name "GNU\0" preceded by a plausible note header.
+      const unsigned char gnu[4] = { 'G', 'N', 'U', 0 };
+      for (size_t i = 12; i + 4 <= blob.size (); i++)
+        {
+          if (memcmp (&blob[i], gnu, 4) != 0)
+            continue;
+          size_t hdr = i - 12;
+          uint32_t namesz = read_note_u32 (&blob[hdr], be);
+          uint32_t descsz = read_note_u32 (&blob[hdr + 4], be);
+          uint32_t type = read_note_u32 (&blob[hdr + 8], be);
+          if (namesz != 4 || type != NT_GNU_BUILD_ID || descsz == 0
+              || descsz > 64)
+            continue;
+          size_t desc_off = i + ((namesz + 3) & ~3u);
+          if (desc_off + descsz > blob.size ())
+            continue;
+
+          int score = be ? 0 : 1; // slight LE bias; real score comes from neighbours
+          // Examine neighbouring notes in a small window.
+          size_t win_lo = hdr > 256 ? hdr - 256 : 0;
+          size_t win_hi = min (blob.size (), hdr + 256);
+          for (size_t p = win_lo; p + 16 <= win_hi; p += 4)
+            {
+              uint32_t ns = read_note_u32 (&blob[p], be);
+              uint32_t ds = read_note_u32 (&blob[p + 4], be);
+              uint32_t ty = read_note_u32 (&blob[p + 8], be);
+              if (ns != 6 /* "Linux\0" */ || ds > 256)
+                continue;
+              size_t name_off = p + 12;
+              if (name_off + 6 > blob.size ())
+                continue;
+              if (memcmp (&blob[name_off], "Linux", 6) != 0)
+                continue;
+              size_t d_off = name_off + ((ns + 3) & ~3u);
+              if (d_off + ds > blob.size ())
+                continue;
+              if (ty == LINUX_ELFNOTE_BUILD_SALT)
+                {
+                  score += 10;
+                  if (!kernel_release.empty ()
+                      && ds >= kernel_release.size ()
+                      && memcmp (&blob[d_off], kernel_release.data (),
+                                 kernel_release.size ()) == 0)
+                    score += 20;
+                }
+              else if (ty == LINUX_ELFNOTE_LTO_INFO)
+                score += 5;
+              else
+                score += 1;
+            }
+
+          cand c;
+          c.owner_size = note_owner_size (hdr, blob.size (), elves);
+          c.score = score;
+          c.off = hdr;
+          c.hex = hex_dump (&blob[desc_off], descsz);
+          cands.push_back (c);
+        }
+    }
+
+  if (cands.empty ())
+    return "";
+
+  // Largest owning object first (flat vmlinux >> vdso); note-neighbour
+  // score is only a tie-breaker.
+  sort (cands.begin (), cands.end (),
+        [] (const cand &a, const cand &b) {
+          if (a.owner_size != b.owner_size)
+            return a.owner_size > b.owner_size;
+          if (a.score != b.score)
+            return a.score > b.score;
+          return a.off < b.off;
+        });
+
+  if (verbose > 2)
+    {
+      clog << _F("Kernel build-id note candidates (%zu):", cands.size ())
+           << endl;
+      for (size_t i = 0; i < cands.size () && i < 5; i++)
+        clog << "  " << cands[i].hex
+             << " owner_size=" << cands[i].owner_size
+             << " score=" << cands[i].score
+             << " @" << hex << cands[i].off << dec << endl;
+    }
+
+  // Require either a dominant owner (the flat image itself) or some
+  // Linux-note affinity, so we don't return a random GNU note from a
+  // lone embedded firmware blob.
+  if (cands[0].owner_size < blob.size () && cands[0].score < 10)
+    return "";
+  return cands[0].hex;
+}
+
+/* Extract NT_GNU_BUILD_ID from a (possibly non-ELF) vmlinuz boot image.
+   Used on aarch64 (EFI zboot) and s390x (zipl), where objcopy -O binary
+   leaves the .notes contents in the payload but strips the ELF container
+   that elfutils knows how to read.  */
+static string
+build_id_from_vmlinuz_image (const string &path, const string &kernel_release,
+                            int verbose)
+{
+  vector<unsigned char> file;
+  if (!read_whole_file (path, file))
+    return "";
+
+  vector<unsigned char> payload;
+  string kind;
+  if (peel_boot_image (file, payload, kind, verbose))
+    {
+      if (verbose > 1)
+        clog << _F("Attempting to extract kernel build ID from %s (%s)",
+                   path.c_str (), kind.c_str ()) << endl;
+      return build_id_from_raw_notes (payload, kernel_release, verbose);
+    }
+
+  // Already a raw Image / uncompressed payload, or unknown wrapper:
+  // try scanning the file bytes directly (cheap if no notes).
+  if (verbose > 2)
+    clog << _F("Scanning %s for raw NT_GNU_BUILD_ID notes",
+               path.c_str ()) << endl;
+  return build_id_from_raw_notes (file, kernel_release, verbose);
+}
+#endif // HAVE_LIBZ
+
 /* Get the kernel build ID */
 string
 get_kernel_build_id(systemtap_session &s)
 {
-  bool found = false;
   string hex;
 
-  // Try to find BuildID from vmlinux.id
+  // Try to find BuildID from vmlinux.id (kernel-devel on Fedora/RHEL).
   string kernel_buildID_path = s.kernel_build_tree + "/vmlinux.id";
-  if(s.verbose > 2)
-    clog << _F("Attempting to extract kernel debuginfo build ID from %s", kernel_buildID_path.c_str()) << endl;
-  ifstream buildIDfile;
-  buildIDfile.open(kernel_buildID_path.c_str());
-  if(buildIDfile.is_open())
+  if (s.verbose > 2)
+    clog << _F("Attempting to extract kernel debuginfo build ID from %s",
+               kernel_buildID_path.c_str ()) << endl;
+  ifstream buildIDfile (kernel_buildID_path.c_str ());
+  if (buildIDfile.is_open ())
     {
-      getline(buildIDfile, hex);
-      if(buildIDfile.good())
-        {
-          found = true;
-        }
-      buildIDfile.close();
+      getline (buildIDfile, hex);
+      if (buildIDfile.good () && !hex.empty ())
+        return hex;
+      hex.clear ();
     }
 
-  // Try to find BuildID from the notes file if the above didn't work and we are
-  // building a native module
-  if(found == false && s.native_build)
+  // Try to find BuildID from the notes file if we are building natively.
+  if (s.native_build)
     {
-      if(s.verbose > 1)
-        clog << _("Attempting to extract kernel debuginfo build ID from /sys/kernel/notes") << endl;
+      if (s.verbose > 1)
+        clog << _("Attempting to extract kernel debuginfo build ID from /sys/kernel/notes")
+             << endl;
 
       const char *notesfile = "/sys/kernel/notes";
       int fd = open64 (notesfile, O_RDONLY);
-      if (fd < 0)
-      return "";
-
-      assert (sizeof (Elf32_Nhdr) == sizeof (GElf_Nhdr));
-      assert (sizeof (Elf64_Nhdr) == sizeof (GElf_Nhdr));
-
-      union
-      {
-        GElf_Nhdr nhdr;
-        unsigned char data[8192];
-      } buf;
-
-      ssize_t n = read (fd, buf.data, sizeof buf);
-      close (fd);
-
-      if (n <= 0)
-        return "";
-
-      unsigned char *p = buf.data;
-      while (p < &buf.data[n])
+      if (fd >= 0)
         {
-          /* No translation required since we are reading the native kernel.  */
-          GElf_Nhdr *nhdr = (GElf_Nhdr *) p;
-          p += sizeof *nhdr;
-          unsigned char *name = p;
-          p += (nhdr->n_namesz + 3) & -4U;
-          unsigned char *bits = p;
-          p += (nhdr->n_descsz + 3) & -4U;
+          assert (sizeof (Elf32_Nhdr) == sizeof (GElf_Nhdr));
+          assert (sizeof (Elf64_Nhdr) == sizeof (GElf_Nhdr));
 
-          if (p <= &buf.data[n]
-              && nhdr->n_type == NT_GNU_BUILD_ID
-              && nhdr->n_namesz == sizeof "GNU"
-              && !memcmp (name, "GNU", sizeof "GNU"))
+          union
+          {
+            GElf_Nhdr nhdr;
+            unsigned char data[8192];
+          } buf;
+
+          ssize_t n = read (fd, buf.data, sizeof buf);
+          close (fd);
+
+          if (n > 0)
             {
-              // Found it.
-              hex = hex_dump(bits, nhdr->n_descsz);
-              found = true;
+              unsigned char *p = buf.data;
+              while (p < &buf.data[n])
+                {
+                  /* Native kernel: no endian translation required.  */
+                  GElf_Nhdr *nhdr = (GElf_Nhdr *) p;
+                  p += sizeof *nhdr;
+                  unsigned char *name = p;
+                  p += (nhdr->n_namesz + 3) & -4U;
+                  unsigned char *bits = p;
+                  p += (nhdr->n_descsz + 3) & -4U;
+
+                  if (p <= &buf.data[n]
+                      && nhdr->n_type == NT_GNU_BUILD_ID
+                      && nhdr->n_namesz == sizeof "GNU"
+                      && !memcmp (name, "GNU", sizeof "GNU"))
+                    {
+                      hex = hex_dump (bits, nhdr->n_descsz);
+                    }
+                }
+              if (!hex.empty ())
+                return hex;
             }
         }
     }
-  if(found)
+
+  // Fall back to the installed vmlinuz.  On ppc64le this is a real ELF;
+  // on aarch64/s390x it is a bootloader image that still embeds the
+  // vmlinux .notes (including NT_GNU_BUILD_ID) after decompression.
+  string vmlinuz = find_vmlinuz_path (s);
+  if (vmlinuz.empty ())
     {
+      if (s.verbose > 2)
+        clog << _("No vmlinuz found for kernel build-id extraction") << endl;
+      return "";
+    }
+
+  if (s.verbose > 2)
+    clog << _F("Attempting to extract kernel debuginfo build ID from %s",
+               vmlinuz.c_str ()) << endl;
+
+  hex = build_id_from_elf_vmlinuz (vmlinuz, s.verbose);
+  if (!hex.empty ())
+    return hex;
+
+#if defined(HAVE_LIBZ)
+  hex = build_id_from_vmlinuz_image (vmlinuz, s.kernel_release, s.verbose);
+  if (!hex.empty ())
+    {
+      if (s.verbose > 1)
+        clog << _F("Extracted kernel build ID %s from %s",
+                   hex.c_str (), vmlinuz.c_str ()) << endl;
       return hex;
     }
-  else
-    return "";
+#else
+  (void) 0;
+#endif
+
+  return "";
 }
 
 /* Find the kernel build ID and attempt to download the matching debuginfo */

@@ -13005,6 +13005,70 @@ fi
 
     stap_LIBS="$stap_LIBS -Wl,--start-group -ldw $ebl_LIBS -Wl,--end-group -lelf"
     LIBS="$save_LIBS"
+
+    # zlib: used to unwrap aarch64 EFI-zboot / s390x zipl vmlinuz images
+    # when hunting for the kernel NT_GNU_BUILD_ID (elfutils can't).
+    save_LIBS="$LIBS"
+    { printf '%s\n' "$as_me:${as_lineno-$LINENO}: checking for inflate in -lz" >&5
+printf %s "checking for inflate in -lz... " >&6; }
+if test ${ac_cv_lib_z_inflate+y}
+then :
+  printf %s "(cached) " >&6
+else case e in #(
+  e) ac_check_lib_save_LIBS=$LIBS
+LIBS="-lz  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.
+   The 'extern "C"' is for builds by C++ compilers;
+   although this is not generally supported in C code supporting it here
+   has little cost and some practical benefit (sr 110532).  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char inflate (void);
+int
+main (void)
+{
+return inflate ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"
+then :
+  ac_cv_lib_z_inflate=yes
+else case e in #(
+  e) ac_cv_lib_z_inflate=no ;;
+esac
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS ;;
+esac
+fi
+{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_z_inflate" >&5
+printf '%s\n' "$ac_cv_lib_z_inflate" >&6; }
+if test "x$ac_cv_lib_z_inflate" = xyes
+then :
+
+      stap_LIBS="$stap_LIBS -lz"
+
+printf '%s\n' "#define HAVE_LIBZ 1" >>confdefs.h
+
+
+else case e in #(
+  e)
+      { printf '%s\n' "$as_me:${as_lineno-$LINENO}: WARNING: zlib not found; kernel vmlinuz build-id extraction disabled" >&5
+printf '%s\n' "$as_me: WARNING: zlib not found; kernel vmlinuz build-id extraction disabled" >&2;}
+     ;;
+esac
+fi
+
+    LIBS="$save_LIBS"
 fi
 
 
