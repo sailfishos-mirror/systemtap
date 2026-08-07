@@ -2924,6 +2924,36 @@ dwflpp::get_enum_value (Dwarf_Die *scopes, int nscopes, const char *name, Dwarf_
 }
 
 
+void
+dwflpp::get_enum_name_map (Dwarf_Die *enum_type, map<int64_t, string>& lut)
+{
+  if (!enum_type || dwarf_tag (enum_type) != DW_TAG_enumeration_type)
+    return;
+
+  Dwarf_Die enumerator;
+  if (dwarf_child (enum_type, &enumerator) != 0)
+    return;
+
+  do
+    {
+      if (dwarf_tag (&enumerator) != DW_TAG_enumerator)
+        continue;
+      const char *name = dwarf_diename (&enumerator);
+      Dwarf_Attribute attr_mem;
+      Dwarf_Attribute *attr = dwarf_attr_integrate (&enumerator,
+                                                   DW_AT_const_value,
+                                                   &attr_mem);
+      Dwarf_Sword value;
+      if (!name || !attr || dwarf_formsdata (attr, &value) != 0)
+        continue;
+      // First enumerator name wins for duplicate values.
+      if (lut.find (value) == lut.end ())
+        lut[value] = name;
+    }
+  while (dwarf_siblingof (&enumerator, &enumerator) == 0);
+}
+
+
 Dwarf_Attribute *
 dwflpp::find_variable_and_frame_base (vector<Dwarf_Die>& scopes,
                                       Dwarf_Addr pc,

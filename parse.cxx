@@ -235,6 +235,7 @@ private: // nonterminals
   expression* parse_probewrite_op(const token* t);
   expression* parse_const_op (const token* t);
   expression* parse_enum_op (const token* t);
+  expression* parse_enumname_op (const token* t);
   expression* parse_perf_op (const token* t);
   expression* parse_target_register (const token* t);
   expression* parse_target_deref (const token* t);
@@ -1524,6 +1525,10 @@ lexer::lexer (istream& input, const string& in, systemtap_session& s, bool cc):
           atwords.insert("kderef");
           atwords.insert("uderef");
         }
+      if (has_version("5.5"))
+        atwords.insert("enum");
+      if (has_version("5.6"))
+        atwords.insert("enumname");
     }
 }
 
@@ -3959,8 +3964,13 @@ expression* parser::parse_symbol ()
       if (name == "@const")
         return parse_const_op (t);
 
-      if (name == "@enum")
+      // Pre-5.5/5.6: leave unrecognized so scripts see the old
+      // "unknown operator" behavior rather than a new compat error.
+      if (input.has_version("5.5") && name == "@enum")
         return parse_enum_op (t);
+
+      if (input.has_version("5.6") && name == "@enumname")
+        return parse_enumname_op (t);
 
       if (name == "@entry")
         return parse_entry_op (t);
@@ -4326,18 +4336,41 @@ expression* parser::parse_const_op (const token* t)
 
 
 // Parse a @enum().  Given head token has already been consumed.
+// Caller must gate on --compatible >= 5.5.
 expression* parser::parse_enum_op (const token* t)
 {
-  if (strverscmp(session.compatible.c_str(), "5.5") < 0)
-    throw PARSE_ERROR (_("using @enum operator requires --compatible=5.5 or higher"),
-                       false /* don't skip tokens for parse resumption */);
-
   enum_op *eop = new enum_op;
   eop->tok = t;
   expect_op("(");
   eop->operand = parse_literal_string ();
   if (eop->operand->value == "")
     throw PARSE_ERROR (_("expected non-empty string"));
+  expect_op(")");
+  return eop;
+}
+
+
+// Parse a @enumname().  Given head token has already been consumed.
+// Forms: @enumname(expr) or @enumname(expr, "type" [, "module"])
+// Caller must gate on --compatible >= 5.6.
+expression* parser::parse_enumname_op (const token* t)
+{
+  enumname_op *eop = new enumname_op;
+  eop->tok = t;
+  expect_op("(");
+  eop->operand = parse_expression ();
+  if (peek_op (","))
+    {
+      swallow ();
+      expect_unknown(tok_string, eop->type_name);
+      if (eop->type_name.empty())
+        throw PARSE_ERROR (_("expected non-empty string"));
+      if (peek_op (","))
+        {
+          swallow ();
+          expect_unknown(tok_string, eop->module);
+        }
+    }
   expect_op(")");
   return eop;
 }

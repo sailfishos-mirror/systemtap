@@ -2962,6 +2962,7 @@ struct dwarf_var_expanding_visitor: public var_expanding_visitor
   void visit_entry_op (entry_op* e);
   void visit_perf_op (perf_op* e);
   void visit_enum_op (enum_op* e);
+  void visit_enumname_op (enumname_op* e);
 
 private:
   vector<Dwarf_Die>& getscopes(target_symbol *e);
@@ -3238,6 +3239,13 @@ public:
   { context_op_p = true; traversing_visitor::visit_perf_op(e); }
   void visit_enum_op (enum_op* e)
   { context_op_p = true; traversing_visitor::visit_enum_op(e); }
+  void visit_enumname_op (enumname_op* e)
+  {
+    // Typed $var form, or type/module still needing probe context (like @cast).
+    if (e->type_name == "" || e->module == "")
+      context_op_p = true;
+    traversing_visitor::visit_enumname_op(e);
+  }
 };
 
 
@@ -5084,6 +5092,176 @@ dwarf_var_expanding_visitor::visit_enum_op (enum_op *e)
 }
 
 
+// Build a string expression that maps operand through lut.
+// Literals fold; otherwise a synthetic pure function with an if-chain
+// and decimal sprintf fallback for unknown values.
+static expression*
+synthesize_enumname_expression (systemtap_session& sess,
+                                const token* tok,
+                                expression* operand,
+                                const map<int64_t, string>& lut)
+{
+  if (literal_number* ln = dynamic_cast<literal_number*>(operand))
+    {
+      auto it = lut.find (ln->value);
+      string name = (it != lut.end ()) ? it->second : lex_cast (ln->value);
+      literal_string* ls = new literal_string (name);
+      ls->tok = tok;
+      return ls;
+    }
+
+  static atomic<unsigned> tick {0};
+  functiondecl* fdecl = new functiondecl;
+  fdecl->tok = tok;
+  fdecl->synthetic = true;
+  fdecl->type = pe_string;
+  fdecl->unmangled_name = fdecl->name
+    = "__private_enumname_" + lex_cast (tick++);
+
+  vardecl* arg = new vardecl;
+  arg->type = pe_long;
+  arg->name = arg->unmangled_name = "val";
+  arg->tok = tok;
+  arg->synthetic = true;
+  fdecl->formal_args.push_back (arg);
+
+  symbol* argsym = new symbol;
+  argsym->tok = tok;
+  argsym->name = arg->name;
+
+  // Final else: return sprintf("%d", val)
+  print_format* pf = print_format::create (tok, "sprintf");
+  pf->raw_components = "%d";
+  pf->components = print_format::string_to_components (pf->raw_components);
+  pf->args.push_back (argsym);
+  pf->type = pe_string;
+
+  return_statement* else_rs = new return_statement;
+  else_rs->tok = tok;
+  else_rs->value = pf;
+  statement* chain = else_rs;
+
+  for (auto it = lut.rbegin (); it != lut.rend (); ++it)
+    {
+      symbol* left = new symbol;
+      left->tok = tok;
+      left->name = arg->name;
+
+      comparison* eq = new comparison;
+      eq->op = "==";
+      eq->tok = tok;
+      eq->left = left;
+      eq->right = new literal_number (it->first);
+      eq->right->tok = tok;
+
+      return_statement* then_rs = new return_statement;
+      then_rs->tok = tok;
+      then_rs->value = new literal_string (it->second);
+      then_rs->value->tok = tok;
+
+      if_statement* is = new if_statement;
+      is->tok = tok;
+      is->condition = eq;
+      is->thenblock = then_rs;
+      is->elseblock = chain;
+      chain = is;
+    }
+
+  fdecl->body = chain;
+  fdecl->join (sess);
+
+  functioncall* fcall = new functioncall;
+  fcall->tok = tok;
+  fcall->synthetic = true;
+  fcall->function = fdecl->name;
+  fcall->referents.push_back (fdecl);
+  fcall->type = pe_string;
+  fcall->args.push_back (operand);
+  return fcall;
+}
+
+
+void
+dwarf_var_expanding_visitor::visit_enumname_op (enumname_op *e)
+{
+  // Explicit type string: fill module from probe context if needed
+  // (same idea as @cast), then leave for dwarf_cast_expanding_visitor.
+  if (e->type_name != "")
+    {
+      if (e->module.empty ())
+        {
+          if (strverscmp(sess.compatible.c_str(), "4.3") < 0)
+            e->module = "kernel";
+          else
+            {
+              if (is_user_module (q.dw.module_name))
+                e->module = q.dw.module_name;
+              else if ((strverscmp(sess.compatible.c_str(), "5.4") >= 0) &&
+                       access(string(sess.kernel_build_tree+"/vmlinux.h").c_str(), R_OK) == 0)
+                {
+                  if (sess.verbose > 3)
+                    clog << _("added implicit kernel<vmlinux.h> for @enumname context")
+                         << " " << q.dw.module_name << endl;
+                  e->module = string(TOK_KERNEL_VMLINUX_H) + string(":") + q.dw.module_name;
+                }
+              else
+                e->module = q.dw.module_name;
+            }
+        }
+      replace (e->operand);
+      provide (e);
+      return;
+    }
+
+  // Type from a DWARF-typed $variable (not @cast/@autocast — those carry
+  // their own type_name / type_details and should use the string form).
+  target_symbol *ts = dynamic_cast<target_symbol*>(e->operand);
+  if (!ts || dynamic_cast<cast_op*>(ts) || dynamic_cast<autocast_op*>(ts)
+      || dynamic_cast<atvar_op*>(ts))
+    throw SEMANTIC_ERROR
+      (_("@enumname requires a typed $variable or a type string argument"),
+       e->tok);
+
+  Dwarf_Die type_die_mem, enum_die;
+  Dwarf_Die *type_die = NULL;
+  try
+    {
+      if (q.has_return && ts->name == "$return")
+        type_die = q.dw.type_die_for_return (scope_die, addr, ts,
+                                             &type_die_mem, false);
+      else
+        type_die = q.dw.type_die_for_local (getscopes(ts), addr,
+                                            ts->sym_name (), ts,
+                                            &type_die_mem, false);
+      q.dw.resolve_unqualified_inner_typedie (type_die, &enum_die, ts);
+    }
+  catch (const semantic_error& er)
+    {
+      semantic_error err
+        (SEMANTIC_ERROR
+         (_F("@enumname cannot determine enumeration type for '%s'",
+             ts->sym_name ().c_str ()), e->tok));
+      err.set_chain (er);
+      throw err;
+    }
+
+  if (dwarf_tag (&enum_die) != DW_TAG_enumeration_type)
+    throw SEMANTIC_ERROR
+      (_F("@enumname target '%s' does not have enumeration type (have %s)",
+          ts->sym_name ().c_str (),
+          dwarf_type_name (&enum_die).c_str ()), e->tok);
+
+  map<int64_t, string> lut;
+  q.dw.get_enum_name_map (&enum_die, lut);
+  if (lut.empty ())
+    throw SEMANTIC_ERROR (_("enumeration type has no constants"), e->tok);
+
+  // Expand $var to its integral rvalue, then map through the LUT.
+  replace (e->operand);
+  provide (synthesize_enumname_expression (sess, e->tok, e->operand, lut));
+}
+
+
 vector<Dwarf_Die>&
 dwarf_var_expanding_visitor::getscopes(target_symbol *e)
 {
@@ -5117,6 +5295,7 @@ struct dwarf_cast_expanding_visitor: public var_expanding_visitor
   dwarf_cast_expanding_visitor(systemtap_session& s, dwarf_builder& db):
     var_expanding_visitor(s), db(db) {}
   void visit_cast_op (cast_op* e);
+  void visit_enumname_op (enumname_op* e);
   void filter_special_modules(string& module);
 };
 
@@ -5275,6 +5454,105 @@ void dwarf_cast_expanding_visitor::filter_special_modules(string& module)
           compiled_headers[header] = module;
         }
     }
+}
+
+
+void dwarf_cast_expanding_visitor::visit_enumname_op (enumname_op* e)
+{
+  // $variable form should already have been expanded in
+  // dwarf_var_expanding_visitor.  Remaining ops need a type string.
+  if (e->type_name == "")
+    {
+      provide (e);
+      return;
+    }
+
+  if (strverscmp(sess.compatible.c_str(), "4.3") < 0)
+    if (e->module.empty())
+      e->module = "kernel";
+
+  // PR33428: prepend kernel<vmlinux.h> when resolving kernel types.
+  if ((strverscmp(sess.compatible.c_str(), "5.4") >= 0) &&
+      access(string(sess.kernel_build_tree+"/vmlinux.h").c_str(), R_OK) == 0)
+    {
+      if (e->module.find(TOK_KERNEL_VMLINUX_H) == string::npos)
+        {
+          if (e->module.starts_with("kernel"))
+            e->module = string(TOK_KERNEL_VMLINUX_H) + string(":") + e->module;
+          else {
+            string::size_type p = e->module.find(":kernel");
+            if (p != string::npos)
+              e->module.insert(p, TOK_KERNEL_VMLINUX_H + string (":"));
+          }
+        }
+    }
+
+  vector<string> modules;
+  tokenize(e->module, modules, ":");
+
+  map<int64_t, string> lut;
+  string tns = e->type_name;
+  // Dummy target_symbol so resolve_unqualified_inner_typedie has a tok.
+  target_symbol dummy_ts;
+  dummy_ts.tok = e->tok;
+
+  for (unsigned i = 0; lut.empty() && i < modules.size(); ++i)
+    {
+      string module = modules[i];
+      filter_special_modules(module);
+
+      dwflpp* dw;
+      try
+        {
+          bool userspace_p = is_user_module (module);
+          if (! userspace_p)
+            dw = db.get_kern_dw(sess, module);
+          else
+            {
+              module = find_executable (module, "", sess.sysenv);
+              dw = db.get_user_dw(sess, module);
+            }
+        }
+      catch (const semantic_error&)
+        {
+          continue;
+        }
+
+      // Resolve enumeration type.  Accept "foo", "enum foo", or a
+      // typedef name; enums are never struct/union/class (including
+      // C++ enum class — still DW_TAG_enumeration_type).
+      Dwarf_Die* type_die = dw->declaration_resolve_other_cus(tns);
+      if (!type_die && !startswith(tns, "enum "))
+        type_die = dw->declaration_resolve_other_cus("enum " + tns);
+
+      if (!type_die)
+        continue;
+
+      Dwarf_Die enum_die;
+      try
+        {
+          dw->resolve_unqualified_inner_typedie (type_die, &enum_die, &dummy_ts);
+        }
+      catch (const semantic_error&)
+        {
+          continue;
+        }
+
+      if (dwarf_tag (&enum_die) != DW_TAG_enumeration_type)
+        continue;
+
+      dw->get_enum_name_map (&enum_die, lut);
+    }
+
+  if (lut.empty ())
+    {
+      // Leave unresolved; typeresolution_info::visit_enumname_op reports it.
+      provide (e);
+      return;
+    }
+
+  replace (e->operand);
+  provide (synthesize_enumname_expression (sess, e->tok, e->operand, lut));
 }
 
 

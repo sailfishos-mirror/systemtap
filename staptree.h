@@ -489,6 +489,19 @@ struct enum_op: public expression
 };
 
 
+// Reverse of @enum: map an integral rvalue to an enumerator name string.
+// Type comes from a typed $variable operand, or from optional type/module
+// string arguments (same shape as @cast).
+struct enumname_op: public expression
+{
+  expression *operand;
+  interned_string type_name, module;
+  enumname_op (): operand(0) {}
+  void print (std::ostream& o) const;
+  void visit (visitor* u);
+};
+
+
 struct arrayindex: public expression
 {
   std::vector<expression*> indexes;
@@ -1048,6 +1061,7 @@ struct visitor
   virtual void visit_entry_op (entry_op* e) = 0;
   virtual void visit_perf_op (perf_op* e) = 0;
   virtual void visit_enum_op (enum_op* e) = 0;
+  virtual void visit_enumname_op (enumname_op* e) = 0;
 };
 
 
@@ -1103,6 +1117,7 @@ struct nop_visitor: public visitor
   virtual void visit_entry_op (entry_op*) {};
   virtual void visit_perf_op (perf_op*) {};
   virtual void visit_enum_op (enum_op*) {};
+  virtual void visit_enumname_op (enumname_op*) {};
 };
 
 
@@ -1158,6 +1173,7 @@ struct traversing_visitor: public visitor
   void visit_entry_op (entry_op* e);
   void visit_perf_op (perf_op* e);
   void visit_enum_op (enum_op* e);
+  void visit_enumname_op (enumname_op* e);
 };
 
 
@@ -1199,6 +1215,7 @@ struct expression_visitor: public traversing_visitor
   void visit_entry_op (entry_op* e);
   void visit_perf_op (perf_op* e);
   void visit_enum_op (enum_op* e);
+  void visit_enumname_op (enumname_op* e);
 };
 
 
@@ -1262,6 +1279,7 @@ struct varuse_collecting_visitor: public functioncall_traversing_visitor
   void visit_entry_op (entry_op* e);
   void visit_perf_op (perf_op* e);
   void visit_enum_op (enum_op* e);
+  void visit_enumname_op (enumname_op* e);
   bool side_effect_free ();
   bool side_effect_free_wrt (const std::set<vardecl*>& vars);
 };
@@ -1287,6 +1305,7 @@ symuse_collecting_visitor: public varuse_collecting_visitor
   void visit_symbol(symbol* e);
   void visit_probewrite_op(probewrite_op* e);
   void visit_enum_op (enum_op* e);
+  void visit_enumname_op (enumname_op* e);
 };
 
 
@@ -1347,6 +1366,7 @@ struct throwing_visitor: public visitor
   void visit_entry_op (entry_op* e);
   void visit_perf_op (perf_op* e);
   void visit_enum_op (enum_op* e);
+  void visit_enumname_op (enumname_op* e);
 };
 
 // A visitor similar to a traversing_visitor, but with the ability to rewrite
@@ -1470,6 +1490,7 @@ struct update_visitor: public visitor
   virtual void visit_entry_op (entry_op* e);
   virtual void visit_perf_op (perf_op* e);
   virtual void visit_enum_op (enum_op* e);
+  virtual void visit_enumname_op (enumname_op* e);
 
 private:
   std::stack<visitable *> values;
@@ -1539,6 +1560,7 @@ struct deep_copy_visitor: public update_visitor
   virtual void visit_entry_op (entry_op* e);
   virtual void visit_perf_op (perf_op* e);
   virtual void visit_enum_op (enum_op* e);
+  virtual void visit_enumname_op (enumname_op* e);
 };
 
 struct embedded_tags_visitor: public traversing_visitor
@@ -1549,6 +1571,7 @@ struct embedded_tags_visitor: public traversing_visitor
   void visit_embeddedcode (embeddedcode *s);
   void visit_embedded_expr (embedded_expr *e);
   void visit_enum_op (enum_op* e);
+  void visit_enumname_op (enumname_op* e);
 };
 
 #endif // STAPTREE_H

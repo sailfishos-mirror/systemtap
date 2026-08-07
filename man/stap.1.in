@@ -1118,6 +1118,16 @@ name in DWARF debug information and replaces it with its integer value.
 .SAMPLE
 @enum("MY_ENUM_CONSTANT")
 .ESAMPLE
+.PP
+The reverse mapping is available via @enumname(), which turns an integral
+rvalue into the enumerator name string.  The enumeration type is taken from
+a typed context variable, or from optional type and module string arguments
+(same shape as @cast).  Values that do not match any enumerator are rendered
+as a decimal string.
+.SAMPLE
+@enumname($state)
+@enumname(flags, "enum foo", "kernel")
+.ESAMPLE
 
 .SS VARIABLES
 Identifiers for variables and functions are an alphanumeric sequence,

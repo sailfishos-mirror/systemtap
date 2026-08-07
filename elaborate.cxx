@@ -6807,6 +6807,7 @@ struct initial_typeresolution_info : public typeresolution_info
   void visit_entry_op (entry_op*) {}
   void visit_perf_op (perf_op*) {}
   void visit_enum_op (enum_op*) {}
+  void visit_enumname_op (enumname_op*) {}
   void visit_cast_op (cast_op*) {}
 };
 
@@ -7699,6 +7700,23 @@ typeresolution_info::visit_enum_op (enum_op* e)
     invalid (e->tok, t);
 
   e->type = pe_long;
+}
+
+
+void
+typeresolution_info::visit_enumname_op (enumname_op* e)
+{
+  // An enumname_op should already have been expanded to a string
+  // literal or synthetic functioncall.
+  if (assert_resolvability)
+    session.print_error
+      (SEMANTIC_ERROR (_("@enumname requires a typed $variable or a type string "
+                         "argument; unresolved enumeration type"), e->tok));
+
+  t = pe_string;
+  e->type = pe_string;
+  num_still_unresolved++;
+  e->operand->visit (this);
 }
 
 

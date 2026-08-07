@@ -1,0 +1,75 @@
+set test "enumname"
+set stap_path $env(SYSTEMTAP_PATH)/stap
+
+# Same fixture as enum.exp: shared lib provides test_enum().
+set xflags "additional_flags=-g"
+set xflags "$xflags additional_flags=-L[pwd] additional_flags=[pwd]/libenumname.so"
+set xflags "$xflags additional_flags=-Wl,-rpath-link,[pwd]"
+set xflags "$xflags additional_flags=-Wl,-rpath,[pwd]"
+set exepath "[pwd]/enumname.x"
+set soflags "additional_flags=-shared"
+set soflags "$soflags additional_flags=-g"
+set soflags "$soflags additional_flags=-fPIC"
+set soflags "$soflags additional_flags=-DSHARED"
+set sopath "[pwd]/libenumname.so"
+set reso [target_compile $srcdir/$subdir/enum.cxx $sopath \
+	      executable $soflags ]
+set res [target_compile $srcdir/$subdir/enum.cxx $exepath \
+	      executable $xflags ]
+if {$res != ""} {
+    fail "$test compiling enum.cxx"
+    return
+} else {
+    pass "$test compiling enum.cxx"
+}
+
+foreach runtime [get_runtime_list] {
+    if {$runtime != ""} {
+	set test_type "$test ($runtime)"
+    } else {
+	set runtime "kernel"
+	set test_type $test
+    }
+
+    set ok 0
+    spawn $stap_path --runtime=$runtime $srcdir/$subdir/enumname.stp -c $exepath
+    expect {
+	-timeout 180
+	-re "(cap=C|sixteen=sixteen_power_8|unknown=99|typed=C|ordinal=first|letter=a)\r\n" { incr ok; exp_continue }
+	eof { }
+    }
+    catch {close}; catch {wait}
+    if {$ok == 6} {
+	pass "$test_type"
+    } else {
+	fail "$test_type ($ok/6)"
+    }
+}
+
+# Brief translator memcheck: -p2 exercises @enumname DWARF expansion
+# without grinding gcc/kbuild (--trace-children=no).
+set vg ""
+if {[catch {exec /usr/bin/which valgrind} vg] || $vg == ""} {
+    untested "$test (no valgrind)"
+} else {
+    set vglog ""
+    if {[catch {exec mktemp -t stap-$test-vg.XXXXXX.log} vglog]} {
+	fail "$test valgrind (mktemp failed: $vglog)"
+    } else {
+	set status [catch {
+	    exec $vg --tool=memcheck --error-exitcode=42 \
+		--trace-children=no --log-file=$vglog \
+		$stap_path -p2 $srcdir/$subdir/enumname.stp -c $exepath
+	} result]
+	set vgfd [open $vglog]
+	set vgtext [read $vgfd]
+	close $vgfd
+	verbose -log "enumname valgrind log:\n$vgtext"
+	catch {file delete -- $vglog}
+	if {$status == 0} {
+	    pass "$test valgrind -p2"
+	} else {
+	    fail "$test valgrind -p2 ($result)"
+	}
+    }
+}

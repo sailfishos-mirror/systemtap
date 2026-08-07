@@ -539,6 +539,10 @@ struct dwflpp
 
   int get_enum_value (Dwarf_Die *scopes, int nscopes, const char *name, Dwarf_Sword *value);
   void get_enums(std::vector<Dwarf_Die>& scopes, std::set<std::string>& enums);
+  // Collect value→name for one DW_TAG_enumeration_type.  First name wins
+  // when multiple enumerators share a value.
+  void get_enum_name_map (Dwarf_Die *enum_type,
+                          std::map<int64_t, std::string>& lut);
 
 private:
   Dwfl * dwfl;

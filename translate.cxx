@@ -294,6 +294,7 @@ struct c_unparser: public unparser, public visitor
   void visit_entry_op (entry_op* e);
   void visit_perf_op (perf_op* e);
   void visit_enum_op (enum_op* e);
+  void visit_enumname_op (enumname_op* e);
 
   // start/close statements with multiple independent child visits
   virtual void start_compound_statement (const char*, statement*) { }
@@ -5978,6 +5979,13 @@ void
 c_unparser::visit_enum_op (enum_op* e)
 {
   throw SEMANTIC_ERROR(_("cannot translate @enum expression"), e->tok);
+}
+
+
+void
+c_unparser::visit_enumname_op (enumname_op* e)
+{
+  throw SEMANTIC_ERROR(_("cannot translate @enumname expression"), e->tok);
 }
 
 

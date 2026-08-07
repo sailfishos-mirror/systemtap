@@ -1,0 +1,13 @@
+probe process.function("main")
+{
+  printf("cap=%s\n", @enumname($cap))
+  printf("sixteen=%s\n", @enumname($sixteen_power))
+  printf("unknown=%s\n", @enumname(99, "enum caps"))
+  printf("typed=%s\n", @enumname(@enum("C"), "enum caps"))
+}
+
+probe process.function("main").label("RETURN")
+{
+  printf("ordinal=%s\n", @enumname($astruct->ordinal))
+  printf("letter=%s\n", @enumname($letter))
+}

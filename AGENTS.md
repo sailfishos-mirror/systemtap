@@ -104,6 +104,23 @@ make check RUNTESTFLAGS="check.exp" CHECK_ONLY="badname fntimes"
   `stress-ng` (or `stress`) is on `PATH` and re-run the test under CPU
   load, e.g. `stress-ng --cpu 0 --timeout 60s` in the background.
 
+### Valgrind on new translator code
+
+When adding or changing translator / DWARF / parse paths, briefly
+exercise the new code under valgrind memcheck during development (and
+prefer a cheap `-p2`/`-p4` grind in the related `.exp` when practical):
+
+```bash
+valgrind --tool=memcheck --error-exitcode=1 --trace-children=no \
+  ./stap -p2 path/to/script.stp
+```
+
+`--trace-children=no` keeps gcc/kbuild out of the grind so you are
+checking `stap` itself. Treat new definite leaks or invalid
+reads/writes in the translator as blockers. For locking/parallelism
+changes, see the optional helgrind coverage in
+`testsuite/systemtap.base/parallelism-helgrind.exp`.
+
 ## Debugging Quirks
 
 ### Compilation Phases
@@ -157,6 +174,17 @@ Right:
 ```stp
 val = @cast(&mm->rss_stat[member], "percpu_counter", "kernel")->count
 ```
+
+### `--compatible` gating for new language features
+
+`--compatible=VERSION` exists so **old scripts keep working on newer
+SystemTap**.  Gate new syntax / `@operators` at the *dispatch* site with
+`input.has_version("X.Y")` (see `@enum` / `@enumname` / `@kregister` in
+`parse.cxx`).  Below that floor the name should stay unrecognized — the
+same “unknown operator” path as before the feature existed — **not** a
+new parse error saying “requires --compatible=X.Y or higher”.  Throwing
+that error would break the whole point of the option.  Register the
+at-word in `lexer::atwords` under the same `has_version` check.
 
 ## Runtime Options
 
