@@ -9,9 +9,10 @@
 # (1.75), via --suppressions=$srcdir/$subdir/parallelism-helgrind-asio.supp.
 #
 # Matching notes: Valgrind matches mangled symbol names.  On RHEL 8 /
-# gcc 8, asio is often fully inlined into parse_all / derive_probes_*,
-# so fun:*asio* alone misses many frames — hence the caller-symbol
-# rules below.  Helgrind:Race is intentionally NOT suppressed.
+# gcc 8, asio is often fully inlined into parse_all / derive_probes_*
+# / emit_symbol_data / translate_pass, so fun:*asio* alone misses many
+# frames — hence the caller-symbol rules below.  Helgrind:Race is
+# intentionally NOT suppressed.
 # Remaining "pthread_cond_*: dubious" reports are Helgrind:Dubious
 # (unlock-then-signal; POSIX-legal, optional check on some Valgrinds).
 #
@@ -165,6 +166,63 @@
    Helgrind:Dubious
    ...
    fun:*derive_probes*
+}
+
+# Pass-3 unwind pool (~thread_pool / stop) inlined into translate.cxx.
+{
+   stap_boost_asio_emit_symbol_misc
+   Helgrind:Misc
+   ...
+   fun:*emit_symbol_data*
+}
+
+{
+   stap_boost_asio_emit_symbol_unlock
+   Helgrind:UnlockUnlocked
+   ...
+   fun:*emit_symbol_data*
+}
+
+{
+   stap_boost_asio_emit_symbol_pthapi
+   Helgrind:PthAPIerror
+   ...
+   fun:*emit_symbol_data*
+}
+
+{
+   stap_boost_asio_emit_symbol_dubious
+   Helgrind:Dubious
+   ...
+   fun:*emit_symbol_data*
+}
+
+{
+   stap_boost_asio_translate_pass_misc
+   Helgrind:Misc
+   ...
+   fun:*translate_pass*
+}
+
+{
+   stap_boost_asio_translate_pass_unlock
+   Helgrind:UnlockUnlocked
+   ...
+   fun:*translate_pass*
+}
+
+{
+   stap_boost_asio_translate_pass_pthapi
+   Helgrind:PthAPIerror
+   ...
+   fun:*translate_pass*
+}
+
+{
+   stap_boost_asio_translate_pass_dubious
+   Helgrind:Dubious
+   ...
+   fun:*translate_pass*
 }
 
 # Worker-thread stacks often end at the C wrapper (no parse_all frame).
