@@ -41,6 +41,7 @@ extern "C" {
 #include <unistd.h>
 #include <byteswap.h>
 #include <endian.h>
+#include <inttypes.h>
 #include <elfutils/libdwelf.h>
 #if defined(HAVE_LIBZ)
 #include <zlib.h>
@@ -162,10 +163,48 @@ find_kernel_mod_cb (Dwfl_Module *mod, void **, const char *name,
   return DWARF_CB_OK;
 }
 
+/* Try well-known .build-id cache locations for a full vmlinux ELF.  */
+static bool
+kernel_build_id_local_path (const std::vector<unsigned char> &bits,
+                            std::string &path_out)
+{
+  if (bits.size () < 2)
+    return false;
+  static const char *const dirs[] = {
+    "/usr/lib/debug/.build-id/",
+    "/var/cache/abrt-di/usr/lib/debug/.build-id/",
+    NULL
+  };
+  char hex[bits.size () * 2 + 1];
+  for (size_t i = 0; i < bits.size (); i++)
+    sprintf (hex + 2 * i, "%02x", bits[i]);
+  hex[bits.size () * 2] = '\0';
+  std::string id (hex);
+  std::string leaf = id.substr (0, 2) + "/" + id.substr (2);
+  for (int d = 0; dirs[d] != NULL; d++)
+    {
+      std::string p = std::string (dirs[d]) + leaf;
+      if (access (p.c_str (), R_OK) == 0)
+        {
+          path_out = p;
+          return true;
+        }
+      std::string pd = p + ".debug";
+      if (access (pd.c_str (), R_OK) == 0)
+        {
+          path_out = pd;
+          return true;
+        }
+    }
+  return false;
+}
+
 /* After dwfl_linux_kernel_report_offline: on aarch64/s390x the installed
-   vmlinuz is not ELF, so dwfl_report_elf fails even though our predicate
-   already counted a match.  Report a build-id-only kernel module so
-   subsequent getelf/getdwarf can fetch vmlinux via debuginfod.  */
+   vmlinuz is not ELF, so the offline reporter never creates a kernel
+   module.  Fetch the matching full vmlinux (ELF+DWARF) via local
+   .build-id cache or debuginfod, then dwfl_report_offline so libdwfl
+   sees proper address ranges and file names — not a [0,0] build-id
+   placeholder (which leaves mainfile null and breaks relocation).  */
 static Dwfl_Module *
 ensure_kernel_build_id_module (Dwfl *dwfl, int verbose)
 {
@@ -175,29 +214,82 @@ ensure_kernel_build_id_module (Dwfl *dwfl, int verbose)
   find_kernel_mod_arg a = { NULL };
   (void) dwfl_getmodules (dwfl, &find_kernel_mod_cb, &a, 0);
 
-  if (a.mod == NULL)
+  // Already reported (e.g. ELF vmlinuz on x86).  Optionally attach the
+  // staged build-id if the module somehow lacks one.
+  if (a.mod != NULL)
     {
-      a.mod = dwfl_report_module (dwfl, "kernel", 0, 0);
-      if (a.mod == NULL)
-        return NULL;
-      if (verbose > 1)
-        std::clog << _("Reported build-id-only kernel module for non-ELF vmlinuz")
-                  << std::endl;
+      const unsigned char *existing = NULL;
+      GElf_Addr vaddr = 0;
+      if (dwfl_module_build_id (a.mod, &existing, &vaddr) <= 0)
+        {
+          if (dwfl_module_report_build_id (a.mod,
+                                           pending_kernel_build_id_bits.data (),
+                                           pending_kernel_build_id_bits.size (),
+                                           0) != 0)
+            return NULL;
+          if (verbose > 1)
+            std::clog << _("Attached kernel build ID to dwfl module for debuginfod")
+                      << std::endl;
+        }
+      return a.mod;
     }
 
-  const unsigned char *existing = NULL;
-  GElf_Addr vaddr = 0;
-  if (dwfl_module_build_id (a.mod, &existing, &vaddr) <= 0)
+  std::string local;
+  char *dbg_path = NULL;
+  int fd = -1;
+  const char *report_path = NULL;
+
+  if (kernel_build_id_local_path (pending_kernel_build_id_bits, local))
     {
-      if (dwfl_module_report_build_id (a.mod,
-                                       pending_kernel_build_id_bits.data (),
-                                       pending_kernel_build_id_bits.size (),
-                                       0) != 0)
-        return NULL;
+      report_path = local.c_str ();
+      fd = -1; // report_offline will open
+    }
+#if defined(HAVE_LIBDEBUGINFOD)
+  else
+    {
+      debuginfod_client *c = dwfl_get_debuginfod_client (dwfl);
+      if (c != NULL)
+        {
+          // Prefer debuginfo: Fedora indexes the fat unstripped vmlinux
+          // under both names, and that is what we need for ELF+DWARF.
+          fd = debuginfod_find_debuginfo (c,
+                                          pending_kernel_build_id_bits.data (),
+                                          pending_kernel_build_id_bits.size (),
+                                          &dbg_path);
+          if (fd < 0)
+            fd = debuginfod_find_executable (c,
+                                             pending_kernel_build_id_bits.data (),
+                                             pending_kernel_build_id_bits.size (),
+                                             &dbg_path);
+          if (fd >= 0)
+            report_path = dbg_path;
+        }
+    }
+#endif
+
+  if (report_path == NULL)
+    {
       if (verbose > 1)
-        std::clog << _("Attached kernel build ID to dwfl module for debuginfod")
+        std::clog << _("No kernel ELF found via build-id cache/debuginfod for non-ELF vmlinuz")
+                  << std::endl;
+      return NULL;
+    }
+
+  a.mod = dwfl_report_offline (dwfl, "kernel", report_path, fd);
+  if (a.mod == NULL)
+    {
+      if (fd >= 0)
+        close (fd);
+      if (verbose > 1)
+        std::clog << _F("dwfl_report_offline(kernel, %s) failed: %s",
+                        report_path, dwfl_errmsg (-1) ?: "?")
                   << std::endl;
     }
+  else if (verbose > 1)
+    std::clog << _F("Reported kernel ELF+DWARF from %s", report_path)
+              << std::endl;
+
+  free (dbg_path);
   return a.mod;
 }
 
@@ -565,7 +657,7 @@ setup_dwfl_kernel (unsigned *modules_found, systemtap_session &s)
   DWFL_ASSERT ("dwfl_begin", dwfl);
   dwfl_report_begin (dwfl);
 
-#ifdef HAVE_DEBUGINFOD
+#if defined(HAVE_LIBDEBUGINFOD)
   setup_debuginfod_progress(dwfl);
 #endif
   
@@ -672,22 +764,30 @@ setup_dwfl_kernel (unsigned *modules_found, systemtap_session &s)
 
   DWFL_ASSERT ("dwfl_report_end", dwfl_report_end(dwfl, NULL, NULL));
 
-  // Trigger find_elf (our wrapper → debuginfod) and find_debuginfo now that
-  // the module carries a build-id.  Keep pending_kernel_build_id_bits until
-  // after getelf so stap_linux_kernel_find_elf can see them.
+  // For the offline-reported kernel (local .build-id or debuginfod),
+  // open ELF+DWARF now so failures surface early.  Keep
+  // pending_kernel_build_id_bits until after getelf for the find_elf
+  // fallback used when report_offline was not needed / not used.
   if (kmod != NULL)
     {
       Dwarf_Addr bias = 0;
-      (void) dwfl_module_getelf (kmod, &bias);
-      (void) dwfl_module_getdwarf (kmod, &bias);
+      Elf *elf = dwfl_module_getelf (kmod, &bias);
+      Dwarf *dw = dwfl_module_getdwarf (kmod, &bias);
       if (s.verbose > 1)
         {
-          Dwarf *dw = dwfl_module_getdwarf (kmod, &bias);
-          if (dw != NULL)
-            clog << _("Resolved kernel debuginfo via build ID / debuginfod")
-                 << endl;
+          const char *mainf = NULL;
+          const char *dbgf = NULL;
+          Dwarf_Addr start = 0, end = 0;
+          (void) dwfl_module_info (kmod, NULL, &start, &end, NULL, NULL,
+                                   &mainf, &dbgf);
+          if (elf != NULL && dw != NULL)
+            // NB: this function also has a local string named hex (build-id).
+            clog << _("Opened kernel ELF+DWARF ")
+                 << "[" << std::hex << std::showbase << start << "-" << end
+                 << std::noshowbase << std::dec << "] "
+                 << (mainf ?: dbgf ?: "?") << endl;
           else
-            clog << _F("Kernel debuginfo still missing after build-id lookup: %s",
+            clog << _F("Kernel ELF/DWARF still missing after build-id lookup: %s",
                        dwfl_errmsg (-1) ?: "?") << endl;
         }
     }
@@ -743,7 +843,7 @@ setup_dwfl_user(const std::string &name)
   DWFL_ASSERT("dwfl_begin", dwfl);
   dwfl_report_begin (dwfl);
 
-#ifdef HAVE_DEBUGINFOD
+#if defined(HAVE_LIBDEBUGINFOD)
   setup_debuginfod_progress(dwfl);
 #endif
   
@@ -774,7 +874,7 @@ setup_dwfl_user(std::vector<std::string>::const_iterator &begin,
   DWFL_ASSERT("dwfl_begin", dwfl);
   dwfl_report_begin (dwfl);
 
-#ifdef HAVE_DEBUGINFOD
+#if defined(HAVE_LIBDEBUGINFOD)
   setup_debuginfod_progress(dwfl);
 #endif
 
