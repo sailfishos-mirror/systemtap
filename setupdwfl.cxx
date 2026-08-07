@@ -84,9 +84,126 @@ static systemtap_session* current_session_for_find_debuginfo;
 // init via dwfl_begin.  Recursive for the download-retry re-enter.
 static std::recursive_mutex setup_dwfl_mutex;
 
+// Build-id bytes for the kernel, filled by setup_dwfl_kernel() before
+// dwfl_linux_kernel_report_offline so stap_linux_kernel_find_elf can hand
+// them to dwfl when /boot/vmlinuz is a non-ELF boot image (aarch64 zboot,
+// s390x zipl).  Cleared again before setup_dwfl_kernel returns.
+static std::vector<unsigned char> pending_kernel_build_id_bits;
+
+static bool
+parse_build_id_hex (const std::string &hex, std::vector<unsigned char> &bits)
+{
+  bits.clear ();
+  if (hex.size () < 2 || (hex.size () % 2) != 0)
+    return false;
+  bits.reserve (hex.size () / 2);
+  for (size_t i = 0; i + 1 < hex.size (); i += 2)
+    {
+      char tmp[3] = { hex[i], hex[i + 1], '\0' };
+      char *end = NULL;
+      unsigned long byte = strtoul (tmp, &end, 16);
+      if (end != tmp + 2 || byte > 0xff)
+        {
+          bits.clear ();
+          return false;
+        }
+      bits.push_back ((unsigned char) byte);
+    }
+  return !bits.empty ();
+}
+
+/* Wrap dwfl_linux_kernel_find_elf so a build-id-only kernel module (see
+   ensure_kernel_build_id_module) can still be opened via debuginfod.
+   Note: dwfl_linux_kernel_report_offline uses dwfl_report_elf directly for
+   an on-disk vmlinuz, so this wrapper is reached via dwfl_module_getelf
+   after we report a build-id-only placeholder — not during the offline
+   path's first open attempt.  */
+static int
+stap_linux_kernel_find_elf (Dwfl_Module *mod, void **userdata,
+                            const char *modname, Dwarf_Addr base,
+                            char **file_name, Elf **elfp)
+{
+  if (mod != NULL && modname != NULL && !strcmp (modname, "kernel")
+      && !pending_kernel_build_id_bits.empty ())
+    {
+      const unsigned char *existing = NULL;
+      GElf_Addr vaddr = 0;
+      if (dwfl_module_build_id (mod, &existing, &vaddr) <= 0)
+        (void) dwfl_module_report_build_id (mod,
+                                            pending_kernel_build_id_bits.data (),
+                                            pending_kernel_build_id_bits.size (),
+                                            0);
+      if (dwfl_module_build_id (mod, &existing, &vaddr) > 0)
+        {
+          int fd = dwfl_build_id_find_elf (mod, userdata, modname, base,
+                                           file_name, elfp);
+          if (fd >= 0)
+            return fd;
+        }
+    }
+  return dwfl_linux_kernel_find_elf (mod, userdata, modname, base,
+                                     file_name, elfp);
+}
+
+struct find_kernel_mod_arg
+{
+  Dwfl_Module *mod;
+};
+
+static int
+find_kernel_mod_cb (Dwfl_Module *mod, void **, const char *name,
+                    Dwarf_Addr, void *arg)
+{
+  if (name != NULL && !strcmp (name, "kernel"))
+    {
+      ((find_kernel_mod_arg *) arg)->mod = mod;
+      return DWARF_CB_ABORT;
+    }
+  return DWARF_CB_OK;
+}
+
+/* After dwfl_linux_kernel_report_offline: on aarch64/s390x the installed
+   vmlinuz is not ELF, so dwfl_report_elf fails even though our predicate
+   already counted a match.  Report a build-id-only kernel module so
+   subsequent getelf/getdwarf can fetch vmlinux via debuginfod.  */
+static Dwfl_Module *
+ensure_kernel_build_id_module (Dwfl *dwfl, int verbose)
+{
+  if (pending_kernel_build_id_bits.empty ())
+    return NULL;
+
+  find_kernel_mod_arg a = { NULL };
+  (void) dwfl_getmodules (dwfl, &find_kernel_mod_cb, &a, 0);
+
+  if (a.mod == NULL)
+    {
+      a.mod = dwfl_report_module (dwfl, "kernel", 0, 0);
+      if (a.mod == NULL)
+        return NULL;
+      if (verbose > 1)
+        std::clog << _("Reported build-id-only kernel module for non-ELF vmlinuz")
+                  << std::endl;
+    }
+
+  const unsigned char *existing = NULL;
+  GElf_Addr vaddr = 0;
+  if (dwfl_module_build_id (a.mod, &existing, &vaddr) <= 0)
+    {
+      if (dwfl_module_report_build_id (a.mod,
+                                       pending_kernel_build_id_bits.data (),
+                                       pending_kernel_build_id_bits.size (),
+                                       0) != 0)
+        return NULL;
+      if (verbose > 1)
+        std::clog << _("Attached kernel build ID to dwfl module for debuginfod")
+                  << std::endl;
+    }
+  return a.mod;
+}
+
 static const Dwfl_Callbacks kernel_callbacks =
   {
-    dwfl_linux_kernel_find_elf,
+    stap_linux_kernel_find_elf,
     internal_find_debuginfo,
     dwfl_offline_section_address,
     (char **) & debuginfo_path
@@ -491,6 +608,20 @@ setup_dwfl_kernel (unsigned *modules_found, systemtap_session &s)
         kernel = 1;
       it++;
     }
+  if (offline_search_modname != NULL
+      && !strcmp (offline_search_modname, "kernel"))
+    kernel = 1;
+
+  // Extract the kernel build-id *before* reporting modules so
+  // stap_linux_kernel_find_elf can publish it to dwfl for debuginfod when
+  // the installed vmlinuz is not ELF (PR34488).  Cheap when vmlinux.id
+  // exists; setup_all_deps often reports the kernel even for .ko queries.
+  string hex = get_kernel_build_id (s);
+  pending_kernel_build_id_bits.clear ();
+  if (!hex.empty () && parse_build_id_hex (hex, pending_kernel_build_id_bits)
+      && s.verbose > 1)
+    clog << _F("Kernel build ID %s staged for dwfl/debuginfod",
+               hex.c_str ()) << endl;
 
     // We always need this, even when offline_search_modname is NULL
     // and offline_search_names is empty because we still might want
@@ -509,26 +640,59 @@ setup_dwfl_kernel (unsigned *modules_found, systemtap_session &s)
   // modules.  These have to be converted to real addresses at
   // run time.  See the dwarf_derived_probe ctor and its caller.
 
-  // If no modules were found, and we are probing the kernel,
-  // attempt to download the kernel debuginfo.
-  if(kernel)
+  // Non-ELF vmlinuz: report_elf failed but the predicate already ran.
+  // Publish a build-id-only kernel module before closing the report.
+  // Only when the caller asked for "kernel" — don't inject a placeholder
+  // into pure .ko queries.
+  Dwfl_Module *kmod = NULL;
+  if (kernel)
     {
-      // Get the kernel build ID. We still need to call this even if we
-      // already have the kernel debuginfo installed as it adds the
-      // build ID to the script hash.
-      string hex = get_kernel_build_id(s);
-      if (offline_modules_found == 0 && s.download_dbinfo != 0 && !hex.empty())
+      find_kernel_mod_arg before = { NULL };
+      (void) dwfl_getmodules (dwfl, &find_kernel_mod_cb, &before, 0);
+      kmod = ensure_kernel_build_id_module (dwfl, s.verbose);
+      // Predicate may have counted a match even when report_elf failed;
+      // only bump the counter when we newly created the placeholder.
+      if (kmod != NULL && before.mod == NULL)
+        offline_modules_found++;
+    }
+
+  // If no modules were found, and we are probing the kernel,
+  // attempt to download the kernel debuginfo via abrt.
+  if (kernel
+      && offline_modules_found == 0 && s.download_dbinfo != 0 && !hex.empty())
+    {
+      pending_kernel_build_id_bits.clear ();
+      rc = download_kernel_debuginfo(s, hex);
+      if(rc >= 0)
         {
-          rc = download_kernel_debuginfo(s, hex);
-          if(rc >= 0)
-            {
-              dwfl_end (dwfl);
-              return setup_dwfl_kernel (modules_found, s);
-            }
+          dwfl_end (dwfl);
+          return setup_dwfl_kernel (modules_found, s);
         }
     }
 
   DWFL_ASSERT ("dwfl_report_end", dwfl_report_end(dwfl, NULL, NULL));
+
+  // Trigger find_elf (our wrapper → debuginfod) and find_debuginfo now that
+  // the module carries a build-id.  Keep pending_kernel_build_id_bits until
+  // after getelf so stap_linux_kernel_find_elf can see them.
+  if (kmod != NULL)
+    {
+      Dwarf_Addr bias = 0;
+      (void) dwfl_module_getelf (kmod, &bias);
+      (void) dwfl_module_getdwarf (kmod, &bias);
+      if (s.verbose > 1)
+        {
+          Dwarf *dw = dwfl_module_getdwarf (kmod, &bias);
+          if (dw != NULL)
+            clog << _("Resolved kernel debuginfo via build ID / debuginfod")
+                 << endl;
+          else
+            clog << _F("Kernel debuginfo still missing after build-id lookup: %s",
+                       dwfl_errmsg (-1) ?: "?") << endl;
+        }
+    }
+  pending_kernel_build_id_bits.clear ();
+
   *modules_found = offline_modules_found;
 
   return dwfl;
@@ -1357,8 +1521,15 @@ get_kernel_build_id(systemtap_session &s)
   if (buildIDfile.is_open ())
     {
       getline (buildIDfile, hex);
-      if (buildIDfile.good () && !hex.empty ())
-        return hex;
+      // Accept EOF after a successful read (vmlinux.id may lack a
+      // trailing newline); only reject hard failbit / empty results.
+      if (!buildIDfile.fail () && !hex.empty ())
+        {
+          if (s.verbose > 1)
+            clog << _F("Extracted kernel build ID %s from %s",
+                       hex.c_str (), kernel_buildID_path.c_str ()) << endl;
+          return hex;
+        }
       hex.clear ();
     }
 
