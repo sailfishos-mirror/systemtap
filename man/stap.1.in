@@ -2408,8 +2408,27 @@ program.  The latter is a part of the Systemtap package, dedicated to
 module loading and unloading (but only in the white zone), and
 kernel-to-user data transfer.  Since
 .IR staprun
-does not perform any additional security checks on the kernel objects
-it is given, it would be unwise for a system administrator to add
+verifies a detached
+.I \.sgn
+signature (created by the compile server or
+.BR stap\-sign\-module )
+against certificates in its trust database before loading a module for
+unprivileged users.  By default those signatures use RSA\-4096.  Set
+.B SYSTEMTAP_SIGN_KEY_TYPE
+to
+.BR rsa ,
+.BR ml\-dsa\-44 ,
+.BR ml\-dsa\-65 ,
+or
+.B ml\-dsa\-87
+before
+.B stap\-gen\-cert
+to choose NIST FIPS\-204 ML\-DSA instead (requires NSS with
+\fBCKM_ML_DSA\fR).  Re\-authorize the new certificate into the staprun
+database after regenerating.  ML\-DSA compile\-server certificates may
+not yet be usable for NSS TLS.
+
+It would be unwise for a system administrator to add
 untrusted users to the
 .I stapdev
 or
@@ -2462,6 +2481,33 @@ See the following wiki page for more details:
 Some kernels do not let systemtap guess whether module module signing
 is in effect.  On such machines, set the SYSTEMTAP_SIGN environment
 variable to any value while running stap.
+
+By default, newly generated Machine Owner Keys are RSA-4096.
+Kernels that verify modules with NIST FIPS-204 ML-DSA
+(\fBCONFIG_CRYPTO_MLDSA\fR, and typically
+\fBCONFIG_MODULE_SIG_KEY_TYPE_MLDSA_44\fR / \fB_65\fR / \fB_87\fR)
+need a matching MOK.  Set
+.B SYSTEMTAP_MOK_KEY_TYPE
+to
+.BR rsa ,
+.BR ml\-dsa\-44 ,
+.BR ml\-dsa\-65 ,
+or
+.B ml\-dsa\-87
+when generating a new MOK (for example with
+.B \-\-sign\-module
+when no enrolled Systemtap MOK is present).  If unset, stap selects
+ML-DSA automatically when the target kernel's
+\fBCONFIG_MODULE_SIG_KEY_TYPE_MLDSA_*\fR is enabled, otherwise RSA.
+ML-DSA key generation requires OpenSSL 3.5 or later (OpenSSL 4+
+preferred).  After switching algorithms, import the new
+.I signing_key.x509
+with
+.B mokutil \-\-import
+and reboot.  Module signing still uses the kernel's
+.B scripts/sign\-file
+against the chosen private key; the running kernel must support
+ML-DSA verification to load such modules.
 
 .SS RESOURCE LIMITS
 Many resource use limits are set by macros in the generated C code.

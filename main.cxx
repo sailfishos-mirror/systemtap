@@ -1209,7 +1209,25 @@ passes_0_4 (systemtap_session &s)
               if (s.verbose)
                 clog << _F("Signing %s with mok key %s", s.module_filename().c_str(), mok_path.c_str())
                      << endl;
-	      rc = sign_module (s.tmpdir, s.module_filename(), s.mok_fingerprints, mok_path, s.kernel_build_tree);
+	      string mok_key_err;
+	      stap_mok_key_type mok_key =
+		resolve_mok_key_type (s.kernel_config["CONFIG_CRYPTO_MLDSA"],
+				      s.kernel_config["CONFIG_MODULE_SIG_KEY_TYPE_MLDSA_44"],
+				      s.kernel_config["CONFIG_MODULE_SIG_KEY_TYPE_MLDSA_65"],
+				      s.kernel_config["CONFIG_MODULE_SIG_KEY_TYPE_MLDSA_87"],
+				      &mok_key_err);
+	      if (! mok_key_err.empty ())
+		{
+		  cerr << mok_key_err << endl;
+		  rc = 1;
+		}
+	      else
+		{
+		  if (s.verbose > 1)
+		    clog << _F("MOK key type: %s", mok_key_type_name (mok_key)) << endl;
+		  rc = sign_module (s.tmpdir, s.module_filename(), s.mok_fingerprints,
+				    mok_path, s.kernel_build_tree, mok_key);
+		}
 	    }
 #endif
 
@@ -1359,7 +1377,25 @@ passes_0_4 (systemtap_session &s)
           if (s.verbose)
             clog << _F("Signing %s with mok key %s", s.module_filename().c_str(), mok_path.c_str())
                  << endl;
-          rc = sign_module (s.tmpdir, s.module_filename(), s.mok_fingerprints, mok_path, s.kernel_build_tree);
+	  string mok_key_err;
+	  stap_mok_key_type mok_key =
+	    resolve_mok_key_type (s.kernel_config["CONFIG_CRYPTO_MLDSA"],
+				  s.kernel_config["CONFIG_MODULE_SIG_KEY_TYPE_MLDSA_44"],
+				  s.kernel_config["CONFIG_MODULE_SIG_KEY_TYPE_MLDSA_65"],
+				  s.kernel_config["CONFIG_MODULE_SIG_KEY_TYPE_MLDSA_87"],
+				  &mok_key_err);
+	  if (! mok_key_err.empty ())
+	    {
+	      cerr << mok_key_err << endl;
+	      rc = 1;
+	    }
+	  else
+	    {
+	      if (s.verbose > 1)
+		clog << _F("MOK key type: %s", mok_key_type_name (mok_key)) << endl;
+	      rc = sign_module (s.tmpdir, s.module_filename(), s.mok_fingerprints,
+				mok_path, s.kernel_build_tree, mok_key);
+	    }
         }
 #endif
       

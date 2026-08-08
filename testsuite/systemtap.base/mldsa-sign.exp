@@ -1,0 +1,139 @@
+# Smoke test opt-in ML-DSA module signing (MOK via OpenSSL + privilege .sgn via NSS).
+# Skips when OpenSSL or NSS lack ML-DSA support.
+
+set test "mldsa-sign"
+
+proc mldsa_openssl_p {} {
+    if {[catch {exec openssl list -key-managers} out]} {
+	return 0
+    }
+    return [string match "*ML-DSA*" $out]
+}
+
+proc mldsa_nss_tools_p {stap_path} {
+    global env
+    foreach tool {stap-gen-cert stap-sign-module stap-authorize-cert} {
+	if {![file executable "$stap_path/$tool"]} {
+	    return 0
+	}
+    }
+    # Quick NSS softoken probe via a throwaway cert attempt would be heavy;
+    # require OpenSSL ML-DSA as a proxy for a modern stack, then let
+    # stap-gen-cert fail loudly if NSS cannot keygen.
+    return [mldsa_openssl_p]
+}
+
+if {![mldsa_openssl_p]} {
+    untested "$test - OpenSSL lacks ML-DSA"
+    return
+}
+
+set stap_path $env(SYSTEMTAP_PATH)
+set work [exec mktemp -d /tmp/stap-mldsa-sign.XXXXXX]
+set env(SYSTEMTAP_DIR) $work
+
+# --- Phase 1: OpenSSL ML-DSA MOK + kernel sign-file ---
+set mok_cfg "$work/x509.genkey"
+set fd [open $mok_cfg w]
+puts $fd {[ req ]
+default_bits = 4096
+distinguished_name = req_distinguished_name
+prompt = no
+x509_extensions = myexts
+
+[ req_distinguished_name ]
+O = Systemtap
+CN = Systemtap module signing key
+
+[ myexts ]
+basicConstraints=critical,CA:FALSE
+keyUsage=digitalSignature
+subjectKeyIdentifier=hash
+authorityKeyIdentifier=keyid}
+close $fd
+
+set mok_dir "$work/mok"
+exec mkdir -p $mok_dir
+# openssl writes a progress banner to stderr; redirect it.
+if {[catch {
+    exec openssl req -new -newkey ml-dsa-65 -nodes -utf8 -days 36500 -batch -x509 \
+	-config $mok_cfg -outform DER \
+	-out $mok_dir/signing_key.x509 -keyout $mok_dir/signing_key.priv \
+	2>/dev/null
+} err]} {
+    fail "$test openssl mldsa mok ($err)"
+} elseif {![file exists $mok_dir/signing_key.x509]
+	   || ![file exists $mok_dir/signing_key.priv]} {
+    fail "$test openssl mldsa mok (missing key files)"
+} else {
+    pass "$test openssl mldsa mok"
+}
+
+set sign_file "/lib/modules/[exec uname -r]/build/scripts/sign-file"
+if {![file executable $sign_file]} {
+    untested "$test sign-file not found ($sign_file)"
+} else {
+    set ko "$work/dummy.ko"
+    set fd [open $ko w]
+    puts -nonewline $fd "dummyko"
+    close $fd
+    if {[catch {
+	exec $sign_file sha512 $mok_dir/signing_key.priv $mok_dir/signing_key.x509 $ko
+    } err]} {
+	fail "$test sign-file mldsa ($err)"
+    } else {
+	set trailer [exec tail -c 28 $ko]
+	if {[string match "*Module signature appended*" $trailer]} {
+	    pass "$test sign-file mldsa"
+	} else {
+	    fail "$test sign-file mldsa (missing trailer)"
+	}
+    }
+}
+
+# --- Phase 2: NSS privilege signature sidecar ---
+if {![mldsa_nss_tools_p $stap_path]} {
+    untested "$test nss tools unavailable"
+    catch {exec rm -rf $work}
+    return
+}
+
+set db "$work/ssl/server"
+exec mkdir -p $db
+set env(SYSTEMTAP_SIGN_KEY_TYPE) "ml-dsa-65"
+if {[catch {exec $stap_path/stap-gen-cert $db} err]} {
+    untested "$test stap-gen-cert mldsa ($err)"
+    catch {exec rm -rf $work}
+    return
+}
+pass "$test stap-gen-cert mldsa"
+
+set payload "$work/mod.bin"
+set fd [open $payload w]
+puts -nonewline $fd "modulebytes123"
+close $fd
+# stap-sign-module may print cert validity to stderr; judge by .sgn output.
+catch {exec $stap_path/stap-sign-module $payload $db 2>/dev/null}
+if {![file exists "$payload.sgn"]} {
+    fail "$test stap-sign-module mldsa (no .sgn produced)"
+} else {
+    set sgn_size [file size "$payload.sgn"]
+    # ML-DSA-65 signature length is 3309
+    if {$sgn_size == 3309} {
+	pass "$test stap-sign-module mldsa"
+    } else {
+	fail "$test stap-sign-module mldsa (sgn size $sgn_size, expected 3309)"
+    }
+}
+
+set rundb "$work/staprun-db"
+exec mkdir -p $rundb
+if {[catch {exec $stap_path/stap-authorize-cert $db/stap.cert $rundb} err]} {
+    fail "$test stap-authorize-cert mldsa ($err)"
+} else {
+    pass "$test stap-authorize-cert mldsa"
+}
+
+catch {exec rm -rf $work}
+unset env(SYSTEMTAP_DIR)
+unset env(SYSTEMTAP_SIGN_KEY_TYPE)

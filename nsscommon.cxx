@@ -628,6 +628,58 @@ init_password (PK11SlotInfo *slot, const string &db_path, bool use_password)
   return 0;
 }
 
+#ifdef CKM_ML_DSA_KEY_PAIR_GEN
+/* Privilege-signing (.sgn) key type from SYSTEMTAP_SIGN_KEY_TYPE.
+   Values match SYSTEMTAP_MOK_KEY_TYPE: rsa (default), ml-dsa-44/65/87. */
+static bool
+parse_sign_key_type (const char *s, CK_ML_DSA_PARAMETER_SET_TYPE *mldsa_param,
+		     bool *use_mldsa)
+{
+  *use_mldsa = false;
+  *mldsa_param = CKP_ML_DSA_65;
+  if (!s || !*s || !strcmp (s, "rsa"))
+    return true;
+  if (!strcmp (s, "ml-dsa-44") || !strcmp (s, "mldsa44") || !strcmp (s, "ML-DSA-44"))
+    {
+      *use_mldsa = true;
+      *mldsa_param = CKP_ML_DSA_44;
+      return true;
+    }
+  if (!strcmp (s, "ml-dsa-65") || !strcmp (s, "mldsa65") || !strcmp (s, "ML-DSA-65"))
+    {
+      *use_mldsa = true;
+      *mldsa_param = CKP_ML_DSA_65;
+      return true;
+    }
+  if (!strcmp (s, "ml-dsa-87") || !strcmp (s, "mldsa87") || !strcmp (s, "ML-DSA-87"))
+    {
+      *use_mldsa = true;
+      *mldsa_param = CKP_ML_DSA_87;
+      return true;
+    }
+  return false;
+}
+
+static SECOidTag
+mldsa_param_to_oid (CK_ML_DSA_PARAMETER_SET_TYPE param)
+{
+  switch (param)
+    {
+    case CKP_ML_DSA_44: return SEC_OID_ML_DSA_44;
+    case CKP_ML_DSA_87: return SEC_OID_ML_DSA_87;
+    case CKP_ML_DSA_65:
+    default: return SEC_OID_ML_DSA_65;
+    }
+}
+
+static bool
+nss_slot_supports_mldsa (PK11SlotInfo *slot)
+{
+  return PK11_DoesMechanism (slot, CKM_ML_DSA_KEY_PAIR_GEN)
+    && PK11_DoesMechanism (slot, CKM_ML_DSA);
+}
+#endif /* CKM_ML_DSA_KEY_PAIR_GEN */
+
 static SECKEYPrivateKey *
 generate_private_key (const string &db_path, PK11SlotInfo *slot, SECKEYPublicKey **pubkeyp)
 {
@@ -645,14 +697,53 @@ generate_private_key (const string &db_path, PK11SlotInfo *slot, SECKEYPublicKey
   PK11_RandomUpdate (randbuf, sizeof (randbuf));
   memset (randbuf, 0, sizeof (randbuf));
 
+#ifdef CKM_ML_DSA_KEY_PAIR_GEN
+  CK_ML_DSA_PARAMETER_SET_TYPE mldsa_param = CKP_ML_DSA_65;
+  bool use_mldsa = false;
+  const char *env = getenv ("SYSTEMTAP_SIGN_KEY_TYPE");
+  if (env && *env && ! parse_sign_key_type (env, &mldsa_param, &use_mldsa))
+    {
+      nsscommon_error (_F("Invalid SYSTEMTAP_SIGN_KEY_TYPE '%s' "
+			  "(expected rsa, ml-dsa-44, ml-dsa-65, or ml-dsa-87)",
+			  env));
+      return 0;
+    }
+  if (use_mldsa)
+    {
+      SECKEYPrivateKey *privKey;
+      if (! nss_slot_supports_mldsa (slot))
+	{
+	  nsscommon_error (_("SYSTEMTAP_SIGN_KEY_TYPE requests ML-DSA, but the "
+			     "NSS softoken lacks CKM_ML_DSA support"));
+	  return 0;
+	}
+      privKey = PK11_GenerateKeyPair (slot, CKM_ML_DSA_KEY_PAIR_GEN, & mldsa_param,
+				      pubkeyp, PR_TRUE /*isPerm*/, PR_TRUE /*isSensitive*/,
+				      0/*pwdata*/);
+      if (! privKey)
+	{
+	  nsscommon_error (_("Unable to generate public/private key pair"));
+	  nssError ();
+	}
+      return privKey;
+    }
+#else
+  if (getenv ("SYSTEMTAP_SIGN_KEY_TYPE")
+      && strcmp (getenv ("SYSTEMTAP_SIGN_KEY_TYPE"), "rsa")
+      && *getenv ("SYSTEMTAP_SIGN_KEY_TYPE"))
+    {
+      nsscommon_error (_("SYSTEMTAP_SIGN_KEY_TYPE ML-DSA requested, but this "
+			 "SystemTap was built against NSS without ML-DSA support"));
+      return 0;
+    }
+#endif
+
   // Set up for RSA.
   PK11RSAGenParams rsaparams;
   rsaparams.keySizeInBits = 4096; /* 1024 too small; SEC_ERROR_CERT_SIGNATURE_ALGORITHM_DISABLED */
   rsaparams.pe = 0x010001;
-  CK_MECHANISM_TYPE mechanism = CKM_RSA_PKCS_KEY_PAIR_GEN;
-
-  // Generate the key pair.
-  SECKEYPrivateKey *privKey = PK11_GenerateKeyPair (slot, mechanism, & rsaparams, pubkeyp,
+  SECKEYPrivateKey *privKey = PK11_GenerateKeyPair (slot, CKM_RSA_PKCS_KEY_PAIR_GEN, & rsaparams,
+						    pubkeyp,
 						    PR_TRUE /*isPerm*/, PR_TRUE /*isSensitive*/,
 						    0/*pwdata*/);
   if (! privKey)
@@ -850,6 +941,24 @@ sign_cert (CERTCertificate *cert, SECKEYPrivateKey *privKey)
 {
   SECOidTag algID = SEC_GetSignatureAlgorithmOidTag (privKey->keyType,
 						     SEC_OID_UNKNOWN);
+#ifdef CKM_ML_DSA_KEY_PAIR_GEN
+  /* NSS does not yet map mldsaKey via SEC_GetSignatureAlgorithmOidTag. */
+  if (algID == SEC_OID_UNKNOWN && privKey->keyType == mldsaKey)
+    {
+      SECKEYPublicKey *pub = SECKEY_ConvertToPublicKey (privKey);
+      if (pub && pub->keyType == mldsaKey && pub->u.mldsa.paramSet != SEC_OID_UNKNOWN)
+	algID = pub->u.mldsa.paramSet;
+      else
+	{
+	  CK_ML_DSA_PARAMETER_SET_TYPE param = CKP_ML_DSA_65;
+	  bool use_mldsa = false;
+	  parse_sign_key_type (getenv ("SYSTEMTAP_SIGN_KEY_TYPE"), &param, &use_mldsa);
+	  algID = mldsa_param_to_oid (param);
+	}
+      if (pub)
+	SECKEY_DestroyPublicKey (pub);
+    }
+#endif
   if (algID == SEC_OID_UNKNOWN)
     {
       nsscommon_error (_("Unable to determine the signature algorithm for the signing the certificate"));
@@ -1740,6 +1849,7 @@ void sign_file (
   SECStatus secStatus;
   SGNContext *sgn;
   SECItem signedData;
+  SECOidTag sign_alg = SEC_OID_PKCS1_SHA256_WITH_RSA_ENCRYPTION;
 
   /* db_path.c_str () gets passed to nssPasswordCallback */
   SECKEYPrivateKey *privKey = PK11_FindKeyByAnyCert (cert, (void *)db_path.c_str ());
@@ -1752,8 +1862,22 @@ void sign_file (
     }
 
   /* Sign the file. */
-  /* Set up the signing context.  */
-  sgn = SGN_NewContext (SEC_OID_PKCS1_SHA256_WITH_RSA_ENCRYPTION, privKey);
+  /* Set up the signing context.  RSA: SHA-256-with-RSA.  ML-DSA: pure
+     ML-DSA OID matching the key parameter set. */
+#ifdef CKM_ML_DSA_KEY_PAIR_GEN
+  if (privKey->keyType == mldsaKey)
+    {
+      SECKEYPublicKey *pub = CERT_ExtractPublicKey (cert);
+      if (pub && pub->keyType == mldsaKey
+	  && pub->u.mldsa.paramSet != SEC_OID_UNKNOWN)
+	sign_alg = pub->u.mldsa.paramSet;
+      else
+	sign_alg = SEC_OID_ML_DSA_65;
+      if (pub)
+	SECKEY_DestroyPublicKey (pub);
+    }
+#endif
+  sgn = SGN_NewContext (sign_alg, privKey);
   if (! sgn) 
     {
       nsscommon_error (_("Could not create signing context"));

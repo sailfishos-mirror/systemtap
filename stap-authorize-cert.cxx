@@ -77,5 +77,6 @@ main (int argc, char **argv) {
   // Clean up.
   PR_Cleanup ();
 
-  return secStatus == SECSuccess;
+  /* Exit 0 on success (SECSuccess is 0). */
+  return secStatus == SECSuccess ? 0 : 1;
 }

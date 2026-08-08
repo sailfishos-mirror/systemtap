@@ -1,5 +1,19 @@
 * What's new in version 5.6, PRERELEASE
 
+- Secure Boot / MOK module signing can generate NIST FIPS-204 ML-DSA
+  keys (ml-dsa-44/65/87) as well as the default RSA-4096.  Set
+  SYSTEMTAP_MOK_KEY_TYPE, or let stap follow the target kernel's
+  CONFIG_MODULE_SIG_KEY_TYPE_MLDSA_* when present (requires
+  CONFIG_CRYPTO_MLDSA and OpenSSL 3.5+).  scripts/sign-file is still
+  used to append the module signature for kernel verification.
+
+- Compile-server / staprun privilege signatures (.ko.sgn) similarly
+  support opt-in ML-DSA via SYSTEMTAP_SIGN_KEY_TYPE (rsa default;
+  ml-dsa-44/65/87).  Requires NSS with CKM_ML_DSA.  Regenerate the
+  server cert (stap-gen-cert) and re-authorize it into the staprun
+  trust database when switching algorithms.  Note: ML-DSA server
+  certificates may not yet work for NSS TLS to the compile server.
+
 - New @enumname() operator, the reverse of @enum(): map an integral
   value to the corresponding DWARF enumerator name string.  The
   enumeration type is taken from a typed $variable, or from optional

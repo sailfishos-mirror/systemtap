@@ -23,6 +23,13 @@ NOTE: In order to use a compile server, the nss and nspr packages must be
 installed on the client host and systemtap must have been built with
 NSS enabled. Run 'stap -V | grep NSS' to find out if NSS is enabled.
 
+NOTE: Privilege module signatures (.ko.sgn) default to RSA-4096.  To
+generate ML-DSA signing certificates instead, set
+SYSTEMTAP_SIGN_KEY_TYPE=ml-dsa-65 (or ml-dsa-44 / ml-dsa-87) before
+running stap-gen-cert, then re-authorize the cert for staprun.  Secure
+Boot MOK keys are selected separately via SYSTEMTAP_MOK_KEY_TYPE (or
+from the target kernel's CONFIG_MODULE_SIG_KEY_TYPE_MLDSA_*).
+
 NOTE: In order to detect servers on the local network, the avahi package must be
 installed on the client host and systemtap must have been built with avahi
 enabled. Run 'stap -V | grep AVAHI' to find out if avahi is enabled.

@@ -1745,8 +1745,15 @@ handleRequest (const string &requestDirName, const string &responseDirName, stri
 	      get_server_mok_fingerprints(mok_fingerprints, false, true);
 	      if (mok_fingerprints.empty ())
 	        {
-		  // Generate a new MOK.
-		  generate_mok(mok_fingerprint, server_error);
+		  // Generate a new MOK (algorithm from SYSTEMTAP_MOK_KEY_TYPE
+		  // or RSA default; no session kernel_config here).
+		  string mok_key_err;
+		  stap_mok_key_type mok_key =
+		    resolve_mok_key_type ("", "", "", "", &mok_key_err);
+		  if (! mok_key_err.empty ())
+		    server_error (mok_key_err);
+		  else
+		    generate_mok(mok_fingerprint, server_error, mok_key);
 		}
 	      else
 	        {

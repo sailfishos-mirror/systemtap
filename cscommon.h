@@ -64,15 +64,44 @@ struct thread_arg
  PRNetAddr addr;
 };
 
+/* Module / MOK signing key algorithm selection. */
+enum stap_mok_key_type
+  {
+    stap_mok_key_rsa = 0,
+    stap_mok_key_mldsa_44,
+    stap_mok_key_mldsa_65,
+    stap_mok_key_mldsa_87,
+  };
+
+/* Parse "rsa", "ml-dsa-44/65/87".  Returns false on unrecognized value. */
+extern bool parse_mok_key_type (const char *s, stap_mok_key_type &type);
+extern const char *mok_key_type_name (stap_mok_key_type type);
+/* OpenSSL -newkey argument for ML-DSA types; NULL for RSA. */
+extern const char *mok_key_type_openssl_newkey (stap_mok_key_type type);
+extern bool openssl_supports_mldsa (void);
+
+/* Resolve MOK key type: SYSTEMTAP_MOK_KEY_TYPE overrides; else prefer the
+   kernel's CONFIG_MODULE_SIG_KEY_TYPE_MLDSA_*; else RSA.  kernel_* args are
+   values from systemtap_session::kernel_config (empty if unknown). */
+extern stap_mok_key_type resolve_mok_key_type (
+  const std::string &kernel_crypto_mldsa,
+  const std::string &kernel_module_sig_mldsa_44,
+  const std::string &kernel_module_sig_mldsa_65,
+  const std::string &kernel_module_sig_mldsa_87,
+  std::string *error_msg);
+
 extern int read_from_file (const std::string &fname, cs_protocol_version &data);
 extern std::string get_cert_serial_number (const CERTCertificate *cert);
 extern int mok_sign_file (const std::string &mok_fingerprint,
 			  const std::string &mok_path,
 			  const std::string &kernel_build_tree,
 			  const std::string &name);
-extern void generate_mok (std::string &mok_fingerprint, void report_error(const std::string &msg, int logit));
+extern void generate_mok (std::string &mok_fingerprint,
+			  void report_error(const std::string &msg, int logit),
+			  stap_mok_key_type key_type = stap_mok_key_rsa);
 extern int sign_module (const std::string &tmpdir, const std::string &module_filename, std::vector<std::string> mok_fingerprints,
-			 const std::string &mok_path, const std::string &kernel_build_tree);
+			 const std::string &mok_path, const std::string &kernel_build_tree,
+			 stap_mok_key_type key_type = stap_mok_key_rsa);
 extern bool mok_dir_valid_p (const std::string &mok_fingerprint, const std::string &mok_path, bool verbose,
 			     void report_error (const std::string &msg, int logit));
 

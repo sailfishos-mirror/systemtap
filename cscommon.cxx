@@ -16,6 +16,7 @@
 #include "nsscommon.h"
 
 #include <fstream>
+#include <sstream>
 #include <string>
 #include <vector>
 #include <cstdlib>
@@ -133,6 +134,141 @@ string get_cert_serial_number (const CERTCertificate *cert)
   return serialNumber.str ();
 }
 
+bool
+parse_mok_key_type (const char *s, stap_mok_key_type &type)
+{
+  if (!s || !*s || !strcmp (s, "rsa"))
+    {
+      type = stap_mok_key_rsa;
+      return true;
+    }
+  if (!strcmp (s, "ml-dsa-44") || !strcmp (s, "mldsa44") || !strcmp (s, "ML-DSA-44"))
+    {
+      type = stap_mok_key_mldsa_44;
+      return true;
+    }
+  if (!strcmp (s, "ml-dsa-65") || !strcmp (s, "mldsa65") || !strcmp (s, "ML-DSA-65"))
+    {
+      type = stap_mok_key_mldsa_65;
+      return true;
+    }
+  if (!strcmp (s, "ml-dsa-87") || !strcmp (s, "mldsa87") || !strcmp (s, "ML-DSA-87"))
+    {
+      type = stap_mok_key_mldsa_87;
+      return true;
+    }
+  return false;
+}
+
+const char *
+mok_key_type_name (stap_mok_key_type type)
+{
+  switch (type)
+    {
+    case stap_mok_key_mldsa_44: return "ml-dsa-44";
+    case stap_mok_key_mldsa_65: return "ml-dsa-65";
+    case stap_mok_key_mldsa_87: return "ml-dsa-87";
+    case stap_mok_key_rsa:
+    default: return "rsa";
+    }
+}
+
+const char *
+mok_key_type_openssl_newkey (stap_mok_key_type type)
+{
+  switch (type)
+    {
+    case stap_mok_key_mldsa_44: return "ml-dsa-44";
+    case stap_mok_key_mldsa_65: return "ml-dsa-65";
+    case stap_mok_key_mldsa_87: return "ml-dsa-87";
+    case stap_mok_key_rsa:
+    default: return NULL;
+    }
+}
+
+bool
+openssl_supports_mldsa (void)
+{
+  /* OpenSSL >= 3.5 advertises ML-DSA key managers. */
+  vector<string> cmd = { "openssl", "list", "-key-managers" };
+  ostringstream output;
+  int rc = stap_system_read (0, cmd, output);
+  if (rc != 0)
+    return false;
+  return output.str ().find ("ML-DSA") != string::npos;
+}
+
+static bool
+kernel_config_enabled (const string &val)
+{
+  return val == "y" || val == "m";
+}
+
+stap_mok_key_type
+resolve_mok_key_type (const string &kernel_crypto_mldsa,
+		      const string &kernel_module_sig_mldsa_44,
+		      const string &kernel_module_sig_mldsa_65,
+		      const string &kernel_module_sig_mldsa_87,
+		      string *error_msg)
+{
+  stap_mok_key_type type = stap_mok_key_rsa;
+  const char *env = getenv ("SYSTEMTAP_MOK_KEY_TYPE");
+  bool from_env = false;
+
+  if (env && *env)
+    {
+      if (! parse_mok_key_type (env, type))
+	{
+	  if (error_msg)
+	    *error_msg = _F("Invalid SYSTEMTAP_MOK_KEY_TYPE '%s' "
+			    "(expected rsa, ml-dsa-44, ml-dsa-65, or ml-dsa-87)",
+			    env);
+	  return stap_mok_key_rsa;
+	}
+      from_env = true;
+    }
+  else if (kernel_config_enabled (kernel_module_sig_mldsa_87))
+    type = stap_mok_key_mldsa_87;
+  else if (kernel_config_enabled (kernel_module_sig_mldsa_65))
+    type = stap_mok_key_mldsa_65;
+  else if (kernel_config_enabled (kernel_module_sig_mldsa_44))
+    type = stap_mok_key_mldsa_44;
+
+  if (type != stap_mok_key_rsa)
+    {
+      if (! openssl_supports_mldsa ())
+	{
+	  if (from_env)
+	    {
+	      if (error_msg)
+		*error_msg = _("SYSTEMTAP_MOK_KEY_TYPE requests ML-DSA, but "
+			       "OpenSSL lacks ML-DSA support "
+			       "(need OpenSSL 3.5+; openssl list -key-managers)");
+	      return stap_mok_key_rsa;
+	    }
+	  /* Auto-selected from kernel MODULE_SIG_*: fall back to RSA. */
+	  return stap_mok_key_rsa;
+	}
+      /* Only enforce kernel CRYPTO_MLDSA when we know the config.  Empty
+	 means unavailable (e.g. stap-serverd); allow generation anyway. */
+      if (! kernel_crypto_mldsa.empty ()
+	  && ! kernel_config_enabled (kernel_crypto_mldsa))
+	{
+	  if (from_env)
+	    {
+	      if (error_msg)
+		*error_msg = _("SYSTEMTAP_MOK_KEY_TYPE requests ML-DSA, but the "
+			       "target kernel lacks CONFIG_CRYPTO_MLDSA; module "
+			       "load verification would fail");
+	      return stap_mok_key_rsa;
+	    }
+	  return stap_mok_key_rsa;
+	}
+    }
+
+  return type;
+}
+
 int
 mok_sign_file (const std::string &mok_fingerprint,
 	       const std::string &mok_path,
@@ -155,7 +291,8 @@ mok_sign_file (const std::string &mok_fingerprint,
 
 
 void
-generate_mok(string &mok_fingerprint, void report_error (const string& msg, int logit))
+generate_mok(string &mok_fingerprint, void report_error (const string& msg, int logit),
+	     stap_mok_key_type key_type)
 {
   string mok_path = server_cert_db_path() + "/moks";
   vector<string> cmd;
@@ -165,8 +302,10 @@ generate_mok(string &mok_fingerprint, void report_error (const string& msg, int 
   string msg;
   mode_t old_umask;
   int retlen;
+  const char *openssl_newkey = mok_key_type_openssl_newkey (key_type);
 // The default MOK config text used when creating new MOKs. This text is 
 // saved to the MOK config file and can be modified by the administrator.
+// default_bits applies to RSA only; ML-DSA uses openssl -newkey instead.
   const char mok_config_text[] =
   "[ req ]\n"						
   "default_bits = 4096\n"				
@@ -185,6 +324,14 @@ generate_mok(string &mok_fingerprint, void report_error (const string& msg, int 
   "authorityKeyIdentifier=keyid\n";
 
   mok_fingerprint.clear ();
+
+  if (openssl_newkey && ! openssl_supports_mldsa ())
+    {
+      report_error (_F("Cannot generate %s MOK: OpenSSL lacks ML-DSA support "
+		       "(need OpenSSL 3.5+)", mok_key_type_name (key_type)),
+		    true);
+      return;
+    }
 
   // Set umask so that everything is private.
   old_umask = umask(077);
@@ -240,19 +387,38 @@ generate_mok(string &mok_fingerprint, void report_error (const string& msg, int 
   public_cert_path = tmpdir + string (MOK_PUBLIC_CERT_FILE);
   private_cert_path = tmpdir + string (MOK_PRIVATE_CERT_FILE);
 
-  cmd =
+  if (openssl_newkey)
     {
-      "openssl", "req", "-new", "-nodes", "-utf8",
-      "-sha256", "-days", "36500", "-batch", "-x509",
-      "-config", config_path,
-      "-outform", "DER",
-      "-out", public_cert_path,
-      "-keyout", private_cert_path
-    };
+      /* ML-DSA: match kernel certs/Makefile (-newkey ml-dsa-*).  Do not
+	 pass -sha256; ML-DSA hashes internally for the cert signature. */
+      cmd =
+	{
+	  "openssl", "req", "-new", "-newkey", openssl_newkey,
+	  "-nodes", "-utf8",
+	  "-days", "36500", "-batch", "-x509",
+	  "-config", config_path,
+	  "-outform", "DER",
+	  "-out", public_cert_path,
+	  "-keyout", private_cert_path
+	};
+    }
+  else
+    {
+      cmd =
+	{
+	  "openssl", "req", "-new", "-nodes", "-utf8",
+	  "-sha256", "-days", "36500", "-batch", "-x509",
+	  "-config", config_path,
+	  "-outform", "DER",
+	  "-out", public_cert_path,
+	  "-keyout", private_cert_path
+	};
+    }
   rc = stap_system (0, cmd);
   if (rc != 0) 
     {
-      msg = _F("Generating MOK failed, rc = %d", rc);
+      msg = _F("Generating MOK (%s) failed, rc = %d",
+	       mok_key_type_name (key_type), rc);
       report_error (msg, true);
       goto cleanup;
     }
@@ -304,7 +470,8 @@ int
 sign_module(const string &tmpdir, const string &module_filename,
 	    std::vector<std::string> mok_fingerprints,
 	    const string &mok_root,
-	    const string &kernel_build_tree)
+	    const string &kernel_build_tree,
+	    stap_mok_key_type key_type)
 {
   string module_src_path = tmpdir + "/" + module_filename;
 
@@ -357,10 +524,17 @@ sign_module(const string &tmpdir, const string &module_filename,
 
   if (! module_signed)
     {
-      generate_mok (mok_fingerprint, client_error);
-      cerr << (_("Running sign-file failed\n"))
-	   << (_F("There is no machine owner key (MOK) in common with this system.\nUse the following command to import a MOK into this system, then reboot:\n\n\t# sudo mokutil --import %s/moks/%s/signing_key.x509",
-		  server_cert_db_path().c_str(), mok_fingerprint.c_str())) << endl;
+      generate_mok (mok_fingerprint, client_error, key_type);
+      if (mok_fingerprint.empty ())
+	cerr << (_("Failed to generate a machine owner key (MOK)")) << endl;
+      else
+	cerr << (_("Running sign-file failed\n"))
+	     << (_F("There is no machine owner key (MOK) in common with this system.\n"
+		    "Generated a new %s MOK. Use the following command to import it "
+		    "into this system, then reboot:\n\n"
+		    "\t# sudo mokutil --import %s/moks/%s/signing_key.x509",
+		    mok_key_type_name (key_type),
+		    server_cert_db_path().c_str(), mok_fingerprint.c_str())) << endl;
     }
   
   PR_Cleanup ();

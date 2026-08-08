@@ -29,6 +29,8 @@
 #include <cryptohi.h>
 #include <cert.h>
 #include <certt.h>
+#include <keyhi.h>
+#include <secerr.h>
 
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -46,17 +48,55 @@ nsscommon_error (const char *msg, int logit __attribute ((unused)))
 }
 
 
+#ifdef CKM_ML_DSA
+/* Pure ML-DSA: verify the module bytes directly (not a separate hash). */
+static int
+verify_it_mldsa (const char *signatureName, const SECItem *signature,
+		 const char *module_name, const void *module_data,
+		 off_t module_size, SECKEYPublicKey *pubKey)
+{
+  SECItem data;
+  SECStatus secStatus;
+
+  data.type = siBuffer;
+  data.data = (unsigned char *)module_data;
+  data.len = module_size;
+
+  secStatus = PK11_VerifyWithMechanism (pubKey, CKM_ML_DSA, NULL,
+					signature, &data, NULL);
+  if (secStatus == SECSuccess)
+    return MODULE_OK;
+
+  /* Wrong cert / algorithm mismatch: keep trying other certs. */
+  if (PORT_GetError () == SEC_ERROR_BAD_SIGNATURE)
+    {
+      fprintf (stderr, "Unable to verify the signed module %s. It may have been altered since it was created.\n",
+	       module_name);
+      nssError ();
+      return MODULE_ALTERED;
+    }
+
+  (void)signatureName;
+  return MODULE_UNTRUSTED;
+}
+#endif
+
 static int
 verify_it (const char *signatureName, const SECItem *signature,
 	   const char *module_name, const void *module_data, off_t module_size,
-	   const SECKEYPublicKey *pubKey)
+	   SECKEYPublicKey *pubKey)
 {
   VFYContext *vfy;
   SECStatus secStatus;
   int rc = MODULE_OK;
 
-  /* Try SHA256 first (preferred), then SHA1 for backward compatibility.
-     This restricts verification to only these two algorithms. */
+#ifdef CKM_ML_DSA
+  if (pubKey->keyType == mldsaKey)
+    return verify_it_mldsa (signatureName, signature, module_name,
+			    module_data, module_size, pubKey);
+#endif
+
+  /* RSA: try SHA256 first (preferred), then SHA1 for backward compatibility. */
 
   /* Create a verification context with SHA256.  */
   vfy = VFY_CreateContextDirect (pubKey, signature, SEC_OID_PKCS1_RSA_ENCRYPTION,
