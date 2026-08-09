@@ -175,11 +175,14 @@ kernel_build_id_local_path (const std::vector<unsigned char> &bits,
     "/var/cache/abrt-di/usr/lib/debug/.build-id/",
     NULL
   };
-  char hex[bits.size () * 2 + 1];
+  std::string id;
+  id.reserve (bits.size () * 2);
   for (size_t i = 0; i < bits.size (); i++)
-    sprintf (hex + 2 * i, "%02x", bits[i]);
-  hex[bits.size () * 2] = '\0';
-  std::string id (hex);
+    {
+      char byte[3];
+      sprintf (byte, "%02x", bits[i]);
+      id.append (byte);
+    }
   std::string leaf = id.substr (0, 2) + "/" + id.substr (2);
   for (int d = 0; dirs[d] != NULL; d++)
     {
