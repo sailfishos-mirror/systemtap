@@ -99,6 +99,13 @@ fi
 # the subconfigure in the testsuite directory.
 AS_VAR_APPEND([ac_configure_args], [" python3='$PYTHON3' py3execdir='$ac_cv_py3execdir'"])
 
+dnl Enable extra C++ debug checks (_GLIBCXX_DEBUG)
+AC_MSG_CHECKING([whether to build with C++ debug checks])
+AC_ARG_ENABLE([debug],
+        AS_HELP_STRING('[--enable-debug], [compile with -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC]))
+AS_IF([test "${enable_debug}" = "yes"], [AC_MSG_RESULT([yes])], [AC_MSG_RESULT([no])])
+AM_CONDITIONAL([enable_debug], [test "${enable_debug}" = "yes"])
+
 dnl Allow the build to exclude -Werror
 AC_MSG_CHECKING([whether to build with -Werror])
 AC_ARG_ENABLE([Werror],

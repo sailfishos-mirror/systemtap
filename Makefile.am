@@ -23,6 +23,9 @@ if Werror
 AM_CFLAGS += -Werror
 AM_CXXFLAGS += -Werror
 endif
+if enable_debug
+AM_CXXFLAGS += -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC
+endif
 
 bin_SCRIPTS = stap-report stap-profile-annotate stap-prep
 nodist_bin_SCRIPTS = initscript/stap-onboot
