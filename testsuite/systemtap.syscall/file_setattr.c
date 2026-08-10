@@ -60,9 +60,11 @@ int main(void)
     my_file_setattr(AT_FDCWD, good, &fa, 0, 0);
     //staptest// file_setattr (-100, AT_FDCWD, XXXX, "testfile", XXXX, 0, 0) = -22 (EINVAL)
 
+    /* All-zero attrs are a portable no-op. Setting fa_cowextsize (or
+       other FS-specific hints) without matching fa_xflags fails with
+       EOPNOTSUPP/EINVAL on many filesystems (tmpfs, btrfs, …);
+       d90ad28e8aa4 also maps ENOIOCTLCMD → EOPNOTSUPP for this syscall. */
     memset(&fa, 0, sizeof(fa));
-    
-    fa = (struct file_attr){0, 0, 0, 0, 1};
     ret = my_file_setattr(AT_FDCWD, good, &fa, sizeof(fa), 0);
     if (ret != 0) {
         printf("ERROR: file_setattr() failed unexpectedly\n");
