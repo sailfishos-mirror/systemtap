@@ -6372,6 +6372,26 @@ void semantic_pass_opt8(systemtap_session& s)
 
               if (body_to_use)
                 {
+                  // Reset syscall arg-decoding mode between combined
+                  // handlers.  Sibling bodies share one CONTEXT; if an
+                  // earlier handler called __set_syscall_pt_regs(),
+                  // pointer_arg()/int_arg() read syscall args from
+                  // pt_regs instead of the kprobe function args.  That
+                  // breaks demux probes that all attach to the same
+                  // entry (e.g. ia32 compat_sys_socketcall → socket,
+                  // bind, accept, …).  Match the per-handler prologue.
+                  if (probe_index > 0)
+                    {
+                      embedded_expr* clear_sregs = new embedded_expr();
+                      clear_sregs->tok = body_to_use->tok;
+                      clear_sregs->code = "(c->sregs = 0)";
+
+                      expr_statement* clear_stmt = new expr_statement();
+                      clear_stmt->value = clear_sregs;
+                      clear_stmt->tok = body_to_use->tok;
+                      combined->statements.push_back(clear_stmt);
+                    }
+
                   // Wrap body in try-catch to isolate errors and 'next' statements
 
                   // Create catch error variable
