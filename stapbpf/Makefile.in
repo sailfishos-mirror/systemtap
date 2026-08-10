@@ -94,12 +94,13 @@ host_triplet = @host@
 target_triplet = @target@
 @Werror_TRUE@am__append_1 = -Werror
 @Werror_TRUE@am__append_2 = -Werror
+@enable_debug_TRUE@am__append_3 = -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC
 @HAVE_BPF_DECLS_TRUE@bin_PROGRAMS = stapbpf$(EXEEXT)
-@HAVE_BPF_DECLS_TRUE@@HAVE_LIBBPF_TRUE@am__append_3 = lsm-btf.cxx
-@HAVE_BPF_DECLS_TRUE@@HAVE_LIBBPF_TRUE@am__append_4 = $(libbpf_CFLAGS)
+@HAVE_BPF_DECLS_TRUE@@HAVE_LIBBPF_TRUE@am__append_4 = lsm-btf.cxx
 @HAVE_BPF_DECLS_TRUE@@HAVE_LIBBPF_TRUE@am__append_5 = $(libbpf_CFLAGS)
-@HAVE_BPF_DECLS_TRUE@@HAVE_LIBBPF_TRUE@am__append_6 = $(libbpf_LDFLAGS)
-@HAVE_BPF_DECLS_TRUE@@HAVE_LIBBPF_TRUE@am__append_7 = $(libbpf_LIBS)
+@HAVE_BPF_DECLS_TRUE@@HAVE_LIBBPF_TRUE@am__append_6 = $(libbpf_CFLAGS)
+@HAVE_BPF_DECLS_TRUE@@HAVE_LIBBPF_TRUE@am__append_7 = $(libbpf_LDFLAGS)
+@HAVE_BPF_DECLS_TRUE@@HAVE_LIBBPF_TRUE@am__append_8 = $(libbpf_LIBS)
 subdir = stapbpf
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_check_compile_flag.m4 \
@@ -442,7 +443,7 @@ AUTOMAKE_OPTIONS = subdir-objects
 AM_CFLAGS = -Wall -Wextra -Wunused -W -Wformat=2 $(am__append_1) \
 	@PIECFLAGS@ $(am__empty)
 AM_CXXFLAGS = -Wall -Wextra -Wunused -W -Wformat=2 $(am__append_2) \
-	@PIECXXFLAGS@ $(am__empty)
+	$(am__append_3) @PIECXXFLAGS@
 AM_CPPFLAGS = -D_GNU_SOURCE -I$(srcdir)/../includes \
 	-I$(builddir)/../includes/sys -DBINDIR='"$(bindir)"' \
 	-DSYSCONFDIR='"$(sysconfdir)"' -DPKGDATADIR='"${pkgdatadir}"' \
@@ -451,16 +452,16 @@ AM_LDFLAGS = @PIELDFLAGS@
 @HAVE_BPF_DECLS_TRUE@man_MANS = stapbpf.8
 @HAVE_BPF_DECLS_TRUE@stapbpf_SOURCES = stapbpf.cxx bpfinterp.cxx \
 @HAVE_BPF_DECLS_TRUE@	libbpf.c ../staputil.cxx \
-@HAVE_BPF_DECLS_TRUE@	../staprun/start_cmd.c $(am__append_3)
+@HAVE_BPF_DECLS_TRUE@	../staprun/start_cmd.c $(am__append_4)
 @HAVE_BPF_DECLS_TRUE@stapbpf_CPPFLAGS = $(AM_CPPFLAGS)
 @HAVE_BPF_DECLS_TRUE@stapbpf_CFLAGS = $(AM_CFLAGS) \
-@HAVE_BPF_DECLS_TRUE@	$(debuginfod_CFLAGS) $(am__append_4)
-@HAVE_BPF_DECLS_TRUE@stapbpf_CXXFLAGS = $(AM_CXXFLAGS) \
 @HAVE_BPF_DECLS_TRUE@	$(debuginfod_CFLAGS) $(am__append_5)
+@HAVE_BPF_DECLS_TRUE@stapbpf_CXXFLAGS = $(AM_CXXFLAGS) \
+@HAVE_BPF_DECLS_TRUE@	$(debuginfod_CFLAGS) $(am__append_6)
 @HAVE_BPF_DECLS_TRUE@stapbpf_LDFLAGS = $(AM_LDFLAGS) \
-@HAVE_BPF_DECLS_TRUE@	$(debuginfod_LDFLAGS) $(am__append_6)
+@HAVE_BPF_DECLS_TRUE@	$(debuginfod_LDFLAGS) $(am__append_7)
 @HAVE_BPF_DECLS_TRUE@stapbpf_LDADD = $(stapbpf_LIBS) -lpthread \
-@HAVE_BPF_DECLS_TRUE@	$(debuginfod_LIBS) $(am__append_7)
+@HAVE_BPF_DECLS_TRUE@	$(debuginfod_LIBS) $(am__append_8)
 
 # Arrange for the top-level git_version.h to be regenerated at every "make".
 @HAVE_BPF_DECLS_TRUE@BUILT_SOURCES = git_version.stamp
