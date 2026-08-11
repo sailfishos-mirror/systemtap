@@ -67,7 +67,7 @@ proc base_microtest_skip_p {{name ""}} {
 	    deref optim_voidstmt pointer_array cast bitfield bitfield2
 	    break_and_continue finloop2 poll_map error_fn kfunct
 	    optionalprobe rand timeout const_value preprocessor
-	    floatingpoint try_assign func_definition const_op cmdline
+	    try_assign func_definition const_op cmdline
 	    be_loaded
 	}
     }

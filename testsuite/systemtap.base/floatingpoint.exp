@@ -1,9 +1,3 @@
-# Wave-3: early language microtest; skip unless BASE_MICROTESTS_FULL=1.
-if {[base_microtest_skip_p]} {
-    untested "[file rootname [file tail [info script]]] (base microtest; set BASE_MICROTESTS_FULL=1)"
-    return
-}
-
 # Test floating point conversions and math
 set test "floatingpoint"
 
