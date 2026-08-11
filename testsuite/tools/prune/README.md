@@ -29,16 +29,26 @@ Implications for pruning:
 3. Historical FAIL/XFAIL diffs across recent master testruns (x86_64
    full + note smoke-only non-x86).
 
-## Escape hatches (Wave 1)
+## Escape hatches
 
+### Wave 1
 | Knob | Effect |
 |------|--------|
-| `INTERACTIVE_BUILDOK_FULL=1` | Restore full `buildok/*.stp` walk in `buildok-interactive.exp` |
-| `PARSE_SEMOK_FULL=1` | Restore full `buildok/` (and with verbose: semok+transok) in `parse-semok.exp` |
-| `EXAMPLES_INSTALLCHECK_FULL=1` | Restore all example installcheck *runs* in `check.exp` |
-| `CHECK_ONLY=...` | As before; also forces full run selection for the above drivers |
+| `INTERACTIVE_BUILDOK_FULL=1` | Full `buildok/*.stp` in `buildok-interactive.exp` |
+| `PARSE_SEMOK_FULL=1` | Full `buildok/` walk in `parse-semok.exp` |
+| `EXAMPLES_INSTALLCHECK_FULL=1` | All example installcheck *runs* in `check.exp` |
 
-See `CANDIDATES.md` for cost analysis and Wave-1 status.
+### Wave 2
+| Knob | Effect |
+|------|--------|
+| `UNPRIVILEGED_MYPROC_FULL=1` | All process.* privilege matrix |
+| `SDT_MISC_FULL=1` | SDT V1+V2+V3 (default V3 only) |
+| `TRACEPOINTS_LIST_FULL=1` | Per-tp results, all modules/groups |
+| `LISTING_MODE_FULL=1` | Full `stap -l` matrix |
+
+`CHECK_ONLY=...` still selects individual scripts where applicable.
+
+See `CANDIDATES.md` for cost analysis and status.
 
 ## Tools
 
