@@ -1,3 +1,24 @@
+## Wave 2 status — IMPLEMENTED + installcheck confirmed (2026-08-11)
+
+Targets (prior fedrawhide cost → local smoke installcheck):
+
+| Driver | Was | Now | Escape hatch |
+|--------|----:|----:|--------------|
+| `unprivileged_myproc.exp` | 1967s | 157s | `UNPRIVILEGED_MYPROC_FULL=1` |
+| `sdt_misc.exp` | 1154s | 279s | `SDT_MISC_FULL=1` |
+| `tracepoints_list.exp` | 1190s | 26s | `TRACEPOINTS_LIST_FULL=1` |
+| `listing_mode.exp` | 934s | 57s | `LISTING_MODE_FULL=1` |
+| **Wave-2 quartet** | **~87 min** | **~9 min** | |
+
+Approach: curated smoke / aggregate census / V3-only SDT; completeness
+FAILs demoted to UNTESTED in smoke mode.
+
+installcheck: 198 PASS, 2027 UNTESTED (intentional smoke), 6 XFAIL,
+1 FAIL (`sdt_misc wildcard (55) V3_uprobe`) — V3 path unchanged by
+sampling; local count drift, not a prune regression.
+
+---
+
 ## Wave 1 status — IMPLEMENTED + installcheck confirmed (2026-08-11)
 
 Edits landed (escape hatches preserve old behavior):

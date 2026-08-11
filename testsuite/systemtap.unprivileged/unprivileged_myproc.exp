@@ -5,8 +5,19 @@ if {![uprobes_p]} { untested $test; return }
 set exepath "loop"
 set sopath "libloop.so"
 
+# Wave-2 prune: full matrix is ~149 process.* forms x two privilege
+# modes (~33min). Default to a representative smoke set. Restore with:
+#   UNPRIVILEGED_MYPROC_FULL=1 make installcheck \
+#     RUNTESTFLAGS="unprivileged_myproc.exp"
+set myproc_full 0
+if {[info exists env(UNPRIVILEGED_MYPROC_FULL)] \
+	&& $env(UNPRIVILEGED_MYPROC_FULL) != "" \
+	&& $env(UNPRIVILEGED_MYPROC_FULL) != "0"} {
+    set myproc_full 1
+}
+
 # These probe types should fire unprivileged users, but only within their own processes.
-set myproc_probe_types [list \
+set myproc_probe_types_all [list \
   "process.begin" \
   "process.end" \
   "process.function(string)" \
@@ -157,6 +168,36 @@ set myproc_probe_types [list \
   "process(string).thread.end" \
   "process(string).function(string).label(string)" \
 ]
+
+set myproc_probe_types_smoke [list \
+  "process.begin" \
+  "process.end" \
+  "process.function(string)" \
+  "process.function(string).call" \
+  "process.function(string).return" \
+  "process.plt" \
+  "process.mark(string)" \
+  "process.statement(string)" \
+  "process.syscall" \
+  "process.thread.begin" \
+  "process.library(string).function(string)" \
+  "process.library(string).mark(string)" \
+  "process(number).begin" \
+  "process(number).function(string)" \
+  "process(number).syscall" \
+  "process(string).begin" \
+  "process(string).function(string)" \
+  "process(string).library(string).function(string)" \
+  "process(string).mark(string)" \
+  "process(string).syscall" \
+]
+
+if {$myproc_full} {
+    set myproc_probe_types $myproc_probe_types_all
+} else {
+    set myproc_probe_types $myproc_probe_types_smoke
+    verbose -log "$test: Wave-2 smoke ([llength $myproc_probe_types] probe types; set UNPRIVILEGED_MYPROC_FULL=1 for all)"
+}
 
 # Add arguments to a probe type template.
 proc add_args { probe_type pid } {
@@ -517,13 +558,17 @@ test_probes stapusr
 test_probes stapsys
 #test_probes stapdev
 
-# Generate a failure for each untested probe type
+# Generate a failure for each untested probe type (full matrix only).
+# In smoke mode, only require the curated set; leave other dump-probe
+# types as UNTESTED rather than FAIL.
 foreach probe_type $all_probe_types {
     set status $tested($probe_type)
     if {$status != 0} {
 	pass "$test: tested: $probe_type"
-    } else {
+    } elseif {$myproc_full} {
 	fail "$test: not tested: $probe_type"
+    } else {
+	untested "$test: not in smoke: $probe_type"
     }
 }
 

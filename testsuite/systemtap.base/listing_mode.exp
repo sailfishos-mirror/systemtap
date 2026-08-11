@@ -20,12 +20,76 @@ if {[info exists ::env(LISTING_MODE_SUBTEST)]} {
    set TARGET_SUBTEST ""
 }
 
+# Wave-2 prune: full stap -l matrix is ~15min. Default to a
+# representative smoke set. Restore with:
+#   LISTING_MODE_FULL=1 make installcheck RUNTESTFLAGS="listing_mode.exp"
+# LISTING_MODE_SUBTEST also forces full filtering semantics for the
+# selected subset (existing behavior).
+set listing_mode_full 0
+if {[info exists ::env(LISTING_MODE_FULL)] \
+	&& $::env(LISTING_MODE_FULL) != "" \
+	&& $::env(LISTING_MODE_FULL) != "0"} {
+   set listing_mode_full 1
+}
+if {$TARGET_SUBTEST != ""} {
+   set listing_mode_full 1
+}
+
+set listing_mode_smoke_types {
+   begin
+   end
+   error
+   never
+   kernel.function(string)
+   kernel.function(string).call
+   kernel.function(string).return
+   kernel.statement(string)
+   kernel.trace(string)
+   kprobe.function(string)
+   process.begin
+   process.end
+   process.function(string)
+   process.function(string).call
+   process.function(string).return
+   process.mark(string)
+   process.syscall
+   process.thread.begin
+   timer.ms(number)
+   timer.s(number)
+   procfs.read
+   netfilter.hook(string).pf(string)
+}
+
+proc listing_mode_smoke_match_p {pp} {
+   if {[regexp {^(begin|end|error|never)(\(|$)} $pp]} { return 1 }
+   if {[string match {kernel.function("vfs_read")*} $pp]} { return 1 }
+   if {[string match {kernel.statement("vfs_read")*} $pp]} { return 1 }
+   if {[string match {kernel.trace("sched*} $pp]} { return 1 }
+   if {[string match {kprobe.function("vfs_read")*} $pp]} { return 1 }
+   if {[string match {process.begin*} $pp]} { return 1 }
+   if {[string match {process.end*} $pp]} { return 1 }
+   if {[string match {process.function("main")*} $pp]} { return 1 }
+   if {[string match {process.mark*} $pp]} { return 1 }
+   if {[string match {process.syscall*} $pp]} { return 1 }
+   if {[string match {process.thread.begin*} $pp]} { return 1 }
+   if {[string match {timer.ms(100)*} $pp]} { return 1 }
+   if {[string match {timer.s(1)*} $pp]} { return 1 }
+   if {[string match {procfs.read*} $pp]} { return 1 }
+   if {[string match {netfilter.hook("NF_INET_PRE_ROUTING")*} $pp]} { return 1 }
+   return 0
+}
+
+if {!$listing_mode_full} {
+   verbose -log "$test: Wave-2 smoke (set LISTING_MODE_FULL=1 for full matrix)"
+}
+
 # Runs stap -l $pp and checks that every line output matches $exp. If $exp is
 # missing, checks that lines match $pp. If $exp starts with 're:' then the rest
 # of it is treated as a regular expression.  If $nlines_exp is not -1, then
 # exactly $nlines_exp lines are expected.
 proc stap_list {pp {exp ""} {nlines_exp 1} {arguments ""}} {
    global test TARGET_SUBTEST exefullpath sofullpath valid_pid
+   global listing_mode_full
 
    set subtest "$test ($pp $arguments)"
    set subtest [regsub -all $exefullpath $subtest EXEFULLPATH]
@@ -35,6 +99,11 @@ proc stap_list {pp {exp ""} {nlines_exp 1} {arguments ""}} {
 
    if {$TARGET_SUBTEST != ""} {
       if {![string match $TARGET_SUBTEST $pp]} {
+         untested $subtest
+         return
+      }
+   } elseif {!$listing_mode_full} {
+      if {![listing_mode_smoke_match_p $pp]} {
          untested $subtest
          return
       }
@@ -258,7 +327,14 @@ set all_probe_types [split $out "\n"]
 
 # Removes the given probe type from the list
 proc testing_probe {probe_type} {
-   global test all_probe_types
+   global test all_probe_types listing_mode_full listing_mode_smoke_types
+
+   # In smoke mode, only claim coverage for curated abstract types.
+   if {!$listing_mode_full} {
+      if {[lsearch -exact $listing_mode_smoke_types $probe_type] < 0} {
+         return
+      }
+   }
 
    # Find it
    set idx [lsearch $all_probe_types $probe_type]
@@ -279,7 +355,7 @@ proc testing_probe {probe_type} {
 
 # Reports all probe types in the list that haven't been tested
 proc report_untested_probes {} {
-   global test all_probe_types
+   global test all_probe_types listing_mode_full
 
    foreach probe_type $all_probe_types {
       switch $probe_type {
@@ -486,7 +562,11 @@ proc report_untested_probes {} {
          }
       }
 
-      fail "$test (untested probe type: $probe_type)"
+      if {$listing_mode_full} {
+         fail "$test (untested probe type: $probe_type)"
+      } else {
+         untested "$test (untested probe type: $probe_type; smoke)"
+      }
    }
 }
 

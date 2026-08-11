@@ -14,6 +14,17 @@ set pbtype_mssgs {{V1_uprobe} {V2_uprobe} {V3_uprobe}}
 set pbtype_flags {{additional_flags=-g} {} {}}
 set fail_count 0
 
+# Wave-2 prune: V1/V2/V3 each rebuild and re-run the same scenarios
+# (~19min). Default to V3 only (current ABI). Restore with:
+#   SDT_MISC_FULL=1 make installcheck RUNTESTFLAGS="sdt_misc.exp"
+set sdt_misc_indices {0 1 2}
+if {![info exists env(SDT_MISC_FULL)] \
+	|| $env(SDT_MISC_FULL) == "" \
+	|| $env(SDT_MISC_FULL) == "0"} {
+    set sdt_misc_indices {2}
+    verbose -log "$test: Wave-2 smoke (V3 only; set SDT_MISC_FULL=1 for V1/V2/V3)"
+}
+
 proc cleanup_handler { verbose } {
     global pbtype_mssgs
     global fail_count
@@ -41,8 +52,8 @@ set sup_dpath "[pwd]/sdt_misc_.d"
 set sup_hpath "[pwd]/sdt_misc_.h"
 set sup_opath "[pwd]/sdt_misc_.o"
 
-# Iterate pbtype_flags
-for {set i 0} {$i < [llength $pbtype_flags]} {incr i} {
+# Iterate pbtype_flags (optionally smoke-sampled to V3 only)
+foreach i $sdt_misc_indices {
     set v_flag [lindex $v_flags $i]
     set pbtype_flag "[lindex $pbtype_flags $i] additional_flags=$v_flag"
     set pbtype_mssg [lindex $pbtype_mssgs $i]
