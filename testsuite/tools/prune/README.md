@@ -46,6 +46,11 @@ Implications for pruning:
 | `TRACEPOINTS_LIST_FULL=1` | Per-tp results, all modules/groups |
 | `LISTING_MODE_FULL=1` | Full `stap -l` matrix |
 
+### Wave 3
+| Knob | Effect |
+|------|--------|
+| `BASE_MICROTESTS_FULL=1` | Run early language microtests in `systemtap.base` |
+
 `CHECK_ONLY=...` still selects individual scripts where applicable.
 
 See `CANDIDATES.md` for cost analysis and status.
