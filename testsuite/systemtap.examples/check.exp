@@ -59,6 +59,38 @@ proc run_command { test action command } {
     }
 }
 
+# Wave-1 prune: installcheck still builds every example (-p4), but skips
+# pure short timed smokes (typically "stap foo.stp -T 1") whose runtime
+# adds little beyond buildok/tapset coverage.  Keep richer oracles (-c),
+# longer runs, security band-aids, and anything selected via CHECK_ONLY.
+#
+# Restore all example runs with:
+#   EXAMPLES_INSTALLCHECK_FULL=1 make installcheck RUNTESTFLAGS="check.exp"
+proc examples_installcheck_run_p { test command } {
+    global env
+    if {[info exists env(CHECK_ONLY)]} {
+	return 1
+    }
+    if {[info exists env(EXAMPLES_INSTALLCHECK_FULL)] \
+	    && $env(EXAMPLES_INSTALLCHECK_FULL) != "" \
+	    && $env(EXAMPLES_INSTALLCHECK_FULL) != "0"} {
+	return 1
+    }
+    if {[string match "*security-band-aids*" $test]} {
+	return 1
+    }
+    # Richer end-to-end oracles that drive a target command.
+    if {[regexp -- {-c[\t ]} $command]} {
+	return 1
+    }
+    # Pure -T 1 smokes (stress/sleep for one second after compile).
+    # Tcl uses \y for word boundary (\b is backspace).
+    if {[regexp -- {-T[\t ]*1\y} $command]} {
+	return 0
+    }
+    return 1
+}
+
 
 set src_examples [fullpath $srcdir/systemtap.examples]
 
@@ -124,7 +156,11 @@ foreach file $meta_files {
 	&& $test_installcheck != "" } then {
          if { $supported_p == 1 && $build_p == 1} {
              set command $test_installcheck
-             run_command "$test" "run" $command
+	     if {[examples_installcheck_run_p $test $command]} {
+		 run_command "$test" "run" $command
+	     } else {
+		 untested "$test run (sampled out; set EXAMPLES_INSTALLCHECK_FULL=1)"
+	     }
          } else { 
              untested "$test run" 
          }
@@ -149,8 +185,12 @@ foreach file $meta_files {
         if {[info procs installtest_p] != "" && [installtest_p]
             && $test_installcheck_bpf != "" } then {
             if { $supported_p == 1 && $build_bpf_p == 1 } {
-                set command $test_installcheck
-                run_command "$test" "run_bpf" $command
+                set command $test_installcheck_bpf
+		if {[examples_installcheck_run_p $test $command]} {
+		    run_command "$test" "run_bpf" $command
+		} else {
+		    untested "$test run_bpf (sampled out; set EXAMPLES_INSTALLCHECK_FULL=1)"
+		}
             } else {
                 untested "$test run_bpf"
             }
@@ -176,8 +216,12 @@ foreach file $meta_files {
         if {[info procs installtest_p] != "" && [installtest_p]
             && $test_installcheck_dyninst != "" } then {
             if { $supported_p == 1 && $build_dyninst_p == 1 } {
-                set command $test_installcheck
-                run_command "$test" "run_dyninst" $command
+                set command $test_installcheck_dyninst
+		if {[examples_installcheck_run_p $test $command]} {
+		    run_command "$test" "run_dyninst" $command
+		} else {
+		    untested "$test run_dyninst (sampled out; set EXAMPLES_INSTALLCHECK_FULL=1)"
+		}
             } else {
                 untested "$test run_dyninst"
             }

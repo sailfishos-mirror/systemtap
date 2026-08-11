@@ -19,20 +19,65 @@ if {[catch {exec mktemp -d -t staptestXXXXXX} tmpdir]} {
     return
 }
 
-# Notice that by default we're just testing the scripts in the
-# 'buildok' (pass 4) directory. If "verbose" is on, we also test the
-# scripts in the 'semok' (pass 2) and 'transok' (pass 3) directories.
+# Wave-1 prune: the unparser roundtrip (-p1 | -p2) used to walk all of
+# buildok/*.stp on every installcheck (~40min), largely implied by a
+# successful buildok.exp -p4.  Keep a curated sample that stresses
+# aliases, pretty-print, maps, guru/embedded, and timers.
 #
+# Full corpus (old default): PARSE_SEMOK_FULL=1
+# Even larger (semok+transok+buildok): dejagnu verbose, or PARSE_SEMOK_FULL=1
+# with verbose still expanding directories as below.
+set parse_semok_smoke {
+    buildok/array_size.stp
+    buildok/alias_suffixes01.stp
+    buildok/alias_suffixes04.stp
+    buildok/alias_suffixes06.stp
+    buildok/pretty.stp
+    buildok/delete.stp
+    buildok/fourteen.stp
+    buildok/histogram_operator_in.stp
+    buildok/guru.stp
+    buildok/conversions-guru-embedded.stp
+    buildok/atomic.stp
+    semok/pretty.stp
+}
+
 # Notice we never test the scripts in the 'parseok' directory, since
 # those tests are designed to be parsed (-p1), but aren't necessarily
 # semantically correct (i.e. they might not pass -p2).
-if { $verbose } {
-    set dirlist [list semok transok buildok]
+set parse_semok_files {}
+if {[info exists env(PARSE_SEMOK_FULL)] \
+	&& $env(PARSE_SEMOK_FULL) != "" \
+	&& $env(PARSE_SEMOK_FULL) != "0"} {
+    if { $verbose } {
+	set dirlist [list semok transok buildok]
+    } else {
+	set dirlist [list buildok]
+    }
+    foreach dir $dirlist {
+	foreach file [pass14_stap_files $srcdir/$dir/*.stp] {
+	    lappend parse_semok_files $file
+	}
+    }
+} elseif {[info exists env(CHECK_ONLY)]} {
+    foreach dir {buildok semok transok} {
+	foreach file [pass14_stap_files $srcdir/$dir/*.stp] {
+	    lappend parse_semok_files $file
+	}
+    }
 } else {
-    set dirlist [list buildok]
+    foreach rel $parse_semok_smoke {
+	set f $srcdir/$rel
+	if {[file exists $f]} {
+	    lappend parse_semok_files $f
+	} else {
+	    untested "$rel ${test_suffix} - missing smoke script"
+	}
+    }
 }
-foreach dir $dirlist {
-    foreach file [pass14_stap_files $srcdir/$dir/*.stp] {
+
+foreach file $parse_semok_files {
+	set dir [file tail [file dirname $file]]
 	set test "${dir}/[file tail $file]"
 	set full_test "${test} ${test_suffix}"
 	set extra_args ""
@@ -124,7 +169,6 @@ foreach dir $dirlist {
 	    continue
 	}
 	pass "${full_test} - parsed output is semok"
-    }
 }
 
 # Cleanup

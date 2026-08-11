@@ -3,6 +3,44 @@ set test_suffix "(interactive)"
 
 if {! [readline_p]} { untested "${self} ${test_suffix}"; return }
 
+# Wave-1 prune: do not re-drive all of buildok/*.stp through interactive
+# stap (that duplicated buildok.exp for ~1h).  Smoke-test interactive
+# load/compile/cache on a small curated set instead.
+#
+# Restore the full corpus with:
+#   INTERACTIVE_BUILDOK_FULL=1 make installcheck RUNTESTFLAGS="buildok-interactive.exp"
+# or pick scripts with CHECK_ONLY="array_size guru ...".
+set interactive_smoke {
+    array_size.stp
+    atomic.stp
+    eight.stp
+    eleven.stp
+    alias_suffixes02.stp
+    conversions.stp
+    guru.stp
+    pretty.stp
+    delete.stp
+    map_probe_cond.stp
+}
+
+if {[info exists env(INTERACTIVE_BUILDOK_FULL)] \
+	&& $env(INTERACTIVE_BUILDOK_FULL) != "" \
+	&& $env(INTERACTIVE_BUILDOK_FULL) != "0"} {
+    set interactive_files [pass14_stap_files $srcdir/$self/*.stp]
+} elseif {[info exists env(CHECK_ONLY)]} {
+    set interactive_files [pass14_stap_files $srcdir/$self/*.stp]
+} else {
+    set interactive_files {}
+    foreach base $interactive_smoke {
+	set f $srcdir/$self/$base
+	if {[file exists $f]} {
+	    lappend interactive_files $f
+	} else {
+	    untested "${self}/$base ${test_suffix} - missing smoke script"
+	}
+    }
+}
+
 # Since we need a clean cache directory, we'll use a temporary
 # systemtap directory and cache (add user name so make check and
 # sudo make installcheck don't clobber each others)
@@ -19,7 +57,7 @@ if {$rc} { return }
 
 set effective_uid [exec /usr/bin/id -u]
 
-foreach file [pass14_stap_files $srcdir/$self/*.stp] {
+foreach file $interactive_files {
     set test "${self}/[file tail $file]"
     set full_test "${test} ${test_suffix}"
 
