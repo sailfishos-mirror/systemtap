@@ -101,10 +101,17 @@ AS_VAR_APPEND([ac_configure_args], [" python3='$PYTHON3' py3execdir='$ac_cv_py3e
 
 dnl Enable extra C++ debug checks (_GLIBCXX_DEBUG)
 AC_MSG_CHECKING([whether to build with C++ debug checks])
-AC_ARG_ENABLE([debug],
-        AS_HELP_STRING('[--enable-debug], [compile with -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC]))
-AS_IF([test "${enable_debug}" = "yes"], [AC_MSG_RESULT([yes])], [AC_MSG_RESULT([no])])
-AM_CONDITIONAL([enable_debug], [test "${enable_debug}" = "yes"])
+AC_ARG_ENABLE([glibcxx-debug],
+        AS_HELP_STRING('[--enable-glibcxx-debug], [compile with -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC (implies --without-dyninst)]))
+AS_IF([test "${enable_glibcxx_debug}" = "yes"], [AC_MSG_RESULT([yes])], [AC_MSG_RESULT([no])])
+AM_CONDITIONAL([enable_glibcxx_debug], [test "${enable_glibcxx_debug}" = "yes"])
+dnl _GLIBCXX_DEBUG changes the ABI of std:: containers; Dyninst is a
+dnl pre-compiled shared library whose API passes std::set by reference,
+dnl so linking against it with debug-mode containers fails.
+AS_IF([test "${enable_glibcxx_debug}" = "yes" -a "${with_dyninst}" != "no"], [
+  AC_MSG_NOTICE([--enable-glibcxx-debug forces --without-dyninst (ABI incompatibility with pre-compiled Dyninst libraries)])
+  with_dyninst=no
+])
 
 dnl Allow the build to exclude -Werror
 AC_MSG_CHECKING([whether to build with -Werror])
