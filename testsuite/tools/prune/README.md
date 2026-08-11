@@ -43,7 +43,7 @@ Implications for pruning:
 |------|--------|
 | `UNPRIVILEGED_MYPROC_FULL=1` | All process.* privilege matrix |
 | `SDT_MISC_FULL=1` | SDT V1+V2+V3 (default V3 only) |
-| `TRACEPOINTS_LIST_FULL=1` | Per-tp results, all modules/groups |
+| `TRACEPOINTS_LIST_SMOKE=1` | Fast aggregate census (default is full per-tp) |
 | `LISTING_MODE_FULL=1` | Full `stap -l` matrix |
 
 ### Wave 3
