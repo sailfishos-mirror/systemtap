@@ -61,7 +61,7 @@ proc base_microtest_skip_p {{name ""}} {
     }
     if {![info exists _base_microtest_skip]} {
 	set _base_microtest_skip {
-	    add arith if not logical_and tri equal inc div0
+	    add arith if not logical_and tri equal inc
 	    print simple array_size array_string global_init global_vars
 	    var_scope alias-condition alias-epilog alias-prolog be_order
 	    deref optim_voidstmt pointer_array cast bitfield bitfield2

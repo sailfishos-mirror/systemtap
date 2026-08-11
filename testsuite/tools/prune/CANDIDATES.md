@@ -1,7 +1,7 @@
 ## Wave 3 status — IMPLEMENTED + installcheck confirmed (2026-08-11)
 
-Skip 42 early `systemtap.base` language microtests by default
-(~1250s / ~21min on fedrawhide). Subsumed by `buildok`/`semok`,
+Skip 41 early `systemtap.base` language microtests by default
+(~1210s / ~20min on fedrawhide). Subsumed by `buildok`/`semok`,
 `systemtap.printf/`, `systemtap.maps/`, and larger base drivers
 (`alias_suffixes`, `cast-scope`, …).
 
@@ -10,8 +10,8 @@ Escape: `BASE_MICROTESTS_FULL=1`
 Shared gate: `base_microtest_skip_p` in `lib/systemtap.exp`.
 
 Kept deliberately (not in skip list): `arith_limits` (64-bit calc
-stress), `atomic`, `addr_op`, `abort`, `exit`, `beginenderror`,
-`timers`, `argv`, bug regressions, SDT, etc.
+stress), `div0` (must not crash on /0), `atomic`, `addr_op`, `abort`,
+`exit`, `beginenderror`, `timers`, `argv`, bug regressions, SDT, etc.
 
 installcheck: gated files → UNTESTED in ~seconds;
 `BASE_MICROTESTS_FULL=1` `add.exp` → 6 PASS in 34s.
