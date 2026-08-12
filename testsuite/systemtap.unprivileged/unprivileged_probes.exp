@@ -576,8 +576,9 @@ proc test_unrestricted_probes { privilege } {
 
 # stapusr restricted probes: one omnibus script + --semantic-keep-going.
 # Each probe type is one source line; the SEMANTIC_ERROR dump must list
-# "probe point is not allowed" for that line.  --unprivileged and
-# --privilege=stapusr are each run once over the same script.
+# "probe point is not allowed" for that line (reported as XFAIL).
+# --unprivileged and --privilege=stapusr are each run once over the same
+# script.
 proc test_restricted_probes_deny_batch { privilege } {
     global exepath
     global restricted_probe_types tested allowed test
@@ -636,12 +637,21 @@ proc test_restricted_probes_deny_batch { privilege } {
 	    set ln [lindex $batch_lines $i]
 	    incr i
 	    set found [expr {[lsearch -exact $denied_lines $ln] >= 0}]
-	    # allowed==0 => expect a deny line; allowed==1 => expect none
-	    if {($found && !$allowed($probe_type,$privilege)) \
-		    || (!$found && $allowed($probe_type,$privilege))} {
-		pass "$test: $option $probe_type (keep-going batch)"
+	    set name "$test: $option $probe_type (keep-going batch)"
+	    if {$allowed($probe_type,$privilege)} {
+		# Expected accept: deny catalog line would be a real failure
+		if {!$found} {
+		    pass $name
+		} else {
+		    fail "$name (unexpected deny; denied_lines={$denied_lines})"
+		}
 	    } else {
-		fail "$test: $option $probe_type (keep-going batch; denied_lines={$denied_lines})"
+		# Expected privilege semantic error → XFAIL when seen
+		if {$found} {
+		    xfail $name
+		} else {
+		    fail "$name (missing deny; denied_lines={$denied_lines})"
+		}
 	    }
 	    set tested($probe_type) 1
 	}
@@ -709,10 +719,20 @@ proc test_restricted_probes { privilege } {
 	verbose -log "eval exec $cmd"
 	catch {eval exec $cmd} res_stap
 	verbose -log $res_stap
-	if {! [regexp $error_regexp1 $res_stap] == $allowed($probe_type,$privilege)} {
-	    pass "$test: $option $probe_type$with_alias"
+	set got_deny [regexp $error_regexp1 $res_stap]
+	set name "$test: $option $probe_type$with_alias"
+	if {$allowed($probe_type,$privilege)} {
+	    if {!$got_deny} {
+		pass $name
+	    } else {
+		fail $name
+	    }
 	} else {
-	    fail "$test: $option $probe_type$with_alias"
+	    if {$got_deny} {
+		xfail $name
+	    } else {
+		fail $name
+	    }
 	}
 
 	# Indicate that this probe type has been tested
