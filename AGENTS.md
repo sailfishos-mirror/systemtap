@@ -186,6 +186,35 @@ new parse error saying “requires --compatible=X.Y or higher”.  Throwing
 that error would break the whole point of the option.  Register the
 at-word in `lexer::atwords` under the same `has_version` check.
 
+### Unprivileged / `stapusr` language limits
+
+See **UNPRIVILEGED USERS** in `man stap` (`man/stap.1.in`).  Short version:
+
+- `--unprivileged` ≡ `--privilege=stapusr`.
+- Untagged embedded-C (`%{ ... %}` and tapset helpers without
+  `/* unprivileged */` or `/* myproc-unprivileged */`) is **rejected at
+  pass 2** under `stapusr`/`stapsys`.  That rejection is the security
+  mechanism, not a translator bug.
+- `/* myproc-unprivileged */` helpers may only run after `is_myproc()` is
+  true; otherwise the script exits.
+- `stapusr` may only use `process.*` against the user’s own processes
+  (plus begin/end/timer/…).
+- Prefer `if`/`else` over script ternary `?:` in stapusr-safe scripts;
+  ternary has shown up as “embedded expression may not be used when
+  --privilege=stapusr”.
+- Probe-point trailing `?` makes resolution optional (missing symbols do
+  not fail the script).  It does **not** waive embedded-C checks for
+  forms that *do* resolve.  Under stapusr, avoid co-arming overlapping
+  aliases in one script (`process.plt` vs `process.plt("*")`,
+  `process.mark` vs `process.provider(...).mark`, bare `process.FOO` vs
+  `process("./path").FOO`, …) — shared expansions can pull in untagged
+  embedded-C and fail the whole batch.
+- When the translator synthesizes `embedded_expr` / `%{…%}` (opt passes,
+  probe combining, rewrites of `next`, etc.), give it an appropriate
+  safety tag (`/* unprivileged */` or `/* myproc-unprivileged */`) if
+  the code is safe for those privilege levels — otherwise stapusr/stapsys
+  reject the whole script at pass 2.
+
 ## Runtime Options
 
 When running a script directly from the local build tree, always use `sudo -E` to preserve necessary environment variables (like `LD_LIBRARY_PATH` or `DEBUGINFOD_URLS`):

@@ -1,3 +1,9 @@
+# Wave-3: early language microtest; skip unless BASE_MICROTESTS_FULL=1.
+if {[base_microtest_skip_p]} {
+    untested "[file rootname [file tail [info script]]] (base microtest; set BASE_MICROTESTS_FULL=1)"
+    return
+}
+
 # Make sure that optimization works with void statements
 
 set test "optim_voidstmt"

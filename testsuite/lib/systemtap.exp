@@ -40,6 +40,40 @@ proc installtest_p {} {
     } else { return 0 }
 }
 
+# Wave-3 prune: early systemtap.base language microtests that are
+# subsumed by buildok/semok, systemtap.printf/, systemtap.maps/, and
+# larger base drivers (alias_suffixes, cast-scope, etc.). Default skip
+# during installcheck/check; restore with BASE_MICROTESTS_FULL=1.
+#
+# Optional NAME is an .exp stem (e.g. "add"); defaults to the sourcing
+# script's basename.
+proc base_microtest_skip_p {{name ""}} {
+    global env _base_microtest_skip
+    if {[info exists env(BASE_MICROTESTS_FULL)] \
+	    && $env(BASE_MICROTESTS_FULL) != "" \
+	    && $env(BASE_MICROTESTS_FULL) != "0"} {
+	return 0
+    }
+    if {$name == ""} {
+	set name [file rootname [file tail [info script]]]
+    } else {
+	set name [file rootname [file tail $name]]
+    }
+    if {![info exists _base_microtest_skip]} {
+	set _base_microtest_skip {
+	    add arith if not logical_and tri equal inc
+	    print simple array_size array_string global_init global_vars
+	    var_scope alias-condition alias-epilog alias-prolog be_order
+	    deref optim_voidstmt pointer_array cast bitfield bitfield2
+	    break_and_continue finloop2 poll_map error_fn kfunct
+	    optionalprobe rand timeout const_value preprocessor
+	    try_assign func_definition const_op cmdline
+	    be_loaded
+	}
+    }
+    return [expr {[lsearch -exact $_base_microtest_skip $name] >= 0}]
+}
+
 # Return sorted .stp files matching glob pattern(s), optionally filtered
 # by CHECK_ONLY (basename without .stp, as in buildok/nfs-detailed.stp).
 proc pass14_stap_files { args } {
