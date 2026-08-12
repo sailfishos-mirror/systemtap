@@ -1,0 +1,57 @@
+#! stap
+# Translator memcheck workload — exercises passes 1–4 code paths.
+#
+# Each probe type below targets a different translator subsystem:
+#   - begin/end/timer:         tapset-been.cxx, tapset-timers.cxx
+#   - kernel.function + $$parms$: tapsets.cxx DWARF, loc2stap.cxx location
+#   - kernel.function.return:  return-probe code generation
+#   - @cast pretty-printing:   translate.cxx cast/dereference chains
+#   - syscall.* glob:          alias expansion, wildcard matching
+#   - embedded C (%{ %}):      translate.cxx embedded-code emission
+#
+# The script is compiled to .ko (-p4) but never loaded (-p5).
+# Valgrind --trace-children=no excludes gcc/kbuild from memcheck.
+
+probe begin {
+  printf("tag=memcheck %s\n", pp())
+}
+
+probe end {
+  printf("%s\n", pp())
+}
+
+probe timer.s(1) {
+  exit()
+}
+
+# Kernel DWARF: $$parms$ forces argument-location digging (loc2stap).
+probe kernel.function("vfs_read") {
+  printf("%s %s\n", probefunc(), $$parms$)
+}
+
+probe kernel.function("vfs_write") {
+  printf("%s %s\n", probefunc(), $$parms$)
+}
+
+# Return probes: tests return-probe code generation path.
+probe kernel.function("schedule").return {
+  printf("%s\n", pp())
+}
+
+# @cast pretty-printing: exercises translate.cxx cast chains.
+probe begin(1) {
+  t = task_current()
+  log(@cast(t, "task_struct", "kernel")->comm$)
+  log(@cast(t, "task_struct", "kernel")->fs$)
+}
+
+# Syscall alias glob: triggers broad alias expansion.
+probe syscall.read, syscall.write, syscall.open? {
+  log(name)
+}
+
+# Embedded C: exercises translate.cxx embedded-code emission.
+function get_jiffies:long () %{ STAP_RETVALUE = jiffies; %}
+probe begin(2) {
+  printf("jiffies=%d\n", get_jiffies())
+}
