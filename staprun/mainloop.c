@@ -698,7 +698,7 @@ int stp_main_loop(void)
       }
     case STP_TRANSPORT:
       {
-        struct _stp_msg_start ts;
+        struct _stp_msg_start ts = {0};
         struct _stp_msg_ns_pid nspid;
         struct _stp_msg_mnt_ns_fds nsfds;
         if (init_relayfs() < 0) {
