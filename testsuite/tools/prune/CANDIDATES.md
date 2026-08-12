@@ -25,7 +25,7 @@ Targets (prior fedrawhide cost → local smoke installcheck):
 
 | Driver | Was | Now | Escape hatch |
 |--------|----:|----:|--------------|
-| `unprivileged_myproc.exp` | 1967s | 157s | `UNPRIVILEGED_MYPROC_FULL=1` |
+| `unprivileged_myproc.exp` | 1967s | ~3min batched full catalog (per-probe PASS/FAIL; stapusr alias buckets); smoke via `UNPRIVILEGED_MYPROC_SMOKE=1` |
 | `sdt_misc.exp` | 1154s | 279s | `SDT_MISC_FULL=1` |
 | `tracepoints_list.exp` | ~20min full census (default); smoke via `TRACEPOINTS_LIST_SMOKE=1` | — |
 | `listing_mode.exp` | 934s | 57s | `LISTING_MODE_FULL=1` |

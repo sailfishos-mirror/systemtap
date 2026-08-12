@@ -6071,7 +6071,8 @@ struct next_statement_replacer: public update_visitor
       // Set c->last_error = "__SYSTEMTAP_NEXT__"
       embedded_expr* set_error = new embedded_expr();
       set_error->tok = s->tok;
-      set_error->code = string("(c->last_error = \"") + NEXT_SENTINEL + "\") /* string */";
+      set_error->code = string("/* unprivileged */ (c->last_error = \"")
+	+ NEXT_SENTINEL + "\") /* string */";
 
       expr_statement* set_error_stmt = new expr_statement();
       set_error_stmt->value = set_error;
@@ -6384,7 +6385,9 @@ void semantic_pass_opt8(systemtap_session& s)
                     {
                       embedded_expr* clear_sregs = new embedded_expr();
                       clear_sregs->tok = body_to_use->tok;
-                      clear_sregs->code = "(c->sregs = 0)";
+                      // Must be privilege-tagged: stapusr rejects untagged
+                      // embedded_expr (see man stap, UNPRIVILEGED USERS).
+                      clear_sregs->code = "/* unprivileged */ (c->sregs = 0)";
 
                       expr_statement* clear_stmt = new expr_statement();
                       clear_stmt->value = clear_sregs;
@@ -6496,7 +6499,8 @@ void semantic_pass_opt8(systemtap_session& s)
           // In the generated C, local variables are accessed via l->l_<name>
           embedded_expr* set_last_error = new embedded_expr();
           set_last_error->tok = probes[batch_start]->tok;
-          set_last_error->code = string("(c->last_error = l->l_") + string(error_var->name) + ") /* string */";
+          set_last_error->code = string("/* unprivileged */ (c->last_error = l->l_")
+	    + string(error_var->name) + ") /* string */";
 
           expr_statement* set_error_stmt = new expr_statement();
           set_error_stmt->value = set_last_error;

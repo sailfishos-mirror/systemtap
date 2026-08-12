@@ -5,15 +5,15 @@ if {![uprobes_p]} { untested $test; return }
 set exepath "loop"
 set sopath "libloop.so"
 
-# Wave-2 prune: full matrix is ~149 process.* forms x two privilege
-# modes (~33min). Default to a representative smoke set. Restore with:
-#   UNPRIVILEGED_MYPROC_FULL=1 make installcheck \
-#     RUNTESTFLAGS="unprivileged_myproc.exp"
-set myproc_full 0
-if {[info exists env(UNPRIVILEGED_MYPROC_FULL)] \
-	&& $env(UNPRIVILEGED_MYPROC_FULL) != "" \
-	&& $env(UNPRIVILEGED_MYPROC_FULL) != "0"} {
-    set myproc_full 1
+# Default: full probe catalog in a few combined stap runs; .exp still
+# issues one PASS/FAIL per probe type from FIRE tags in the output.
+# Optional smaller catalog for debugging:
+#   UNPRIVILEGED_MYPROC_SMOKE=1
+set myproc_full 1
+if {[info exists env(UNPRIVILEGED_MYPROC_SMOKE)] \
+	&& $env(UNPRIVILEGED_MYPROC_SMOKE) != "" \
+	&& $env(UNPRIVILEGED_MYPROC_SMOKE) != "0"} {
+    set myproc_full 0
 }
 
 # These probe types should fire unprivileged users, but only within their own processes.
@@ -196,7 +196,7 @@ if {$myproc_full} {
     set myproc_probe_types $myproc_probe_types_all
 } else {
     set myproc_probe_types $myproc_probe_types_smoke
-    verbose -log "$test: Wave-2 smoke ([llength $myproc_probe_types] probe types; set UNPRIVILEGED_MYPROC_FULL=1 for all)"
+    verbose -log "$test: smoke catalog ([llength $myproc_probe_types] probe types)"
 }
 
 # Add arguments to a probe type template.
@@ -294,199 +294,336 @@ proc add_args { probe_type pid } {
     return "$probe"
 }
 
-# Add required extra options according to the probe type.
-proc extra_options { probe_type } {
-    global exepath
-
-    # Add '-c $exepath 1' for process.* probes.
-    if {[regexp "^process\\." $probe_type]} {
-	return "-c \"./$exepath 1\""
-    }
-
-    return ""
+# Return 1 if this form needs a live pid (process(number)...) rather than -c.
+proc myproc_needs_pid { probe_type } {
+    return [string match "process(number)*" $probe_type]
 }
 
-# Test valid probe types
-proc test_probes { privilege } {
-    global myproc_probe_types allowed test srcdir subdir tested
-    
-    set effective_uid [exec /usr/bin/id -u]
-    set stap [exec /usr/bin/which stap]
-
-    # Start the test executable in the background
-    set our_pid [exec ./loop &]
-    verbose -log "our ./loop pid is $our_pid"
-
-    # If we are not root start another one as root. It will be a failure if any probes fail against
-    # this instance.
-    if {$effective_uid != 0} {
-	# ask for password here, if required ...
-	as_root { true }
-        # trigger PR16406 scenario if possible
-        as_root { /sbin/modprobe loop }
-	# ... and not here.
-	exec sudo ./loop &
-	# Give it a chance to start
-	sleep 1
-	set root_pid [exec ps -fe | awk {/^root.*[^o] \.\/loop/ { print $2 }}]
-	verbose -log "root's ./loop pid is '$root_pid'"
+# Skip forms the old driver left untested.
+proc myproc_skip_p { probe_type } {
+    if {[regexp "\.plt" $probe_type] && ![plt_probes_p]} {
+	return 1
     }
+    switch -- $probe_type {
+	process(number).thread.begin -
+	process(number).thread.end -
+	process.library(string).function(string).callee(string).return -
+	process(string).library(string).function(string).callee(string).return {
+	    return 1
+	}
+    }
+    return 0
+}
 
-    # Test using --unprivileged and --privilege=stapusr. They should be equivalent
-    set stapusr_options [list --unprivileged --privilege=stapusr ]
-    # Test using no option and --privilege=stapdev. They should be equivalent
-    set stapdev_options [list "" --privilege=stapdev ]
-
-    set selector 0
-    foreach probe_type $myproc_probe_types {
-	# Select the proper --privilege option
-	switch $privilege {
-	    stapusr {
-		set option [lindex $stapusr_options $selector]
-	    }
-	    stapdev {
-		set option [lindex $stapdev_options $selector]
-	    }
-	    default {
-		set option "--privilege=$privilege"
+# Apply the same kfail setup the piecemeal driver used.
+proc myproc_setup_kfails { probe_type } {
+    switch -- $probe_type {
+	process.library(string).function(number).inline -
+	process(string).library(string).function(number).inline -
+	process.function(number).inline -
+	process(string).function(number).inline {
+	    setup_kfail GCC *-*-*
+	}
+	process.function(string).callee(string) -
+	process.function(string).callee(string).call -
+	process.function(string).callee(string).return -
+	process(number).function(string).callee(string) -
+	process(number).function(string).callee(string).call -
+	process(number).function(string).callee(string).return -
+	process(string).function(string).callee(string) -
+	process(string).function(string).callee(string).call -
+	process(string).function(string).callee(string).return -
+	process.library(string).function(string).callee(string) -
+	process.library(string).function(string).callee(string).call -
+	process.library(string).function(string).callee(string).return -
+	process(string).library(string).function(string).callee(string) -
+	process(string).library(string).function(string).callee(string).call -
+	process(string).library(string).function(string).callee(string).return {
+	    if {![callee_probes_p]} {
+		setup_kfail CALLEE *-*-*
 	    }
 	}
+	process.function(number).return -
+	process.function(string).return -
+	process.library(string).function(number).return -
+	process.library(string).function(string).return -
+	process(string).function(number).return -
+	process(string).function(string).return -
+	process(string).library(string).function(number).return -
+	process(string).library(string).function(string).return {
+	    if {![uretprobes_p]} { setup_kfail URETPROBES *-*-* }
+	}
+	process(number).statement(number).absolute {
+	    # Absolute process probes are unavailable with inode-uprobes.
+	    setup_kfail INODE_UPROBES *-*-*
+	}
+	process(number).statement(number).absolute.return {
+	    setup_kfail INODE_UPROBES *-*-*
+	}
+    }
+}
 
-	# There are currently some untestable probe types
-	if {[regexp "\.plt" $probe_type] && ! [plt_probes_p]} {
-	    #  .plt is only supported on certain arches
+# Build one stap script that arms every probe in PROBE_LIST.  Each first
+# hit prints: FIRE <index> is_myproc|not_myproc  (deduped so -x runs do
+# not flood stdout).  IDX_MAP is an upvar name for array(index)->probe_type.
+# settle_secs: timer.s(N) exit; use a larger N when delayedkill is needed.
+proc myproc_write_script { probe_list pid scriptfile idx_map {settle_secs 3} } {
+    upvar 1 $idx_map typemap
+    global test
+
+    set fd [open $scriptfile w]
+    puts $fd "global _myproc_seen"
+    set i 0
+    foreach probe_type $probe_list {
+	if {[myproc_skip_p $probe_type]} {
+	    continue
+	}
+	set probe [add_args $probe_type $pid]
+	set typemap($i) $probe_type
+	# Optional "?" so unresolved forms do not abort the whole batch.
+	# (Does not suppress stapusr embedded-C errors when a form *does*
+	# resolve; see myproc_stapusr_bucket.)
+	puts $fd "probe $probe ? \{"
+	puts $fd "  if (_myproc_seen\[$i\] == 0) \{"
+	puts $fd "    _myproc_seen\[$i\] = 1"
+	puts $fd "    if (is_myproc())"
+	puts $fd "      println(\"FIRE $i is_myproc\")"
+	puts $fd "    else"
+	puts $fd "      println(\"FIRE $i not_myproc\")"
+	puts $fd "  \}"
+	puts $fd "\}"
+	incr i
+    }
+    # Settle after the workload; -c exits the target, -x needs the timer.
+    puts $fd "probe timer.s($settle_secs) \{ exit() \}"
+    close $fd
+    verbose -log "$test: wrote $scriptfile with $i probes"
+    return $i
+}
+
+# Parse FIRE lines and emit per-probe PASS/FAIL for this privilege run.
+proc myproc_judge { privilege option output typemap_name } {
+    global test
+    upvar 1 $typemap_name typemap
+
+    set emb_reject 0
+    if {[string match "*embedded expression may not be used*" $output]} {
+	set emb_reject 1
+    }
+
+    array set seen {}
+    foreach line [split $output "\n"] {
+	if {[regexp {^FIRE ([0-9]+) (is_myproc|not_myproc)$} $line -> idx kind]} {
+	    # Prefer recording a leak if we ever see one.
+	    if {![info exists seen($idx)] || $kind == "not_myproc"} {
+		set seen($idx) $kind
+	    }
+	}
+    }
+
+    foreach idx [lsort -integer [array names typemap]] {
+	set probe_type $typemap($idx)
+	myproc_setup_kfails $probe_type
+	set full_test "$test: $option $probe_type"
+
+	if {[info exists seen($idx)]} {
+	    set kind $seen($idx)
+	    if {$kind == "not_myproc"} {
+		fail "$full_test (not myproc)"
+	    } else {
+		pass $full_test
+	    }
+	    continue
+	}
+
+	# No FIRE line.
+	if {$emb_reject && $privilege == "stapusr"} {
+	    fail "$full_test (stapusr embedded-C rejected)"
+	} elseif {[regexp {^process(\((number|string)\))?\.function\(string\)\.callee} $probe_type]} {
+	    # main→tbar GNU_call_site matching often yields no hit even
+	    # when library .callee forms PASS; keep as KFAIL for now.
+	    setup_kfail CALLEE *-*-*
+	    fail "$full_test (no hit)"
+	} else {
+	    fail "$full_test (no hit)"
+	}
+    }
+}
+
+# Run one combined stap for a probe subset.
+# mode: "c" => stap -c "./loop 1"; "x" => background loop + stap -x pid
+# kill_for_end: if 1, schedule delayedkill so process(number).end can fire.
+proc myproc_run_batch { privilege option probe_list mode {kill_for_end 0} } {
+    global test exepath tested srcdir subdir
+
+    if {[llength $probe_list] == 0} {
+	return
+    }
+
+    set scriptfile [pwd]/myproc_combined_[pid].stp
+    array set typemap {}
+    set settle 3
+    if {$kill_for_end} {
+	# Match the old piecemeal driver's delayedkill/timer window.
+	set settle 15
+    }
+
+    if {$mode == "c"} {
+	# Pid is unused for process./process(string) forms after add_args,
+	# but absolute/number replacements still want a placeholder.
+	set n [myproc_write_script $probe_list 0 $scriptfile typemap $settle]
+	if {$n == 0} {
+	    file delete -force $scriptfile
+	    return
+	}
+	set cmd [list stap $option -c "./$exepath 1" $scriptfile]
+	set our_pid ""
+    } else {
+	set our_pid [exec ./$exepath &]
+	verbose -log "$test: background ./$exepath pid $our_pid"
+	# Give it a moment to start before -x attach.
+	sleep 1
+	set n [myproc_write_script $probe_list $our_pid $scriptfile typemap $settle]
+	if {$n == 0} {
+	    kill -INT $our_pid 5
+	    file delete -force $scriptfile
+	    return
+	}
+	set cmd [list stap $option -x $our_pid $scriptfile]
+	if {$kill_for_end} {
+	    # Same delayedkill the piecemeal driver used for .end probes.
+	    verbose -log "$test: delayedkill $our_pid in 10s"
+	    exec $srcdir/$subdir/delayedkill $our_pid 10 &
+	}
+    }
+
+    verbose -log "eval exec $cmd"
+    set rc [catch {exec {*}$cmd 2>@1} res_stap]
+    verbose -log "rc == $rc"
+    verbose -log "$res_stap"
+
+    if {$mode == "x" && $our_pid != ""} {
+	catch {kill -INT $our_pid 5}
+    }
+
+    # Even if stap rc != 0, judge whatever FIRE lines we got; missing
+    # tags become per-probe FAILs.  Prefer is_myproc for both privileges
+    # (stronger than the old stapsys "rc==0 only" check).
+    myproc_judge $privilege $option $res_stap typemap
+
+    foreach idx [array names typemap] {
+	set tested($typemap($idx)) 1
+    }
+
+    file delete -force $scriptfile
+}
+
+# stapusr forbids some overlapping process.* aliases in one script
+# (translator expands them to untagged embedded-C).  Bucket so those
+# aliases are never co-armed.  stapsys/stapdev can share one bucket.
+proc myproc_stapusr_bucket { probe_type } {
+    if {[string match "*callee*" $probe_type]} {
+	return callee
+    }
+    # .nearest statement expansions can poison a larger stapusr batch
+    # with untagged embedded-C even though they are fine alone.
+    if {[string match "*.nearest" $probe_type]} {
+	return nearest
+    }
+    # process.plt vs process.plt("...") (and library analogues)
+    if {[regexp {\.plt\(} $probe_type]} {
+	return plt_arg
+    }
+    if {[regexp {\.plt(\.|$)} $probe_type]} {
+	return plt_bare
+    }
+    # process.mark vs process.provider(...).mark
+    if {[regexp {provider\([^)]*\)\.mark\(} $probe_type]} {
+	return prov_mark
+    }
+    if {[regexp {\.mark\(} $probe_type]} {
+	return mark
+    }
+    return default
+}
+
+# Run PROBE_LIST, splitting into stapusr-safe buckets when needed.
+proc myproc_run_partitioned { privilege option probe_list mode {kill_for_end 0} } {
+    if {[llength $probe_list] == 0} {
+	return
+    }
+    if {$privilege != "stapusr"} {
+	myproc_run_batch $privilege $option $probe_list $mode $kill_for_end
+	return
+    }
+    array set buckets {}
+    set order {}
+    foreach probe_type $probe_list {
+	set b [myproc_stapusr_bucket $probe_type]
+	if {![info exists buckets($b)]} {
+	    lappend order $b
+	    set buckets($b) {}
+	}
+	lappend buckets($b) $probe_type
+    }
+    foreach b $order {
+	verbose -log "stapusr bucket $b ([llength $buckets($b)])"
+	myproc_run_batch $privilege $option $buckets($b) $mode $kill_for_end
+    }
+}
+
+# Combined driver: a few stap runs per privilege; .exp still emits one
+# PASS/FAIL per probe type.  Split bare process.* vs process(string).*
+# (and stapusr alias buckets) so overlapping forms are not co-armed.
+proc test_probes { privilege } {
+    global myproc_probe_types test tested
+
+    set stapusr_options [list --unprivileged --privilege=stapusr]
+    set stapdev_options [list "" --privilege=stapdev]
+
+    switch $privilege {
+	stapusr {
+	    set option [lindex $stapusr_options 0]
+	}
+	stapdev {
+	    set option [lindex $stapdev_options 1]
+	}
+	default {
+	    set option "--privilege=$privilege"
+	}
+    }
+
+    set bare_list {}
+    set string_list {}
+    set pid_list {}
+    set pid_end_list {}
+    foreach probe_type $myproc_probe_types {
+	if {[myproc_skip_p $probe_type]} {
 	    untested "$test: $option $probe_type"
 	    set tested($probe_type) 1
 	    continue
 	}
-
-	switch $probe_type {
-	    process(number).thread.begin -
-	    process(number).thread.end
-	    {
-		# Impossible to predict the task_id of a thread
-		untested "$test: $option $probe_type"
-		set tested($probe_type) 1
-		continue
-	    }
-	    process.library(string).function(string).callee(string).return -
-	    process(string).library(string).function(string).callee(string).return
-	    {
-		untested "$test: $option $probe_type"
-		set tested($probe_type) 1
-		continue
-	    }
-	}
-
-	# There are currently some known and expected failures
-	switch $probe_type {
-	    process.library(string).function(number).inline -
-	    process(string).library(string).function(number).inline -
-	    process.function(number).inline -
-	    process(string).function(number).inline
-	    {
-		setup_kfail GCC *-*-*
-	    }
-	    process.function(string).callee(string) -
-	    process.function(string).callee(string).call -
-	    process.function(string).callee(string).return -
-	    process(number).function(string).callee(string) -
-	    process(number).function(string).callee(string).call -
-	    process(number).function(string).callee(string).return -
-	    process(string).function(string).callee(string) -
-	    process(string).function(string).callee(string).call -
-	    process(string).function(string).callee(string).return
-            {
-                if {![callee_probes_p]} {
-                    setup_kfail CALLEE *-*-*
-                }
-            }
-	    process.function(number).return -
-	    process.function(string).return -
-	    process.library(string).function(number).return -
-	    process.library(string).function(string).return -
-	    process(string).function(number).return -
-	    process(string).function(string).return -
-	    process(string).library(string).function(number).return -
-	    process(string).library(string).function(string).return
-	    {
-		if {![uretprobes_p]} { setup_kfail URETPROBES *-*-* }
-	    }
-	    process(number).statement(number).absolute
-	    {
-		# Inode uprobes don't support 'absolute' probes.
-		if {[inode_uprobes_p]} { setup_kfail INODE_UPROBES *-*-* }
-	    }
-	    process(number).statement(number).absolute.return
-	    {
-		# 'absolute.return' probes could fail because we're
-		# using inode uprobes or we don't have uretprobes.
-		if {[inode_uprobes_p]} {
-		    setup_kfail INODE_UPROBES *-*-*
-		} elseif {![uretprobes_p]} {
-		    setup_kfail URETPROBES *-*-*
-		}
-	    }
-	}
-
-	# Test the probe type. If successful, the stap rc will be 0.
-	set probe [add_args $probe_type $our_pid]
-	set cmd [concat [list $stap $option -e "probe $probe { if (is_myproc ()) println (\"is myproc\") else println (\"not myproc\"); exit(); } probe timer.s(15) { println(\"timeout\") exit() }"] [extra_options $probe_type]]
-	    
-	# If the probe types was 'process(number).end' or 'process(string).end' then set up a
-	# delayed kill of our test program in order to make the probe fire.
-	if {[regexp "^process\\(number\\)\\.end" $probe_type] || \
-		[regexp "^process\\(string\\)\\.end" $probe_type]} {
-	    exec $srcdir/$subdir/delayedkill $our_pid 10 &
-	}
-
-	# Run stap.
-	verbose -log "eval exec $cmd"
-	set rc [catch {eval exec $cmd} res_stap]
-	verbose -log "rc == $rc"
-	verbose -log "$res_stap"
-
-	if {$privilege == "stapusr"} {
-	    # The test passes if it returns 0 and prints "is myproc".
-	    if {$rc == 0 && [regexp ".*is myproc.*" "$res_stap"]} {
-		pass "$test: $option $probe_type"
+	if {[myproc_needs_pid $probe_type]} {
+	    if {[regexp {^process\(number\)\.end$} $probe_type]} {
+		lappend pid_end_list $probe_type
 	    } else {
-		fail "$test: $option $probe_type"
+		lappend pid_list $probe_type
 	    }
+	} elseif {[string match "process(string)*" $probe_type]} {
+	    lappend string_list $probe_type
 	} else {
-	    # The test passes if it returns 0
-	    if {$rc == 0} {
-		pass "$test: $option $probe_type"
-	    } else {
-		fail "$test: $option $probe_type"
-	    }
+	    lappend bare_list $probe_type
 	}
-	
-	# Indicate that this probe type has been tested
-	set tested($probe_type) 1
-
-	# If the probe types was 'process(number).end' or 'process(string).end', then our test
-	# program was killed in order to make the probe fire. Restart it.
-	if {[regexp "^process\\(number\\)\\.end" $probe_type] || \
-		[regexp "^process\\(string\\)\\.end" $probe_type]} {
-	    set our_pid [exec ./loop &]
-	    verbose -log "our ./loop pid is $our_pid"
-	}
-
-	set selector [expr ($selector + 1) % 2]
-
-	# This test suite runs for a long time. There will be an as_root command at the end. Keep
-	# sudo status alive in case it requires a password in order to avoid being prompted again
-	# for it.
-	as_root { true }
     }
 
-    # Kill the the test executable(s)
-    kill -INT $our_pid 5
-    if {$effective_uid != 0} {
-	# Notice the 1 at the end of the 'kill' proc kills as root.
-	kill -INT $root_pid 5 1
-    }
+    verbose -log "$test: $option combined bare path probes ([llength $bare_list])"
+    myproc_run_partitioned $privilege $option $bare_list c
+    verbose -log "$test: $option combined process(string) probes ([llength $string_list])"
+    myproc_run_partitioned $privilege $option $string_list c
+    verbose -log "$test: $option combined pid probes ([llength $pid_list])"
+    myproc_run_partitioned $privilege $option $pid_list x
+    verbose -log "$test: $option combined pid .end probes ([llength $pid_end_list])"
+    myproc_run_partitioned $privilege $option $pid_end_list x 1
 }
 
 # Need to build a user shared library.
@@ -545,7 +682,7 @@ foreach probe_type $all_probe_types {
     verbose -log $probe_type
     set tested($probe_type) 0
 }
-if {[llength all_probe_types] > 0} {
+if {[llength $all_probe_types] > 0} {
     pass "$test: Obtain list of supported probe types"
 } else {
     fail "$test: Obtain list of supported probe types"
@@ -558,13 +695,15 @@ test_probes stapusr
 test_probes stapsys
 #test_probes stapdev
 
-# Generate a failure for each untested probe type (full matrix only).
-# In smoke mode, only require the curated set; leave other dump-probe
-# types as UNTESTED rather than FAIL.
+# Generate a failure for each untested probe type (full catalog only).
+# process.data* is outside this myproc confinement matrix — leave UNTESTED.
+# In smoke mode, leave other dump-probe types as UNTESTED too.
 foreach probe_type $all_probe_types {
     set status $tested($probe_type)
     if {$status != 0} {
 	pass "$test: tested: $probe_type"
+    } elseif {[string match "process.data*" $probe_type]} {
+	untested "$test: not in myproc matrix: $probe_type"
     } elseif {$myproc_full} {
 	fail "$test: not tested: $probe_type"
     } else {

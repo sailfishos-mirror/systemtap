@@ -41,7 +41,7 @@ Implications for pruning:
 ### Wave 2
 | Knob | Effect |
 |------|--------|
-| `UNPRIVILEGED_MYPROC_FULL=1` | All process.* privilege matrix |
+| `UNPRIVILEGED_MYPROC_SMOKE=1` | Smaller process.* catalog (default is full catalog, batched) |
 | `SDT_MISC_FULL=1` | SDT V1+V2+V3 (default V3 only) |
 | `TRACEPOINTS_LIST_SMOKE=1` | Fast aggregate census (default is full per-tp) |
 | `LISTING_MODE_FULL=1` | Full `stap -l` matrix |
