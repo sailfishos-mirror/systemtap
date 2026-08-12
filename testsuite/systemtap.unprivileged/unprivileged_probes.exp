@@ -5,6 +5,10 @@ set test "unprivileged probes"
 # reject). Restore the full matrix with:
 #   UNPRIVILEGED_PROBES_FULL=1 make installcheck \
 #     RUNTESTFLAGS="unprivileged_probes.exp"
+#
+# Wave-4.5: stapusr *restricted* (expected-deny) probes are checked in
+# one --semantic-keep-going stap -p2 job per privilege option, using the
+# SEMANTIC_ERROR catalog rather than N process starts.
 
 if {![installtest_p]} { untested $test; return }
 if {![uprobes_p]} { untested $test; return }
@@ -570,15 +574,96 @@ proc test_unrestricted_probes { privilege } {
     kill -INT $our_pid 5
 }
 
-# Test restricted probe types
+# stapusr restricted probes: one omnibus script + --semantic-keep-going.
+# Each probe type is one source line; the SEMANTIC_ERROR dump must list
+# "probe point is not allowed" for that line.  --unprivileged and
+# --privilege=stapusr are each run once over the same script.
+proc test_restricted_probes_deny_batch { privilege } {
+    global exepath
+    global restricted_probe_types tested allowed test
+
+    set our_pid [exec ./$exepath &]
+    verbose -log "our ./$exepath pid is $our_pid"
+
+    set stapfile "unpriv_restricted_deny.stp"
+    set fh [open $stapfile w]
+    set line_no 0
+    set batch_types {}
+    set batch_lines {}
+
+    foreach probe_type $restricted_probe_types {
+	if {![unprivileged_probes_smoke_keep_p $probe_type]} {
+	    untested "$test: $probe_type (probes smoke; set UNPRIVILEGED_PROBES_FULL=1)"
+	    set tested($probe_type) 1
+	    continue
+	}
+	if {[regexp "^python3" $probe_type] && ![python3_p]} {
+	    untested "$test: $privilege $probe_type"
+	    set tested($probe_type) 1
+	    continue
+	}
+
+	set probe [add_args $probe_type $our_pid]
+	incr line_no
+	puts $fh "probe $probe {}"
+	lappend batch_types $probe_type
+	lappend batch_lines $line_no
+    }
+    close $fh
+
+    if {[llength $batch_types] == 0} {
+	kill -INT $our_pid 5
+	catch {file delete $stapfile}
+	return
+    }
+
+    foreach option [list --unprivileged --privilege=stapusr] {
+	set cmd [list stap --semantic-keep-going $option -p2 $stapfile]
+	verbose -log "eval exec $cmd"
+	catch {eval exec $cmd} res_stap
+	verbose -log $res_stap
+
+	set denied_lines {}
+	foreach outline [split $res_stap "\n"] {
+	    if {[regexp {^SEMANTIC_ERROR\t[^\t]+\t([0-9]+)\t[0-9]+\t.*probe point is not allowed} \
+		     $outline -> ln]} {
+		lappend denied_lines $ln
+	    }
+	}
+
+	set i 0
+	foreach probe_type $batch_types {
+	    set ln [lindex $batch_lines $i]
+	    incr i
+	    set found [expr {[lsearch -exact $denied_lines $ln] >= 0}]
+	    # allowed==0 => expect a deny line; allowed==1 => expect none
+	    if {($found && !$allowed($probe_type,$privilege)) \
+		    || (!$found && $allowed($probe_type,$privilege))} {
+		pass "$test: $option $probe_type (keep-going batch)"
+	    } else {
+		fail "$test: $option $probe_type (keep-going batch; denied_lines={$denied_lines})"
+	    }
+	    set tested($probe_type) 1
+	}
+    }
+
+    kill -INT $our_pid 5
+    catch {file delete $stapfile}
+}
+
+# Test restricted probe types (stapsys/stapdev still per-probe; those
+# privilege levels are expected to *accept* most of this list).
 proc test_restricted_probes { privilege } {
     global exepath
     global restricted_probe_types tested allowed test
 
+    if {$privilege == "stapusr"} {
+	test_restricted_probes_deny_batch $privilege
+	return
+    }
+
     set error_regexp1 ".*semantic error: probe point is not allowed for --privilege=.*"
 
-    # Test using --unprivileged and --privilege=stapusr. They should be equivalent
-    set stapusr_options [list --unprivileged --privilege=stapusr ]
     # Test using no option and --privilege=stapdev. They should be equivalent
     set stapdev_options [list "" --privilege=stapdev ]
     # Alternate use of additional settings (e.g. use_alias)
@@ -596,9 +681,6 @@ proc test_restricted_probes { privilege } {
 	    continue
 	}
 	switch $privilege {
-	    stapusr {
-		set option [lindex $stapusr_options $selector]
-	    }
 	    stapdev {
 		set option [lindex $stapdev_options $selector]
 	    }
