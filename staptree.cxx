@@ -2856,7 +2856,8 @@ varuse_collecting_visitor::visit_embedded_expr (embedded_expr *e)
       ! e->tagged_p ("/* myproc-unprivileged */"))
     throw SEMANTIC_ERROR (_F("embedded expression may not be used when --privilege=%s is specified",
 			     pr_name (session.privilege)),
-			  e->tok);
+			  e->tok,
+			  current_function ? current_function->tok : 0);
 
   // Don't allow /* guru */ functions unless -g is active.
   if (!session.guru_mode && e->tagged_p ("/* guru */"))

@@ -2754,19 +2754,40 @@ semantic_pass (systemtap_session& s)
       s.register_library_aliases();
       register_standard_tapsets(s);
 
+      // --semantic-keep-going: like make -k within pass 2.  Keep
+      // running later elaboration stages so errors discovered in
+      // optimize/types/varuse (e.g. embedded-expression privilege
+      // checks) are still collected after an earlier stage failed.
+      // Each stage is try/catch-isolated so one stage throwing does
+      // not skip the rest.
+      const bool go = s.semantic_keep_going;
+      auto run_void = [&](auto&& fn) {
+        if (!(rc == 0 || go)) return;
+        try { fn(); }
+        catch (const semantic_error& e) { s.print_error (e); rc = rc ? rc : 1; }
+      };
+      auto run_int = [&](auto&& fn) {
+        if (!(rc == 0 || go)) return;
+        try {
+          int sub = fn();
+          if (sub) rc = sub;
+        }
+        catch (const semantic_error& e) { s.print_error (e); rc = rc ? rc : 1; }
+      };
+
       if (rc == 0) setup_timeout(s);
-      if (rc == 0) rc = semantic_pass_symbols (s);
-      if (rc == 0) monitor_mode_write (s);
-      if (rc == 0) rc = semantic_pass_conditions (s);
-      if (rc == 0) rc = semantic_pass_optimize1 (s); // includes const_fold and last ditch @defined() processing
-      if (rc == 0) rc = semantic_pass_types (s);
-      if (rc == 0) rc = gen_dfa_table(s);
-      if (rc == 0) add_global_var_display (s);
-      if (rc == 0) monitor_mode_read(s);
-      if (rc == 0) rc = semantic_pass_optimize2 (s);
-      if (rc == 0) rc = semantic_pass_vars (s);
-      if (rc == 0) rc = semantic_pass_stats (s);
-      if (rc == 0) embeddedcode_info_pass (s);
+      run_int ([&]{ return semantic_pass_symbols (s); });
+      run_void ([&]{ monitor_mode_write (s); });
+      run_int ([&]{ return semantic_pass_conditions (s); });
+      run_int ([&]{ return semantic_pass_optimize1 (s); });
+      run_int ([&]{ return semantic_pass_types (s); });
+      run_int ([&]{ return gen_dfa_table(s); });
+      run_void ([&]{ add_global_var_display (s); });
+      run_void ([&]{ monitor_mode_read(s); });
+      run_int ([&]{ return semantic_pass_optimize2 (s); });
+      run_int ([&]{ return semantic_pass_vars (s); });
+      run_int ([&]{ return semantic_pass_stats (s); });
+      run_void ([&]{ embeddedcode_info_pass (s); });
     }
   catch (const semantic_error& e)
     {

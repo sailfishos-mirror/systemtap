@@ -2531,9 +2531,10 @@ systemtap_session::print_error (const semantic_error& se)
 void
 systemtap_session::dump_saved_semantic_errors ()
 {
-  // Machine-oriented catalog for testsuite / tooling.  Tab-separated,
-  // one record per error (and each chained cause).  Message field has
-  // tabs/newlines flattened so Tcl can split on \t.
+  // Machine-oriented catalog for testsuite / tooling.  Tab-separated:
+  //   SEMANTIC_ERROR <file> <line> <column> <token> <message>
+  // Token is tok1->content (e.g. identifier name), or "-" if none.
+  // Message/token tabs/newlines are flattened so Tcl can split on \t.
   cerr << "SEMANTIC_ERRORS: " << saved_semantic_errors.size() << endl;
   for (size_t i = 0; i < saved_semantic_errors.size(); i++)
     {
@@ -2541,8 +2542,22 @@ systemtap_session::dump_saved_semantic_errors ()
            e != 0; e = e->get_chain())
         {
           string file = "-";
+          string tokcontent = "-";
           unsigned line = 0, col = 0;
-          if (e->tok1 && e->tok1->location.file)
+          // Prefer tok2 for identity when present (e.g. function name
+          // alongside an embedded-code tok1).
+          const token* idtok = e->tok2 ? e->tok2 : e->tok1;
+          if (idtok)
+            {
+              tokcontent = string (idtok->content);
+              if (idtok->location.file)
+                {
+                  file = idtok->location.file->name;
+                  line = idtok->location.line;
+                  col = idtok->location.column;
+                }
+            }
+          else if (e->tok1 && e->tok1->location.file)
             {
               file = e->tok1->location.file->name;
               line = e->tok1->location.line;
@@ -2552,9 +2567,14 @@ systemtap_session::dump_saved_semantic_errors ()
           for (size_t j = 0; j < msg.size(); j++)
             if (msg[j] == '\t' || msg[j] == '\n' || msg[j] == '\r')
               msg[j] = ' ';
+          for (size_t j = 0; j < tokcontent.size(); j++)
+            if (tokcontent[j] == '\t' || tokcontent[j] == '\n'
+                || tokcontent[j] == '\r')
+              tokcontent[j] = ' ';
           cerr << "SEMANTIC_ERROR\t" << file
                << "\t" << line
                << "\t" << col
+               << "\t" << tokcontent
                << "\t" << msg
                << endl;
         }
