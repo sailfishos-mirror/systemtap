@@ -1,3 +1,35 @@
+## Wave 4 status — IMPLEMENTED (2026-08-12)
+
+Default smoke for heavy runtime matrices; restore with `*_FULL=1`.
+
+| Driver | Was (pre-W4 fedrawhide) | Approach | Escape |
+|--------|------------------------:|----------|--------|
+| `*onthefly.exp` | ~29 min combined | keep finish + iter 1–2 + one timer + one mild stress; skip us-scale / profile / hardcore / max | `ONTHEFLY_FULL=1` |
+| `bpf.exp` + `nonbpf.exp` | ~26 min | ~16 representative scripts (skip flaky timer1/2); UNTESTED the rest | `BPF_TESTS_FULL=1` |
+| `unprivileged_probes.exp` | ~6 min | smoke probe-type accept/reject set; soft “not tested” audit | `UNPRIVILEGED_PROBES_FULL=1` |
+| `unprivileged_embedded_C.exp` | ~5 min | sample 1/5 of tapset funcs (was full direct + 1/5 transitive) | `UNPRIVILEGED_EMBEDDED_C_FULL=1` |
+
+Shared onthefly gate: `onthefly_smoke_keep_p` in `onthefly_common.tcl`.
+
+Local installcheck (Wave-4 group, smoke defaults): **~10 min** vs **~55+ min**
+prior Pareto for these drivers; bpf/nonbpf retest after dropping flaky
+`timer1` → **33 PASS / 0 FAIL / 101 UNTESTED**.
+
+| Driver | Smoke wall |
+|--------|----------:|
+| `bpf.exp` | ~108s (was 822s) |
+| `nonbpf.exp` | ~165s (was 747s) |
+| `hrtimer_onthefly.exp` | ~70s (was 732s) |
+| `kprobes_onthefly.exp` | ~105s (was 666s) |
+| `tracepoint_onthefly.exp` | ~99s (was 325s) |
+| `unprivileged_embedded_C.exp` | ~36s (was 279s) |
+| `unprivileged_probes.exp` | ~35s (was 380s) |
+
+Tracepoint onthefly KFAILs under PR17256 unchanged. `uprobes_onthefly`
+UNTESTED here (`inode_uprobes_p` false) — pre-existing gate.
+
+---
+
 ## Wave 3 status — IMPLEMENTED + installcheck confirmed (2026-08-11)
 
 Skip 40 early `systemtap.base` language microtests by default

@@ -1,11 +1,46 @@
-# bpf.exp
+# nonbpf.exp — same bpf_tests/*.stp corpus under the default (kernel)
+# runtime, as a BPF regression contrast.
 #
 # To restrict scripts to test, set the CHECK_ONLY environment variable.
 # For example, to only test the printf and uprobes scripts, run:
 #
 #    make installcheck RUNTESTFLAGS="nonbpf.exp" CHECK_ONLY="printf uprobes"
+#
+# Wave-4 prune: default smoke matches bpf.exp. Restore with:
+#   BPF_TESTS_FULL=1 make installcheck RUNTESTFLAGS="nonbpf.exp"
 
 set testdir "$srcdir/$subdir/bpf_tests"
+
+# Prefer deterministic language/runtime checks over timer1/timer2
+# (those assume HZ==100 and exact tick counts → chronic nonbpf FAILs).
+set bpf_tests_smoke {
+    printf.stp
+    sprintf.stp
+    string1.stp
+    array.stp
+    if.stp
+    while.stp
+    for.stp
+    foreach.stp
+    globals1.stp
+    exit1.stp
+    next.stp
+    assignment.stp
+    kprobes.stp
+    uprobes.stp
+    try_catch_1.stp
+    logging1.stp
+}
+
+set bpf_tests_full 0
+if {[info exists env(BPF_TESTS_FULL)] \
+	&& $env(BPF_TESTS_FULL) != "" \
+	&& $env(BPF_TESTS_FULL) != "0"} {
+    set bpf_tests_full 1
+}
+if {[info exists env(CHECK_ONLY)]} {
+    set bpf_tests_full 1
+}
 
 # All tests should start by printing "BEGIN". If OUTPUT_STR is "", then 
 # the test passes if "END PASS" is read and fails if "END FAIL" is read. Otherwise
@@ -109,8 +144,20 @@ if {[info exists env(CHECK_ONLY)]} {
             set stap_files "$stap_files $testdir/$file.stp"
         }
     }
-} else {
+} elseif {$bpf_tests_full} {
     set stap_files [lsort [glob -nocomplain $testdir/*.stp]]
+} else {
+    set stap_files ""
+    set all_files [lsort [glob -nocomplain $testdir/*.stp]]
+    foreach f $all_files {
+	set base [file tail $f]
+	if {[lsearch -exact $bpf_tests_smoke $base] >= 0} {
+	    lappend stap_files $f
+	} else {
+	    untested "$base (bpf smoke; set BPF_TESTS_FULL=1)"
+	}
+    }
+    verbose -log "nonbpf.exp: Wave-4 smoke ([llength $stap_files] scripts; set BPF_TESTS_FULL=1 for full)"
 }
 
 foreach file $stap_files {

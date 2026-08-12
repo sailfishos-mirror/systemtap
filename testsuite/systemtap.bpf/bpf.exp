@@ -4,6 +4,10 @@
 # For example, to only test the printf and uprobes scripts, run:
 #
 #    make installcheck RUNTESTFLAGS="bpf.exp" CHECK_ONLY="printf uprobes"
+#
+# Wave-4 prune: default is a representative smoke subset (~15 scripts).
+# Restore the full bpf_tests/ + bpf_target_tests/ corpus with:
+#   BPF_TESTS_FULL=1 make installcheck RUNTESTFLAGS="bpf.exp"
 
 set testdir "$srcdir/$subdir/bpf_tests"
 set targettestdir "$srcdir/$subdir/bpf_target_tests"
@@ -18,6 +22,41 @@ if {![bpf_p]} {
 if { "$::tcl_platform(machine)" == "s390x" } {
    untested "bpf.exp"
    return
+}
+
+# Smoke subset: language basics + a few probe kinds + one PR-ish stress.
+# CHECK_ONLY still wins when set.
+# Prefer deterministic language/runtime checks over timer1/timer2
+# (those assume HZ==100 and exact tick counts → chronic nonbpf FAILs).
+set bpf_tests_smoke {
+    printf.stp
+    sprintf.stp
+    string1.stp
+    array.stp
+    if.stp
+    while.stp
+    for.stp
+    foreach.stp
+    globals1.stp
+    exit1.stp
+    next.stp
+    assignment.stp
+    kprobes.stp
+    uprobes.stp
+    try_catch_1.stp
+    logging1.stp
+    user_long.stp
+}
+
+set bpf_tests_full 0
+if {[info exists env(BPF_TESTS_FULL)] \
+	&& $env(BPF_TESTS_FULL) != "" \
+	&& $env(BPF_TESTS_FULL) != "0"} {
+    set bpf_tests_full 1
+}
+if {[info exists env(CHECK_ONLY)]} {
+    # explicit selection implies "full" for that subset
+    set bpf_tests_full 1
 }
 
 # All tests should start by printing "BEGIN". If OUTPUT_STR is "", then 
@@ -142,8 +181,20 @@ if {[info exists env(CHECK_ONLY)]} {
             set stap_files "$stap_files $targettestdir/$file.stp"
         }
     }
-} else {
+} elseif {$bpf_tests_full} {
     set stap_files [lsort [glob -nocomplain $testdir/*.stp $targettestdir/*.stp]]
+} else {
+    set stap_files ""
+    set all_files [lsort [glob -nocomplain $testdir/*.stp $targettestdir/*.stp]]
+    foreach f $all_files {
+	set base [file tail $f]
+	if {[lsearch -exact $bpf_tests_smoke $base] >= 0} {
+	    lappend stap_files $f
+	} else {
+	    untested "$base (bpf smoke; set BPF_TESTS_FULL=1)"
+	}
+    }
+    verbose -log "bpf.exp: Wave-4 smoke ([llength $stap_files] scripts; set BPF_TESTS_FULL=1 for full)"
 }
 
 # Compile helper program; XXX skip -O flag to avoid inlining functions

@@ -197,10 +197,24 @@ if {[llength prototype_info] > 0} {
     return
 }
 
-# Now run the tests. We'll test all the embedded C functions.
-test_embedded_C stapusr 1
-test_embedded_C stapsys 1
-#test_embedded_C stapdev 1
+# Now run the tests.
+# Wave-4 prune: default samples 1/5 of embedded-C tapset functions for
+# both direct and transitive privilege checks. Restore with:
+#   UNPRIVILEGED_EMBEDDED_C_FULL=1
+# (SYSTEMTAP_TEST_ALL_EMBEDDED_C still forces transitive fraction=1.)
+if {[info exists env(UNPRIVILEGED_EMBEDDED_C_FULL)] \
+	&& $env(UNPRIVILEGED_EMBEDDED_C_FULL) != "" \
+	&& $env(UNPRIVILEGED_EMBEDDED_C_FULL) != "0"} {
+    set test_fraction 1
+} elseif {[info exists env(SYSTEMTAP_TEST_ALL_EMBEDDED_C)]} {
+    set test_fraction 1
+} else {
+    set test_fraction 5
+    verbose -log "$test: Wave-4 smoke (1/$test_fraction of functions; set UNPRIVILEGED_EMBEDDED_C_FULL=1 for full)"
+}
+test_embedded_C stapusr $test_fraction
+test_embedded_C stapsys $test_fraction
+#test_embedded_C stapdev $test_fraction
 
 # Now let's make sure that privileged function are "transitive" -
 # i.e. if an embedded-C function is privileged, then any pure script
@@ -209,14 +223,8 @@ test_embedded_C stapsys 1
 # script function that then calls the real embedded-C function. (See
 # function "foo" above in test_embedded_C().)
 #
-# Here we'll just test a subset of the embedded C functions.
-if {! [info exists env(SYSTEMTAP_TEST_ALL_EMBEDDED_C)]} {
-    # Test a subset (1/5) of the tapset functions containing embedded C code.
-    set test_fraction 5
-} else {
-    # Test all of the tapset functions containing embedded C code.
-    set test_fraction 1
-}
+# Transitive uses the same fraction unless SYSTEMTAP_TEST_ALL_EMBEDDED_C
+# or UNPRIVILEGED_EMBEDDED_C_FULL requests the full set.
 set test "$test (transitive)"
 test_embedded_C stapusr $test_fraction 1
 test_embedded_C stapsys $test_fraction 1

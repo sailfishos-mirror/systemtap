@@ -51,6 +51,14 @@ Implications for pruning:
 |------|--------|
 | `BASE_MICROTESTS_FULL=1` | Run early language microtests in `systemtap.base` |
 
+### Wave 4
+| Knob | Effect |
+|------|--------|
+| `ONTHEFLY_FULL=1` | Full onthefly toggle/stress matrix |
+| `BPF_TESTS_FULL=1` | Full `bpf_tests/` (+ targets) in bpf/nonbpf |
+| `UNPRIVILEGED_PROBES_FULL=1` | Full probe-type privilege matrix |
+| `UNPRIVILEGED_EMBEDDED_C_FULL=1` | All embedded-C privilege checks (not 1/5) |
+
 `CHECK_ONLY=...` still selects individual scripts where applicable.
 
 See `CANDIDATES.md` for cost analysis and status.
