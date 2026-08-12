@@ -507,6 +507,27 @@ then \fIstap\fR will automatically
 add the appropriate \fI\-\-privilege\fR option to the options already specified.
 
 .TP
+.B \-\-semantic\-keep\-going
+Like \fImake \-k\fR for translator pass 2 (elaboration): when a
+\fIsemantic_error\fR is encountered, record it and continue elaborating
+sibling probes/functions as far as practical, instead of aborting the
+rest of the batch.  At the end of the pass that saw errors, stap dumps a
+machine\-parseable catalog on stderr:
+
+.nf
+SEMANTIC_ERRORS: \fIN\fR
+SEMANTIC_ERROR\\t\fIfile\fR\\t\fIline\fR\\t\fIcolumn\fR\\t\fImessage\fR
+\&...
+SEMANTIC_ERRORS_END
+.fi
+
+Each chained cause is listed as its own \fISEMANTIC_ERROR\fR line.
+Tabs/newlines in messages are flattened to spaces.  stap still exits
+non\-zero if any errors occurred, and does not proceed to later passes.
+Optional probe\-point \fB?\fR semantics are unchanged.  Intended for
+automated testing (omnibus expected\-failure scripts).
+
+.TP
 .BI \-\-unprivileged
 This option is equivalent to \fI\-\-privilege=stapusr\fR.
 

@@ -1234,6 +1234,19 @@ derive_probes_parallel (systemtap_session& s,
             assert_no_interrupts ();
             results_per_probe[i] = derive_probes (s, probes[i], optional);
           }
+        catch (const semantic_error& e)
+          {
+            // Keep-going: record and leave empty results for this probe
+            // so siblings can finish (make -k style).  Optional '?' path
+            // is unchanged inside derive_probes itself.
+            if (s.semantic_keep_going)
+              s.print_error (e);
+            else
+              {
+                pending[i] = current_exception ();
+                failed.store (true);
+              }
+          }
         catch (...)
           {
             pending[i] = current_exception ();
@@ -2794,6 +2807,11 @@ semantic_pass (systemtap_session& s)
   // Type inference is complete
   delete s.type_res_info;
   s.type_res_info = NULL;
+
+  // After the pass that collected errors: emit the keep-going catalog.
+  // Later passes are already skipped via the if (rc == 0) chain above.
+  if (s.semantic_keep_going && !s.saved_semantic_errors.empty ())
+    s.dump_saved_semantic_errors ();
 
   return rc;
 }

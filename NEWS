@@ -1,5 +1,11 @@
 * What's new in version 5.6, PRERELEASE
 
+- New --semantic-keep-going option (pass-2 make -k): continue elaborating
+  after semantic errors, dump a tab-separated SEMANTIC_ERROR catalog on
+  stderr at the end of the failing pass, and still exit non-zero.  Does
+  not change optional probe-point '?' semantics.  Aimed at machine
+  testing (omnibus expected-failure scripts).
+
 - Secure Boot / MOK module signing can generate NIST FIPS-204 ML-DSA
   keys (ml-dsa-44/65/87) as well as the default RSA-4096.  Set
   SYSTEMTAP_MOK_KEY_TYPE, or let stap follow the target kernel's

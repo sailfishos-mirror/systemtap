@@ -148,6 +148,7 @@ systemtap_session::systemtap_session ():
   save_uprobes = false;
   modname_given = false;
   keep_tmpdir = false;
+  semantic_keep_going = false;
   debug_build = false;
   cmd = "";
   target_pid = 0;
@@ -354,6 +355,8 @@ systemtap_session::systemtap_session (const systemtap_session& other,
   save_uprobes = other.save_uprobes;
   modname_given = other.modname_given;
   keep_tmpdir = other.keep_tmpdir;
+  semantic_keep_going = other.semantic_keep_going;
+  // Do not copy saved_semantic_errors into remote child sessions.
   debug_build = other.debug_build;
   cmd = other.cmd;
   target_pid = other.target_pid; // XXX almost surely nonsense for multiremote
@@ -717,6 +720,9 @@ systemtap_session::usage (int exitcode)
     "              substitute zero for bad context $variables\n"
     "   --suppress-handler-errors\n"
     "              catch all runtime errors, quietly skip probe handlers\n"
+    "   --semantic-keep-going\n"
+    "              like make -k for pass 2: continue after semantic errors,\n"
+    "              dump a machine-parseable error catalog, still fail if any\n"
     "   --use-server[=SERVER-SPEC]\n"
     "              specify systemtap compile-servers\n"
     "   --list-servers[=PROPERTIES]\n"
@@ -1116,6 +1122,11 @@ systemtap_session::parse_cmdline (int argc, char * const argv [])
           debug_build = true;
           keep_tmpdir = true; /* --debug implies -k so .i/.s/.pahole etc. are not nuked */
           use_script_cache = false; /* analogous to -k, for usable build tree with temps */
+	  break;
+
+	case LONG_OPT_SEMANTIC_KEEP_GOING:
+	  semantic_keep_going = true;
+	  server_args.push_back ("--semantic-keep-going");
 	  break;
 
 	case LONG_OPT_VERSION:
@@ -2489,6 +2500,12 @@ systemtap_session::print_error (const semantic_error& se)
 {
   std::lock_guard<std::mutex> g (print_warning_mutex);
 
+  // Always record a full copy when keep-going is on, even if human
+  // stderr later suppresses duplicates by errsrc.  Tokens/messages in
+  // the saved object give per-site coordinates for the dump catalog.
+  if (semantic_keep_going)
+    saved_semantic_errors.push_back (se);
+
   // skip error message printing for listing mode with low verbosity
   if (this->dump_mode && this->verbose <= 1)
     {
@@ -2509,6 +2526,40 @@ systemtap_session::print_error (const semantic_error& se)
           }
     }
   else suppressed_errors++;
+}
+
+void
+systemtap_session::dump_saved_semantic_errors ()
+{
+  // Machine-oriented catalog for testsuite / tooling.  Tab-separated,
+  // one record per error (and each chained cause).  Message field has
+  // tabs/newlines flattened so Tcl can split on \t.
+  cerr << "SEMANTIC_ERRORS: " << saved_semantic_errors.size() << endl;
+  for (size_t i = 0; i < saved_semantic_errors.size(); i++)
+    {
+      for (const semantic_error *e = &saved_semantic_errors[i];
+           e != 0; e = e->get_chain())
+        {
+          string file = "-";
+          unsigned line = 0, col = 0;
+          if (e->tok1 && e->tok1->location.file)
+            {
+              file = e->tok1->location.file->name;
+              line = e->tok1->location.line;
+              col = e->tok1->location.column;
+            }
+          string msg = e->what();
+          for (size_t j = 0; j < msg.size(); j++)
+            if (msg[j] == '\t' || msg[j] == '\n' || msg[j] == '\r')
+              msg[j] = ' ';
+          cerr << "SEMANTIC_ERROR\t" << file
+               << "\t" << line
+               << "\t" << col
+               << "\t" << msg
+               << endl;
+        }
+    }
+  cerr << "SEMANTIC_ERRORS_END" << endl;
 }
 
 string

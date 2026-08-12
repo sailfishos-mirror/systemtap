@@ -71,6 +71,7 @@ enum {
   LONG_OPT_NO_GLOBAL_VAR_DISPLAY,
   LONG_OPT_LANGUAGE_SERVER,
   LONG_OPT_DEBUG,
+  LONG_OPT_SEMANTIC_KEEP_GOING,
 };
 
 // NB: when adding new options, consider very carefully whether they

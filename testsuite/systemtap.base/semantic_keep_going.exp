@@ -1,0 +1,79 @@
+# --semantic-keep-going: pass-2 make -k style catalog of semantic_error
+
+set test "semantic_keep_going"
+
+# Three privilege-denied probe types plus a begin survivor.  Without
+# keep-going, errsrc dedup suppresses all but one pair; with it, the
+# dump lists every saved error (and chained cause).
+spawn stap -p2 --semantic-keep-going --privilege=stapusr -e {
+probe kernel.function("vfs_read") {}
+probe module("nosuch").function("y") {}
+probe procfs.read {}
+probe begin {}
+}
+
+set n_hdr 0
+set n_denied 0
+set n_end 0
+expect {
+    -timeout 120
+    -re {SEMANTIC_ERRORS: 3} { incr n_hdr; exp_continue }
+    -re {SEMANTIC_ERROR[^\r\n]*probe point is not allowed for --privilege=stapusr} {
+	incr n_denied
+	exp_continue
+    }
+    -re {SEMANTIC_ERRORS_END} { incr n_end; exp_continue }
+    -re {^[^\r\n]*\r\n} { exp_continue }
+    timeout { fail "$test (timeout)" }
+    eof {}
+}
+catch {close}
+set wait_status [wait]
+# wait returns {pid spawn_id os_error_flag exit_status ...} on eof
+set rc [lindex $wait_status 3]
+
+set ok 1
+if {$n_hdr != 1} {
+    fail "$test (SEMANTIC_ERRORS header: $n_hdr)"
+    set ok 0
+}
+if {$n_denied != 3} {
+    fail "$test (denied dump lines: $n_denied, want 3)"
+    set ok 0
+}
+if {$n_end != 1} {
+    fail "$test (SEMANTIC_ERRORS_END: $n_end)"
+    set ok 0
+}
+if {$rc == 0} {
+    fail "$test (exit status $rc, want non-zero)"
+    set ok 0
+}
+if {$ok} {
+    pass $test
+}
+
+# Optional '?' must not catalog privilege rejects even with keep-going.
+set test "semantic_keep_going optional-?"
+spawn stap -p2 --semantic-keep-going --privilege=stapusr -e {
+probe kernel.function("vfs_read")? {}
+probe begin { exit() }
+}
+set n_denied 0
+expect {
+    -timeout 120
+    -re {SEMANTIC_ERROR[^\r\n]*not allowed} {
+	incr n_denied
+	exp_continue
+    }
+    -re {^[^\r\n]*\r\n} { exp_continue }
+    timeout { fail "$test (timeout)" }
+    eof {}
+}
+catch {close}; catch {wait}
+
+if {$n_denied == 0} {
+    pass $test
+} else {
+    fail "$test (denied=$n_denied; '?' should not catalog privilege rejects)"
+}

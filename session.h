@@ -36,6 +36,7 @@ extern "C" {
 #include "privilege.h"
 #include "staputil.h"
 #include "stringtable.h"
+#include "staptree.h" /* semantic_error */
 
 /* statistical operations used with a global */
 #define STAT_OP_NONE      1 << 0
@@ -76,7 +77,6 @@ struct embeddedcode;
 struct stapdfa;
 class translator_output;
 struct unparser;
-struct semantic_error;
 struct module_cache;
 struct update_visitor;
 struct compile_server_cache;
@@ -225,6 +225,12 @@ public:
   bool save_uprobes;
   bool modname_given;
   bool keep_tmpdir;
+  // Like make -k for pass 2: keep elaborating after semantic_error,
+  // accumulate copies, dump a machine-parseable catalog at end of the
+  // pass, and still fail (rc != 0) if any errors occurred.  Does not
+  // change optional probe-point '?' semantics.
+  bool semantic_keep_going;
+  std::vector<semantic_error> saved_semantic_errors;
   bool guru_mode;
   bool debug_build;
   bool bulk_mode;
@@ -487,6 +493,7 @@ public:
 
   void print_token (std::ostream& o, const token* tok);
   void print_error (const semantic_error& e);
+  void dump_saved_semantic_errors ();
   std::string build_error_msg (const semantic_error& e);
   void print_error_source (std::ostream&, std::string&, const token* tok);
   void print_error_details (std::ostream&, std::string&, const semantic_error&);
