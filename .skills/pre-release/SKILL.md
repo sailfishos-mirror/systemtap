@@ -121,9 +121,7 @@ purely internal cleanups.
 ### 8. Fuller-than-usual build
 
 ```bash
-configure --enable-dejazilla
 make rpm    # on several OS generations, for dependency/build-tool differences
-make all install
 ```
 
 Do **not** run a full local `sudo make installcheck` as the release gate — it
