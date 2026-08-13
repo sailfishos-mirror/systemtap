@@ -478,6 +478,9 @@ Requires: stress
 #   testsuite/systemtap.examples/hw_watch_addr.meta
 #   testsuite/systemtap.examples/memory/hw_watch_sym.meta
 Requires: perf
+# enumname.exp, memcheck-p4.exp, memcheck-staprun.exp,
+# parallelism-helgrind.exp, map_hash.exp
+Recommends: valgrind
 
 %description testsuite
 This package includes the dejagnu-based systemtap stress self-testing
