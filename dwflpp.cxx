@@ -37,6 +37,8 @@ dwarf_fanout_timing stap_dwarf_timing;
 #include <set>
 #include <sstream>
 #include <stdexcept>
+#include <exception>
+#include <thread>
 #include <vector>
 #include <cstdarg>
 #include <cassert>
@@ -518,16 +520,15 @@ dwflpp::iterate_over_modules<void>(int (*callback)(Dwfl_Module*,
 }
 
 
-template<> void
-dwflpp::iterate_over_cus<void>(int (*callback)(Dwarf_Die*, void*),
-                               void *data,
-                               bool want_types)
+vector<Dwarf_Die> *
+dwflpp::module_compile_units()
 {
   get_module_dwarf(false);
   Dwarf *dw = foc().module_dwarf;
-  if (!dw) return;
+  if (!dw)
+    return NULL;
 
-  vector<Dwarf_Die>* v = cache_lookup_or_fill
+  return cache_lookup_or_fill
     (module_cu_cache, dw,
      cache_fill_key (FILL_MODULE_CU, (uintptr_t) dw),
      [dw] () {
@@ -548,6 +549,16 @@ dwflpp::iterate_over_cus<void>(int (*callback)(Dwarf_Die*, void*),
          }
        return nv;
      });
+}
+
+
+template<> void
+dwflpp::iterate_over_cus<void>(int (*callback)(Dwarf_Die*, void*),
+                               void *data,
+                               bool want_types)
+{
+  vector<Dwarf_Die>* v = module_compile_units();
+  if (!v) return;
 
   for (auto i = v->begin(); i != v->end(); ++i)
     {
@@ -560,6 +571,7 @@ dwflpp::iterate_over_cus<void>(int (*callback)(Dwarf_Die*, void*),
   if (!want_types)
     return;
 
+  Dwarf *dw = foc().module_dwarf;
   // TUs live in a separate vector so the CU list stays immutable after
   // the first publish (callers iterate without holding cache_mutex).
   vector<Dwarf_Die>* tus = cache_lookup_or_fill
@@ -1266,13 +1278,162 @@ dwflpp::cu_function_caching_callback (Dwarf_Die* func, cu_function_cache_t *v)
 }
 
 
-int
-dwflpp::mod_function_caching_callback (Dwarf_Die *cu, cu_function_cache_t *v)
+cu_function_cache_t *
+dwflpp::ensure_cu_function_cache (Dwarf_Die *cu)
 {
-  // need to cast callback to func which accepts void*
-  dwarf_getfuncs (cu, (int (*)(Dwarf_Die*, void*))cu_function_caching_callback,
-                  v, 0);
-  return DWARF_CB_OK;
+  assert (cu);
+  void *key = cu->addr;
+  Dwarf_Die cu_die = *cu;
+  return cache_lookup_or_fill
+    (cu_function_cache, key,
+     cache_fill_key (FILL_CU_FUNCS, (uintptr_t) key),
+     [this, cu_die] () mutable {
+       cu_function_cache_t *nv = new cu_function_cache_t;
+       dwarf_getfuncs (&cu_die,
+                       (int (*)(Dwarf_Die*, void*))cu_function_caching_callback,
+                       nv, 0);
+       if (sess.verbose > 4)
+         clog << _F("function cache %s:%s size %zu", foc().module_name.c_str(),
+                    dwarf_diename (&cu_die) ?: "<unknown source>",
+                    nv->size()) << endl;
+       if (foc().mod_info)
+         foc().mod_info->update_symtab (nv);
+       return nv;
+     });
+}
+
+
+cu_function_cache_t *
+dwflpp::fill_module_function_cache ()
+{
+  vector<Dwarf_Die> *cus = module_compile_units ();
+  unique_ptr<cu_function_cache_t> nv (new cu_function_cache_t);
+  if (!cus || cus->empty ())
+    return nv.release ();
+
+  // Concurrent dwarf_getfuncs on one Dwarf* requires thread-safe libdw
+  // (elfutils --enable-thread-safety / HAVE_ELFUTILS_THREAD_SAFETY).
+  // Without it, keep n=1.  Glob workers may still exist, but
+  // dwarf_builder::serialize_builds() holds the family lock across
+  // build(), so they sleep rather than overlapping libdw.  The serial
+  // fill still publishes both CU and module maps so later exact misses
+  // are hash lookups rather than another full CU walk.
+  unsigned n = 1;
+#ifdef HAVE_ELFUTILS_THREAD_SAFETY
+  n = stap_nthreads ();
+#endif
+  if (n > cus->size ())
+    n = (unsigned) cus->size ();
+  if (n < 1)
+    n = 1;
+
+  const bool log = sess.verbose > 2 || dwarf_timing_wanted (sess);
+  uint64_t t0 = 0;
+  if (log)
+    {
+      clog << _F("module function cache fill: %s, %zu CUs, %u threads",
+                 foc().module_name.c_str(), cus->size (), n) << endl;
+      t0 = dwarf_timing_now_ns ();
+    }
+
+  if (n == 1)
+    {
+      for (auto i = cus->begin (); i != cus->end (); ++i)
+        {
+          assert_no_interrupts ();
+          focus_on_cu (&*i);
+          (void) ensure_cu_function_cache (&*i);
+        }
+    }
+  else
+    {
+      // Dedicated std::thread pool, not Boost.Asio: the leader may already
+      // be an asio glob worker, and nested thread_pool::join deadlocks.
+      // Only the FILL_MOD_FUNCS leader runs this pool; waiters sleep on
+      // after-you.  Use stap_nthreads(), not dwarf_expand_nthreads().
+      dwflpp_focus leader_f = foc ();
+      atomic<size_t> next {0};
+      vector<exception_ptr> ex (n);
+      vector<thread> ts;
+      ts.reserve (n - 1);
+
+      auto work = [&] (unsigned t)
+        {
+          try
+            {
+              stap_parallel_nesting_guard nest;
+              while (true)
+                {
+                  if (pending_interrupts)
+                    break;
+                  size_t i = next++;
+                  if (i >= cus->size ())
+                    break;
+                  focus_on_cu (&(*cus)[i]);
+                  (void) ensure_cu_function_cache (&(*cus)[i]);
+                }
+            }
+          catch (...)
+            {
+              ex[t] = current_exception ();
+            }
+        };
+
+      try
+        {
+          for (unsigned t = 1; t < n; t++)
+            ts.emplace_back ([leader_f, t, &work] () mutable {
+                dwflpp_focus_binder bind (leader_f);
+                work (t);
+              });
+          work (0);
+        }
+      catch (...)
+        {
+          for (auto &th : ts)
+            if (th.joinable ())
+              th.join ();
+          throw;
+        }
+      for (auto &th : ts)
+        th.join ();
+      for (auto &e : ex)
+        if (e)
+          rethrow_exception (e);
+      assert_no_interrupts ();
+    }
+
+  for (auto i = cus->begin (); i != cus->end (); ++i)
+    {
+      cu_function_cache_t *cv = ensure_cu_function_cache (&*i);
+      nv->insert (cv->begin (), cv->end ());
+    }
+
+  if (log)
+    clog << _F("module function cache %s size %zu",
+               foc().module_name.c_str(), nv->size ())
+         << " (" << dwarf_fanout_timing::ms (dwarf_timing_now_ns () - t0)
+         << "ms)" << endl;
+  else if (sess.verbose > 4)
+    clog << _F("module function cache %s size %zu", foc().module_name.c_str(),
+               nv->size ()) << endl;
+
+  return nv.release ();
+}
+
+
+cu_function_cache_t *
+dwflpp::ensure_module_function_cache ()
+{
+  get_module_dwarf (false);
+  Dwarf *dw = foc().module_dwarf;
+  if (!dw)
+    return NULL;
+
+  return cache_lookup_or_fill
+    (mod_function_cache, dw,
+     cache_fill_key (FILL_MOD_FUNCS, (uintptr_t) dw),
+     [this] () { return fill_module_function_cache (); });
 }
 
 
@@ -1284,19 +1445,7 @@ dwflpp::iterate_over_functions<void>(int (*callback)(Dwarf_Die*, void*),
   assert (foc().module);
   assert (foc().cu);
 
-  cu_function_cache_t *v = cache_lookup_or_fill
-    (cu_function_cache, foc().cu->addr,
-     cache_fill_key (FILL_CU_FUNCS, (uintptr_t) foc().cu->addr),
-     [this] () {
-       cu_function_cache_t *nv = new cu_function_cache_t;
-       dwarf_getfuncs (foc().cu, (int (*)(Dwarf_Die*, void*))cu_function_caching_callback,
-                       nv, 0);
-       if (sess.verbose > 4)
-         clog << _F("function cache %s:%s size %zu", foc().module_name.c_str(),
-                    cu_name().c_str(), nv->size()) << endl;
-       foc().mod_info->update_symtab(nv);
-       return nv;
-     });
+  cu_function_cache_t *v = ensure_cu_function_cache (foc().cu);
 
   auto range = v->equal_range(function);
   // version padding if the symbol is not found
@@ -1380,34 +1529,16 @@ dwflpp::iterate_single_function<void>(int (*callback)(Dwarf_Die*, void*),
   int rc = DWARF_CB_OK;
   assert (foc().module);
 
-  get_module_dwarf(false);
-  if (!foc().module_dwarf)
+  cu_function_cache_t *v = ensure_module_function_cache ();
+  if (!v)
     return rc;
 
-  Dwarf *dw = foc().module_dwarf;
-  cu_function_cache_t *v = cache_lookup_or_fill
-    (mod_function_cache, dw,
-     cache_fill_key (FILL_MOD_FUNCS, (uintptr_t) dw),
-     [this] () {
-       cu_function_cache_t *nv = new cu_function_cache_t;
-       iterate_over_cus (mod_function_caching_callback, nv, false);
-       if (sess.verbose > 4)
-         clog << _F("module function cache %s size %zu", foc().module_name.c_str(),
-                    nv->size()) << endl;
-       foc().mod_info->update_symtab(nv);
-       return nv;
-     });
-
   auto range = v->equal_range(function);
-  // version padding if the symbol is not found
-  if (range.first == range.second)
-    {
-      std::string function_with_ver = function + "@";
-      for (auto it = v->begin(); it != v->end(); ++it)
-        if (it->first.find(function_with_ver) == 0)
-          function_with_ver = it->first;
-      range = v->equal_range(function_with_ver);
-    }
+  // Do not linearly scan this module-wide map for name@version aliases.
+  // The CU-local iterate_over_functions() path still does that on the
+  // (small) per-CU cache; ELF addrdie already finds versioned symbols.
+  // A 10^5-entry unordered_multimap walk here turns every exact miss
+  // (e.g. tapset kernel.function("sys_read")!) into hundreds of ms.
   if (range.first != range.second)
     {
       for (auto it = range.first; it != range.second; ++it)

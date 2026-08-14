@@ -1083,6 +1083,10 @@ struct dwarf_query : public base_query
   base_func_info_map_t filtered_all();
 
   void query_module_functions ();
+  // ELF name → address → dwfl_module_addrdie.  Fills cus with unique
+  // compile units; returns false if the caller should walk DWARF
+  // (no symtab, no matches, or a whole-module glob).
+  bool collect_function_cus_from_symtab (std::vector<Dwarf_Die>& cus);
 
   interned_string final_function_name(interned_string final_func,
                                       interned_string final_file,
@@ -1408,14 +1412,37 @@ dwarf_query::query_module_dwarf()
       // the function(s) in question
       assert(has_function_str || has_statement_str);
 
-      // For simple cases, no wildcard and no source:line, we can do a very
-      // quick function lookup in a module-wide cache.
+      // Exact function("foo"): ELF name → CU via addrdie, then query
+      // those CUs.  Avoids a module-wide DWARF function index just to
+      // discover which CU owns the name.
+      //
+      // ELF miss / glob / C++ linkage: one after-you leader fills every
+      // CU (parallel dwarf_getfuncs if HAVE_ELFUTILS_THREAD_SAFETY,
+      // otherwise serial).  Waiters block then hash-lookup.  Exact names
+      // then use the warm module index; globs still walk CUs but skip
+      // dwarf_getfuncs.  On old libdw, glob workers serialize on the
+      // dwarf family lock (serialize_builds) so they never overlap libdw.
+      vector<Dwarf_Die> elf_cus;
       if (spec_type == function_alone &&
-          !dw.name_has_wildcard(function) &&
-          !startswith(function, "_Z"))
-        query_module_functions();
+          collect_function_cus_from_symtab (elf_cus))
+        {
+          for (auto i = elf_cus.begin(); i != elf_cus.end(); ++i)
+            {
+              if (query_cu (&*i, this) != DWARF_CB_OK)
+                return;
+            }
+        }
       else
-        dw.iterate_over_cus(&query_cu, this, false);
+        {
+          if (spec_type == function_alone)
+            dw.ensure_module_function_cache();
+          if (spec_type == function_alone
+              && !dw.name_has_wildcard (function)
+              && !startswith (function, "_Z"))
+            query_module_functions();
+          else
+            dw.iterate_over_cus(&query_cu, this, false);
+        }
     }
 }
 
@@ -2831,6 +2858,66 @@ query_cu (Dwarf_Die * cudie, dwarf_query * q)
       throw;
       // return DWARF_CB_ABORT;
     }
+}
+
+
+bool
+dwarf_query::collect_function_cus_from_symtab (vector<Dwarf_Die>& cus)
+{
+  if (spec_type != function_alone || function.empty ())
+    return false;
+  // C++ mangled names need the DWARF linkage-name scan.
+  if (startswith (function, "_Z"))
+    return false;
+  // Whole-module globs would just addrdie every ELF function.
+  if (function == "*" || function == "*@*")
+    return false;
+
+  module_info *mi = focus.mod_info;
+  if (!mi)
+    return false;
+  if (mi->symtab_status == info_unknown)
+    mi->get_symtab ();
+  if (mi->symtab_status == info_absent || !mi->sym_table)
+    return false;
+
+  symbol_table *st = mi->sym_table;
+  set<void*> used;
+  auto add_addr = [&] (Dwarf_Addr addr)
+    {
+      Dwarf_Die *cudie = dw.query_cu_containing_address (addr);
+      if (cudie && used.insert (cudie->addr).second)
+        cus.push_back (*cudie);
+    };
+
+  if (!dw.name_has_wildcard (function))
+    {
+      set<func_info*> fis = st->lookup_symbol (function);
+      for (auto fi = fis.begin (); fi != fis.end (); ++fi)
+        add_addr ((*fi)->addr);
+    }
+  else
+    {
+      interned_string verpat = interned_string (string (function) + "@*");
+      for (auto it = st->map_by_name.begin ();
+           it != st->map_by_name.end (); ++it)
+        {
+          if (it->second->descriptor)
+            continue;
+          interned_string n = it->first;
+          if (dw.function_name_matches_pattern (n, function)
+              || dw.function_name_matches_pattern (n, verpat))
+            add_addr (it->second->addr);
+        }
+    }
+
+  if (sess.verbose > 2)
+    clog << "function '" << function << "': " << cus.size ()
+         << " CU(s) from ELF symtab"
+         << (cus.empty () ? " (will walk DWARF)" : "")
+         << endl;
+
+  return !cus.empty ();
 }
 
 

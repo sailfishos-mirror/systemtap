@@ -402,6 +402,13 @@ struct dwflpp
   // lock so concurrent builds do not race first-time dwfl_module_get*.
   void prepare_modules_for_parallel_use();
 
+  // After-you module-wide function index.  The leader fills every
+  // compile unit (parallel dwarf_getfuncs iff HAVE_ELFUTILS_THREAD_SAFETY,
+  // else serial) and publishes both cu_function_cache and
+  // mod_function_cache.  Waiters block then hash-lookup.  Returns NULL
+  // if this module has no DWARF.
+  cu_function_cache_t *ensure_module_function_cache();
+
   void focus_on_module(Dwfl_Module * m, module_info * mi);
   void focus_on_cu(Dwarf_Die * c);
   void focus_on_function(Dwarf_Die * f);
@@ -773,6 +780,10 @@ private:
   mod_cu_function_cache_t cu_function_cache;
   mod_function_cache_t mod_function_cache;
 
+  std::vector<Dwarf_Die> *module_compile_units();
+  cu_function_cache_t *ensure_cu_function_cache(Dwarf_Die *cu);
+  cu_function_cache_t *fill_module_function_cache();
+
   std::set<void*> cu_inl_function_cache_done; // CUs that are already cached
   cu_inl_function_cache_t cu_inl_function_cache;
   void cache_inline_instances (Dwarf_Die* die, cu_inl_function_cache_t& dest);
@@ -830,7 +841,6 @@ private:
                                       (void*)data);
     }
 
-  static int mod_function_caching_callback (Dwarf_Die* func, cu_function_cache_t *v);
   static int cu_function_caching_callback (Dwarf_Die* func, cu_function_cache_t *v);
 
   lines_t* get_cu_lines_sorted_by_lineno(const char *srcfile);
