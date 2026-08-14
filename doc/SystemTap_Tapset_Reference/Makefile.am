@@ -21,7 +21,11 @@ endif
 all: stamp-htmldocs
 tapsets.xml: docproc $(shell find $(SRCTREE)/tapset -name '*.stp')
 if BUILD_HTMLDOCS
-	sed -e '/^!Syscalls/{r $(abs_srcdir)/syscalls.xmlpart' -e 'd}' $(abs_srcdir)/tapsets.tmpl > tapsets.tmpl.new
+	build_date=`date +%Y-%m-%d`; \
+	sed -e '/^!Syscalls/{r $(abs_srcdir)/syscalls.xmlpart' -e 'd}' \
+	    -e "s|@RELEASEINFO@|Version $(PACKAGE_VERSION)|g" \
+	    -e "s|@BUILDDATE@|$$build_date|g" \
+	    $(abs_srcdir)/tapsets.tmpl > tapsets.tmpl.new
 	SRCTREE=$(SRCTREE) $(DOCPROC) doc tapsets.tmpl.new > tapsets.xml.new
 	$(preferred_python) $(srcdir)/overload.py tapsets.xml.new > tapsets.xml.new1
 	xsltproc $(srcdir)/sort-tapsets.xslt tapsets.xml.new1 > tapsets.xml.new2

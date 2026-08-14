@@ -33,7 +33,12 @@ $(dirname $SCRIPT)/update-syscall-docs
 
 echo "Generating tapsets.xml"
 gcc -o docproc $DOCS/$STR/docproc.c
-sed -e '/^!Syscalls/{r $DOCS/$STR/syscalls.xmlpart' -e 'd}' $DOCS/$STR/tapsets.tmpl > tapsets.tmpl.new
+build_date=$(date +%Y-%m-%d)
+pkg_version=$(sed -n 's/^AC_INIT(\[systemtap\],\[\([^]]*\)\].*/\1/p' "$BASE/configure.ac")
+sed -e '/^!Syscalls/{r $DOCS/$STR/syscalls.xmlpart' -e 'd}' \
+    -e "s|@RELEASEINFO@|Version ${pkg_version}|g" \
+    -e "s|@BUILDDATE@|${build_date}|g" \
+    $DOCS/$STR/tapsets.tmpl > tapsets.tmpl.new
 SRCTREE=$BASE/ ./docproc doc tapsets.tmpl.new > tapsets.xml.new
 python $DOCS/$STR/overload.py tapsets.xml.new > tapsets.xml.new1
 if [ $? -ne 0 ]; then echo "FAILED: python lxml library required"; exit 1; fi
