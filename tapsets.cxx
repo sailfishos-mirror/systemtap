@@ -10190,8 +10190,13 @@ dwarf_builder::build(systemtap_session & sess,
           double collect_ms =
             chrono::duration<double, milli> (t_collect1 - t_collect0).count ();
           clog << "dwarf fanout timing: collect=" << collect_ms << "ms" << endl;
-          stap_dwarf_timing.reset ();
-          stap_dwarf_timing.enabled.store (true);
+          // Don't reset if an outer glob-parallel timing session owns
+          // the counters (STAP_DWARF_TIMING across syscall.* etc.).
+          if (! stap_dwarf_timing.enabled.load (memory_order_relaxed))
+            {
+              stap_dwarf_timing.reset ();
+              stap_dwarf_timing.enabled.store (true);
+            }
         }
       vector<vector<derived_probe*> > per;
       auto t_derive0 = chrono::steady_clock::now ();
@@ -10206,12 +10211,19 @@ dwarf_builder::build(systemtap_session & sess,
       auto t_derive1 = chrono::steady_clock::now ();
       if (time_fanout)
         {
-          stap_dwarf_timing.enabled.store (false);
+          // Only disable/dump if we were the ones who enabled (outer
+          // STAP_DWARF_TIMING session keeps accumulating).
+          bool outer = getenv ("STAP_DWARF_TIMING")
+            && getenv ("STAP_DWARF_TIMING")[0]
+            && getenv ("STAP_DWARF_TIMING")[0] != '0';
+          if (! outer)
+            stap_dwarf_timing.enabled.store (false);
           double derive_ms =
             chrono::duration<double, milli> (t_derive1 - t_derive0).count ();
           clog << "dwarf fanout timing: derive_wall=" << derive_ms << "ms"
                << endl;
-          stap_dwarf_timing.dump (clog);
+          if (! outer)
+            stap_dwarf_timing.dump (clog);
         }
       for (size_t i = 0; i < per.size (); i++)
         finished_results.insert (finished_results.end (),

@@ -35,6 +35,7 @@ extern "C" {
 #include <algorithm>
 #include <iterator>
 #include <climits>
+#include <chrono>
 #include <thread>
 #include <mutex>
 #include <atomic>
@@ -733,6 +734,12 @@ match_node::find_and_build (systemtap_session& s,
         }
       else
         {
+          bool timing = dwarf_timing_wanted (s);
+          if (timing)
+            {
+              stap_dwarf_timing.reset ();
+              stap_dwarf_timing.enabled.store (true);
+            }
           boost::asio::thread_pool TP (nthreads);
           vector<vector<derived_probe*> > per (work.size ());
           vector<set<string> > builders_per (work.size ());
@@ -758,6 +765,12 @@ match_node::find_and_build (systemtap_session& s,
             }
 
           TP.join ();
+          if (timing)
+            {
+              stap_dwarf_timing.enabled.store (false);
+              clog << "glob-parallel ";
+              stap_dwarf_timing.dump (clog);
+            }
 
           if (failed.load ())
             {
@@ -2191,12 +2204,16 @@ semantic_pass_symbols (systemtap_session& s)
       // concurrent; symbol resolution stays serial (shared tables).
 
       vector<probe*> batch = dome->probes;
+      auto t_derive0 = chrono::steady_clock::now ();
       vector<vector<derived_probe*> > batch_results
         = derive_probes_parallel (s, batch);
+      auto t_derive1 = chrono::steady_clock::now ();
 
+      size_t n_derived = 0;
       for (unsigned i=0; i<batch.size(); i++)
         {
           vector<derived_probe*>& dps = batch_results[i];
+          n_derived += dps.size ();
 
           for (unsigned j=0; j<dps.size(); j++)
             {
@@ -2236,6 +2253,18 @@ semantic_pass_symbols (systemtap_session& s)
                   s.print_error (e);
                 }
             }
+        }
+      auto t_symres1 = chrono::steady_clock::now ();
+      if (s.verbose > 0 && n_derived > 1)
+        {
+          double derive_ms =
+            chrono::duration<double, milli> (t_derive1 - t_derive0).count ();
+          double symres_ms =
+            chrono::duration<double, milli> (t_symres1 - t_derive1).count ();
+          clog << "elaborate timing: derive_wall=" << derive_ms
+               << "ms symres_wall=" << symres_ms
+               << "ms (" << n_derived << " derived from "
+               << batch.size () << " user probes)" << endl;
         }
 
       // Pass 3: process functions - incl. the synthetic ones, 
