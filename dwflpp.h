@@ -24,6 +24,7 @@
 #include <memory>
 #include <mutex>
 #include <atomic>
+#include "afteryou.h"
 #include <chrono>
 #include <cstdint>
 #include <cstdlib>
@@ -105,19 +106,20 @@ dwarf_timing_wanted (const systemtap_session& sess)
   return e && e[0] && e[0] != '0';
 }
 
-struct timed_recursive_lock
+template<typename Mutex>
+struct timed_lock_guard
 {
-  std::recursive_mutex& m;
+  Mutex& m;
   uint64_t t_acquired;
   bool timed;
   std::atomic<uint64_t>* wait_ns;
   std::atomic<uint64_t>* hold_ns;
   std::atomic<uint64_t>* count;
 
-  timed_recursive_lock (std::recursive_mutex& m,
-                        std::atomic<uint64_t>& wait,
-                        std::atomic<uint64_t>& hold,
-                        std::atomic<uint64_t>& n)
+  timed_lock_guard (Mutex& m,
+                    std::atomic<uint64_t>& wait,
+                    std::atomic<uint64_t>& hold,
+                    std::atomic<uint64_t>& n)
     : m (m), t_acquired (0),
       timed (stap_dwarf_timing.enabled.load (std::memory_order_relaxed)),
       wait_ns (&wait), hold_ns (&hold), count (&n)
@@ -134,15 +136,32 @@ struct timed_recursive_lock
       m.lock ();
   }
 
-  ~timed_recursive_lock ()
+  ~timed_lock_guard ()
   {
     if (timed)
       *hold_ns += dwarf_timing_now_ns () - t_acquired;
     m.unlock ();
   }
 
-  timed_recursive_lock (const timed_recursive_lock&) = delete;
-  timed_recursive_lock& operator= (const timed_recursive_lock&) = delete;
+  timed_lock_guard (const timed_lock_guard&) = delete;
+  timed_lock_guard& operator= (const timed_lock_guard&) = delete;
+};
+
+using timed_recursive_lock = timed_lock_guard<std::recursive_mutex>;
+
+struct cache_fill_key
+{
+  int kind;
+  uintptr_t a;
+  uintptr_t b;
+  cache_fill_key (int kind, uintptr_t a, uintptr_t b = 0)
+    : kind (kind), a (a), b (b) {}
+  bool operator< (const cache_fill_key& o) const
+  {
+    if (kind != o.kind) return kind < o.kind;
+    if (a != o.a) return a < o.a;
+    return b < o.b;
+  }
 };
 
 // Old elf.h doesn't know about this machine type.
@@ -189,9 +208,8 @@ enum info_status { info_unknown, info_present, info_absent };
 // module -> cu die[]
 typedef std::unordered_map<Dwarf*, std::vector<Dwarf_Die>*> module_cu_cache_t;
 
-// An instance of this type tracks whether the type units for a given
-// Dwarf have been read.
-typedef std::set<Dwarf*> module_tus_read_t;
+// module -> type-unit die[] (filled separately so CU lists stay immutable)
+typedef std::unordered_map<Dwarf*, std::vector<Dwarf_Die>*> module_tu_cache_t;
 
 // typename -> die
 typedef std::unordered_map<std::string, Dwarf_Die> cu_type_cache_t;
@@ -715,27 +733,54 @@ private:
   // Refcounted so prepare-time and later teardown stay simple.
   std::shared_ptr<Dwfl> dwfl;
 
-  // Guards fill-once caches under HAVE_ELFUTILS_THREAD_SAFETY concurrent
-  // dwarf builds that share this dwflpp.  Recursive so nested fills
-  // (e.g. mod_function_cache via iterate_over_cus) can reenter.
-  mutable std::recursive_mutex cache_mutex;
+  // Guards fill-once cache maps under HAVE_ELFUTILS_THREAD_SAFETY concurrent
+  // dwarf builds that share this dwflpp.  Holds are short: lookup/publish
+  // only.  Long DWARF fills run outside, serialized per key by
+  // cache_fill_inflight (debuginfod-style after-you).
+  mutable std::mutex cache_mutex;
+  mutable after_you_set<cache_fill_key> cache_fill_inflight;
+
+  enum cache_fill_kind
+    {
+      FILL_MODULE_CU = 1,
+      FILL_MODULE_TU,
+      FILL_CU_FUNCS,
+      FILL_MOD_FUNCS,
+      FILL_INL,
+      FILL_CALL_SITES,
+      FILL_DIE_PARENTS,
+      FILL_GLOBAL_ALIAS,
+      FILL_CU_LINES,
+      FILL_PC_SCOPES,
+      FILL_ENTRY_PC
+    };
+
+  template<typename Map, typename Key, typename F>
+  typename Map::mapped_type
+  cache_lookup_or_fill (Map& map, const Key& key,
+                        const cache_fill_key& fill_key, F fill);
+
+  template<typename F>
+  void cache_fill_once (void *id, cache_fill_kind kind,
+                        std::set<void*>& done, F fill);
 
   void setup_kernel(const std::string& module_name, systemtap_session &s, bool debuginfo_needed = true);
   void setup_kernel(const std::vector<std::string>& modules, bool debuginfo_needed = true);
   void setup_user(const std::vector<std::string>& modules, bool debuginfo_needed = true);
 
   module_cu_cache_t module_cu_cache;
-  module_tus_read_t module_tus_read;
+  module_tu_cache_t module_tu_cache;
   mod_cu_function_cache_t cu_function_cache;
   mod_function_cache_t mod_function_cache;
 
   std::set<void*> cu_inl_function_cache_done; // CUs that are already cached
   cu_inl_function_cache_t cu_inl_function_cache;
-  void cache_inline_instances (Dwarf_Die* die);
+  void cache_inline_instances (Dwarf_Die* die, cu_inl_function_cache_t& dest);
 
   std::set<void*> cu_call_sites_cache_done; // CUs that are already cached
   cu_call_sites_cache_t cu_call_sites_cache;
-  void cache_call_sites (Dwarf_Die* die, Dwarf_Die *function);
+  void cache_call_sites (Dwarf_Die* die, Dwarf_Die *function,
+                         cu_call_sites_cache_t& dest);
 
   mod_cu_die_parent_cache_t cu_die_parent_cache;
   void cache_die_parents(cu_die_parent_cache_t* parents, Dwarf_Die* die);
@@ -991,6 +1036,99 @@ dwflpp::iterate_over_callees<void>(Dwarf_Die *begin_die,
                                                      void*),
                                    base_func_info& caller,
                                    std::stack<Dwarf_Addr> *callers);
+
+template<typename Map, typename Key, typename F>
+inline typename Map::mapped_type
+dwflpp::cache_lookup_or_fill (Map& map, const Key& key,
+                              const cache_fill_key& fill_key, F fill)
+{
+  typedef typename Map::mapped_type Ptr;
+  {
+    timed_lock_guard<std::mutex> gl (cache_mutex,
+                                     stap_dwarf_timing.cache_wait_ns,
+                                     stap_dwarf_timing.cache_hold_ns,
+                                     stap_dwarf_timing.cache_n);
+    auto it = map.find (key);
+    if (it != map.end () && it->second)
+      return it->second;
+  }
+
+  bool timed = stap_dwarf_timing.enabled.load (std::memory_order_relaxed);
+  uint64_t t0 = timed ? dwarf_timing_now_ns () : 0;
+  after_you_guard<cache_fill_key> after (cache_fill_inflight, fill_key);
+  if (timed)
+    {
+      stap_dwarf_timing.cache_wait_ns += dwarf_timing_now_ns () - t0;
+      stap_dwarf_timing.cache_n++;
+    }
+
+  {
+    timed_lock_guard<std::mutex> gl (cache_mutex,
+                                     stap_dwarf_timing.cache_wait_ns,
+                                     stap_dwarf_timing.cache_hold_ns,
+                                     stap_dwarf_timing.cache_n);
+    auto it = map.find (key);
+    if (it != map.end () && it->second)
+      return it->second;
+  }
+
+  Ptr v = fill ();
+  {
+    timed_lock_guard<std::mutex> gl (cache_mutex,
+                                     stap_dwarf_timing.cache_wait_ns,
+                                     stap_dwarf_timing.cache_hold_ns,
+                                     stap_dwarf_timing.cache_n);
+    Ptr& slot = map[key];
+    if (!slot)
+      slot = v;
+    else if (v && v != slot)
+      delete v;
+    return slot;
+  }
+}
+
+template<typename F>
+inline void
+dwflpp::cache_fill_once (void *id, cache_fill_kind kind,
+                         std::set<void*>& done, F fill)
+{
+  {
+    timed_lock_guard<std::mutex> gl (cache_mutex,
+                                     stap_dwarf_timing.cache_wait_ns,
+                                     stap_dwarf_timing.cache_hold_ns,
+                                     stap_dwarf_timing.cache_n);
+    if (done.find (id) != done.end ())
+      return;
+  }
+
+  bool timed = stap_dwarf_timing.enabled.load (std::memory_order_relaxed);
+  uint64_t t0 = timed ? dwarf_timing_now_ns () : 0;
+  after_you_guard<cache_fill_key> after (cache_fill_inflight,
+                                         cache_fill_key (kind, (uintptr_t) id));
+  if (timed)
+    {
+      stap_dwarf_timing.cache_wait_ns += dwarf_timing_now_ns () - t0;
+      stap_dwarf_timing.cache_n++;
+    }
+
+  {
+    timed_lock_guard<std::mutex> gl (cache_mutex,
+                                     stap_dwarf_timing.cache_wait_ns,
+                                     stap_dwarf_timing.cache_hold_ns,
+                                     stap_dwarf_timing.cache_n);
+    if (done.find (id) != done.end ())
+      return;
+  }
+
+  fill ();
+  {
+    timed_lock_guard<std::mutex> gl (cache_mutex,
+                                     stap_dwarf_timing.cache_wait_ns,
+                                     stap_dwarf_timing.cache_hold_ns,
+                                     stap_dwarf_timing.cache_n);
+    done.insert (id);
+  }
+}
 
 #endif // DWFLPP_H
 

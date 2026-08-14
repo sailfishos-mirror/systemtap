@@ -1134,15 +1134,20 @@ struct dwarf_builder: public derived_probe_builder
 
   // Holds modules to suggest functions from. NB: aggregates over
   // recursive calls to build() when deriving globby probes.
-  // Guarded by this->lock (also used by get_*_dw).
+  // Guarded by this->lock (also used by get_*_dw map publish).
   set <string> modules_seen;
+
+  // Per-module dwflpp construction: later arrivals wait instead of
+  // duplicating setup (debuginfod-style after-you).
+  after_you_set<string> dw_fill_inflight;
 
   explicit dwarf_builder(std::recursive_mutex& shared)
     : derived_probe_builder(shared) {}
 
   // Without thread-safe elfutils, run_build() holds the family lock for
-  // the whole build().  With HAVE_ELFUTILS_THREAD_SAFETY, only get_*_dw
-  // (master Dwfl setup / prepare) takes the lock; builds share the
+  // the whole build().  With HAVE_ELFUTILS_THREAD_SAFETY, only map
+  // lookup/publish in get_*_dw takes the lock; fills run outside it
+  // (after-you serializes the same module name).  Builds share the
   // dwflpp and keep per-query focus on base_query::focus.
 #ifdef HAVE_ELFUTILS_THREAD_SAFETY
   virtual bool serialize_builds () const { return false; }
@@ -1153,30 +1158,61 @@ struct dwarf_builder: public derived_probe_builder
   // run_build without deadlock.  Member lock also guards
   // kern_dw/user_dw/modules_seen updates.
 
+  template<typename F>
+  dwflpp *lookup_or_make_dw (map<string,dwflpp*>& m, const string& module,
+                             char kind, F fill)
+  {
+    {
+      lock_guard<recursive_mutex> g (lock);
+      auto it = m.find (module);
+      if (it != m.end () && it->second)
+        return it->second;
+    }
+
+    string ay;
+    ay.reserve (module.size () + 2);
+    ay.push_back (kind);
+    ay.push_back (':');
+    ay += module;
+    after_you_guard<string> after (dw_fill_inflight, ay);
+
+    {
+      lock_guard<recursive_mutex> g (lock);
+      auto it = m.find (module);
+      if (it != m.end () && it->second)
+        return it->second;
+    }
+
+    unique_ptr<dwflpp> dw (fill ());
+    {
+      lock_guard<recursive_mutex> g (lock);
+      dwflpp *& slot = m[module];
+      if (!slot)
+        slot = dw.release ();
+      return slot;
+    }
+  }
+
   dwflpp *get_kern_dw(systemtap_session& sess, const string& module, bool debuginfo_needed = true)
   {
-    lock_guard<recursive_mutex> g (lock);
-    if (kern_dw[module] == 0)
-      {
-	kern_dw[module] = new dwflpp(sess, module, true, debuginfo_needed); // might throw
+    return lookup_or_make_dw (kern_dw, module, 'k', [&] () {
+        unique_ptr<dwflpp> p (new dwflpp (sess, module, true, debuginfo_needed));
 #ifdef HAVE_ELFUTILS_THREAD_SAFETY
-	kern_dw[module]->prepare_modules_for_parallel_use ();
+        p->prepare_modules_for_parallel_use ();
 #endif
-      }
-    return kern_dw[module];
+        return p.release ();
+      });
   }
 
   dwflpp *get_user_dw(systemtap_session& sess, const string& module)
   {
-    lock_guard<recursive_mutex> g (lock);
-    if (user_dw[module] == 0)
-      {
-	user_dw[module] = new dwflpp(sess, module, false); // might throw
+    return lookup_or_make_dw (user_dw, module, 'u', [&] () {
+        unique_ptr<dwflpp> p (new dwflpp (sess, module, false));
 #ifdef HAVE_ELFUTILS_THREAD_SAFETY
-	user_dw[module]->prepare_modules_for_parallel_use ();
+        p->prepare_modules_for_parallel_use ();
 #endif
-      }
-    return user_dw[module];
+        return p.release ();
+      });
   }
 
   /* NB: not virtual, so can be called from dtor too: */
@@ -3293,7 +3329,7 @@ var_expand_set_tls_current_probe (probe* p)
 // serialize against setup_dwfl globals, module_cache, and session tables
 // mutated during $$parms$ / early function resolution.  With
 // HAVE_ELFUTILS_THREAD_SAFETY, dwarf_builder::serialize_builds() is false
-// and the lock only covers get_*_dw / master Dwfl setup (see get_kern_dw).
+// and get_*_dw fills dwflpp outside the family lock (after-you per module).
 static std::recursive_mutex&
 dwarf_family_builder_lock ()
 {

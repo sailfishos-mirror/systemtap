@@ -28,6 +28,7 @@
 #include <cstdlib>
 #include <algorithm>
 #include <deque>
+#include <functional>
 
 dwarf_fanout_timing stap_dwarf_timing;
 
@@ -128,6 +129,7 @@ dwflpp::dwflpp(systemtap_session & session, const vector<string>& names,
 dwflpp::~dwflpp()
 {
   delete_map(module_cu_cache);
+  delete_map(module_tu_cache);
   delete_map(cu_function_cache);
   delete_map(mod_function_cache);
   delete_map(cu_inl_function_cache);
@@ -525,55 +527,66 @@ dwflpp::iterate_over_cus<void>(int (*callback)(Dwarf_Die*, void*),
   Dwarf *dw = foc().module_dwarf;
   if (!dw) return;
 
-  vector<Dwarf_Die>* v;
-  {
-    timed_recursive_lock gl (cache_mutex, stap_dwarf_timing.cache_wait_ns, stap_dwarf_timing.cache_hold_ns, stap_dwarf_timing.cache_n);
-    v = module_cu_cache[dw];
-    if (v == 0)
-      {
-	v = new vector<Dwarf_Die>;
-	module_cu_cache[dw] = v;
-
-	Dwarf_Off off = 0;
-	size_t cuhl;
-	Dwarf_Off noff;
-	while (dwarf_nextcu (dw, off, &noff, &cuhl, NULL, NULL, NULL) == 0)
-	  {
-	    assert_no_interrupts();
-	    Dwarf_Die die_mem;
-	    Dwarf_Die *die;
-	    die = dwarf_offdie (dw, off + cuhl, &die_mem);
-	    /* Skip partial units. */
-	    if (dwarf_tag (die) == DW_TAG_compile_unit)
-	      v->push_back (*die); /* copy */
-	    off = noff;
-	  }
-      }
-
-    if (want_types && module_tus_read.find(dw) == module_tus_read.end())
-      {
-	// Process type units.
-	Dwarf_Off off = 0;
-	size_t cuhl;
-	Dwarf_Off noff;
-	uint64_t type_signature;
-	while (dwarf_next_unit (dw, off, &noff, &cuhl, NULL, NULL, NULL, NULL,
-				&type_signature, NULL) == 0)
-	  {
-	    assert_no_interrupts();
-	    Dwarf_Die die_mem;
-	    Dwarf_Die *die;
-	    die = dwarf_offdie_types (dw, off + cuhl, &die_mem);
-	    /* Skip partial units. */
-	    if (dwarf_tag (die) == DW_TAG_type_unit)
-	      v->push_back (*die); /* copy */
-	    off = noff;
-	  }
-	module_tus_read.insert(dw);
-      }
-  }
+  vector<Dwarf_Die>* v = cache_lookup_or_fill
+    (module_cu_cache, dw,
+     cache_fill_key (FILL_MODULE_CU, (uintptr_t) dw),
+     [dw] () {
+       vector<Dwarf_Die>* nv = new vector<Dwarf_Die>;
+       Dwarf_Off off = 0;
+       size_t cuhl;
+       Dwarf_Off noff;
+       while (dwarf_nextcu (dw, off, &noff, &cuhl, NULL, NULL, NULL) == 0)
+         {
+           assert_no_interrupts();
+           Dwarf_Die die_mem;
+           Dwarf_Die *die;
+           die = dwarf_offdie (dw, off + cuhl, &die_mem);
+           /* Skip partial units. */
+           if (dwarf_tag (die) == DW_TAG_compile_unit)
+             nv->push_back (*die); /* copy */
+           off = noff;
+         }
+       return nv;
+     });
 
   for (auto i = v->begin(); i != v->end(); ++i)
+    {
+      int rc = (*callback)(&*i, data);
+      assert_no_interrupts();
+      if (rc != DWARF_CB_OK)
+        return;
+    }
+
+  if (!want_types)
+    return;
+
+  // TUs live in a separate vector so the CU list stays immutable after
+  // the first publish (callers iterate without holding cache_mutex).
+  vector<Dwarf_Die>* tus = cache_lookup_or_fill
+    (module_tu_cache, dw,
+     cache_fill_key (FILL_MODULE_TU, (uintptr_t) dw),
+     [dw] () {
+       vector<Dwarf_Die>* nv = new vector<Dwarf_Die>;
+       Dwarf_Off off = 0;
+       size_t cuhl;
+       Dwarf_Off noff;
+       uint64_t type_signature;
+       while (dwarf_next_unit (dw, off, &noff, &cuhl, NULL, NULL, NULL, NULL,
+                               &type_signature, NULL) == 0)
+         {
+           assert_no_interrupts();
+           Dwarf_Die die_mem;
+           Dwarf_Die *die;
+           die = dwarf_offdie_types (dw, off + cuhl, &die_mem);
+           /* Skip partial units. */
+           if (dwarf_tag (die) == DW_TAG_type_unit)
+             nv->push_back (*die); /* copy */
+           off = noff;
+         }
+       return nv;
+     });
+
+  for (auto i = tus->begin(); i != tus->end(); ++i)
     {
       int rc = (*callback)(&*i, data);
       assert_no_interrupts();
@@ -622,14 +635,14 @@ dwflpp::func_is_exported()
 }
 
 void
-dwflpp::cache_inline_instances (Dwarf_Die* die)
+dwflpp::cache_inline_instances (Dwarf_Die* die, cu_inl_function_cache_t& dest)
 {
   // If this is an inline instance, link it back to its origin
   Dwarf_Die origin;
   if (dwarf_tag(die) == DW_TAG_inlined_subroutine &&
       dwarf_attr_die(die, DW_AT_abstract_origin, &origin))
     {
-      vector<Dwarf_Die>*& v = cu_inl_function_cache[origin.addr];
+      vector<Dwarf_Die>*& v = dest[origin.addr];
       if (!v)
         v = new vector<Dwarf_Die>;
       v->push_back(*die);
@@ -652,13 +665,13 @@ dwflpp::cache_inline_instances (Dwarf_Die* die)
           case DW_TAG_entry_point:
           case DW_TAG_inlined_subroutine:
           case DW_TAG_subprogram:
-            cache_inline_instances(&child);
+            cache_inline_instances(&child, dest);
             break;
 
           // imported dies should be followed
           case DW_TAG_imported_unit:
             if (dwarf_attr_die(&child, DW_AT_import, &import))
-              cache_inline_instances(&import);
+              cache_inline_instances(&import, dest);
             break;
 
           // nothing to do for other tags
@@ -677,12 +690,33 @@ dwflpp::iterate_over_inline_instances<void>(int (*callback)(Dwarf_Die*, void*),
   assert (foc().function);
   assert (func_is_inline ());
 
+  cache_fill_once (foc().cu->addr, FILL_INL, cu_inl_function_cache_done,
+                   [this] () {
+                     cu_inl_function_cache_t local;
+                     cache_inline_instances (foc().cu, local);
+                     timed_lock_guard<mutex> gl (cache_mutex,
+                                                 stap_dwarf_timing.cache_wait_ns,
+                                                 stap_dwarf_timing.cache_hold_ns,
+                                                 stap_dwarf_timing.cache_n);
+                     for (auto& p : local)
+                       {
+                         vector<Dwarf_Die>*& slot = cu_inl_function_cache[p.first];
+                         if (!slot)
+                           slot = p.second;
+                         else
+                           {
+                             slot->insert (slot->end (), p.second->begin (),
+                                           p.second->end ());
+                             delete p.second;
+                           }
+                       }
+                   });
+
   vector<Dwarf_Die>* v;
   {
-    timed_recursive_lock gl (cache_mutex, stap_dwarf_timing.cache_wait_ns, stap_dwarf_timing.cache_hold_ns, stap_dwarf_timing.cache_n);
-    if (cu_inl_function_cache_done.insert(foc().cu->addr).second)
-      cache_inline_instances(foc().cu);
-    v = cu_inl_function_cache[foc().function->addr];
+    timed_lock_guard<mutex> gl (cache_mutex, stap_dwarf_timing.cache_wait_ns, stap_dwarf_timing.cache_hold_ns, stap_dwarf_timing.cache_n);
+    auto it = cu_inl_function_cache.find (foc().function->addr);
+    v = (it == cu_inl_function_cache.end ()) ? 0 : it->second;
   }
   if (!v)
     return;
@@ -697,7 +731,8 @@ dwflpp::iterate_over_inline_instances<void>(int (*callback)(Dwarf_Die*, void*),
 }
 
 
-void dwflpp::cache_call_sites (Dwarf_Die* die, Dwarf_Die *function)
+void dwflpp::cache_call_sites (Dwarf_Die* die, Dwarf_Die *function,
+                               cu_call_sites_cache_t& dest)
 {
   Dwarf_Die origin;
   if ((dwarf_tag(die) == DW_TAG_GNU_call_site &&
@@ -705,7 +740,7 @@ void dwflpp::cache_call_sites (Dwarf_Die* die, Dwarf_Die *function)
        || (dwarf_tag(die) == DW_TAG_call_site &&
 	   dwarf_attr_die(die, DW_AT_call_origin, &origin)) )
     {
-      vector<call_site_cache_t>*& v = cu_call_sites_cache[origin.addr];
+      vector<call_site_cache_t>*& v = dest[origin.addr];
       if (!v)
         v = new vector<call_site_cache_t>;
       call_site_cache_t c (*die, *function);
@@ -728,12 +763,12 @@ void dwflpp::cache_call_sites (Dwarf_Die* die, Dwarf_Die *function)
 	  case DW_TAG_entry_point:
 	  case DW_TAG_GNU_call_site:
 	  case DW_TAG_call_site:
-	    cache_call_sites(&child, function);
+	    cache_call_sites(&child, function, dest);
 	    break;
 
 	  case DW_TAG_subprogram:
 	  case DW_TAG_inlined_subroutine:
-	    cache_call_sites(&child, &child);
+	    cache_call_sites(&child, &child, dest);
 
 	  // nothing to do for other tags
 	  default:
@@ -750,12 +785,33 @@ dwflpp::iterate_over_call_sites<void> (int (*callback)(Dwarf_Die*, Dwarf_Die*, v
   assert (foc().cu);
   assert (foc().function);
 
+  cache_fill_once (foc().cu->addr, FILL_CALL_SITES, cu_call_sites_cache_done,
+                   [this] () {
+                     cu_call_sites_cache_t local;
+                     cache_call_sites (foc().cu, NULL, local);
+                     timed_lock_guard<mutex> gl (cache_mutex,
+                                                 stap_dwarf_timing.cache_wait_ns,
+                                                 stap_dwarf_timing.cache_hold_ns,
+                                                 stap_dwarf_timing.cache_n);
+                     for (auto& p : local)
+                       {
+                         vector<call_site_cache_t>*& slot = cu_call_sites_cache[p.first];
+                         if (!slot)
+                           slot = p.second;
+                         else
+                           {
+                             slot->insert (slot->end (), p.second->begin (),
+                                           p.second->end ());
+                             delete p.second;
+                           }
+                       }
+                   });
+
   vector<call_site_cache_t>* v;
   {
-    timed_recursive_lock gl (cache_mutex, stap_dwarf_timing.cache_wait_ns, stap_dwarf_timing.cache_hold_ns, stap_dwarf_timing.cache_n);
-    if (cu_call_sites_cache_done.insert(foc().cu->addr).second)
-      cache_call_sites(foc().cu, NULL);
-    v = cu_call_sites_cache[foc().function->addr];
+    timed_lock_guard<mutex> gl (cache_mutex, stap_dwarf_timing.cache_wait_ns, stap_dwarf_timing.cache_hold_ns, stap_dwarf_timing.cache_n);
+    auto it = cu_call_sites_cache.find (foc().function->addr);
+    v = (it == cu_call_sites_cache.end ()) ? 0 : it->second;
   }
   if (!v)
     return;
@@ -824,17 +880,18 @@ dwflpp::get_die_parents()
 {
   assert (foc().cu);
 
-  timed_recursive_lock gl (cache_mutex, stap_dwarf_timing.cache_wait_ns, stap_dwarf_timing.cache_hold_ns, stap_dwarf_timing.cache_n);
-  cu_die_parent_cache_t *& parents = cu_die_parent_cache[foc().cu->addr];
-  if (!parents)
-    {
-      parents = new cu_die_parent_cache_t;
-      cache_die_parents(parents, foc().cu);
-      if (sess.verbose > 4)
-        clog << _F("die parent cache %s:%s size %zu", foc().module_name.c_str(),
-                   cu_name().c_str(), parents->size()) << endl;
-    }
-  return parents;
+  void *cu_addr = foc().cu->addr;
+  return cache_lookup_or_fill
+    (cu_die_parent_cache, cu_addr,
+     cache_fill_key (FILL_DIE_PARENTS, (uintptr_t) cu_addr),
+     [this] () {
+       cu_die_parent_cache_t *parents = new cu_die_parent_cache_t;
+       cache_die_parents (parents, foc().cu);
+       if (sess.verbose > 4)
+         clog << _F("die parent cache %s:%s size %zu", foc().module_name.c_str(),
+                    cu_name().c_str(), parents->size()) << endl;
+       return parents;
+     });
 }
 
 
@@ -917,24 +974,40 @@ dwflpp::cache_scopes_at_pc(Dwarf_Addr pc, Dwarf_Die* die)
   if (!die)
     return;
 
+  void *cu_addr = foc().cu->addr;
   {
-    timed_recursive_lock gl (cache_mutex, stap_dwarf_timing.cache_wait_ns, stap_dwarf_timing.cache_hold_ns, stap_dwarf_timing.cache_n);
-    pc_scopes_cache_t *& cache = cu_pc_scopes_cache[foc().cu->addr];
-    if (!cache)
-      cache = new pc_scopes_cache_t;
-    else if (cache->find (pc) != cache->end ())
+    timed_lock_guard<mutex> gl (cache_mutex, stap_dwarf_timing.cache_wait_ns, stap_dwarf_timing.cache_hold_ns, stap_dwarf_timing.cache_n);
+    pc_scopes_cache_t *cache = 0;
+    auto it = cu_pc_scopes_cache.find (cu_addr);
+    if (it != cu_pc_scopes_cache.end ())
+      cache = it->second;
+    if (cache && cache->find (pc) != cache->end ())
       return; // already recorded (possibly empty)
+  }
+
+  after_you_guard<cache_fill_key> after
+    (cache_fill_inflight, cache_fill_key (FILL_PC_SCOPES, (uintptr_t) cu_addr, (uintptr_t) pc));
+
+  {
+    timed_lock_guard<mutex> gl (cache_mutex, stap_dwarf_timing.cache_wait_ns, stap_dwarf_timing.cache_hold_ns, stap_dwarf_timing.cache_n);
+    pc_scopes_cache_t *cache = 0;
+    auto it = cu_pc_scopes_cache.find (cu_addr);
+    if (it != cu_pc_scopes_cache.end ())
+      cache = it->second;
+    if (cache && cache->find (pc) != cache->end ())
+      return;
   }
 
   // Parent-chain walk is cheap once cu_die_parent_cache is warm; avoids
   // dwarf_getscopes for later function(0xaddr) / statement(0xaddr) queries.
   vector<Dwarf_Die> scopes = getscopes (die);
 
-  timed_recursive_lock gl (cache_mutex, stap_dwarf_timing.cache_wait_ns, stap_dwarf_timing.cache_hold_ns, stap_dwarf_timing.cache_n);
-  pc_scopes_cache_t *& cache = cu_pc_scopes_cache[foc().cu->addr];
+  timed_lock_guard<mutex> gl (cache_mutex, stap_dwarf_timing.cache_wait_ns, stap_dwarf_timing.cache_hold_ns, stap_dwarf_timing.cache_n);
+  pc_scopes_cache_t *& cache = cu_pc_scopes_cache[cu_addr];
   if (!cache)
     cache = new pc_scopes_cache_t;
-  cache->emplace (pc, std::move (scopes));
+  if (cache->find (pc) == cache->end ())
+    cache->emplace (pc, std::move (scopes));
 }
 
 std::vector<Dwarf_Die>
@@ -946,9 +1019,26 @@ dwflpp::getscopes(Dwarf_Addr pc)
 
   assert (foc().cu);
 
+  void *cu_addr = foc().cu->addr;
   {
-    timed_recursive_lock gl (cache_mutex, stap_dwarf_timing.cache_wait_ns, stap_dwarf_timing.cache_hold_ns, stap_dwarf_timing.cache_n);
-    pc_scopes_cache_t *cache = cu_pc_scopes_cache[foc().cu->addr];
+    timed_lock_guard<mutex> gl (cache_mutex, stap_dwarf_timing.cache_wait_ns, stap_dwarf_timing.cache_hold_ns, stap_dwarf_timing.cache_n);
+    auto cit = cu_pc_scopes_cache.find (cu_addr);
+    pc_scopes_cache_t *cache = (cit == cu_pc_scopes_cache.end ()) ? 0 : cit->second;
+    if (cache)
+      {
+        auto it = cache->find (pc);
+        if (it != cache->end ())
+          return it->second;
+      }
+  }
+
+  after_you_guard<cache_fill_key> after
+    (cache_fill_inflight, cache_fill_key (FILL_PC_SCOPES, (uintptr_t) cu_addr, (uintptr_t) pc));
+
+  {
+    timed_lock_guard<mutex> gl (cache_mutex, stap_dwarf_timing.cache_wait_ns, stap_dwarf_timing.cache_hold_ns, stap_dwarf_timing.cache_n);
+    auto cit = cu_pc_scopes_cache.find (cu_addr);
+    pc_scopes_cache_t *cache = (cit == cu_pc_scopes_cache.end ()) ? 0 : cit->second;
     if (cache)
       {
         auto it = cache->find (pc);
@@ -978,8 +1068,8 @@ dwflpp::getscopes(Dwarf_Addr pc)
     }
 #endif
 
-  timed_recursive_lock gl (cache_mutex, stap_dwarf_timing.cache_wait_ns, stap_dwarf_timing.cache_hold_ns, stap_dwarf_timing.cache_n);
-  pc_scopes_cache_t *& cache = cu_pc_scopes_cache[foc().cu->addr];
+  timed_lock_guard<mutex> gl (cache_mutex, stap_dwarf_timing.cache_wait_ns, stap_dwarf_timing.cache_hold_ns, stap_dwarf_timing.cache_n);
+  pc_scopes_cache_t *& cache = cu_pc_scopes_cache[cu_addr];
   if (!cache)
     cache = new pc_scopes_cache_t;
   auto it = cache->find (pc);
@@ -1097,17 +1187,14 @@ dwflpp::global_alias_caching_callback(Dwarf_Die *die, bool has_inner_types,
 int
 dwflpp::global_alias_caching_callback_cus(Dwarf_Die *die, dwflpp *dw)
 {
-  mod_cu_type_cache_t *global_alias_cache;
-  global_alias_cache = &dw->global_alias_cache;
-
-  timed_recursive_lock gl (dw->cache_mutex, stap_dwarf_timing.cache_wait_ns, stap_dwarf_timing.cache_hold_ns, stap_dwarf_timing.cache_n);
-  cu_type_cache_t *v = (*global_alias_cache)[die->addr];
-  if (v != 0)
-    return DWARF_CB_OK;
-
-  v = new cu_type_cache_t;
-  (*global_alias_cache)[die->addr] = v;
-  iterate_over_globals(die, global_alias_caching_callback, v);
+  dw->cache_lookup_or_fill
+    (dw->global_alias_cache, die->addr,
+     cache_fill_key (FILL_GLOBAL_ALIAS, (uintptr_t) die->addr),
+     [die] () {
+       cu_type_cache_t *v = new cu_type_cache_t;
+       iterate_over_globals (die, global_alias_caching_callback, v);
+       return v;
+     });
 
   return DWARF_CB_OK;
 }
@@ -1130,23 +1217,22 @@ dwflpp::declaration_resolve_other_cus(const string& name)
 Dwarf_Die *
 dwflpp::declaration_resolve(const string& name)
 {
-  cu_type_cache_t *v;
-  {
-    timed_recursive_lock gl (cache_mutex, stap_dwarf_timing.cache_wait_ns, stap_dwarf_timing.cache_hold_ns, stap_dwarf_timing.cache_n);
-    v = global_alias_cache[foc().cu->addr];
-    if (v == 0) // need to build the cache, just once per encountered foc().module/foc().cu
-      {
-	v = new cu_type_cache_t;
-	global_alias_cache[foc().cu->addr] = v;
-	iterate_over_globals(foc().cu, global_alias_caching_callback, v);
-	if (sess.verbose > 4)
-	  clog << _F("global alias cache %s:%s size %zu", foc().module_name.c_str(),
-		     cu_name().c_str(), v->size()) << endl;
-      }
+  void *cu_addr = foc().cu->addr;
+  cu_type_cache_t *v = cache_lookup_or_fill
+    (global_alias_cache, cu_addr,
+     cache_fill_key (FILL_GLOBAL_ALIAS, (uintptr_t) cu_addr),
+     [this] () {
+       cu_type_cache_t *nv = new cu_type_cache_t;
+       iterate_over_globals (foc().cu, global_alias_caching_callback, nv);
+       if (sess.verbose > 4)
+         clog << _F("global alias cache %s:%s size %zu", foc().module_name.c_str(),
+                    cu_name().c_str(), nv->size()) << endl;
+       return nv;
+     });
 
-    if (v->find(name) != v->end())
-      return & ((*v)[name]);
-  }
+  auto it = v->find (name);
+  if (it != v->end ())
+    return &it->second;
 
   // XXX: it may be desirable to search other modules' declarations
   // too, in case a foc().module/shared-library processes a
@@ -1198,23 +1284,19 @@ dwflpp::iterate_over_functions<void>(int (*callback)(Dwarf_Die*, void*),
   assert (foc().module);
   assert (foc().cu);
 
-  cu_function_cache_t *v;
-  {
-    timed_recursive_lock gl (cache_mutex, stap_dwarf_timing.cache_wait_ns, stap_dwarf_timing.cache_hold_ns, stap_dwarf_timing.cache_n);
-    v = cu_function_cache[foc().cu->addr];
-    if (v == 0)
-      {
-	v = new cu_function_cache_t;
-	cu_function_cache[foc().cu->addr] = v;
-	// need to cast callback to func which accepts void*
-	dwarf_getfuncs (foc().cu, (int (*)(Dwarf_Die*, void*))cu_function_caching_callback,
-			v, 0);
-	if (sess.verbose > 4)
-	  clog << _F("function cache %s:%s size %zu", foc().module_name.c_str(),
-		     cu_name().c_str(), v->size()) << endl;
-	foc().mod_info->update_symtab(v);
-      }
-  }
+  cu_function_cache_t *v = cache_lookup_or_fill
+    (cu_function_cache, foc().cu->addr,
+     cache_fill_key (FILL_CU_FUNCS, (uintptr_t) foc().cu->addr),
+     [this] () {
+       cu_function_cache_t *nv = new cu_function_cache_t;
+       dwarf_getfuncs (foc().cu, (int (*)(Dwarf_Die*, void*))cu_function_caching_callback,
+                       nv, 0);
+       if (sess.verbose > 4)
+         clog << _F("function cache %s:%s size %zu", foc().module_name.c_str(),
+                    cu_name().c_str(), nv->size()) << endl;
+       foc().mod_info->update_symtab(nv);
+       return nv;
+     });
 
   auto range = v->equal_range(function);
   // version padding if the symbol is not found
@@ -1302,21 +1384,19 @@ dwflpp::iterate_single_function<void>(int (*callback)(Dwarf_Die*, void*),
   if (!foc().module_dwarf)
     return rc;
 
-  cu_function_cache_t *v;
-  {
-    timed_recursive_lock gl (cache_mutex, stap_dwarf_timing.cache_wait_ns, stap_dwarf_timing.cache_hold_ns, stap_dwarf_timing.cache_n);
-    v = mod_function_cache[foc().module_dwarf];
-    if (v == 0)
-      {
-	v = new cu_function_cache_t;
-	mod_function_cache[foc().module_dwarf] = v;
-	iterate_over_cus (mod_function_caching_callback, v, false);
-	if (sess.verbose > 4)
-	  clog << _F("module function cache %s size %zu", foc().module_name.c_str(),
-		     v->size()) << endl;
-	foc().mod_info->update_symtab(v);
-      }
-  }
+  Dwarf *dw = foc().module_dwarf;
+  cu_function_cache_t *v = cache_lookup_or_fill
+    (mod_function_cache, dw,
+     cache_fill_key (FILL_MOD_FUNCS, (uintptr_t) dw),
+     [this] () {
+       cu_function_cache_t *nv = new cu_function_cache_t;
+       iterate_over_cus (mod_function_caching_callback, nv, false);
+       if (sess.verbose > 4)
+         clog << _F("module function cache %s size %zu", foc().module_name.c_str(),
+                    nv->size()) << endl;
+       foc().mod_info->update_symtab(nv);
+       return nv;
+     });
 
   auto range = v->equal_range(function);
   // version padding if the symbol is not found
@@ -1806,46 +1886,45 @@ dwflpp::get_cu_lines_sorted_by_lineno(const char *srcfile)
 {
   assert(foc().cu);
 
-  timed_recursive_lock gl (cache_mutex, stap_dwarf_timing.cache_wait_ns, stap_dwarf_timing.cache_hold_ns, stap_dwarf_timing.cache_n);
-  srcfile_lines_cache_t *srcfile_lines = cu_lines_cache[foc().cu];
-  if (!srcfile_lines)
-    {
-      srcfile_lines = new srcfile_lines_cache_t();
-      cu_lines_cache[foc().cu] = srcfile_lines;
-    }
+  void *cu_key = foc().cu;
+  srcfile_lines_cache_t *srcfile_lines = cache_lookup_or_fill
+    (cu_lines_cache, cu_key,
+     cache_fill_key (FILL_CU_LINES, (uintptr_t) cu_key),
+     [] () { return new srcfile_lines_cache_t (); });
 
-  lines_t *lines = (*srcfile_lines)[srcfile];
-  if (!lines)
-    {
-      size_t nlines_cu = 0;
-      Dwarf_Lines *lines_cu = NULL;
-      DWARF_ASSERT("dwarf_getsrclines",
-                   dwarf_getsrclines(foc().cu, &lines_cu, &nlines_cu));
+  string src (srcfile);
+  uintptr_t src_hash = (uintptr_t) std::hash<string>()(src);
+  return cache_lookup_or_fill
+    (*srcfile_lines, src,
+     cache_fill_key (FILL_CU_LINES, (uintptr_t) cu_key, src_hash),
+     [this, src] () {
+       size_t nlines_cu = 0;
+       Dwarf_Lines *lines_cu = NULL;
+       DWARF_ASSERT("dwarf_getsrclines",
+                    dwarf_getsrclines(foc().cu, &lines_cu, &nlines_cu));
 
-      lines = new lines_t();
-      (*srcfile_lines)[srcfile] = lines;
+       lines_t *lines = new lines_t();
+       for (size_t i = 0; i < nlines_cu; i++)
+         {
+           Dwarf_Line *line = dwarf_onesrcline(lines_cu, i);
+           const char *linesrc = DWARF_LINESRC(line);
+           if (src != linesrc)
+             continue;
+           lines->push_back(line);
+         }
 
-      for (size_t i = 0; i < nlines_cu; i++)
-        {
-          Dwarf_Line *line = dwarf_onesrcline(lines_cu, i);
-          const char *linesrc = DWARF_LINESRC(line);
-          if (strcmp(srcfile, linesrc))
-            continue;
-          lines->push_back(line);
-        }
+       if (lines->size() > 1)
+         sort(lines->begin(), lines->end(), compare_lines);
 
-      if (lines->size() > 1)
-        sort(lines->begin(), lines->end(), compare_lines);
-
-      if (sess.verbose > 3)
-        {
-          clog << _F("found the following lines for %s:", srcfile) << endl;
-          for (auto i  = lines->begin(); i != lines->end(); ++i)
-            cout << DWARF_LINENO(*i) << " = " << hex
-                 << DWARF_LINEADDR(*i) << dec << endl;
-        }
-    }
-  return lines;
+       if (sess.verbose > 3)
+         {
+           clog << _F("found the following lines for %s:", src.c_str()) << endl;
+           for (auto i  = lines->begin(); i != lines->end(); ++i)
+             cout << DWARF_LINENO(*i) << " = " << hex
+                  << DWARF_LINEADDR(*i) << dec << endl;
+         }
+       return lines;
+     });
 }
 
 static Dwarf_Line*
@@ -5278,16 +5357,16 @@ cu_entry_pc_caching_callback (Dwarf_Die *func, pair<dwflpp&, entry_pc_cache_t&> 
 bool
 dwflpp::check_cu_entry_pc (Dwarf_Die *cu, Dwarf_Addr pc)
 {
-  auto& entry_pcs = cu_entry_pc_cache[cu->addr];
-  if (!entry_pcs)
-    {
-      save_and_restore<Dwarf_Die*> saved_cu(&foc().cu, cu);
-      entry_pcs = new entry_pc_cache_t;
-      pair<dwflpp&, entry_pc_cache_t&> data (*this, *entry_pcs);
-      int rc = iterate_over_functions (cu_entry_pc_caching_callback, &data, "*");
-      if (rc != DWARF_CB_OK)
-        return false;
-    }
+  entry_pc_cache_t *entry_pcs = cache_lookup_or_fill
+    (cu_entry_pc_cache, cu->addr,
+     cache_fill_key (FILL_ENTRY_PC, (uintptr_t) cu->addr),
+     [this, cu] () {
+       save_and_restore<Dwarf_Die*> saved_cu(&foc().cu, cu);
+       entry_pc_cache_t *nv = new entry_pc_cache_t;
+       pair<dwflpp&, entry_pc_cache_t&> data (*this, *nv);
+       iterate_over_functions (cu_entry_pc_caching_callback, &data, "*");
+       return nv;
+     });
 
   return entry_pcs->count(pc) != 0;
 }
