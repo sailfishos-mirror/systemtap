@@ -653,8 +653,18 @@ match_node::find_and_build (systemtap_session& s,
     {
       match_key match (* loc->components[pos]);
 
-      // Call find_and_build for each possible match.  Ignore errors -
-      // unless we don't find any match.
+      // Collect concrete (non-glob) expansions first, then optionally
+      // derive them concurrently.  Workloads like `probe syscall.*`
+      // are a single user probe (derive_probes_parallel size==1) whose
+      // cost is this loop over hundreds of alias leaves — so this is
+      // the fan-out that must itself go parallel.
+      struct glob_work {
+        match_node* subnode;
+        probe_point* pp;
+        probe_point::component* comp;
+      };
+      vector<glob_work> work;
+
       unsigned int num_results = results.size();
       for (sub_map_iterator_t i = sub.begin(); i != sub.end(); i++)
         {
@@ -663,51 +673,106 @@ match_node::find_and_build (systemtap_session& s,
 
           assert_no_interrupts();
 
-	  if (match.globmatch(subkey))
-	    {
-	      if (s.verbose > 2)
-                clog << _F("wildcard '%s' matched '%s'",
-                           loc->components[pos]->functor.to_string().c_str(),
-                           subkey.name.to_string().c_str()) << endl;
-              
-	      // When we have a wildcard, we need to create a copy of
-	      // the probe point.  Then we'll create a copy of the
-	      // wildcard component, and substitute the non-wildcard
-	      // functor.
-	      probe_point *non_wildcard_pp = new probe_point(*loc);
-	      probe_point::component *non_wildcard_component
-		= new probe_point::component(*loc->components[pos]);
-	      non_wildcard_component->functor = subkey.name;
-	      non_wildcard_component->from_glob = true;
-	      non_wildcard_pp->components[pos] = non_wildcard_component;
+	  if (! match.globmatch(subkey))
+            continue;
 
-              // NB: probe conditions are not attached at the wildcard
-              // (component/functor) level, but at the overall
-              // probe_point level.
+          if (s.verbose > 2)
+            clog << _F("wildcard '%s' matched '%s'",
+                       loc->components[pos]->functor.to_string().c_str(),
+                       subkey.name.to_string().c_str()) << endl;
 
-	      unsigned int inner_results = results.size();
-
-	      // recurse (with the non-wildcard probe point)
-	      try
-	        {
-		  subnode->find_and_build (s, p, non_wildcard_pp, pos+1,
-					   results, builders);
-	        }
-	      catch (const semantic_error& e)
-	        {
-		  // Ignore semantic_errors while expanding wildcards.
-		  // If we get done and nothing was expanded, the code
-		  // following the loop will complain.
-		}
-
-	      if (results.size() == inner_results)
-		{
-		  // If this wildcard didn't match, cleanup.
-		  delete non_wildcard_pp;
-		  delete non_wildcard_component;
-	        }
-	    }
+	  // Copy the probe point and substitute the concrete functor.
+	  probe_point *non_wildcard_pp = new probe_point(*loc);
+	  probe_point::component *non_wildcard_component
+	    = new probe_point::component(*loc->components[pos]);
+	  non_wildcard_component->functor = subkey.name;
+	  non_wildcard_component->from_glob = true;
+	  non_wildcard_pp->components[pos] = non_wildcard_component;
+          // NB: probe conditions stay on the overall probe_point.
+          work.push_back ({subnode, non_wildcard_pp, non_wildcard_component});
 	}
+
+      auto run_one = [&](glob_work& w, vector<derived_probe*>& out,
+                         set<string>& builders_out) {
+        size_t before = out.size ();
+        try
+          {
+            w.subnode->find_and_build (s, p, w.pp, pos + 1, out, builders_out);
+          }
+        catch (const semantic_error& e)
+          {
+            // Ignore while expanding wildcards; empty out triggers
+            // the overall "no match" / suffix path below.
+          }
+        if (out.size () == before)
+          {
+            delete w.pp;
+            delete w.comp;
+          }
+      };
+
+      unsigned nthreads = stap_nthreads ();
+      // Nested pool (fanout / parallel derive worker): stay serial.
+      if (stap_parallel_nesting_depth () > 0)
+        nthreads = 1;
+      if (work.size () && nthreads > work.size ())
+        nthreads = work.size ();
+
+      if (s.verbose > 2 && work.size () > 1)
+        clog << _F("wildcard expand: %zu matches, %u threads\n",
+                   work.size (), nthreads ? nthreads : 1);
+
+      if (nthreads <= 1)
+        {
+          for (size_t i = 0; i < work.size (); i++)
+            {
+              set<string> b;
+              run_one (work[i], results, b);
+              builders.insert (b.begin (), b.end ());
+            }
+        }
+      else
+        {
+          boost::asio::thread_pool TP (nthreads);
+          vector<vector<derived_probe*> > per (work.size ());
+          vector<set<string> > builders_per (work.size ());
+          vector<exception_ptr> pending (work.size ());
+          atomic<bool> failed (false);
+
+          for (size_t i = 0; i < work.size (); i++)
+            {
+              boost::asio::post (TP, [i, &work, &per, &builders_per,
+                                      &pending, &failed, &run_one]() {
+                stap_parallel_nesting_guard nest;
+                try
+                  {
+                    assert_no_interrupts ();
+                    run_one (work[i], per[i], builders_per[i]);
+                  }
+                catch (...)
+                  {
+                    pending[i] = current_exception ();
+                    failed.store (true);
+                  }
+              });
+            }
+
+          TP.join ();
+
+          if (failed.load ())
+            {
+              for (size_t i = 0; i < pending.size (); i++)
+                if (pending[i])
+                  rethrow_exception (pending[i]);
+            }
+
+          for (size_t i = 0; i < per.size (); i++)
+            {
+              results.insert (results.end (), per[i].begin (), per[i].end ());
+              builders.insert (builders_per[i].begin (),
+                               builders_per[i].end ());
+            }
+        }
 
       // Try suffix expansion only if no matches found:
       if (num_results == results.size())
@@ -1001,14 +1066,22 @@ alias_expansion_builder::build_with_suffix(systemtap_session & sess,
   // there's concatenated code here and we only want one vardecl per
   // resulting variable.
 
+  // Deep-copy both sides: expand_target_vars / update visitors mutate
+  // the derived probe body in place.  Sharing use->body (or alias->body)
+  // across concurrent wildcard expansions races and can change how many
+  // dwarf probes resolve (seen as serial 760 vs parallel 763 on
+  // syscall.* { log(argstr) }).
+  statement* use_body = deep_copy_visitor::deep_copy (use->body);
+  statement* alias_body = deep_copy_visitor::deep_copy (alias->body);
+
   if (alias->epilogue_style)
-    n->body = new block (use->body, alias->body);
+    n->body = new block (use_body, alias_body);
   else if (alias->body2)
-    n->body = new block (alias->body,
-                         use->body,
+    n->body = new block (alias_body,
+                         use_body,
                          deep_copy_visitor::deep_copy(alias->body2));
   else
-    n->body = new block (alias->body, use->body);
+    n->body = new block (alias_body, use_body);
 
   // We'll try to resolve any @probewrite predicates while we have
   // direct access to the probe body (use->body). Note that the
