@@ -136,5 +136,5 @@ get_btf_tracepoint_catalog_from_dwarf (dwflpp& dw, systemtap_session& s,
   out = q.catalog;
   if (s.verbose > 2)
     clog << _F("Parsed %zu btf_trace_* tracepoints from module '%s' dwarf",
-               out.size(), dw.module_name.c_str()) << endl;
+               out.size(), dw.module_name().c_str()) << endl;
 }

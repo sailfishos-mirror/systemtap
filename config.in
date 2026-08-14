@@ -64,6 +64,9 @@
 /* Define to 1 if you have the <dyninst/BPatch_object.h> header file. */
 #undef HAVE_DYNINST_BPATCH_OBJECT_H
 
+/* Define to 1 if elfutils was built with --enable-thread-safety. */
+#undef HAVE_ELFUTILS_THREAD_SAFETY
+
 /* Define to 1 if F_SETPIPE_SZ is available. */
 #undef HAVE_F_SETPIPE_SZ
 
@@ -233,6 +236,10 @@
 /* Enable extensions on AIX, Interix, z/OS.  */
 #ifndef _ALL_SOURCE
 # undef _ALL_SOURCE
+#endif
+/* Enable extensions on Cosmopolitan Libc. */
+#ifndef _COSMO_SOURCE
+# undef _COSMO_SOURCE
 #endif
 /* Enable general extensions on macOS.  */
 #ifndef _DARWIN_C_SOURCE

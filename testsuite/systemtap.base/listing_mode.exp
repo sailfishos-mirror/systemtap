@@ -562,7 +562,11 @@ proc report_untested_probes {} {
          }
       }
 
-      if {$listing_mode_full} {
+      # .pc/.die are elaborator fanout cookies (still dumped); not a
+      # user-facing listing-mode exercise.
+      if {[regexp {\.(pc|die)\(} $probe_type]} {
+         untested "$test (elaborator-only .pc/.die cookie: $probe_type)"
+      } elseif {$listing_mode_full} {
          fail "$test (untested probe type: $probe_type)"
       } else {
          untested "$test (untested probe type: $probe_type; smoke)"

@@ -75,14 +75,14 @@ location_context::translate_address(Dwarf_Addr addr)
   if (dw == NULL)
     return new literal_number(addr);
 
-  int n = dwfl_module_relocations (dw->module);
+  int n = dwfl_module_relocations (dw->module());
   Dwarf_Addr reloc_addr = addr;
   const char *secname = "";
 
   if (n > 1)
     {
-      int i = dwfl_module_relocate_address (dw->module, &reloc_addr);
-      secname = dwfl_module_relocation_info (dw->module, i, NULL);
+      int i = dwfl_module_relocate_address (dw->module(), &reloc_addr);
+      secname = dwfl_module_relocation_info (dw->module(), i, NULL);
     }
 
   if (n > 0 && !(n == 1 && secname == NULL))
@@ -95,11 +95,11 @@ location_context::translate_address(Dwarf_Addr addr)
 	  // module, for a kernel module.
           c = "({ unsigned long addr = 0; "
               "addr = _stp_kmodule_relocate (\""
-              + dw->module_name + "\", \"" + secname + "\", "
+              + dw->module_name() + "\", \"" + secname + "\", "
               + lex_cast_hex (reloc_addr)
 	      + "); addr; })";
 	}
-      else if (n == 1 && dw->module_name == "kernel" && secname[0] == 0)
+      else if (n == 1 && dw->module_name() == "kernel" && secname[0] == 0)
 	{
 	  // elfutils way of telling us that this is a relocatable kernel
 	  // address, which we need to treat the same way here as
@@ -114,7 +114,7 @@ location_context::translate_address(Dwarf_Addr addr)
           c = "({ unsigned long addr = 0; "
               "addr = _stp_umodule_relocate (\""
               + path_remove_sysroot(dw->sess,
-				    resolve_path(dw->module_name.c_str()))
+				    resolve_path(dw->module_name().c_str()))
 	      + "\", "
               + lex_cast_hex (addr)
 	      + ", NULL); addr; })";
@@ -125,7 +125,7 @@ location_context::translate_address(Dwarf_Addr addr)
               "({ unsigned long addr = 0; "
               "addr = _stp_umodule_relocate (\""
               + path_remove_sysroot(dw->sess,
-				    resolve_path(dw->module_name.c_str()))
+				    resolve_path(dw->module_name().c_str()))
 	      + "\", "
               + lex_cast_hex (addr)
 	      + ", current); addr; })";
@@ -729,7 +729,7 @@ location_context::translate (const Dwarf_Op *expr, const size_t len,
               fc->function = std::string("__push_tls_address");
               fc->synthetic = true;
               fc->args.push_back(addr);
-              fc->args.push_back(new literal_string(this->dw->module_name));
+              fc->args.push_back(new literal_string(this->dw->module_name()));
 	      PUSH(fc);
             }
             break;

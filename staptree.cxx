@@ -150,14 +150,14 @@ probe::name () const
 
 
 probe_point::component::component ():
-  arg (0), from_glob(false), tok(0)
+  arg (0), from_glob(false), hidden(false), tok(0)
 {
 }
 
 
 probe_point::component::component (interned_string f,
-  literal * a, bool from_glob):
-    functor(f), arg(a), from_glob(from_glob), tok(0)
+  literal * a, bool from_glob, bool hidden):
+    functor(f), arg(a), from_glob(from_glob), hidden(hidden), tok(0)
 {
 }
 
@@ -1520,11 +1520,11 @@ probe::collect_derivation_pp_chain (std::vector<probe_point*> &pp_list) const
 
 
 
-void probe_point::print (ostream& o, bool print_extras) const
+void probe_point::print (ostream& o, bool print_extras, bool print_hidden) const
 {
+  bool first = true;
   for (unsigned i=0; i<components.size(); i++)
     {
-      if (i>0) o << ".";
       probe_point::component* c = components[i];
       if (!c)
         {
@@ -1538,6 +1538,10 @@ void probe_point::print (ostream& o, bool print_extras) const
           } else
             continue; // ... sad panda decides to skip the bad boy
         }
+      if (c->hidden && !print_hidden)
+        continue;
+      if (!first) o << ".";
+      first = false;
       o << c->functor;
       if (c->arg)
         o << "(" << *c->arg << ")";
@@ -1552,10 +1556,10 @@ void probe_point::print (ostream& o, bool print_extras) const
     o<< " if (" << *condition << ")";
 }
 
-string probe_point::str (bool print_extras) const
+string probe_point::str (bool print_extras, bool print_hidden) const
 {
   ostringstream o;
-  print(o, print_extras);
+  print(o, print_extras, print_hidden);
   return o.str();
 }
 

@@ -83,6 +83,8 @@ static systemtap_session* current_session_for_find_debuginfo;
 // Serializes all setup_dwfl_* entry points: file-static search state,
 // current_session_for_find_debuginfo, and libelf's one-time elf_version
 // init via dwfl_begin.  Recursive for the download-retry re-enter.
+// Dwfl reporting must stay single-threaded; after dwfl_report_end,
+// concurrent read-only module use is gated on HAVE_ELFUTILS_THREAD_SAFETY.
 static std::recursive_mutex setup_dwfl_mutex;
 
 // Build-id bytes for the kernel, filled by setup_dwfl_kernel() before

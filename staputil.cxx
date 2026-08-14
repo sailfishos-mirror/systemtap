@@ -93,6 +93,24 @@ stap_nthreads(void)
   return n ? n : 1;
 }
 
+static thread_local unsigned stap_parallel_nesting;
+
+unsigned
+stap_parallel_nesting_depth(void)
+{
+  return stap_parallel_nesting;
+}
+
+stap_parallel_nesting_guard::stap_parallel_nesting_guard ()
+{
+  ++stap_parallel_nesting;
+}
+
+stap_parallel_nesting_guard::~stap_parallel_nesting_guard ()
+{
+  --stap_parallel_nesting;
+}
+
 
 // Get the size of a file in bytes
 size_t

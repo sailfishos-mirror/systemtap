@@ -28,6 +28,9 @@
 #include <cstdlib>
 #include <algorithm>
 #include <deque>
+
+dwarf_fanout_timing stap_dwarf_timing;
+
 #include <iostream>
 #include <map>
 #include <set>
@@ -68,14 +71,38 @@ extern "C" {
 using namespace std;
 using namespace __gnu_cxx;
 
+thread_local dwflpp_focus *dwflpp::tls_focus = nullptr;
+
+dwflpp_focus_binder::dwflpp_focus_binder (dwflpp_focus& f)
+  : prev (dwflpp::tls_focus)
+{
+  dwflpp::tls_focus = &f;
+}
+
+dwflpp_focus_binder::~dwflpp_focus_binder ()
+{
+  dwflpp::tls_focus = prev;
+}
+
+dwflpp_focus &
+dwflpp::foc ()
+{
+  assert (tls_focus);
+  return *tls_focus;
+}
+
+const dwflpp_focus &
+dwflpp::foc () const
+{
+  assert (tls_focus);
+  return *tls_focus;
+}
 
 static string TOK_KERNEL("kernel");
 
 
 dwflpp::dwflpp(systemtap_session & session, const string& name, bool kernel_p, bool debuginfo_needed):
-  sess(session), module(NULL), module_bias(0), mod_info(NULL),
-  module_start(0), module_end(0), cu(NULL), dwfl(NULL),
-  module_dwarf(NULL), function(NULL), blocklist_func(), blocklist_func_ret(),
+  sess(session), blocklist_func(), blocklist_func_ret(),
   blocklist_file(),  blocklist_enabled(false)
 {
   if (kernel_p)
@@ -90,9 +117,7 @@ dwflpp::dwflpp(systemtap_session & session, const string& name, bool kernel_p, b
 
 dwflpp::dwflpp(systemtap_session & session, const vector<string>& names,
 	       bool kernel_p):
-  sess(session), module(NULL), module_bias(0), mod_info(NULL),
-  module_start(0), module_end(0), cu(NULL), dwfl(NULL),
-  module_dwarf(NULL), function(NULL), blocklist_enabled(false)
+  sess(session), blocklist_enabled(false)
 {
   if (kernel_p)
     setup_kernel(names);
@@ -115,10 +140,10 @@ dwflpp::~dwflpp()
   delete_map(cu_lines_cache);
 
   delete_map(cu_entry_pc_cache);
+  delete_map(cu_pc_scopes_cache);
 
-  if (dwfl)
-    dwfl_end(dwfl);
-  // NB: don't "delete mod_info;", as that may be shared
+  // dwfl shared_ptr deleter calls dwfl_end when last view is gone.
+  // NB: don't "delete foc().mod_info;", as that may be shared
   // between dwflpp instances, and are stored in
   // session.module_cache[] anyway.
 }
@@ -133,15 +158,28 @@ module_cache::~module_cache ()
 void
 dwflpp::get_module_dwarf(bool required, bool report)
 {
-  module_dwarf = dwfl_module_getdwarf(module, &module_bias);
-  mod_info->dwarf_status = (module_dwarf ? info_present : info_absent);
-  if (!module_dwarf && report)
+  dwflpp_focus &f = foc();
+  // Defensive: some late typeres paths historically rebound an empty
+  // focus cursor; avoid null deref while callers are sorted out.
+  if (!f.module || !f.mod_info)
+    {
+      if (required)
+        throw SEMANTIC_ERROR (_("internal error: get_module_dwarf without module focus"));
+      return;
+    }
+  f.module_dwarf = dwfl_module_getdwarf(f.module, &f.module_bias);
+  {
+    // module_info is session-shared; guard status updates for parallel builds.
+    lock_guard<recursive_mutex> gl (sess.session_data_mutex);
+    f.mod_info->dwarf_status = (f.module_dwarf ? info_present : info_absent);
+  }
+  if (!f.module_dwarf && report)
     {
       string msg = _("cannot find ");
-      if (module_name == "")
+      if (f.module_name == "")
         msg += "kernel";
       else
-        msg += string("module ") + module_name;
+        msg += string("module ") + f.module_name;
       msg += " debuginfo";
 
       int i = dwfl_errno();
@@ -150,8 +188,8 @@ dwflpp::get_module_dwarf(bool required, bool report)
 
       msg += " [man warning::debuginfo]";
 
-      /* add module_name to list to find rpm */
-      find_debug_rpms(sess, module_name.c_str());
+      /* add foc().module_name to list to find rpm */
+      find_debug_rpms(sess, f.module_name.c_str());
 
       if (required)
         throw SEMANTIC_ERROR (msg);
@@ -160,84 +198,119 @@ dwflpp::get_module_dwarf(bool required, bool report)
     }
 }
 
+static int
+prepare_module_cb(Dwfl_Module *m,
+                  void ** /* userdata */,
+                  const char * /* name */,
+                  Dwarf_Addr /* base */,
+                  void * /* arg */)
+{
+  Dwarf_Addr bias;
+  // First-time loads are not MT-safe in libdwfl; finish them before
+  // concurrent read-only walks (HAVE_ELFUTILS_THREAD_SAFETY).
+  (void) dwfl_module_getdwarf (m, &bias);
+  (void) dwfl_module_getelf (m, &bias);
+  (void) dwfl_module_getsymtab (m);
+  return DWARF_CB_OK;
+}
+
+void
+dwflpp::prepare_modules_for_parallel_use()
+{
+  if (!dwfl)
+    return;
+  ptrdiff_t off = 0;
+  do
+    {
+      assert_no_interrupts();
+      off = dwfl_getmodules (dwfl.get(), &prepare_module_cb, NULL, off);
+    }
+  while (off > 0);
+  DWFL_ASSERT("dwfl_getmodules prepare", off == 0);
+}
+
 
 void
 dwflpp::focus_on_module(Dwfl_Module * m, module_info * mi)
 {
-  module = m;
-  mod_info = mi;
+  dwflpp_focus &f = foc();
+  f.module = m;
+  f.mod_info = mi;
   if (m)
     {
-      module_name = dwfl_module_info(module, NULL, &module_start, &module_end,
+      f.module_name = dwfl_module_info(f.module, NULL, &f.module_start, &f.module_end,
                                      NULL, NULL, NULL, NULL) ?: "module";
     }
   else
     {
       assert(mi && mi->name && mi->name == TOK_KERNEL);
-      module_name = mi->name;
-      module_start = 0;
-      module_end = 0;
-      module_bias = mi->bias;
+      f.module_name = mi->name;
+      f.module_start = 0;
+      f.module_end = 0;
+      f.module_bias = mi->bias;
     }
 
   // Reset existing pointers and names
 
-  module_dwarf = NULL;
+  f.module_dwarf = NULL;
 
-  cu = NULL;
+  f.cu = NULL;
 
-  function_name.clear();
-  function = NULL;
+  f.function_name.clear();
+  f.function = NULL;
 }
 
 
 void
 dwflpp::focus_on_cu(Dwarf_Die * c)
 {
+  dwflpp_focus &f = foc();
   assert(c);
-  assert(module);
+  // Module may be unset during late typeres/autocast expansion of a
+  // bare type DIE that outlived its original query focus binder.
 
-  cu = c;
+  f.cu = c;
 
   // Reset existing pointers and names
-  function_name.clear();
-  function = NULL;
+  f.function_name.clear();
+  f.function = NULL;
 }
 
 
 string
 dwflpp::cu_name(void)
 {
-  return dwarf_diename(cu) ?: "<unknown source>";
+  return dwarf_diename(foc().cu) ?: "<unknown source>";
 }
 
 
 void
-dwflpp::focus_on_function(Dwarf_Die * f)
+dwflpp::focus_on_function(Dwarf_Die * fdie)
 {
-  assert(f);
-  assert(module);
-  assert(cu);
+  dwflpp_focus &f = foc();
+  assert(fdie);
+  assert(f.module);
+  assert(f.cu);
 
-  function = f;
-  function_name = dwarf_diename(function) ?: "function";
+  f.function = fdie;
+  f.function_name = dwarf_diename(f.function) ?: "function";
 }
 
 
-/* Return the Dwarf_Die for the given address in the current module.
- * The address should be in the module address address space (this
- * function will take care of any dw bias).
+/* Return the Dwarf_Die for the given address in the current foc().module.
+ * The address should be in the foc().module address address space (this
+ * foc().function will take care of any dw bias).
  */
 Dwarf_Die *
 dwflpp::query_cu_containing_address(Dwarf_Addr a)
 {
   Dwarf_Addr bias;
   assert(dwfl);
-  assert(module);
+  assert(foc().module);
   get_module_dwarf();
 
-  Dwarf_Die* cudie = dwfl_module_addrdie(module, a, &bias);
-  assert(bias == module_bias);
+  Dwarf_Die* cudie = dwfl_module_addrdie(foc().module, a, &bias);
+  assert(bias == foc().module_bias);
   return cudie;
 }
 
@@ -245,13 +318,13 @@ dwflpp::query_cu_containing_address(Dwarf_Addr a)
 bool
 dwflpp::module_name_matches(const string& pattern)
 {
-  bool t = (fnmatch(pattern.c_str(), module_name.c_str(), 0) == 0);
+  bool t = (fnmatch(pattern.c_str(), foc().module_name.c_str(), 0) == 0);
   if (t && sess.verbose>3)
     clog << _F("pattern '%s' matches module '%s'\n",
-               pattern.c_str(), module_name.c_str());
+               pattern.c_str(), foc().module_name.c_str());
   if (!t && sess.verbose>4)
     clog << _F("pattern '%s' does not match module '%s'\n",
-               pattern.c_str(), module_name.c_str());
+               pattern.c_str(), foc().module_name.c_str());
 
   return t;
 }
@@ -270,7 +343,7 @@ bool
 dwflpp::module_name_final_match(const string& pattern)
 {
   // Assume module_name_matches().  Can there be any more matches?
-  // Not unless the pattern is a wildcard, since module names are
+  // Not unless the pattern is a wildcard, since foc().module names are
   // presumed unique.
   return !name_has_wildcard(pattern);
 }
@@ -300,8 +373,8 @@ dwflpp::function_name_matches_pattern(const string& name, const string& pattern)
 bool
 dwflpp::function_name_matches(const string& pattern)
 {
-  assert(function);
-  return function_name_matches_pattern(function_name, pattern);
+  assert(foc().function);
+  return function_name_matches_pattern(foc().function_name, pattern);
 }
 
 
@@ -309,7 +382,7 @@ bool
 dwflpp::function_scope_matches(const vector<string>& scopes)
 {
   // walk up the containing scopes
-  Dwarf_Die* die = function;
+  Dwarf_Die* die = foc().function;
   for (int i = scopes.size() - 1; i >= 0; --i)
     {
       die = get_parent_scope(die);
@@ -320,7 +393,7 @@ dwflpp::function_scope_matches(const vector<string>& scopes)
       if (name_has_wildcard(scopes[i]) ?
           function_name_matches_pattern(name, scopes[i]) :
           name == scopes[i])
-        function_name = name + "::" + function_name;
+        foc().function_name = name + "::" + foc().function_name;
       else
         return false;
 
@@ -342,7 +415,8 @@ dwflpp::setup_kernel(const string& name, systemtap_session & s, bool debuginfo_n
   }
 
   unsigned offline_search_matches = 0;
-  dwfl = setup_dwfl_kernel(name, &offline_search_matches, sess);
+  dwfl.reset (setup_dwfl_kernel(name, &offline_search_matches, sess),
+	      dwfl_end);
 
   if (offline_search_matches < 1)
     {
@@ -355,13 +429,13 @@ dwflpp::setup_kernel(const string& name, systemtap_session & s, bool debuginfo_n
       }
     }
 
-  if (dwfl != NULL)
+  if (dwfl)
     {
       ptrdiff_t off = 0;
       do
         {
           assert_no_interrupts();
-          off = dwfl_getmodules (dwfl, &add_module_build_id_to_hash, &s, off);
+          off = dwfl_getmodules (dwfl.get(), &add_module_build_id_to_hash, &s, off);
         }
       while (off > 0);
       DWFL_ASSERT("dwfl_getmodules", off == 0);
@@ -381,9 +455,10 @@ dwflpp::setup_kernel(const vector<string> &names, bool debuginfo_needed)
 
   unsigned offline_search_matches = 0;
   set<string> offline_search_names(names.begin(), names.end());
-  dwfl = setup_dwfl_kernel(offline_search_names,
-			   &offline_search_matches,
-			   sess);
+  dwfl.reset (setup_dwfl_kernel(offline_search_names,
+				&offline_search_matches,
+				sess),
+	      dwfl_end);
 
   if (offline_search_matches < offline_search_names.size())
     {
@@ -410,11 +485,12 @@ dwflpp::setup_user(const vector<string>& modules, bool debuginfo_needed)
   }
 
   auto it = modules.begin();
-  dwfl = setup_dwfl_user(it, modules.end(), debuginfo_needed, sess);
+  dwfl.reset (setup_dwfl_user(it, modules.end(), debuginfo_needed, sess),
+	      dwfl_end);
   if (debuginfo_needed && it != modules.end())
     DWFL_ASSERT (string(_F("missing process %s %s debuginfo",
                            (*it).c_str(), sess.architecture.c_str())),
-                           dwfl);
+                           dwfl.get());
 
   build_user_blocklist();
 }
@@ -427,7 +503,7 @@ dwflpp::iterate_over_modules<void>(int (*callback)(Dwfl_Module*,
                                                    void*),
                                    void *data)
 {
-  dwfl_getmodules (dwfl, callback, data, 0);
+  dwfl_getmodules (dwfl.get(), callback, data, 0);
 
   // Don't complain if we exited dwfl_getmodules early.
   // This could be a $target variable error that will be
@@ -446,52 +522,56 @@ dwflpp::iterate_over_cus<void>(int (*callback)(Dwarf_Die*, void*),
                                bool want_types)
 {
   get_module_dwarf(false);
-  Dwarf *dw = module_dwarf;
+  Dwarf *dw = foc().module_dwarf;
   if (!dw) return;
 
-  vector<Dwarf_Die>* v = module_cu_cache[dw];
-  if (v == 0)
-    {
-      v = new vector<Dwarf_Die>;
-      module_cu_cache[dw] = v;
+  vector<Dwarf_Die>* v;
+  {
+    timed_recursive_lock gl (cache_mutex, stap_dwarf_timing.cache_wait_ns, stap_dwarf_timing.cache_hold_ns, stap_dwarf_timing.cache_n);
+    v = module_cu_cache[dw];
+    if (v == 0)
+      {
+	v = new vector<Dwarf_Die>;
+	module_cu_cache[dw] = v;
 
-      Dwarf_Off off = 0;
-      size_t cuhl;
-      Dwarf_Off noff;
-      while (dwarf_nextcu (dw, off, &noff, &cuhl, NULL, NULL, NULL) == 0)
-        {
-          assert_no_interrupts();
-          Dwarf_Die die_mem;
-          Dwarf_Die *die;
-          die = dwarf_offdie (dw, off + cuhl, &die_mem);
-          /* Skip partial units. */
-          if (dwarf_tag (die) == DW_TAG_compile_unit)
-            v->push_back (*die); /* copy */
-          off = noff;
-        }
-    }
+	Dwarf_Off off = 0;
+	size_t cuhl;
+	Dwarf_Off noff;
+	while (dwarf_nextcu (dw, off, &noff, &cuhl, NULL, NULL, NULL) == 0)
+	  {
+	    assert_no_interrupts();
+	    Dwarf_Die die_mem;
+	    Dwarf_Die *die;
+	    die = dwarf_offdie (dw, off + cuhl, &die_mem);
+	    /* Skip partial units. */
+	    if (dwarf_tag (die) == DW_TAG_compile_unit)
+	      v->push_back (*die); /* copy */
+	    off = noff;
+	  }
+      }
 
-  if (want_types && module_tus_read.find(dw) == module_tus_read.end())
-    {
-      // Process type units.
-      Dwarf_Off off = 0;
-      size_t cuhl;
-      Dwarf_Off noff;
-      uint64_t type_signature;
-      while (dwarf_next_unit (dw, off, &noff, &cuhl, NULL, NULL, NULL, NULL,
-			      &type_signature, NULL) == 0)
-	{
-          assert_no_interrupts();
-          Dwarf_Die die_mem;
-          Dwarf_Die *die;
-          die = dwarf_offdie_types (dw, off + cuhl, &die_mem);
-          /* Skip partial units. */
-          if (dwarf_tag (die) == DW_TAG_type_unit)
-            v->push_back (*die); /* copy */
-          off = noff;
-	}
-      module_tus_read.insert(dw);
-    }
+    if (want_types && module_tus_read.find(dw) == module_tus_read.end())
+      {
+	// Process type units.
+	Dwarf_Off off = 0;
+	size_t cuhl;
+	Dwarf_Off noff;
+	uint64_t type_signature;
+	while (dwarf_next_unit (dw, off, &noff, &cuhl, NULL, NULL, NULL, NULL,
+				&type_signature, NULL) == 0)
+	  {
+	    assert_no_interrupts();
+	    Dwarf_Die die_mem;
+	    Dwarf_Die *die;
+	    die = dwarf_offdie_types (dw, off + cuhl, &die_mem);
+	    /* Skip partial units. */
+	    if (dwarf_tag (die) == DW_TAG_type_unit)
+	      v->push_back (*die); /* copy */
+	    off = noff;
+	  }
+	module_tus_read.insert(dw);
+      }
+  }
 
   for (auto i = v->begin(); i != v->end(); ++i)
     {
@@ -506,26 +586,26 @@ dwflpp::iterate_over_cus<void>(int (*callback)(Dwarf_Die*, void*),
 bool
 dwflpp::func_is_inline()
 {
-  assert (function);
-  return dwarf_func_inline (function) != 0;
+  assert (foc().function);
+  return dwarf_func_inline (foc().function) != 0;
 }
 
 
 bool
 dwflpp::func_is_exported()
 {
-  const char *name = dwarf_linkage_name (function) ?: dwarf_diename (function);
+  const char *name = dwarf_linkage_name (foc().function) ?: dwarf_diename (foc().function);
 
-  assert (function);
+  assert (foc().function);
 
-  int syms = dwfl_module_getsymtab (module);
+  int syms = dwfl_module_getsymtab (foc().module);
   DWFL_ASSERT (_("Getting symbols"), syms >= 0);
 
   for (int i = 0; i < syms; i++)
     {
       GElf_Sym sym;
       GElf_Word shndxp;
-      const char *symname = dwfl_module_getsym(module, i, &sym, &shndxp);
+      const char *symname = dwfl_module_getsym(foc().module, i, &sym, &shndxp);
       if (symname
 	  && strcmp (name, symname) == 0)
 	{
@@ -594,13 +674,16 @@ template<> void
 dwflpp::iterate_over_inline_instances<void>(int (*callback)(Dwarf_Die*, void*),
                                             void *data)
 {
-  assert (function);
+  assert (foc().function);
   assert (func_is_inline ());
 
-  if (cu_inl_function_cache_done.insert(cu->addr).second)
-    cache_inline_instances(cu);
-
-  vector<Dwarf_Die>* v = cu_inl_function_cache[function->addr];
+  vector<Dwarf_Die>* v;
+  {
+    timed_recursive_lock gl (cache_mutex, stap_dwarf_timing.cache_wait_ns, stap_dwarf_timing.cache_hold_ns, stap_dwarf_timing.cache_n);
+    if (cu_inl_function_cache_done.insert(foc().cu->addr).second)
+      cache_inline_instances(foc().cu);
+    v = cu_inl_function_cache[foc().function->addr];
+  }
   if (!v)
     return;
 
@@ -664,13 +747,16 @@ template<> void
 dwflpp::iterate_over_call_sites<void> (int (*callback)(Dwarf_Die*, Dwarf_Die*, void*),
 				      void *data)
 {
-  assert (cu);
-  assert (function);
+  assert (foc().cu);
+  assert (foc().function);
 
-  if (cu_call_sites_cache_done.insert(cu->addr).second)
-    cache_call_sites(cu, NULL);
-
-  vector<call_site_cache_t>* v = cu_call_sites_cache[function->addr];
+  vector<call_site_cache_t>* v;
+  {
+    timed_recursive_lock gl (cache_mutex, stap_dwarf_timing.cache_wait_ns, stap_dwarf_timing.cache_hold_ns, stap_dwarf_timing.cache_n);
+    if (cu_call_sites_cache_done.insert(foc().cu->addr).second)
+      cache_call_sites(foc().cu, NULL);
+    v = cu_call_sites_cache[foc().function->addr];
+  }
   if (!v)
     return;
 
@@ -736,15 +822,16 @@ dwflpp::cache_die_parents(cu_die_parent_cache_t* parents, Dwarf_Die* die)
 cu_die_parent_cache_t*
 dwflpp::get_die_parents()
 {
-  assert (cu);
+  assert (foc().cu);
 
-  cu_die_parent_cache_t *& parents = cu_die_parent_cache[cu->addr];
+  timed_recursive_lock gl (cache_mutex, stap_dwarf_timing.cache_wait_ns, stap_dwarf_timing.cache_hold_ns, stap_dwarf_timing.cache_n);
+  cu_die_parent_cache_t *& parents = cu_die_parent_cache[foc().cu->addr];
   if (!parents)
     {
       parents = new cu_die_parent_cache_t;
-      cache_die_parents(parents, cu);
+      cache_die_parents(parents, foc().cu);
       if (sess.verbose > 4)
-        clog << _F("die parent cache %s:%s size %zu", module_name.c_str(),
+        clog << _F("die parent cache %s:%s size %zu", foc().module_name.c_str(),
                    cu_name().c_str(), parents->size()) << endl;
     }
   return parents;
@@ -808,7 +895,7 @@ dwflpp::getscopes(Dwarf_Die* die)
   if (die_entrypc(die, &pc))
     {
       Dwarf_Die *dscopes = NULL;
-      int nscopes = dwarf_getscopes(cu, pc, &dscopes);
+      int nscopes = dwarf_getscopes(foc().cu, pc, &dscopes);
       if (nscopes > 0 && dscopes[0].addr == die->addr)
         {
           assert(nscopes == (int)scopes.size());
@@ -823,18 +910,57 @@ dwflpp::getscopes(Dwarf_Die* die)
 }
 
 
+void
+dwflpp::cache_scopes_at_pc(Dwarf_Addr pc, Dwarf_Die* die)
+{
+  assert (foc().cu);
+  if (!die)
+    return;
+
+  {
+    timed_recursive_lock gl (cache_mutex, stap_dwarf_timing.cache_wait_ns, stap_dwarf_timing.cache_hold_ns, stap_dwarf_timing.cache_n);
+    pc_scopes_cache_t *& cache = cu_pc_scopes_cache[foc().cu->addr];
+    if (!cache)
+      cache = new pc_scopes_cache_t;
+    else if (cache->find (pc) != cache->end ())
+      return; // already recorded (possibly empty)
+  }
+
+  // Parent-chain walk is cheap once cu_die_parent_cache is warm; avoids
+  // dwarf_getscopes for later function(0xaddr) / statement(0xaddr) queries.
+  vector<Dwarf_Die> scopes = getscopes (die);
+
+  timed_recursive_lock gl (cache_mutex, stap_dwarf_timing.cache_wait_ns, stap_dwarf_timing.cache_hold_ns, stap_dwarf_timing.cache_n);
+  pc_scopes_cache_t *& cache = cu_pc_scopes_cache[foc().cu->addr];
+  if (!cache)
+    cache = new pc_scopes_cache_t;
+  cache->emplace (pc, std::move (scopes));
+}
+
 std::vector<Dwarf_Die>
 dwflpp::getscopes(Dwarf_Addr pc)
 {
   // The die_parent_cache doesn't help us without knowing where the pc is
-  // contained, so we have to do this one the old fashioned way.
+  // contained, so we have to do this one the old fashioned way — unless a
+  // prior walk already recorded scopes for this pc (see cache_scopes_at_pc).
 
-  assert (cu);
+  assert (foc().cu);
+
+  {
+    timed_recursive_lock gl (cache_mutex, stap_dwarf_timing.cache_wait_ns, stap_dwarf_timing.cache_hold_ns, stap_dwarf_timing.cache_n);
+    pc_scopes_cache_t *cache = cu_pc_scopes_cache[foc().cu->addr];
+    if (cache)
+      {
+        auto it = cache->find (pc);
+        if (it != cache->end ())
+          return it->second;
+      }
+  }
 
   vector<Dwarf_Die> scopes;
 
   Dwarf_Die* dwarf_scopes;
-  int nscopes = dwarf_getscopes(cu, pc, &dwarf_scopes);
+  int nscopes = dwarf_getscopes(foc().cu, pc, &dwarf_scopes);
   if (nscopes > 0)
     {
       scopes.assign(dwarf_scopes, dwarf_scopes + nscopes);
@@ -852,7 +978,15 @@ dwflpp::getscopes(Dwarf_Addr pc)
     }
 #endif
 
-  return scopes;
+  timed_recursive_lock gl (cache_mutex, stap_dwarf_timing.cache_wait_ns, stap_dwarf_timing.cache_hold_ns, stap_dwarf_timing.cache_n);
+  pc_scopes_cache_t *& cache = cu_pc_scopes_cache[foc().cu->addr];
+  if (!cache)
+    cache = new pc_scopes_cache_t;
+  auto it = cache->find (pc);
+  if (it != cache->end ())
+    return it->second; // lost race to another filler
+  auto ins = cache->emplace (pc, std::move (scopes));
+  return ins.first->second;
 }
 
 
@@ -966,6 +1100,7 @@ dwflpp::global_alias_caching_callback_cus(Dwarf_Die *die, dwflpp *dw)
   mod_cu_type_cache_t *global_alias_cache;
   global_alias_cache = &dw->global_alias_cache;
 
+  timed_recursive_lock gl (dw->cache_mutex, stap_dwarf_timing.cache_wait_ns, stap_dwarf_timing.cache_hold_ns, stap_dwarf_timing.cache_n);
   cu_type_cache_t *v = (*global_alias_cache)[die->addr];
   if (v != 0)
     return DWARF_CB_OK;
@@ -995,26 +1130,30 @@ dwflpp::declaration_resolve_other_cus(const string& name)
 Dwarf_Die *
 dwflpp::declaration_resolve(const string& name)
 {
-  cu_type_cache_t *v = global_alias_cache[cu->addr];
-  if (v == 0) // need to build the cache, just once per encountered module/cu
-    {
-      v = new cu_type_cache_t;
-      global_alias_cache[cu->addr] = v;
-      iterate_over_globals(cu, global_alias_caching_callback, v);
-      if (sess.verbose > 4)
-        clog << _F("global alias cache %s:%s size %zu", module_name.c_str(),
-                   cu_name().c_str(), v->size()) << endl;
-    }
+  cu_type_cache_t *v;
+  {
+    timed_recursive_lock gl (cache_mutex, stap_dwarf_timing.cache_wait_ns, stap_dwarf_timing.cache_hold_ns, stap_dwarf_timing.cache_n);
+    v = global_alias_cache[foc().cu->addr];
+    if (v == 0) // need to build the cache, just once per encountered foc().module/foc().cu
+      {
+	v = new cu_type_cache_t;
+	global_alias_cache[foc().cu->addr] = v;
+	iterate_over_globals(foc().cu, global_alias_caching_callback, v);
+	if (sess.verbose > 4)
+	  clog << _F("global alias cache %s:%s size %zu", foc().module_name.c_str(),
+		     cu_name().c_str(), v->size()) << endl;
+      }
+
+    if (v->find(name) != v->end())
+      return & ((*v)[name]);
+  }
 
   // XXX: it may be desirable to search other modules' declarations
-  // too, in case a module/shared-library processes a
+  // too, in case a foc().module/shared-library processes a
   // forward-declared pointer type only, where the actual definition
   // may only be in vmlinux or the application.
 
-  if (v->find(name) == v->end())
-    return declaration_resolve_other_cus(name);
-
-  return & ((*v)[name]);
+  return declaration_resolve_other_cus(name);
 }
 
 Dwarf_Die *
@@ -1042,7 +1181,7 @@ dwflpp::cu_function_caching_callback (Dwarf_Die* func, cu_function_cache_t *v)
 
 
 int
-dwflpp::mod_function_caching_callback (Dwarf_Die* cu, cu_function_cache_t *v)
+dwflpp::mod_function_caching_callback (Dwarf_Die *cu, cu_function_cache_t *v)
 {
   // need to cast callback to func which accepts void*
   dwarf_getfuncs (cu, (int (*)(Dwarf_Die*, void*))cu_function_caching_callback,
@@ -1056,22 +1195,26 @@ dwflpp::iterate_over_functions<void>(int (*callback)(Dwarf_Die*, void*),
                                      void *data, const string& function)
 {
   int rc = DWARF_CB_OK;
-  assert (module);
-  assert (cu);
+  assert (foc().module);
+  assert (foc().cu);
 
-  cu_function_cache_t *v = cu_function_cache[cu->addr];
-  if (v == 0)
-    {
-      v = new cu_function_cache_t;
-      cu_function_cache[cu->addr] = v;
-      // need to cast callback to func which accepts void*
-      dwarf_getfuncs (cu, (int (*)(Dwarf_Die*, void*))cu_function_caching_callback,
-                      v, 0);
-      if (sess.verbose > 4)
-        clog << _F("function cache %s:%s size %zu", module_name.c_str(),
-                   cu_name().c_str(), v->size()) << endl;
-      mod_info->update_symtab(v);
-    }
+  cu_function_cache_t *v;
+  {
+    timed_recursive_lock gl (cache_mutex, stap_dwarf_timing.cache_wait_ns, stap_dwarf_timing.cache_hold_ns, stap_dwarf_timing.cache_n);
+    v = cu_function_cache[foc().cu->addr];
+    if (v == 0)
+      {
+	v = new cu_function_cache_t;
+	cu_function_cache[foc().cu->addr] = v;
+	// need to cast callback to func which accepts void*
+	dwarf_getfuncs (foc().cu, (int (*)(Dwarf_Die*, void*))cu_function_caching_callback,
+			v, 0);
+	if (sess.verbose > 4)
+	  clog << _F("function cache %s:%s size %zu", foc().module_name.c_str(),
+		     cu_name().c_str(), v->size()) << endl;
+	foc().mod_info->update_symtab(v);
+      }
+  }
 
   auto range = v->equal_range(function);
   // version padding if the symbol is not found
@@ -1089,7 +1232,7 @@ dwflpp::iterate_over_functions<void>(int (*callback)(Dwarf_Die*, void*),
         {
           Dwarf_Die& die = it->second;
           if (sess.verbose > 4)
-            clog << _F("function cache %s:%s hit %s", module_name.c_str(),
+            clog << _F("function cache %s:%s hit %s", foc().module_name.c_str(),
                        cu_name().c_str(), function.c_str()) << endl;  
           rc = (*callback)(& die, data);
           if (rc != DWARF_CB_OK) break;
@@ -1111,7 +1254,7 @@ dwflpp::iterate_over_functions<void>(int (*callback)(Dwarf_Die*, void*),
               && function_name_matches_pattern (linkage_name, function))
             {
               if (sess.verbose > 4)
-                clog << _F("function cache %s:%s match %s vs %s", module_name.c_str(),
+                clog << _F("function cache %s:%s match %s vs %s", foc().module_name.c_str(),
                            cu_name().c_str(), linkage_name, function.c_str()) << endl;
 
               rc = (*callback)(& die, data);
@@ -1132,7 +1275,7 @@ dwflpp::iterate_over_functions<void>(int (*callback)(Dwarf_Die*, void*),
               (function_name_matches_pattern (func_name, function + "@*")))
             {
               if (sess.verbose > 4)
-                clog << _F("function cache %s:%s match %s vs %s", module_name.c_str(),
+                clog << _F("function cache %s:%s match %s vs %s", foc().module_name.c_str(),
                            cu_name().c_str(), func_name.c_str(), function.c_str()) << endl;
 
               rc = (*callback)(& die, data);
@@ -1153,23 +1296,27 @@ dwflpp::iterate_single_function<void>(int (*callback)(Dwarf_Die*, void*),
                                       void *data, const string& function)
 {
   int rc = DWARF_CB_OK;
-  assert (module);
+  assert (foc().module);
 
   get_module_dwarf(false);
-  if (!module_dwarf)
+  if (!foc().module_dwarf)
     return rc;
 
-  cu_function_cache_t *v = mod_function_cache[module_dwarf];
-  if (v == 0)
-    {
-      v = new cu_function_cache_t;
-      mod_function_cache[module_dwarf] = v;
-      iterate_over_cus (mod_function_caching_callback, v, false);
-      if (sess.verbose > 4)
-        clog << _F("module function cache %s size %zu", module_name.c_str(),
-                   v->size()) << endl;
-      mod_info->update_symtab(v);
-    }
+  cu_function_cache_t *v;
+  {
+    timed_recursive_lock gl (cache_mutex, stap_dwarf_timing.cache_wait_ns, stap_dwarf_timing.cache_hold_ns, stap_dwarf_timing.cache_n);
+    v = mod_function_cache[foc().module_dwarf];
+    if (v == 0)
+      {
+	v = new cu_function_cache_t;
+	mod_function_cache[foc().module_dwarf] = v;
+	iterate_over_cus (mod_function_caching_callback, v, false);
+	if (sess.verbose > 4)
+	  clog << _F("module function cache %s size %zu", foc().module_name.c_str(),
+		     v->size()) << endl;
+	foc().mod_info->update_symtab(v);
+      }
+  }
 
   auto range = v->equal_range(function);
   // version padding if the symbol is not found
@@ -1188,7 +1335,7 @@ dwflpp::iterate_single_function<void>(int (*callback)(Dwarf_Die*, void*),
           Dwarf_Die cu_mem;
           Dwarf_Die& die = it->second;
           if (sess.verbose > 4)
-            clog << _F("module function cache %s hit %s", module_name.c_str(),
+            clog << _F("module function cache %s hit %s", foc().module_name.c_str(),
                        function.c_str()) << endl;
 
           // since we're iterating out of cu-context, we need each focus
@@ -1200,9 +1347,9 @@ dwflpp::iterate_single_function<void>(int (*callback)(Dwarf_Die*, void*),
     }
 
   // undo the focus_on_cu
-  this->cu = NULL;
-  this->function_name.clear();
-  this->function = NULL;
+  foc().cu = NULL;
+  foc().function = NULL;
+  foc().function_name.clear();
 
   return rc;
 }
@@ -1299,7 +1446,7 @@ dwflpp::iterate_over_types<void>(Dwarf_Die *top_die,
 }
 
 
-/* For each notes section in the current module call 'callback', use
+/* For each notes section in the current foc().module call 'callback', use
  * 'data' for the notes buffer and pass 'object' back in case
  * 'callback' is a method */
 
@@ -1315,7 +1462,7 @@ dwflpp::iterate_over_notes<void>(void *object, void (*callback)(void*,
   // Note we really want the actual elf file, not the dwarf .debug file.
   // Older binutils had a bug where they mangled the SHT_NOTE type during
   // --keep-debug.
-  Elf* elf = dwfl_module_getelf (module, &bias);
+  Elf* elf = dwfl_module_getelf (foc().module, &bias);
   size_t shstrndx;
   if (elf_getshdrstrndx (elf, &shstrndx))
     return elf_errno();
@@ -1359,7 +1506,7 @@ dwflpp::iterate_over_notes<void>(void *object, void (*callback)(void*,
 }
 
 
-/* For each entry in the .dynamic section in the current module call 'callback'
+/* For each entry in the .dynamic section in the current foc().module call 'callback'
  * returning 'object' in case 'callback' is a method */
 
 template<> void
@@ -1369,11 +1516,11 @@ dwflpp::iterate_over_libraries<void>(void (*callback)(void*, const char*),
   std::set<std::string> added;
   string interpreter;
 
-  assert (this->module_name.length() != 0);
+  assert (foc().module_name.length() != 0);
 
   Dwarf_Addr bias;
-//  We cannot use this: dwarf_getelf (dwfl_module_getdwarf (module, &bias))
-  Elf *elf = dwfl_module_getelf (module, &bias);
+//  We cannot use this: dwarf_getelf (dwfl_module_getdwarf (foc().module, &bias))
+  Elf *elf = dwfl_module_getelf (foc().module, &bias);
 //  elf_getphdrnum (elf, &phnum) is not available in all versions of elfutils
 //  needs libelf from elfutils 0.144+
   for (int i = 0; ; i++)
@@ -1415,7 +1562,7 @@ dwflpp::iterate_over_libraries<void>(void (*callback)(void*, const char*),
       )
     {
       sess.print_warning (_F("module %s --ldd skipped: unsupported interpreter: %s",
-                               module_name.c_str(), interpreter.c_str()));
+                               foc().module_name.c_str(), interpreter.c_str()));
       return;
     }
 
@@ -1425,14 +1572,14 @@ dwflpp::iterate_over_libraries<void>(void (*callback)(void*, const char*),
   ldd_command.push_back("LD_WARN=yes");
   ldd_command.push_back("LD_BIND_NOW=yes");
   ldd_command.push_back(interpreter);
-  ldd_command.push_back(module_name);
+  ldd_command.push_back(foc().module_name);
 
   FILE *fp;
   int child_fd;
   pid_t child = stap_spawn_piped(sess.verbose, ldd_command, NULL, &child_fd);
   if (child <= 0 || !(fp = fdopen(child_fd, "r")))
     clog << _F("library iteration on %s failed: %s",
-               module_name.c_str(), strerror(errno)) << endl;
+               foc().module_name.c_str(), strerror(errno)) << endl;
   else
     {
       while (1)
@@ -1471,7 +1618,7 @@ dwflpp::iterate_over_libraries<void>(void (*callback)(void*, const char*),
             }
         }
       if ((fclose(fp) || stap_waitpid(sess.verbose, child)))
-         sess.print_warning("failed to read libraries from " + module_name + ": " + strerror(errno));
+         sess.print_warning("failed to read libraries from " + foc().module_name + ": " + strerror(errno));
     }
 
   for (auto it = added.begin(); it != added.end(); it++)
@@ -1482,7 +1629,7 @@ dwflpp::iterate_over_libraries<void>(void (*callback)(void*, const char*),
 }
 
 
-/* For each plt section in the current module call 'callback', pass the plt entry
+/* For each plt section in the current foc().module call 'callback', pass the plt entry
  * 'address' and 'name' back, and pass 'object' back in case 'callback' is a method */
 
 template<> int
@@ -1492,7 +1639,7 @@ dwflpp::iterate_over_plt<void>(void *object, void (*callback)(void*,
 {
   Dwarf_Addr load_addr;
   // Note we really want the actual elf file, not the dwarf .debug file.
-  Elf* elf = dwfl_module_getelf (module, &load_addr);
+  Elf* elf = dwfl_module_getelf (foc().module, &load_addr);
   size_t shstrndx;
   assert (elf_getshdrstrndx (elf, &shstrndx) >= 0);
 
@@ -1614,7 +1761,7 @@ dwflpp::iterate_over_plt<void>(void *object, void (*callback)(void*,
 }
 
 
-// Comparator function for sorting
+// Comparator foc().function for sorting
 static bool
 compare_lines(Dwarf_Line* a, Dwarf_Line* b)
 {
@@ -1657,13 +1804,14 @@ lineno_equal_range(lines_t* v, int lineno)
 lines_t*
 dwflpp::get_cu_lines_sorted_by_lineno(const char *srcfile)
 {
-  assert(cu);
+  assert(foc().cu);
 
-  srcfile_lines_cache_t *srcfile_lines = cu_lines_cache[cu];
+  timed_recursive_lock gl (cache_mutex, stap_dwarf_timing.cache_wait_ns, stap_dwarf_timing.cache_hold_ns, stap_dwarf_timing.cache_n);
+  srcfile_lines_cache_t *srcfile_lines = cu_lines_cache[foc().cu];
   if (!srcfile_lines)
     {
       srcfile_lines = new srcfile_lines_cache_t();
-      cu_lines_cache[cu] = srcfile_lines;
+      cu_lines_cache[foc().cu] = srcfile_lines;
     }
 
   lines_t *lines = (*srcfile_lines)[srcfile];
@@ -1672,7 +1820,7 @@ dwflpp::get_cu_lines_sorted_by_lineno(const char *srcfile)
       size_t nlines_cu = 0;
       Dwarf_Lines *lines_cu = NULL;
       DWARF_ASSERT("dwarf_getsrclines",
-                   dwarf_getsrclines(cu, &lines_cu, &nlines_cu));
+                   dwarf_getsrclines(foc().cu, &lines_cu, &nlines_cu));
 
       lines = new lines_t();
       (*srcfile_lines)[srcfile] = lines;
@@ -1777,7 +1925,7 @@ dwflpp::collect_all_lines(char const * srcfile,
   // This is where we handle WILDCARD lineno types.
   lines_t *cu_lines = get_cu_lines_sorted_by_lineno(srcfile);
   for (auto func = funcs.begin(); func != funcs.end(); ++func)
-    add_matching_lines_in_func(cu, cu_lines, *func, matching_lines);
+    add_matching_lines_in_func(foc().cu, cu_lines, *func, matching_lines);
 }
 
 
@@ -1844,7 +1992,7 @@ dwflpp::get_nearest_linenos(char const * srcfile,
                             int lineno,
                             base_func_info_map_t& funcs)
 {
-  assert(cu);
+  assert(foc().cu);
   lines_t *cu_lines = get_cu_lines_sorted_by_lineno(srcfile);
 
   // Look around lineno for linenos with LRs.
@@ -1866,7 +2014,7 @@ dwflpp::get_nearest_lineno(char const * srcfile,
                            int lineno,
                            base_func_info_map_t& funcs)
 {
-  assert(cu);
+  assert(foc().cu);
   pair<int,int> nearest_linenos = get_nearest_linenos(srcfile, lineno, funcs);
 
   if (nearest_linenos.first > 0
@@ -1891,7 +2039,7 @@ dwflpp::suggest_alternative_linenos(char const * srcfile,
                                     int lineno,
                                     base_func_info_map_t& funcs)
 {
-  assert(cu);
+  assert(foc().cu);
   pair<int,int> nearest_linenos = get_nearest_linenos(srcfile, lineno, funcs);
 
   stringstream advice;
@@ -1945,16 +2093,16 @@ dwflpp::iterate_over_srcfile_lines<void>(char const * srcfile,
    *     the normal subprogram DIE as well as inlined_subroutine DIEs.
    *
    * Multiple LRs for the same lineno but different addresses can simply happen
-   * due to the function appearing in multiple forms. E.g. a function inlined
+   * due to the foc().function appearing in multiple forms. E.g. a foc().function inlined
    * in two spots can yield two sets of LRs for its linenos at the different
    * addresses where it is inlined.
    *     This is why the collect_* functions used here try to match up LRs back
-   * to their originating DIEs. For example, in the function
+   * to their originating DIEs. For example, in the foc().function
    * collect_lines_for_single_lineno(), we filter first by DIE so that a lineno
    * corresponding to multiple addrs in multiple inlined_subroutine DIEs yields
    * a probe for each of them.
    */
-  assert(cu);
+  assert(foc().cu);
 
   // only work on the functions found in the current srcfile
   base_func_info_map_t current_funcs = get_funcs_in_srcfile(funcs, srcfile);
@@ -2014,7 +2162,7 @@ dwflpp::iterate_over_srcfile_lines<void>(char const * srcfile,
     {
       int lineno = linenos[0];
       if (lineno_type == RELATIVE)
-        // just pick the first function and make it relative to that
+        // just pick the first foc().function and make it relative to that
         lineno += current_funcs[0].decl_line;
 
       int nearest_lineno = get_nearest_lineno(srcfile, lineno, current_funcs);
@@ -2045,7 +2193,7 @@ dwflpp::iterate_over_srcfile_lines<void>(char const * srcfile,
     {
       int lineno = linenos[0];
       if (lineno_type == RELATIVE)
-        // just pick the first function and make it relative to that
+        // just pick the first foc().function and make it relative to that
         lineno += current_funcs[0].decl_line;
 
       suggest_alternative_linenos(srcfile, lineno, current_funcs);
@@ -2138,7 +2286,7 @@ dwflpp::iterate_over_labels<void>(Dwarf_Die *begin_die,
 
         case DW_TAG_subprogram:
         case DW_TAG_inlined_subroutine:
-          // Stay within our filtered function
+          // Stay within our filtered foc().function
           break;
 
 	case DW_TAG_imported_unit:
@@ -2160,7 +2308,7 @@ dwflpp::iterate_over_labels<void>(Dwarf_Die *begin_die,
 }
 
 // Mini 'query-like' struct to help us navigate callbacks during
-// external function resolution
+// external foc().function resolution
 struct external_function_query {
   dwflpp* dw;
   const string name;
@@ -2172,7 +2320,7 @@ struct external_function_query {
 };
 
 int
-dwflpp::external_function_cu_callback (Dwarf_Die* cu, external_function_query *efq)
+dwflpp::external_function_cu_callback (Dwarf_Die *cu, external_function_query *efq)
 {
   efq->dw->focus_on_cu(cu);
   return efq->dw->iterate_over_functions(external_function_func_callback,
@@ -2286,7 +2434,7 @@ dwflpp::iterate_over_callees<void>(Dwarf_Die *begin_die,
             func_addr = caller_uw_addr;
           else if (dwarf_lowpc(&origin, &func_addr) != 0)
             {
-              // function doesn't have a low_pc, is it external?
+              // foc().function doesn't have a low_pc, is it external?
               if (dwarf_attr_integrate(&origin, DW_AT_external,
                                        &attr) != NULL)
                 {
@@ -2298,13 +2446,13 @@ dwflpp::iterate_over_callees<void>(Dwarf_Die *begin_die,
                   // everything we need, let's try to be self-sufficient.
 
                   // remember old focus
-                  Dwarf_Die *old_cu = cu;
+                  Dwarf_Die *old_cu = foc().cu;
 
                   external_function_query efq(this, dwarf_linkage_name(&origin) ?: callee.name);
                   iterate_over_cus(external_function_cu_callback, &efq, false);
 
                   // restore focus
-                  cu = old_cu;
+                  foc().cu = old_cu;
 
                   if (!efq.resolved) // did we resolve it?
                     continue;
@@ -2312,7 +2460,7 @@ dwflpp::iterate_over_callees<void>(Dwarf_Die *begin_die,
                   func_addr = efq.addr;
                   origin = efq.die;
                 }
-              // non-external function without low_pc, jump ship
+              // non-external foc().function without low_pc, jump ship
               else continue;
             }
 
@@ -2384,8 +2532,8 @@ void
 dwflpp::collect_srcfiles_matching (string const & pattern,
                                    set<string> & filtered_srcfiles)
 {
-  assert (module);
-  assert (cu);
+  assert (foc().module);
+  assert (foc().cu);
 
   size_t nfiles;
   Dwarf_Files *srcfiles;
@@ -2395,7 +2543,7 @@ dwflpp::collect_srcfiles_matching (string const & pattern,
   string prefixed_pattern = string("*/") + pattern;
 
   DWARF_ASSERT ("dwarf_getsrcfiles",
-                dwarf_getsrcfiles (cu, &srcfiles, &nfiles));
+                dwarf_getsrcfiles (foc().cu, &srcfiles, &nfiles));
   {
   for (size_t i = 0; i < nfiles; ++i)
     {
@@ -2421,11 +2569,11 @@ dwflpp::resolve_prologue_endings (func_info_map_t & funcs)
   // tracking, which means that location info is actually only really valid
   // after the prologue, even though GCC reports it as valid during. So we need
   // to find the prologue ends to get accurate info. This may or may not be the
-  // first address that has a source line distinct from the function
+  // first address that has a source line distinct from the foc().function
   // declaration's.
 
-  assert(module);
-  assert(cu);
+  assert(foc().module);
+  assert(foc().cu);
 
   size_t nlines = 0;
   Dwarf_Lines *lines = NULL;
@@ -2440,7 +2588,7 @@ dwflpp::resolve_prologue_endings (func_info_map_t & funcs)
 
   // Fetch all srcline records, sorted by address. No need to free lines, it's a
   // direct pointer to the CU's cached lines.
-  if (dwarf_getsrclines(cu, &lines, &nlines) != 0
+  if (dwarf_getsrclines(foc().cu, &lines, &nlines) != 0
       || lines == NULL || nlines == 0)
     {
       if (sess.verbose > 2)
@@ -2461,7 +2609,7 @@ dwflpp::resolve_prologue_endings (func_info_map_t & funcs)
         throw SEMANTIC_ERROR(_("lines from dwarf_getsrclines() not sorted"));
       addrs.push_back(addr);
     }
-  // We normally ignore a function's decl_line, since it is associated with the
+  // We normally ignore a foc().function's decl_line, since it is associated with the
   // line at which the identifier appears in the declaration, and has no
   // meaningful relation to the lineno associated with the entrypc (which is
   // normally the lineno of '{', which could occur at the same line as the
@@ -2469,12 +2617,12 @@ dwflpp::resolve_prologue_endings (func_info_map_t & funcs)
   //     However, if the CU was compiled using GCC < 4.4, then the decl_line
   // actually represents the lineno of '{' as well, in which case if the lineno
   // associated with the entrypc is != to the decl_line, it means the compiler
-  // scraped/optimized off some of the beginning of the function and the safest
+  // scraped/optimized off some of the beginning of the foc().function and the safest
   // thing we can do is consider it naked.
   bool consider_decl_line = false;
   {
     string prod, vers;
-    if (is_gcc_producer(cu, prod, vers)
+    if (is_gcc_producer(foc().cu, prod, vers)
      && strverscmp(vers.c_str(), "4.4.0") < 0)
       consider_decl_line = true;
   }
@@ -2499,7 +2647,7 @@ dwflpp::resolve_prologue_endings (func_info_map_t & funcs)
           if (sess.verbose > 2)
             clog << _F("missing entrypc dwarf line record for function '%s'\n",
                        it->name.to_string().c_str());
-          // This is probably an inlined function.  We'll end up using
+          // This is probably an inlined foc().function.  We'll end up using
           // its lowpc as a probe address.
           continue;
         }
@@ -2509,7 +2657,7 @@ dwflpp::resolve_prologue_endings (func_info_map_t & funcs)
           if (sess.verbose > 2)
             clog << _F("null entrypc dwarf line record for function '%s'\n",
                        it->name.to_string().c_str());
-          // This is probably an inlined function.  We'll skip this instance;
+          // This is probably an inlined foc().function.  We'll skip this instance;
           // it is messed up. 
           continue;
         }
@@ -2519,15 +2667,15 @@ dwflpp::resolve_prologue_endings (func_info_map_t & funcs)
                    "@%s:%d\n", it->name.to_string().c_str(), entrypc,
                    it->decl_file.to_string().c_str(), it->decl_line);
 
-      // For each function, we look for the prologue-end marker (e.g. clang
+      // For each foc().function, we look for the prologue-end marker (e.g. clang
       // outputs one). If there is no explicit marker (e.g. GCC does not), we
       // accept a bigger or equal lineno as a prologue end (this catches GCC's
       // 0-line advances).
 
       // We may have to skip a few because some old compilers plop
       // in dummy line records for longer prologues.  If we go too
-      // far (outside function), we take the previous one.  Or, it may
-      // be the first one, if the function had no prologue, and thus
+      // far (outside foc().function), we take the previous one.  Or, it may
+      // be the first one, if the foc().function had no prologue, and thus
       // the entrypc maps to a statement in the body rather than the
       // declaration.
 
@@ -2548,7 +2696,7 @@ dwflpp::resolve_prologue_endings (func_info_map_t & funcs)
             clog << _F("checking line record %#" PRIx64 "@%s:%d%s\n", lineaddr,
                        linesrc, lineno, lineprologue_end ? " (marked)" : "");
 
-          // have we passed the function?
+          // have we passed the foc().function?
           if (dwarf_haspc (& it->die, lineaddr) != 1)
             break;
           // is there an explicit prologue_end marker?
@@ -2609,19 +2757,19 @@ dwflpp::resolve_prologue_endings (func_info_map_t & funcs)
 bool
 dwflpp::function_entrypc (Dwarf_Addr * addr)
 {
-  assert (function);
+  assert (foc().function);
 
   // assign default value
   *addr = 0;
 
   // PR10574: reject 0, which tends to be eliminated COMDAT
-  if (dwarf_entrypc (function, addr) == 0 && *addr != 0)
+  if (dwarf_entrypc (foc().function, addr) == 0 && *addr != 0)
     return true;
 
   /* Assume the entry pc is the base address, or (if zero)
      the first address of the ranges covering this DIE.  */
   Dwarf_Addr start = 0, end;
-  if (dwarf_ranges (function, 0, addr, &start, &end) >= 0)
+  if (dwarf_ranges (foc().function, 0, addr, &start, &end) >= 0)
     {
       if (*addr == 0)
 	*addr = start;
@@ -2659,8 +2807,8 @@ dwflpp::die_entrypc (Dwarf_Die * die, Dwarf_Addr * addr)
           rc = 0;
 
           // Now we need to check that there are no more ranges
-          // associated with this function, which could conceivably
-          // happen if a function is inlined, then pieces of it are
+          // associated with this foc().function, which could conceivably
+          // happen if a foc().function is inlined, then pieces of it are
           // split amongst different conditional branches.  It's not
           // obvious which of them to favour.  As a heuristic, we
           // pick the beginning of the first range, and ignore the
@@ -2694,22 +2842,22 @@ dwflpp::die_entrypc (Dwarf_Die * die, Dwarf_Addr * addr)
 void
 dwflpp::function_die (Dwarf_Die *d)
 {
-  assert (function);
-  *d = *function;
+  assert (foc().function);
+  *d = *foc().function;
 }
 
 
 void
 dwflpp::function_file (char const ** c)
 {
-  assert (function);
+  assert (foc().function);
   assert (c);
-  *c = dwarf_decl_file (function);
+  *c = dwarf_decl_file (foc().function);
   if (*c == NULL)
     {
       // The line table might know.
       Dwarf_Addr pc;
-      if (dwarf_lowpc(function, &pc) == 0)
+      if (dwarf_lowpc(foc().function, &pc) == 0)
 	*c = pc_line (pc, NULL, NULL);
 
       if (*c == NULL)
@@ -2721,12 +2869,12 @@ dwflpp::function_file (char const ** c)
 void
 dwflpp::function_line (int *linep)
 {
-  assert (function);
-  if (dwarf_decl_line (function, linep) != 0)
+  assert (foc().function);
+  if (dwarf_decl_line (foc().function, linep) != 0)
     {
       // The line table might know.
       Dwarf_Addr pc;
-      if (dwarf_lowpc(function, &pc) == 0)
+      if (dwarf_lowpc(foc().function, &pc) == 0)
 	pc_line (pc, linep, NULL);
     }
 }
@@ -2736,7 +2884,7 @@ bool
 dwflpp::die_has_pc (Dwarf_Die & die, Dwarf_Addr pc)
 {
   int res = dwarf_haspc (&die, pc);
-  // dwarf_ranges will return -1 if a function die has no DW_AT_ranges
+  // dwarf_ranges will return -1 if a foc().function die has no DW_AT_ranges
   // if (res == -1)
   //    DWARF_ASSERT ("dwarf_haspc", res);
   return res == 1;
@@ -2967,7 +3115,7 @@ dwflpp::find_variable_and_frame_base (vector<Dwarf_Die>& scopes,
   Dwarf_Die *scope_die = &scopes[0];
   Dwarf_Attribute *fb_attr = NULL;
 
-  assert (cu);
+  assert (foc().cu);
 
   int declaring_scope = dwarf_getscopevar (&scopes[0], scopes.size(),
                                            local.c_str(),
@@ -2985,11 +3133,11 @@ dwflpp::find_variable_and_frame_base (vector<Dwarf_Die>& scopes,
             throw SEMANTIC_ERROR (_F("unable to find local '%s', [man error::dwarf] dieoffset %s in %s, near pc %s %s %s %s (%s)",
                 local.c_str(),
                 lex_cast_hex(dwarf_dieoffset(scope_die)).c_str(),
-                module_name.c_str(),
+                foc().module_name.c_str(),
                 lex_cast_hex(pc).c_str(),
                 (scope_die == NULL) ? "" : _("in"),
                     (dwarf_diename(scope_die) ?: "<unknown>"),
-                    (dwarf_diename(cu) ?: "<unknown>"),
+                    (dwarf_diename(foc().cu) ?: "<unknown>"),
                     (sugs.empty()
                         ? (_("<no alternatives>"))
                             : (_("alternatives: ") + sugs + ")")).c_str()),
@@ -2998,7 +3146,7 @@ dwflpp::find_variable_and_frame_base (vector<Dwarf_Die>& scopes,
             throw SEMANTIC_ERROR (_F("unable to find global '%s', [man error::dwarf] dieoffset %s in %s, %s %s %s (%s)",
                 local.c_str(),
                 lex_cast_hex(dwarf_dieoffset(scope_die)).c_str(),
-                module_name.c_str(),
+                foc().module_name.c_str(),
                 (scope_die == NULL) ? "" : _("in"),
                     (dwarf_diename(scope_die) ?: "<unknown>"),
                     cu_name().c_str(),
@@ -3168,13 +3316,13 @@ die_name_string (Dwarf_Die *die)
 }
 
 /* Returns a source file name, line and column information based on the
-   pc and the current cu.  */
+   pc and the current foc().cu.  */
 const char *
 dwflpp::pc_line (Dwarf_Addr pc, int *lineno, int *colno)
 {
   if (pc != 0)
     {
-      Dwarf_Line *line = dwarf_getsrc_die (cu, pc);
+      Dwarf_Line *line = dwarf_getsrc_die (foc().cu, pc);
       if (line != NULL)
 	{
 	  if (lineno != NULL)
@@ -3204,7 +3352,7 @@ dwflpp::pc_die_line_string (Dwarf_Addr pc, Dwarf_Die *die)
   else
     {
       Dwarf_Files *files;
-      if (dwarf_getsrcfiles (cu, &files, NULL) == 0)
+      if (dwarf_getsrcfiles (foc().cu, &files, NULL) == 0)
 	{
 	  Dwarf_Attribute attr;
 	  Dwarf_Word val;
@@ -3256,12 +3404,12 @@ dwflpp::die_location_as_string(Dwarf_Die *die)
   /* DWARF file */
   const char *mainfile, *debugfile;
   locstr += _(" from ");
-  if (dwfl_module_info (module, NULL, NULL, NULL, NULL, NULL, &mainfile,
+  if (dwfl_module_info (foc().module, NULL, NULL, NULL, NULL, NULL, &mainfile,
 			&debugfile) == NULL
       || (mainfile == NULL && debugfile == NULL))
     {
       locstr += _("unknown debug file for ");
-      locstr += module_name;
+      locstr += foc().module_name;
     }
   else
     {
@@ -3274,7 +3422,7 @@ dwflpp::die_location_as_string(Dwarf_Die *die)
   return locstr;
 }
 
-/* Returns a human readable (inlined) function and source file/line location
+/* Returns a human readable (inlined) foc().function and source file/line location
    for a pc location.  */
 string
 dwflpp::pc_location_as_function_string(Dwarf_Addr pc)
@@ -3282,12 +3430,12 @@ dwflpp::pc_location_as_function_string(Dwarf_Addr pc)
   string locstr;
   locstr = _("function: ");
 
-  /* Find the first function-like DIE with a name in scope.  */
+  /* Find the first foc().function-like DIE with a name in scope.  */
   Dwarf_Die funcdie_mem;
   Dwarf_Die *funcdie = NULL;
   string funcname = "";
   Dwarf_Die *scopes = NULL;
-  int nscopes = dwarf_getscopes (cu, pc, &scopes);
+  int nscopes = dwarf_getscopes (foc().cu, pc, &scopes);
   for (int i = 0; funcname == "" && i < nscopes; i++)
     {
       Dwarf_Die *scope = &scopes[i];
@@ -3319,7 +3467,7 @@ dwflpp::pc_location_as_function_string(Dwarf_Addr pc)
 	  locstr +=  _(" at ");
 	  locstr += pc_die_line_string (pc, NULL);
 
-	  /* last_scope is the source location where the next inlined frame/function
+	  /* last_scope is the source location where the next inlined frame/foc().function
 	     call was done. */
 	  Dwarf_Die *last_scope = &scopes[0];
 	  for (int i = 1; i < nscopes; i++)
@@ -3371,14 +3519,14 @@ dwflpp::translate_location(location_context *ctx,
   Dwarf_Op *expr;
   size_t len;
 
-  /* PR9768: formerly, we added pc+module_bias here.  However, that bias value
+  /* PR9768: formerly, we added pc+foc().module_bias here.  However, that bias value
      is not present in the pc value by the time we get it, so adding it would
      result in false negatives of variable reachibility.  In other instances
-     further below, the c_translate_FOO functions, the module_bias value used
+     further below, the c_translate_FOO functions, the foc().module_bias value used
      to be passed in, but instead should now be zero for the same reason. */
 
  retry:
-  switch (dwarf_getlocation_addr (attr, pc /*+ module_bias*/, &expr, &len, 1))
+  switch (dwarf_getlocation_addr (attr, pc /*+ foc().module_bias*/, &expr, &len, 1))
     {
     case 1:			/* Should always happen.  */
       if (len > 0)
@@ -3419,12 +3567,12 @@ dwflpp::translate_location(location_context *ctx,
     }
 
   Dwarf_Op *cfa_ops = NULL;
-  // pc is in the dw address space of the current module, which is what
+  // pc is in the dw address space of the current foc().module, which is what
   // c_translate_location expects. get_cfa_ops wants the global dwfl address.
   // cfa_ops only make sense for locals.
   if (pc)
     {
-      Dwarf_Addr addr = pc + module_bias;
+      Dwarf_Addr addr = pc + foc().module_bias;
       cfa_ops = get_cfa_ops (addr);
     }
 
@@ -4272,14 +4420,14 @@ dwflpp::vardie_from_symtable (Dwarf_Die *vardie, Dwarf_Addr *addr)
     clog << _F("finding symtable address for %s\n", name);
 
   *addr = 0;
-  int syms = dwfl_module_getsymtab (module);
+  int syms = dwfl_module_getsymtab (foc().module);
   DWFL_ASSERT (_("Getting symbols"), syms >= 0);
 
   for (int i = 0; *addr == 0 && i < syms; i++)
     {
       GElf_Sym sym;
       GElf_Word shndxp;
-      const char *symname = dwfl_module_getsym(module, i, &sym, &shndxp);
+      const char *symname = dwfl_module_getsym(foc().module, i, &sym, &shndxp);
       if (symname
 	  && ! strcmp (name, symname)
 	  && sym.st_shndx != SHN_UNDEF
@@ -4290,8 +4438,8 @@ dwflpp::vardie_from_symtable (Dwarf_Die *vardie, Dwarf_Addr *addr)
 
   // Don't relocate for the kernel, or kernel modules we handle those
   // specially in emit_address.
-  if (dwfl_module_relocations (module) == 1 && module_name != TOK_KERNEL)
-    dwfl_module_relocate_address (module, addr);
+  if (dwfl_module_relocations (foc().module) == 1 && foc().module_name != TOK_KERNEL)
+    dwfl_module_relocate_address (foc().module, addr);
 
   if (sess.verbose > 2)
     clog << _F("found %s @%#" PRIx64 "\n", name, *addr);
@@ -4324,7 +4472,7 @@ dwflpp::literal_stmt_for_local (location_context &ctx,
       if (ctx.pc)
         clog << _F("finding location for local '%s' near address %#" PRIx64
                    ", module bias %#" PRIx64 "\n", local.c_str(), ctx.pc,
-	           module_bias);
+	           foc().module_bias);
       else
         clog << _F("finding location for global '%s' in CU '%s'\n",
 		   local.c_str(), cu_name().c_str());
@@ -4460,21 +4608,21 @@ dwflpp::literal_stmt_for_return (location_context &ctx,
 {
   if (sess.verbose>2)
       clog << _F("literal_stmt_for_return: finding return value for %s (%s)\n",
-                (dwarf_diename(scope_die) ?: "<unknown>"), (dwarf_diename(cu) ?: "<unknown>"));
+                (dwarf_diename(scope_die) ?: "<unknown>"), (dwarf_diename(foc().cu) ?: "<unknown>"));
 
   /* Given $return->bar->baz[NN], translate the location of return. */
   const Dwarf_Op *locops;
-  int nlocops = dwfl_module_return_value_location (module, scope_die,
+  int nlocops = dwfl_module_return_value_location (foc().module, scope_die,
                                                    &locops);
   if (nlocops < 0)
     throw SEMANTIC_ERROR(_F("failed to retrieve return value location for %s [man error::dwarf] (%s)",
                             (dwarf_diename(scope_die) ?: "<unknown>"),
-                            (dwarf_diename(cu) ?: "<unknown>")), e->tok);
-  // the function has no return value (e.g. "void" in C)
+                            (dwarf_diename(foc().cu) ?: "<unknown>")), e->tok);
+  // the foc().function has no return value (e.g. "void" in C)
   else if (nlocops == 0)
     throw SEMANTIC_ERROR(_F("function %s (%s) has no return value",
                             (dwarf_diename(scope_die) ?: "<unknown>"),
-                            (dwarf_diename(cu) ?: "<unknown>")), e->tok);
+                            (dwarf_diename(foc().cu) ?: "<unknown>")), e->tok);
 
   ctx.translate_location (locops, nlocops, NULL);
 
@@ -4484,7 +4632,7 @@ dwflpp::literal_stmt_for_return (location_context &ctx,
   if (dwarf_attr_die (&vardie, DW_AT_type, &typedie) == NULL)
     throw SEMANTIC_ERROR(_F("failed to retrieve return value type attribute for %s [man error::dwarf] (%s)",
                             (dwarf_diename(&vardie) ?: "<unknown>"),
-                            (dwarf_diename(cu) ?: "<unknown>")), e->tok);
+                            (dwarf_diename(foc().cu) ?: "<unknown>")), e->tok);
   
   translate_components (&ctx, ctx.pc, e, &vardie, &typedie, lvalue);
 
@@ -4508,7 +4656,7 @@ dwflpp::type_die_for_return (Dwarf_Die *scope_die,
   if (dwarf_attr_die (&vardie, DW_AT_type, typedie) == NULL)
     throw SEMANTIC_ERROR(_F("failed to retrieve return value type attribute for %s [man error::dwarf] (%s)",
                            (dwarf_diename(&vardie) ?: "<unknown>"),
-                           (dwarf_diename(cu) ?: "<unknown>")), e->tok);
+                           (dwarf_diename(foc().cu) ?: "<unknown>")), e->tok);
 
   translate_components (NULL, pc, e, &vardie, typedie, lvalue);
   return typedie;
@@ -4525,7 +4673,7 @@ dwflpp::literal_stmt_for_pointer (location_context &ctx,
   if (sess.verbose>2)
     clog << _("literal_stmt_for_pointer: finding value for ") << *e->tok
          << _F(" type %s (%s)\n",
-               dwarf_type_name(start_typedie).c_str(), (dwarf_diename(cu) ?: "<unknown>"));
+               dwarf_type_name(start_typedie).c_str(), (dwarf_diename(foc().cu) ?: "<unknown>"));
 
   assert(ctx.pointer != NULL);
   location *tail = ctx.translate_argument (ctx.pointer);
@@ -4897,8 +5045,8 @@ dwflpp::get_blocklist_section(Dwarf_Addr addr)
   // We prefer dwfl_module_getdwarf to dwfl_module_getelf here,
   // because dwfl_module_getelf can force costly section relocations
   // we don't really need, while either will do for this purpose.
-  Elf* elf = (dwarf_getelf (dwfl_module_getdwarf (module, &bias))
-              ?: dwfl_module_getelf (module, &bias));
+  Elf* elf = (dwarf_getelf (dwfl_module_getdwarf (foc().module, &bias))
+              ?: dwfl_module_getelf (foc().module, &bias));
 
   Dwarf_Addr offset = addr - bias;
   if (elf)
@@ -4930,7 +5078,7 @@ dwflpp::get_blocklist_section(Dwarf_Addr addr)
 }
 
 
-/* Find the section named 'section_name'  in the current module
+/* Find the section named 'section_name'  in the current foc().module
  * returning the section header using 'shdr_mem' */
 
 GElf_Shdr *
@@ -4942,7 +5090,7 @@ dwflpp::get_section(string section_name, GElf_Shdr *shdr_mem, Elf **elf_ret)
   size_t shstrndx;
 
   // Explicitly look in the main elf file first.
-  elf = dwfl_module_getelf (module, &bias);
+  elf = dwfl_module_getelf (foc().module, &bias);
   Elf_Scn *probe_scn = NULL;
 
   DWFL_ASSERT ("getshdrstrndx", elf_getshdrstrndx (elf, &shstrndx));
@@ -4965,7 +5113,7 @@ dwflpp::get_section(string section_name, GElf_Shdr *shdr_mem, Elf **elf_ret)
   // so check if it actually exists, if not take a look in the debuginfo file
   if (! have_section || (have_section && shdr->sh_type == SHT_NOBITS))
     {
-      elf = dwarf_getelf (dwfl_module_getdwarf (module, &bias));
+      elf = dwarf_getelf (dwfl_module_getdwarf (foc().module, &bias));
       if (! elf)
 	return NULL;
       DWFL_ASSERT ("getshdrstrndx", elf_getshdrstrndx (elf, &shstrndx));
@@ -4995,22 +5143,22 @@ dwflpp::relocate_address(Dwarf_Addr dw_addr, interned_string& reloc_section)
 {
   // PR10273
   // libdw address, so adjust for bias gotten from dwfl_module_getdwarf
-  Dwarf_Addr reloc_addr = dw_addr + module_bias;
-  if (!module)
+  Dwarf_Addr reloc_addr = dw_addr + foc().module_bias;
+  if (!foc().module)
     {
-      assert(module_name == TOK_KERNEL);
+      assert(foc().module_name == TOK_KERNEL);
       reloc_section = "";
     }
-  else if (dwfl_module_relocations (module) > 0)
+  else if (dwfl_module_relocations (foc().module) > 0)
     {
-      // This is a relocatable module; libdwfl already knows its
+      // This is a relocatable foc().module; libdwfl already knows its
       // sections, so we can relativize addr.
-      int idx = dwfl_module_relocate_address (module, &reloc_addr);
-      const char* r_s = dwfl_module_relocation_info (module, idx, NULL);
+      int idx = dwfl_module_relocate_address (foc().module, &reloc_addr);
+      const char* r_s = dwfl_module_relocation_info (foc().module, idx, NULL);
       if (r_s)
         reloc_section = r_s;
 
-      if (reloc_section == "" && dwfl_module_relocations (module) == 1)
+      if (reloc_section == "" && dwfl_module_relocations (foc().module) == 1)
           reloc_section = ".dynamic";
     }
   else
@@ -5028,13 +5176,13 @@ dwflpp::get_cfa_ops (Dwarf_Addr pc)
 
   if (sess.verbose > 2)
     clog << "get_cfa_ops @0x" << hex << pc << dec
-	 << ", module_start @0x" << hex << module_start << dec << endl;
+	 << ", foc().module_start @0x" << hex << foc().module_start << dec << endl;
 
   // Try debug_frame first, then fall back on eh_frame.
   size_t cfa_nops = 0;
   Dwarf_Addr bias = 0;
   Dwarf_Frame *frame = NULL;
-  Dwarf_CFI *cfi = dwfl_module_dwarf_cfi (module, &bias);
+  Dwarf_CFI *cfi = dwfl_module_dwarf_cfi (foc().module, &bias);
   if (cfi != NULL)
     {
       if (sess.verbose > 3)
@@ -5049,7 +5197,7 @@ dwflpp::get_cfa_ops (Dwarf_Addr pc)
 
   if (cfa_ops == NULL)
     {
-      cfi = dwfl_module_eh_cfi (module, &bias);
+      cfi = dwfl_module_eh_cfi (foc().module, &bias);
       if (cfi != NULL)
 	{
 	  if (sess.verbose > 3)
@@ -5133,7 +5281,7 @@ dwflpp::check_cu_entry_pc (Dwarf_Die *cu, Dwarf_Addr pc)
   auto& entry_pcs = cu_entry_pc_cache[cu->addr];
   if (!entry_pcs)
     {
-      save_and_restore<Dwarf_Die*> saved_cu(&this->cu, cu);
+      save_and_restore<Dwarf_Die*> saved_cu(&foc().cu, cu);
       entry_pcs = new entry_pc_cache_t;
       pair<dwflpp&, entry_pc_cache_t&> data (*this, *entry_pcs);
       int rc = iterate_over_functions (cu_entry_pc_caching_callback, &data, "*");
@@ -5162,7 +5310,7 @@ dwflpp::pr15123_retry_addr (Dwarf_Addr pc, Dwarf_Die* die)
   //
   // Detecting this is complicated because ...
   // - we only want to do this if -mfentry was actually used
-  // - if <pc> points to the a function entry point
+  // - if <pc> points to the a foc().function entry point
   // - if the architecture is familiar enough that we can have a
   // hard-coded constant to skip over the prologue.
   //
@@ -5188,8 +5336,8 @@ dwflpp::pr15123_retry_addr (Dwarf_Addr pc, Dwarf_Die* die)
   }
 
   // Determine if this pc maps to the beginning of a
-  // real function (not some inlined doppelganger.  This
-  // is made tricker by this->function may not be
+  // real foc().function (not some inlined doppelganger.  This
+  // is made tricker by foc().function may not be
   // pointing at the right DIE (say e.g. stap encountered
   // the inlined copy first, so was focus_on_function'd).
   if (!check_cu_entry_pc (&cudie, pc))
@@ -5211,7 +5359,7 @@ dwflpp::has_gnu_debugdata ()
 {
   Dwarf_Addr load_addr;
   // Note we really want the actual elf file, not the dwarf .debug file.
-  Elf* elf = dwfl_module_getelf (module, &load_addr);
+  Elf* elf = dwfl_module_getelf (foc().module, &load_addr);
   size_t shstrndx;
   assert (elf_getshdrstrndx (elf, &shstrndx) >= 0);
 
@@ -5289,7 +5437,7 @@ die_has_loclist(Dwarf_Die *begin_die)
 bool
 dwflpp::has_valid_locs ()
 {
-  assert(cu);
+  assert(foc().cu);
 
   // The current CU has valid location info (implying we do not need to skip the
   // prologue) if
@@ -5303,7 +5451,7 @@ dwflpp::has_valid_locs ()
   // afterwards (which it is for clang).
 
   string prod, vers;
-  if (is_gcc_producer(cu, prod, vers)
+  if (is_gcc_producer(foc().cu, prod, vers)
    && strverscmp(vers.c_str(), "4.5") < 0)
     return false;
 
@@ -5311,12 +5459,12 @@ dwflpp::has_valid_locs ()
   // for any data objects whose DW_AT_location is a location list. This is also
   // how GDB determines whether to skip the prologue or not. See GDB's PR12573
   // and also RHBZ612253#c6.
-  if (!die_has_loclist(cu))
+  if (!die_has_loclist(foc().cu))
     return false;
 
   if (sess.verbose > 2)
     clog << _F("CU '%s' in module '%s' has valid locs",
-               cu_name().c_str(), module_name.c_str()) << endl;
+               cu_name().c_str(), foc().module_name.c_str()) << endl;
 
   return true;
 }

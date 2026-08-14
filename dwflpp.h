@@ -21,11 +21,129 @@
 #include <cstring>
 #include <iostream>
 #include <map>
+#include <memory>
+#include <mutex>
+#include <atomic>
+#include <chrono>
+#include <cstdint>
+#include <cstdlib>
+#include <ostream>
 #include <set>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
+// High-verbosity / STAP_DWARF_TIMING=1: CPU-sum ns across fanout workers.
+struct dwarf_fanout_timing
+{
+  std::atomic<bool> enabled;
+  std::atomic<uint64_t> n;
+  std::atomic<uint64_t> preamble_ns;
+  std::atomic<uint64_t> iterate_ns;
+  std::atomic<uint64_t> cudie_ns;
+  std::atomic<uint64_t> getscopes_ns;
+  std::atomic<uint64_t> prologue_ns;
+  std::atomic<uint64_t> expand_ns;
+  std::atomic<uint64_t> ctor_rest_ns;
+  std::atomic<uint64_t> sess_wait_ns;
+  std::atomic<uint64_t> sess_hold_ns;
+  std::atomic<uint64_t> sess_n;
+  std::atomic<uint64_t> cache_wait_ns;
+  std::atomic<uint64_t> cache_hold_ns;
+  std::atomic<uint64_t> cache_n;
+
+  dwarf_fanout_timing () : enabled (false) { reset (); }
+
+  void reset ()
+  {
+    n = preamble_ns = iterate_ns = cudie_ns = getscopes_ns =
+      prologue_ns = expand_ns = ctor_rest_ns = 0;
+    sess_wait_ns = sess_hold_ns = sess_n = 0;
+    cache_wait_ns = cache_hold_ns = cache_n = 0;
+  }
+
+  static double ms (uint64_t ns) { return ns / 1e6; }
+
+  void dump (std::ostream& o) const
+  {
+    uint64_t nn = n.load ();
+    o << "dwarf fanout timing (cpu-sum over " << nn << " rebuilds):"
+      << " preamble=" << ms (preamble_ns) << "ms"
+      << " iterate=" << ms (iterate_ns) << "ms"
+      << " (cudie=" << ms (cudie_ns) << "ms"
+      << " getscopes=" << ms (getscopes_ns) << "ms"
+      << " prologue=" << ms (prologue_ns) << "ms)"
+      << " expand=" << ms (expand_ns) << "ms"
+      << std::endl;
+    o << "dwarf fanout locks (cpu-sum):"
+      << " sess wait=" << ms (sess_wait_ns) << "ms"
+      << " hold=" << ms (sess_hold_ns) << "ms"
+      << " n=" << sess_n.load ()
+      << " | cache wait=" << ms (cache_wait_ns) << "ms"
+      << " hold=" << ms (cache_hold_ns) << "ms"
+      << " n=" << cache_n.load ()
+      << std::endl;
+  }
+};
+
+extern dwarf_fanout_timing stap_dwarf_timing;
+
+inline uint64_t
+dwarf_timing_now_ns ()
+{
+  return std::chrono::duration_cast<std::chrono::nanoseconds> (
+           std::chrono::steady_clock::now ().time_since_epoch ()).count ();
+}
+
+inline bool
+dwarf_timing_wanted (const systemtap_session& sess)
+{
+  if (sess.verbose > 2)
+    return true;
+  const char* e = getenv ("STAP_DWARF_TIMING");
+  return e && e[0] && e[0] != '0';
+}
+
+struct timed_recursive_lock
+{
+  std::recursive_mutex& m;
+  uint64_t t_acquired;
+  bool timed;
+  std::atomic<uint64_t>* wait_ns;
+  std::atomic<uint64_t>* hold_ns;
+  std::atomic<uint64_t>* count;
+
+  timed_recursive_lock (std::recursive_mutex& m,
+                        std::atomic<uint64_t>& wait,
+                        std::atomic<uint64_t>& hold,
+                        std::atomic<uint64_t>& n)
+    : m (m), t_acquired (0),
+      timed (stap_dwarf_timing.enabled.load (std::memory_order_relaxed)),
+      wait_ns (&wait), hold_ns (&hold), count (&n)
+  {
+    if (timed)
+      {
+        uint64_t t0 = dwarf_timing_now_ns ();
+        m.lock ();
+        t_acquired = dwarf_timing_now_ns ();
+        *wait_ns += t_acquired - t0;
+        (*count)++;
+      }
+    else
+      m.lock ();
+  }
+
+  ~timed_recursive_lock ()
+  {
+    if (timed)
+      *hold_ns += dwarf_timing_now_ns () - t_acquired;
+    m.unlock ();
+  }
+
+  timed_recursive_lock (const timed_recursive_lock&) = delete;
+  timed_recursive_lock& operator= (const timed_recursive_lock&) = delete;
+};
 
 // Old elf.h doesn't know about this machine type.
 #ifndef EM_AARCH64
@@ -119,6 +237,11 @@ typedef std::unordered_map<void*, srcfile_lines_cache_t*> cu_lines_cache_t;
 typedef std::unordered_set<Dwarf_Addr> entry_pc_cache_t;
 typedef std::unordered_map<void*, entry_pc_cache_t*> cu_entry_pc_cache_t;
 
+// pc (CU/DWARF address space) -> scopes from dwarf_getscopes / DIE walk
+typedef std::unordered_map<Dwarf_Addr, std::vector<Dwarf_Die>> pc_scopes_cache_t;
+// cu die -> (pc -> scopes)
+typedef std::unordered_map<void*, pc_scopes_cache_t*> cu_pc_scopes_cache_t;
+
 typedef std::vector<base_func_info> base_func_info_map_t;
 typedef std::vector<func_info> func_info_map_t;
 typedef std::vector<inline_instance_info> inline_instance_map_t;
@@ -139,6 +262,9 @@ module_info
   std::set<interned_string> inlined_funcs;
   std::set<interned_string> plt_funcs;
   std::set<std::pair<std::string,std::string> > marks; /* <provider,name> */
+
+  // Serializes get_symtab / update_symtab against concurrent dwarf builds.
+  std::recursive_mutex symtab_mutex;
 
   void get_symtab();
   void update_symtab(cu_function_cache_t *funcs);
@@ -202,29 +328,61 @@ struct inline_instance_info : base_func_info
 struct location;
 class location_context;
 
+// Per-query (or per-nested-walk) DWARF cursor.  Concurrent builds share one
+// dwflpp (Dwfl + caches) and each keep focus here / on base_query::focus.
+struct dwflpp_focus
+{
+  Dwfl_Module * module;
+  Dwarf_Addr module_bias;
+  module_info * mod_info;
+  Dwarf_Addr module_start;
+  Dwarf_Addr module_end;
+  Dwarf_Die * cu;
+  std::string module_name;
+  std::string function_name;
+  Dwarf * module_dwarf;
+  Dwarf_Die * function;
+
+  dwflpp_focus()
+    : module(NULL), module_bias(0), mod_info(NULL),
+      module_start(0), module_end(0), cu(NULL),
+      module_dwarf(NULL), function(NULL)
+  {}
+};
+
+// Bind a focus for the current thread while calling into dwflpp.  Nested
+// binders push/pop so temporary walks do not clobber the query cursor.
+struct dwflpp_focus_binder
+{
+  dwflpp_focus *prev;
+  explicit dwflpp_focus_binder (dwflpp_focus& f);
+  ~dwflpp_focus_binder ();
+  dwflpp_focus_binder (const dwflpp_focus_binder&) = delete;
+  dwflpp_focus_binder& operator= (const dwflpp_focus_binder&) = delete;
+};
+
 struct dwflpp
 {
   systemtap_session & sess;
 
-  // These are "current" values we focus on.
-  Dwfl_Module * module;
-  Dwarf_Addr module_bias;
-  module_info * mod_info;
-
-  // These describe the current module's PC address range
-  Dwarf_Addr module_start;
-  Dwarf_Addr module_end;
-
-  Dwarf_Die * cu;
-
-  std::string module_name;
-  std::string function_name;
+  // Focus accessors — require an active dwflpp_focus_binder on this thread.
+  Dwfl_Module * module() const { return foc().module; }
+  Dwarf_Addr module_bias() const { return foc().module_bias; }
+  module_info * mod_info() const { return foc().mod_info; }
+  Dwarf_Addr module_start() const { return foc().module_start; }
+  Dwarf_Addr module_end() const { return foc().module_end; }
+  Dwarf_Die * cu() const { return foc().cu; }
+  const std::string& module_name() const { return foc().module_name; }
+  const std::string& function_name() const { return foc().function_name; }
 
   dwflpp(systemtap_session & session, const std::string& user_module, bool kernel_p, bool debuginfo_needed = true);
   dwflpp(systemtap_session & session, const std::vector<std::string>& user_modules, bool kernel_p);
   ~dwflpp();
 
   void get_module_dwarf(bool required = false, bool report = true);
+  // Finish lazy per-module DWARF/ELF/symtab bring-up under the caller
+  // lock so concurrent builds do not race first-time dwfl_module_get*.
+  void prepare_modules_for_parallel_use();
 
   void focus_on_module(Dwfl_Module * m, module_info * mi);
   void focus_on_cu(Dwarf_Die * c);
@@ -301,6 +459,10 @@ struct dwflpp
   std::vector<Dwarf_Die> getscopes_die(Dwarf_Die* die);
   std::vector<Dwarf_Die> getscopes(Dwarf_Die* die);
   std::vector<Dwarf_Die> getscopes(Dwarf_Addr pc);
+  // Record scopes for pc from an already-known DIE (parent-cache walk),
+  // so later getscopes(pc) skips dwarf_getscopes.  pc is in the same
+  // address space query_addr uses after elf/module bias adjustment.
+  void cache_scopes_at_pc(Dwarf_Addr pc, Dwarf_Die* die);
 
   Dwarf_Die *declaration_resolve(Dwarf_Die *type);
   Dwarf_Die *declaration_resolve(const std::string& name);
@@ -545,11 +707,18 @@ struct dwflpp
                           std::map<int64_t, std::string>& lut);
 
 private:
-  Dwfl * dwfl;
+  friend struct dwflpp_focus_binder;
+  static thread_local dwflpp_focus *tls_focus;
+  dwflpp_focus &foc ();
+  const dwflpp_focus &foc () const;
 
-  // These are "current" values we focus on.
-  Dwarf * module_dwarf;
-  Dwarf_Die * function;
+  // Refcounted so prepare-time and later teardown stay simple.
+  std::shared_ptr<Dwfl> dwfl;
+
+  // Guards fill-once caches under HAVE_ELFUTILS_THREAD_SAFETY concurrent
+  // dwarf builds that share this dwflpp.  Recursive so nested fills
+  // (e.g. mod_function_cache via iterate_over_cus) can reenter.
+  mutable std::recursive_mutex cache_mutex;
 
   void setup_kernel(const std::string& module_name, systemtap_session &s, bool debuginfo_needed = true);
   void setup_kernel(const std::vector<std::string>& modules, bool debuginfo_needed = true);
@@ -578,6 +747,9 @@ private:
   // Cache for all entry_pc in each cu
   cu_entry_pc_cache_t cu_entry_pc_cache;
   bool check_cu_entry_pc(Dwarf_Die *cu, Dwarf_Addr pc);
+
+  // Cache for getscopes(pc); filled on miss and via cache_scopes_at_pc.
+  cu_pc_scopes_cache_t cu_pc_scopes_cache;
 
   Dwarf_Die* get_parent_scope(Dwarf_Die* die);
 

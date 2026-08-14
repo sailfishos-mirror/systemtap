@@ -524,10 +524,13 @@ std::vector<derived_probe*> derive_probes (systemtap_session& s,
                                            bool optional = false,
                                            bool rethrow_errors = false);
 // Derive each probe concurrently.  results[i] corresponds to probes[i].
+// max_threads 0 means stap_nthreads(); otherwise the pool is limited to
+// min(max_threads, stap_nthreads(), probes.size()).
 std::vector<std::vector<derived_probe*> >
 derive_probes_parallel (systemtap_session& s,
                         const std::vector<probe*>& probes,
-                        bool optional = false);
+                        bool optional = false,
+                        unsigned max_threads = 0);
 
 // A helper we use here and in translate, for pulling symbols out of lvalue
 // expressions.

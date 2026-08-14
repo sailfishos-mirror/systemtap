@@ -1203,7 +1203,8 @@ derive_probes (systemtap_session& s,
 vector<vector<derived_probe*> >
 derive_probes_parallel (systemtap_session& s,
                         const vector<probe*>& probes,
-                        bool optional)
+                        bool optional,
+                        unsigned max_threads)
 {
   vector<vector<derived_probe*> > results_per_probe (probes.size ());
 
@@ -1217,9 +1218,26 @@ derive_probes_parallel (systemtap_session& s,
       return results_per_probe;
     }
 
+  // Nested call from a pool worker (fanout inside parallel derive, etc.):
+  // run serially.  Nested boost::asio::thread_pool join deadlocks.
+  if (stap_parallel_nesting_depth () > 0)
+    {
+      for (size_t i = 0; i < probes.size (); i++)
+        results_per_probe[i] = derive_probes (s, probes[i], optional);
+      return results_per_probe;
+    }
+
   unsigned nthreads = stap_nthreads ();
+  if (max_threads > 0 && nthreads > max_threads)
+    nthreads = max_threads;
   if (nthreads > probes.size ())
     nthreads = probes.size ();
+  if (nthreads <= 1)
+    {
+      for (size_t i = 0; i < probes.size (); i++)
+        results_per_probe[i] = derive_probes (s, probes[i], optional);
+      return results_per_probe;
+    }
 
   boost::asio::thread_pool TP (nthreads);
   vector<exception_ptr> pending (probes.size ());
@@ -1229,6 +1247,7 @@ derive_probes_parallel (systemtap_session& s,
     {
       boost::asio::post (TP, [i, &s, &probes, &results_per_probe, optional,
                               &pending, &failed]() {
+        stap_parallel_nesting_guard nest;
         try
           {
             assert_no_interrupts ();

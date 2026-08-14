@@ -838,10 +838,14 @@ test_restricted_probes stapsys
 
 # Generate a failure for each untested probe type (full mode only —
 # smoke intentionally leaves most dump-probe-types entries alone).
+# .pc/.die are elaborator fanout cookies; leave UNTESTED rather than
+# requiring a privilege-matrix entry for every permutation.
 foreach probe_type $all_probe_types {
     set status $tested($probe_type)
     if {$status != 0} {
 	pass "$test: tested: $probe_type"
+    } elseif {[regexp {\.(pc|die)\(} $probe_type]} {
+	untested "$test: elaborator-only .pc/.die cookie: $probe_type"
     } elseif {$unprivileged_probes_full} {
 	fail "$test: not tested: $probe_type"
     } else {

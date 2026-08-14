@@ -697,6 +697,8 @@ test_probes stapsys
 
 # Generate a failure for each untested probe type (full catalog only).
 # process.data* is outside this myproc confinement matrix — leave UNTESTED.
+# .pc/.die are elaborator fanout cookies (still in --dump-probe-types);
+# not a user-facing matrix entry — leave UNTESTED.
 # In smoke mode, leave other dump-probe types as UNTESTED too.
 foreach probe_type $all_probe_types {
     set status $tested($probe_type)
@@ -704,6 +706,8 @@ foreach probe_type $all_probe_types {
 	pass "$test: tested: $probe_type"
     } elseif {[string match "process.data*" $probe_type]} {
 	untested "$test: not in myproc matrix: $probe_type"
+    } elseif {[regexp {\.(pc|die)\(} $probe_type]} {
+	untested "$test: elaborator-only .pc/.die cookie: $probe_type"
     } elseif {$myproc_full} {
 	fail "$test: not tested: $probe_type"
     } else {

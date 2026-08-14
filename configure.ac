@@ -592,6 +592,18 @@ if test $enable_translator = yes; then
     stap_LIBS="$stap_LIBS -Wl,--start-group -ldw $ebl_LIBS -Wl,--end-group -lelf"
     LIBS="$save_LIBS"
 
+    # Elfutils built with --enable-thread-safety defines _ELFUTILS_THREAD_SAFE
+    # in <elfutils/version.h>.  Used to allow concurrent read-only DWARF
+    # walks after Dwfl reporting (pass-2 dwarf builds; pass-3 unwind dump).
+    AC_CHECK_DECL([_ELFUTILS_THREAD_SAFE],
+      [have_elfutils_thread_safety=yes
+       AC_DEFINE([HAVE_ELFUTILS_THREAD_SAFETY], [1],
+         [Define to 1 if elfutils was built with --enable-thread-safety.])],
+      [have_elfutils_thread_safety=no],
+      [#include <elfutils/version.h>])
+    AC_MSG_CHECKING([for elfutils thread-safety support])
+    AC_MSG_RESULT([$have_elfutils_thread_safety])
+
     # zlib: used to unwrap aarch64 EFI-zboot / s390x zipl vmlinuz images
     # when hunting for the kernel NT_GNU_BUILD_ID (elfutils can't).
     save_LIBS="$LIBS"

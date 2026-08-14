@@ -6,7 +6,12 @@ set test "syscall_consistency"
 
 proc get_syscalls {arr filter} {
     upvar 1 $arr sca
-    catch {set listing [exec stap -L $filter 2>@1]}
+    set listing ""
+    if {[catch {set listing [exec stap -L $filter 2>@1]} err]} {
+	verbose -log "stap -L $filter failed: $err"
+	fail "listing $filter"
+	return
+    }
     set records [split $listing "\n"]
     foreach rec [lsort -ascii $records] {
         set fields [split $rec " "]

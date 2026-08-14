@@ -37,8 +37,6 @@
 #include <deque>
 #include <exception>
 #include <thread>
-#include <elfutils/version.h> // for _ELFUTILS_THREAD_SAFE
-
 #ifdef HAVE_BOOST_ASIO_THREAD_POOL_HPP
 #include <boost/asio/thread_pool.hpp>
 #else
@@ -8303,11 +8301,13 @@ add_unwindsym_ldd (systemtap_session &s)
       assert (modname.length() != 0);
       if (! is_user_module (modname)) continue;
 
+      dwflpp_focus focus;
+      dwflpp_focus_binder bind (focus);
       dwflpp mod_dwflpp (s, modname, false);
       mod_dwflpp.iterate_over_modules(&query_module, &mod_dwflpp);
-      if (mod_dwflpp.module) // existing binary
+      if (mod_dwflpp.module()) // existing binary
         {
-          assert (mod_dwflpp.module_name != "");
+          assert (mod_dwflpp.module_name() != "");
           mod_dwflpp.iterate_over_libraries (&add_unwindsym_iol_callback, &added);
         }
     }
@@ -8478,7 +8478,7 @@ emit_symbol_data (systemtap_session& s)
   // while the pool runs.  With a thread-safe elfutils use one worker per
   // cpu (capped at one per module); otherwise a single worker, so at most
   // one thread is inside elfutils at a time.
-#ifdef _ELFUTILS_THREAD_SAFE
+#ifdef HAVE_ELFUTILS_THREAD_SAFETY
   unsigned nthreads = stap_nthreads ();
   if (nthreads > tasks.size ())
     nthreads = tasks.size ();

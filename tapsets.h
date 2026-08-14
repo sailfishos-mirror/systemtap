@@ -133,6 +133,28 @@ public:
 // ------------------------------------------------------------------------
 // An update visitor that allows replacing assignments with a function call
 
+// Thread-local "current probe" for concurrent target-var / $$parms
+// expansion.  visit_functioncall prefers this over
+// symbol_resolver->current_probe so parallel expand workers do not race.
+probe* var_expand_tls_current_probe ();
+void var_expand_set_tls_current_probe (probe* p);
+
+struct var_expand_tls_probe_guard
+{
+  probe* prev;
+  explicit var_expand_tls_probe_guard (probe* p)
+    : prev (var_expand_tls_current_probe ())
+  {
+    var_expand_set_tls_current_probe (p);
+  }
+  ~var_expand_tls_probe_guard ()
+  {
+    var_expand_set_tls_current_probe (prev);
+  }
+  var_expand_tls_probe_guard (const var_expand_tls_probe_guard&) = delete;
+  var_expand_tls_probe_guard& operator= (const var_expand_tls_probe_guard&) = delete;
+};
+
 struct var_expanding_visitor: public update_visitor
 {
   var_expanding_visitor (systemtap_session& s);

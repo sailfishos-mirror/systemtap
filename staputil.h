@@ -74,6 +74,20 @@ const char *get_home_directory(void);
 // STAP_NTHREADS if set to a positive integer; otherwise
 // std::thread::hardware_concurrency() (at least 1).
 unsigned stap_nthreads(void);
+
+// Nesting depth of stap parallel worker threads (thread_local).
+// Nested derive_probes_parallel / deferred expand / fanout must stay
+// serial — spawning another boost::asio::thread_pool from a pool worker
+// deadlocks (outer join waits on inner join) and can OOM.
+unsigned stap_parallel_nesting_depth(void);
+struct stap_parallel_nesting_guard
+{
+  stap_parallel_nesting_guard ();
+  ~stap_parallel_nesting_guard ();
+  stap_parallel_nesting_guard (const stap_parallel_nesting_guard&) = delete;
+  stap_parallel_nesting_guard& operator= (const stap_parallel_nesting_guard&) = delete;
+};
+
 size_t get_file_size(const std::string &path);
 size_t get_file_size(int fd);
 bool file_exists (const std::string &path);

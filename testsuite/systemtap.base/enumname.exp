@@ -31,6 +31,12 @@ foreach runtime [get_runtime_list] {
 	set test_type $test
     }
 
+    # Full -p5 (-c) run; kernel module runtime needs root / installcheck.
+    if {$runtime == "kernel" && ![installtest_p]} {
+	untested "$test_type (needs installcheck)"
+	continue
+    }
+
     set ok 0
     spawn $stap_path --runtime=$runtime $srcdir/$subdir/enumname.stp -c $exepath
     expect {

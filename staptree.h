@@ -942,9 +942,14 @@ struct probe_point
     interned_string functor;
     literal* arg; // optional
     bool from_glob;
+    // Elaborator-synthesized cookies (e.g. .pc/.die for dwarf fanout).
+    // Still matched/derived, but omitted from print() so stap -l / pp() /
+    // script_location stay pasteable as function("name@file:line").
+    bool hidden;
     component ();
     const token* tok; // points to component's functor
-    component(interned_string f, literal *a=NULL, bool from_glob=false);
+    component(interned_string f, literal *a=NULL, bool from_glob=false,
+              bool hidden=false);
   };
   std::vector<component*> components;
   bool optional;
@@ -952,11 +957,13 @@ struct probe_point
   bool well_formed; // used in derived_probe::script_location()
   expression* condition;
   std::string auto_path;
-  void print (std::ostream& o, bool print_extras=true) const;
+  // print_hidden: include components with hidden==true (fanout cookies).
+  void print (std::ostream& o, bool print_extras=true,
+              bool print_hidden=false) const;
   probe_point ();
   probe_point(const probe_point& pp);
   probe_point(std::vector<component*> const & comps);
-  std::string str(bool print_extras=true) const;
+  std::string str(bool print_extras=true, bool print_hidden=false) const;
   bool from_globby_comp(const std::string& comp);
 };
 
