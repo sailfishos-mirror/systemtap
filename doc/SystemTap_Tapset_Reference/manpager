@@ -110,6 +110,9 @@ for i in `cat ../manpageus` ; do
 done
 
 # add cross reference to enclosed functions and probes
+for i in ../man3/{function,probe,macro}::*.3stap; do
+   sed -i '/^\.SH SEE ALSO/,$d' $i
+done
 for i in `cat ../manpageus` ; do
   for j in `cat $i.funcnames | uniq` ; do
     echo ".SH SEE ALSO\n " >> ../man3/function::$j.3stap
