@@ -145,6 +145,11 @@ for i in `ls | grep -v -e "tapset::.*\\.3stap"` ; do
   rm $i ;
 done
 
+# PR30965 replacements
+for i in ../man3/probe\:\:*; do
+   sed -i '/^\.SH "SYNOPSIS"$/,/^\.SH/s/^[^\.].*$/probe \0{}/' $i
+done
+
 rm ../manpageus ;
 cd ..
 mv workingdir man_pages
