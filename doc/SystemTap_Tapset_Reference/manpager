@@ -110,17 +110,23 @@ for i in `cat ../manpageus` ; do
 done
 
 # add cross reference to enclosed functions and probes
+for i in ../man3/{function,probe,macro}::*.3stap; do
+   sed -i '/^\.SH SEE ALSO/,$d' $i
+done
 for i in `cat ../manpageus` ; do
   for j in `cat $i.funcnames | uniq` ; do
-    echo ".SH SEE ALSO\n " >> ../man3/function::$j.3stap
+    grep -q '^.SH SEE ALSO' ../man3/function::$j.3stap || \
+      echo ".SH SEE ALSO\n " >> ../man3/function::$j.3stap
     echo ".IR tapset::$i (3stap)" >> ../man3/function::$j.3stap
   done
   for j in `cat $i.probenames` ; do
-    echo ".SH SEE ALSO\n " >> ../man3/probe::$j.3stap
+    grep -q '^.SH SEE ALSO' ../man3/probe::$j.3stap || \
+      echo ".SH SEE ALSO\n " >> ../man3/probe::$j.3stap
     echo ".IR tapset::$i (3stap)" >> ../man3/probe::$j.3stap
   done
   for j in `cat $i.macros` ; do
-    echo ".SH SEE ALSO\n " >> ../man3/macro::$j.3stap
+    grep -q '^.SH SEE ALSO' ../man3/macro::$j.3stap || \
+      echo ".SH SEE ALSO\n " >> ../man3/macro::$j.3stap
     echo ".IR tapset::$i (3stap)" >> ../man3/macro::$j.3stap
   done
 done
@@ -137,6 +143,11 @@ done
 # cleanup
 for i in `ls | grep -v -e "tapset::.*\\.3stap"` ; do
   rm $i ;
+done
+
+# PR30965 replacements
+for i in ../man3/probe\:\:*; do
+   sed -i '/^\.SH "SYNOPSIS"$/,/^\.SH/s/^[^\.].*$/probe \0{}/' $i
 done
 
 rm ../manpageus ;
