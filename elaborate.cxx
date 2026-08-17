@@ -1081,9 +1081,7 @@ alias_expansion_builder::build_with_suffix(systemtap_session & sess,
 
   // Deep-copy both sides: expand_target_vars / update visitors mutate
   // the derived probe body in place.  Sharing use->body (or alias->body)
-  // across concurrent wildcard expansions races and can change how many
-  // dwarf probes resolve (seen as serial 760 vs parallel 763 on
-  // syscall.* { log(argstr) }).
+  // across concurrent wildcard expansions races.
   statement* use_body = deep_copy_visitor::deep_copy (use->body);
   statement* alias_body = deep_copy_visitor::deep_copy (alias->body);
 
@@ -6356,8 +6354,10 @@ void semantic_pass_opt8(systemtap_session& s)
        it != s.probes.end(); ++it)
     {
       derived_probe* p = *it;
-      // Skip synthetic probes - these may have specialized pointers (like entry_handler)
-      // that depend on their presence in s.probes and a distinct session_index.
+      // Skip synthetic probes — entry_handler / PR18115 need a distinct
+      // session_index.  Dwarf wildcard fanout collection probes must
+      // not set this flag, or duplicate PCs from alias globs would not
+      // combine (nthreads>1 vs serial).
       if (p->synthetic)
         continue;
 

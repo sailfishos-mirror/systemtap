@@ -1,0 +1,22 @@
+# Dwarf wildcard fanout (nthreads>1) must still participate in opt8
+# combining.  Two probe statements plant the same PC: an exact name and
+# a glob.  Fanout used to mark the glob path probe::synthetic, so opt8
+# skipped it and serial vs parallel probe counts diverged.
+
+set test "fanout_combine"
+
+catch {exec gcc -g -O0 -o $test $srcdir/$subdir/$test.c} err
+if {$err != "" || ![file exists $test]} {
+    fail "$test compile"
+    return
+}
+pass "$test compile"
+
+# Force the fanout path even on uniprocessor builders.
+set cmd "STAP_NTHREADS=2 stap --vp 02 -p2 $srcdir/$subdir/${test}.stp 2>&1"
+set exit_code [run_cmd_2way $cmd out stderr]
+
+is "$test: exit code" $exit_code 0
+like "$test: combined duplicate PC" $out \
+    "Combining 2 probe handlers for probe point: process\\(\".*$test\"\\)\\.function\\(\"tap_fanout_foo" \
+    ""

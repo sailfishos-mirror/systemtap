@@ -1429,8 +1429,14 @@ dwarf_query::query_module_dwarf()
           for (auto i = elf_cus.begin(); i != elf_cus.end(); ++i)
             {
               if (query_cu (&*i, this) != DWARF_CB_OK)
-                return;
+                break;
             }
+          // query_cu focused on Dwarf_Die copies in elf_cus.  That
+          // vector dies when this block ends; drop the cursor before
+          // query_module_symtab (and before any later getscopes).
+          focus.cu = NULL;
+          focus.function = NULL;
+          focus.function_name.clear();
         }
       else
         {
@@ -1953,7 +1959,14 @@ dwarf_query::mount_well_formed_probe_point()
   if (collecting_fanout)
     {
       // Avoid N deep_copies of the script body during fanout collection;
-      // each synthetic re-build copies once via probe(base, pp).
+      // each re-derive copies once via probe(base, pp) / derived_probe.
+      // Preserve probe::synthetic from the original (PR18115), but do
+      // not force it true: the flag is copied onto the planted
+      // dwarf_derived_probe, and semantic_pass_opt8 skips synthetic
+      // probes (entry_handler).  Forcing it here left duplicate PCs
+      // uncombined under nthreads>1 (serial 760 vs parallel 763 on
+      // syscall.* — __*_sys_open also matches compat wrappers that
+      // __*_compat_sys_open already planted).
       probe* syn = new probe ();
       syn->locations.push_back (pp);
       syn->body = base_probe->body;
@@ -1961,7 +1974,7 @@ dwarf_query::mount_well_formed_probe_point()
       syn->tok = base_probe->tok;
       syn->systemtap_v_conditional = base_probe->systemtap_v_conditional;
       syn->privileged = base_probe->privileged;
-      syn->synthetic = true;
+      syn->synthetic = base_probe->synthetic;
       base_probe = syn;
     }
   else
@@ -2146,7 +2159,9 @@ query_statement (interned_string func,
   // function(0xaddr) / statement(0xaddr) re-queries otherwise pay for a
   // full dwarf_getscopes CU walk per address (~ms each on large CUs).
   // PC key matches query_addr after function_num + elf_bias - module_bias.
-  if (scope_die && q->focus.module)
+  // Skip a zeroed func_info::die (ELF-only symtab matches): there is no
+  // DIE to walk, and foc().cu may already have been cleared.
+  if (scope_die && !null_die (scope_die) && q->focus.module && q->focus.cu)
     {
       Dwarf_Addr elf_bias = 0;
       Elf *elf = dwfl_module_getelf (q->focus.module, &elf_bias);

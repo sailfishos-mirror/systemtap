@@ -1,0 +1,12 @@
+# Dwarf wildcard fanout (nthreads>1) must still participate in opt8
+# combining.  Two probe statements plant the same PC: an exact name and
+# a glob.  Fanout used to mark the glob path probe::synthetic, so opt8
+# skipped it and serial vs parallel probe counts diverged.
+# Bodies must be non-empty or opt8 elides the combined probe.
+
+probe process("./fanout_combine").function("tap_fanout_foo") {
+	printf("1\n")
+}
+probe process("./fanout_combine").function("*tap_fanout_foo") {
+	printf("2\n")
+}
