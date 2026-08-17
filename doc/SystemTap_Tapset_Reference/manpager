@@ -115,15 +115,18 @@ for i in ../man3/{function,probe,macro}::*.3stap; do
 done
 for i in `cat ../manpageus` ; do
   for j in `cat $i.funcnames | uniq` ; do
-    echo ".SH SEE ALSO\n " >> ../man3/function::$j.3stap
+    grep -q '^.SH SEE ALSO' ../man3/function::$j.3stap || \
+      echo ".SH SEE ALSO\n " >> ../man3/function::$j.3stap
     echo ".IR tapset::$i (3stap)" >> ../man3/function::$j.3stap
   done
   for j in `cat $i.probenames` ; do
-    echo ".SH SEE ALSO\n " >> ../man3/probe::$j.3stap
+    grep -q '^.SH SEE ALSO' ../man3/probe::$j.3stap || \
+      echo ".SH SEE ALSO\n " >> ../man3/probe::$j.3stap
     echo ".IR tapset::$i (3stap)" >> ../man3/probe::$j.3stap
   done
   for j in `cat $i.macros` ; do
-    echo ".SH SEE ALSO\n " >> ../man3/macro::$j.3stap
+    grep -q '^.SH SEE ALSO' ../man3/macro::$j.3stap || \
+      echo ".SH SEE ALSO\n " >> ../man3/macro::$j.3stap
     echo ".IR tapset::$i (3stap)" >> ../man3/macro::$j.3stap
   done
 done
