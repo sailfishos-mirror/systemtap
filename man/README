@@ -1,0 +1,7 @@
+How to regenerate the manpages
+------------------------------------
+1) ./configure --enable-docs --enable-refdocs --enable-htmldocs
+2) make # this creates doc/SystemTap_Tapset_Reference/tapsets.xml
+3) cd doc/SystemTap_Tapset_Reference
+3) xmlto man tapsets.xml -o man3 # this regens the manpage content
+4) ./manpager # adds the SEE ALSO sections (cross references) to the manpages
