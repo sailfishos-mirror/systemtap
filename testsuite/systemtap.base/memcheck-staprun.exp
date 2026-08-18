@@ -1,0 +1,168 @@
+# Memcheck coverage for staprun/stapio (pass 5 runtime).
+#
+# Pre-compiles a simple module (-p4), then runs it under valgrind
+# memcheck in several scenarios that exercise different staprun code
+# paths:
+#
+#   1) basic        — plain staprun (module load, relay read, shutdown)
+#   2) with-cmd     — staprun -c /bin/true (target command mode)
+#   3) with-output  — staprun -o <file> (output-to-file path)
+#   4) with-bufsize — staprun -b 1 (non-default buffer size)
+#
+# staprun exec()s stapio, so valgrind --trace-children=yes covers both
+# processes in a single run.  Since staprun is setuid and valgrind
+# refuses to instrument setuid binaries, a non-setuid copy is used
+# (the test already runs as root via installtest_p).
+#
+# Complements memcheck-p4.exp (translator) and parallelism-helgrind.exp
+# (translator threading).
+
+set test "memcheck-staprun"
+if {![installtest_p]} { untested "$test (staprun requires root; use 'make installcheck')"; return }
+
+# --- Locate valgrind -------------------------------------------------
+set vg ""
+if {[catch {exec /usr/bin/which valgrind} vg] || $vg == ""} {
+    untested "$test (no valgrind)"
+    return
+}
+
+# --- Create a non-setuid copy of staprun ------------------------------
+# staprun is setuid root; valgrind refuses to run setuid executables.
+# Since this test already runs as root (installtest_p), a plain copy
+# without the setuid bit works — euid is already 0.
+set real_staprun [exec /usr/bin/which staprun]
+if {[catch {exec mktemp -t stap-$test-staprun.XXXXXX} staprun_copy]} {
+    fail "$test (mktemp for staprun copy failed: $staprun_copy)"
+    return
+}
+exec cp -f $real_staprun $staprun_copy
+exec chmod 755 $staprun_copy
+
+# --- Compile the test module once ------------------------------------
+set ko "memcheck_staprun.ko"
+spawn stap -v -p4 $srcdir/$subdir/$test.stp -m [file rootname $ko]
+expect {
+    -timeout 300
+    -re {^[^\r\n]*\r\n} { exp_continue }
+    eof { }
+}
+catch { close }
+set res [lindex [wait] 3]
+if {$res != 0} {
+    fail "$test compilation"
+    return
+}
+pass "$test compilation"
+if {![file exists $ko]} {
+    fail "$test (no .ko produced)"
+    return
+}
+
+# --- Helper: run one memcheck scenario --------------------------------
+proc memcheck_staprun_scenario {label staprun_args timeout_s} {
+    global test vg ko staprun_copy
+
+    if {[catch {exec mktemp -d -t stap-$test.XXXXXX} vgdir]} {
+	fail "$test $label (mktemp failed: $vgdir)"
+	return
+    }
+    # %p in --log-file gives each traced process its own file,
+    # avoiding collisions between staprun, stapio, and shell children.
+    set vglog_pattern "$vgdir/vg.%p.log"
+
+    # --trace-children=yes follows the staprun->stapio exec.
+    # --trace-children-skip excludes:
+    #   - the real (setuid) staprun that stapio invokes for module unload
+    #   - unrelated -c target commands
+    set vg_args [list --tool=memcheck --error-exitcode=42 \
+		      --track-origins=yes \
+		      --trace-children=yes \
+		      "--trace-children-skip=$::real_staprun,/bin/true,/usr/bin/true" \
+		      --log-file=$vglog_pattern]
+    set cmd [concat $vg $vg_args $staprun_copy $staprun_args $ko]
+
+    verbose -log "spawn ($label): $cmd"
+    eval spawn $cmd
+
+    set timed_out 0
+    expect {
+	-timeout $timeout_s
+	-re {[^\r\n]*\r\n} { exp_continue }
+	timeout { set timed_out 1 }
+	eof { }
+    }
+    catch { close }
+    set results [wait]
+    verbose -log "wait results ($label): $results"
+
+    if {$timed_out} {
+	catch {file delete -force -- $vgdir}
+	fail "$test $label (timeout)"
+	return
+    }
+
+    set exit_code -1
+    if {[llength $results] >= 4 && ![lindex $results 2]} {
+	set exit_code [lindex $results 3]
+    }
+
+    # Concatenate all per-process valgrind logs.
+    set vgfiles [glob -nocomplain "$vgdir/vg.*.log"]
+    if {[llength $vgfiles] == 0} {
+	catch {file delete -force -- $vgdir}
+	fail "$test $label (no memcheck log files)"
+	return
+    }
+    set vgtext ""
+    foreach f [lsort $vgfiles] {
+	set fd [open $f]
+	append vgtext [read $fd]
+	close $fd
+    }
+    verbose -log "$test $label valgrind log:\n$vgtext"
+    catch {file delete -force -- $vgdir}
+
+    # --trace-children=yes produces one ERROR SUMMARY per traced process;
+    # sum them all to catch errors in any of staprun/stapio/child.
+    set total_errors 0
+    set summaries 0
+    set offset 0
+    while {[regexp -start $offset {ERROR SUMMARY: ([0-9]+) errors} \
+		$vgtext -> n]} {
+	incr total_errors $n
+	incr summaries
+	set offset [expr {[string first "ERROR SUMMARY:" $vgtext $offset] + 1}]
+    }
+
+    if {$summaries == 0} {
+	fail "$test $label (no ERROR SUMMARY in memcheck log)"
+    } elseif {$exit_code == 0 && $total_errors == 0} {
+	pass "$test $label"
+    } elseif {$exit_code == 42 || $total_errors > 0} {
+	fail "$test $label (memcheck: $total_errors errors across $summaries processes, exit $exit_code)"
+    } else {
+	fail "$test $label (staprun/memcheck exit $exit_code, $total_errors errors)"
+    }
+}
+
+# --- Scenarios --------------------------------------------------------
+
+# 1) Basic run: module load, relay read, timer-driven exit.
+memcheck_staprun_scenario "basic" {} 120
+
+# 2) Target command (-c): staprun forks the command, waits for it.
+memcheck_staprun_scenario "with-cmd" {-c /bin/true} 120
+
+# 3) Output to file (-o): exercises the output-file code path in stapio.
+set outfile "[pwd]/memcheck-staprun-out.log"
+memcheck_staprun_scenario "with-output" [list -o $outfile] 120
+catch {file delete -- $outfile}
+
+# 4) Non-default buffer size (-b 1): exercises buffer allocation path.
+memcheck_staprun_scenario "with-bufsize" {-b 1} 120
+
+# --- Cleanup ----------------------------------------------------------
+catch {exec staprun -d $ko}
+catch {file delete -- $ko}
+catch {file delete -- $staprun_copy}

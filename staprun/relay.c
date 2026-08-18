@@ -667,7 +667,7 @@ int init_relayfs(void)
 {
 	int i, len;
 	int cpui = 0;
-	char rqbuf[128];
+	char rqbuf[128] = {0};
         char buf[PATH_MAX];
         struct sigaction sa;
 

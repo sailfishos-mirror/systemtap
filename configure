@@ -749,8 +749,8 @@ ALIGNEDNEW
 HAVE_CXX11
 Werror_FALSE
 Werror_TRUE
-enable_debug_FALSE
-enable_debug_TRUE
+enable_glibcxx_debug_FALSE
+enable_glibcxx_debug_TRUE
 py3execdir
 python3dir
 PYTHON3_PLATFORM
@@ -907,7 +907,7 @@ with_gnu_ld
 enable_rpath
 with_libiconv_prefix
 with_libintl_prefix
-enable_debug
+enable_glibcxx_debug
 enable_Werror
 enable_prologues
 enable_sdt_probes
@@ -1616,8 +1616,9 @@ Optional Features:
   --disable-largefile     omit support for large files
   --disable-nls           do not use Native Language Support
   --disable-rpath         do not hardcode runtime library paths
-  '--enable-debug         compile with -D_GLIBCXX_DEBUG
-                          -D_GLIBCXX_DEBUG_PEDANTIC
+  '--enable-glibcxx-debug compile with -D_GLIBCXX_DEBUG
+                          -D_GLIBCXX_DEBUG_PEDANTIC (implies
+                          --without-dyninst)
   '--enable-Werror        compile with -Werror flags
   --enable-prologues      make -P prologue-searching default
   --disable-sdt-probes    disable process.mark probes in stap, staprun, stapio
@@ -10510,13 +10511,13 @@ as_fn_append ac_configure_args " python3='$PYTHON3' py3execdir='$ac_cv_py3execdi
 
 { printf '%s\n' "$as_me:${as_lineno-$LINENO}: checking whether to build with C++ debug checks" >&5
 printf %s "checking whether to build with C++ debug checks... " >&6; }
-# Check whether --enable-debug was given.
-if test ${enable_debug+y}
+# Check whether --enable-glibcxx-debug was given.
+if test ${enable_glibcxx_debug+y}
 then :
-  enableval=$enable_debug;
+  enableval=$enable_glibcxx_debug;
 fi
 
-if test "${enable_debug}" = "yes"
+if test "${enable_glibcxx_debug}" = "yes"
 then :
   { printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf '%s\n' "yes" >&6; }
@@ -10525,14 +10526,22 @@ else case e in #(
 printf '%s\n' "no" >&6; } ;;
 esac
 fi
- if test "${enable_debug}" = "yes"; then
-  enable_debug_TRUE=
-  enable_debug_FALSE='#'
+ if test "${enable_glibcxx_debug}" = "yes"; then
+  enable_glibcxx_debug_TRUE=
+  enable_glibcxx_debug_FALSE='#'
 else
-  enable_debug_TRUE='#'
-  enable_debug_FALSE=
+  enable_glibcxx_debug_TRUE='#'
+  enable_glibcxx_debug_FALSE=
 fi
 
+if test "${enable_glibcxx_debug}" = "yes" -a "${with_dyninst}" != "no"
+then :
+
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: --enable-glibcxx-debug forces --without-dyninst (ABI incompatibility with pre-compiled Dyninst libraries)" >&5
+printf "%s\n" "$as_me: --enable-glibcxx-debug forces --without-dyninst (ABI incompatibility with pre-compiled Dyninst libraries)" >&6;}
+  with_dyninst=no
+
+fi
 
 { printf '%s\n' "$as_me:${as_lineno-$LINENO}: checking whether to build with -Werror" >&5
 printf %s "checking whether to build with -Werror... " >&6; }
@@ -14930,8 +14939,8 @@ then :
   enableval=$enable_year2038;
 fi
 
-if test -z "${enable_debug_TRUE}" && test -z "${enable_debug_FALSE}"; then
-  as_fn_error $? "conditional \"enable_debug\" was never defined.
+if test -z "${enable_glibcxx_debug_TRUE}" && test -z "${enable_glibcxx_debug_FALSE}"; then
+  as_fn_error $? "conditional \"enable_glibcxx_debug\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${Werror_TRUE}" && test -z "${Werror_FALSE}"; then

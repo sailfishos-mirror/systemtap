@@ -1,0 +1,24 @@
+#! stap
+# Memcheck workload for staprun/stapio.
+#
+# Kept intentionally simple: the goal is to exercise staprun's module
+# loading, relay setup, output path, and clean shutdown — not the
+# translator.  The module is pre-compiled (-p4) then run under valgrind
+# separately.
+
+global count
+
+probe begin {
+  printf("memcheck-staprun begin\n")
+}
+
+probe timer.ms(100) {
+  count++
+  printf("tick %d\n", count)
+  if (count >= 3)
+    exit()
+}
+
+probe end {
+  printf("memcheck-staprun end count=%d\n", count)
+}

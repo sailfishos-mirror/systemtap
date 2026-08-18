@@ -1,0 +1,77 @@
+# Translator memcheck through pass 4 (-p4).
+#
+# Runs valgrind --tool=memcheck on `stap -p4` with a workload that
+# exercises diverse translator code paths: DWARF probe expansion,
+# $$parms$ location expressions, @cast pretty-printing, return probes,
+# syscall alias globs, embedded C, and timer/begin/end tapsets.
+#
+# --trace-children=no limits memcheck to the stap translator process;
+# gcc/kbuild children run natively.
+#
+# Complements enumname.exp (memcheck -p2) and parallelism-helgrind.exp
+# (helgrind -p4, threading correctness).
+
+set test "memcheck-p4"
+set stpfile "$srcdir/$subdir/$test.stp"
+
+set vg ""
+if {[catch {exec /usr/bin/which valgrind} vg] || $vg == ""} {
+    untested "$test (no valgrind)"
+    return
+}
+
+if {[catch {exec mktemp -t stap-$test.XXXXXX.log} vglog]} {
+    fail "$test (mktemp failed: $vglog)"
+    return
+}
+
+set vg_args [list --tool=memcheck --error-exitcode=42 \
+		  --trace-children=no --log-file=$vglog]
+set stap_args [list -g -p4 $stpfile]
+
+verbose -log "spawn: $vg $vg_args stap $stap_args"
+set cmd [concat $vg $vg_args stap $stap_args]
+
+set timed_out 0
+eval spawn $cmd
+expect {
+    -timeout 600
+    -re {[^\r\n]*\r\n} { exp_continue }
+    timeout { set timed_out 1 }
+    eof { }
+}
+catch { close }
+set results [wait]
+verbose -log "wait results: $results"
+
+if {$timed_out} {
+    catch {file delete -- $vglog}
+    fail "$test (timeout)"
+    return
+}
+
+set exit_code -1
+if {[llength $results] >= 4 && ![lindex $results 2]} {
+    set exit_code [lindex $results 3]
+}
+
+if {![file exists $vglog]} {
+    fail "$test (missing memcheck log)"
+    return
+}
+
+set vgfd [open $vglog]
+set vgtext [read $vgfd]
+close $vgfd
+verbose -log "memcheck-p4 valgrind log:\n$vgtext"
+catch {file delete -- $vglog}
+
+if {![regexp {ERROR SUMMARY: ([0-9]+) errors} $vgtext -> nerrors]} {
+    fail "$test (no ERROR SUMMARY in memcheck log)"
+} elseif {$exit_code == 0 && $nerrors == 0} {
+    pass $test
+} elseif {$exit_code == 42 || $nerrors > 0} {
+    fail "$test (memcheck: $nerrors errors, exit $exit_code)"
+} else {
+    fail "$test (stap/memcheck exit $exit_code, $nerrors errors)"
+}

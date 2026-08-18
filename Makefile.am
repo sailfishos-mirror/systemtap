@@ -23,7 +23,7 @@ if Werror
 AM_CFLAGS += -Werror
 AM_CXXFLAGS += -Werror
 endif
-if enable_debug
+if enable_glibcxx_debug
 AM_CXXFLAGS += -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC
 endif
 
