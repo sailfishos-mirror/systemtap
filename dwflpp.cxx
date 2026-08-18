@@ -207,7 +207,7 @@ prepare_module_cb(Dwfl_Module *m,
                   void ** /* userdata */,
                   const char * /* name */,
                   Dwarf_Addr /* base */,
-                  void * /* arg */)
+                  void *arg)
 {
   Dwarf_Addr bias;
   // First-time loads are not MT-safe in libdwfl; finish them before
@@ -215,6 +215,9 @@ prepare_module_cb(Dwfl_Module *m,
   (void) dwfl_module_getdwarf (m, &bias);
   (void) dwfl_module_getelf (m, &bias);
   (void) dwfl_module_getsymtab (m);
+  // intern_cu / addrarange / cache_sections still mutate Dwfl_Module.
+  if (arg)
+    static_cast<dwflpp *>(arg)->ensure_module_addrdie_ready (m);
   return DWARF_CB_OK;
 }
 
@@ -227,10 +230,41 @@ dwflpp::prepare_modules_for_parallel_use()
   do
     {
       assert_no_interrupts();
-      off = dwfl_getmodules (dwfl.get(), &prepare_module_cb, NULL, off);
+      off = dwfl_getmodules (dwfl.get(), &prepare_module_cb, this, off);
     }
   while (off > 0);
   DWFL_ASSERT("dwfl_getmodules prepare", off == 0);
+}
+
+void
+dwflpp::ensure_module_addrdie_ready (Dwfl_Module *m)
+{
+  if (!m)
+    return;
+  cache_fill_once (m, FILL_MODULE_ADDRDIE, module_addrdie_ready, [m] () {
+      Dwarf_Addr elfbias = 0;
+      (void) dwfl_module_getelf (m, &elfbias);
+      // cache_sections: publishes reloc_info before filling it.
+      (void) dwfl_module_relocations (m);
+
+      Dwarf_Addr bias = 0;
+      if (!dwfl_module_getdwarf (m, &bias))
+        return;
+
+      // intern_cu + arangecu: nextcu intern CUs, then addrdie each
+      // DIE range so arange->cu is set and lazycu can tdestroy once.
+      // dwfl_module_addrdie uses __libdw_getdieranges (dwarf_ranges),
+      // not dwarf_getaranges / .debug_aranges.
+      Dwarf_Die *cu = NULL;
+      Dwarf_Addr cubias = 0;
+      while ((cu = dwfl_module_nextcu (m, cu, &cubias)) != NULL)
+        {
+          Dwarf_Addr base = 0, low = 0, high = 0;
+          ptrdiff_t off = 0;
+          while ((off = dwarf_ranges (cu, off, &base, &low, &high)) > 0)
+            (void) dwfl_module_addrdie (m, low + cubias, &bias);
+        }
+    });
 }
 
 
@@ -312,6 +346,9 @@ dwflpp::query_cu_containing_address(Dwarf_Addr a)
   assert(dwfl);
   assert(foc().module);
   get_module_dwarf();
+  // Concurrent first-time dwfl_module_addrdie races intern_cu (SEGV in
+  // tsearch) even with --enable-thread-safety; that work is libdw/libelf.
+  ensure_module_addrdie_ready (foc().module);
 
   Dwarf_Die* cudie = dwfl_module_addrdie(foc().module, a, &bias);
   assert(bias == foc().module_bias);

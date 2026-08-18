@@ -384,6 +384,8 @@ struct dwflpp
   systemtap_session & sess;
 
   // Focus accessors — require an active dwflpp_focus_binder on this thread.
+  dwflpp_focus &foc ();
+  const dwflpp_focus &foc () const;
   Dwfl_Module * module() const { return foc().module; }
   Dwarf_Addr module_bias() const { return foc().module_bias; }
   module_info * mod_info() const { return foc().mod_info; }
@@ -401,6 +403,8 @@ struct dwflpp
   // Finish lazy per-module DWARF/ELF/symtab bring-up under the caller
   // lock so concurrent builds do not race first-time dwfl_module_get*.
   void prepare_modules_for_parallel_use();
+  // Drain libdwfl intern_cu / addrarange / cache_sections (not MT-safe).
+  void ensure_module_addrdie_ready (Dwfl_Module *m);
 
   // After-you module-wide function index.  The leader fills every
   // compile unit (parallel dwarf_getfuncs iff HAVE_ELFUTILS_THREAD_SAFETY,
@@ -734,8 +738,6 @@ struct dwflpp
 private:
   friend struct dwflpp_focus_binder;
   static thread_local dwflpp_focus *tls_focus;
-  dwflpp_focus &foc ();
-  const dwflpp_focus &foc () const;
 
   // Refcounted so prepare-time and later teardown stay simple.
   std::shared_ptr<Dwfl> dwfl;
@@ -759,7 +761,8 @@ private:
       FILL_GLOBAL_ALIAS,
       FILL_CU_LINES,
       FILL_PC_SCOPES,
-      FILL_ENTRY_PC
+      FILL_ENTRY_PC,
+      FILL_MODULE_ADDRDIE
     };
 
   template<typename Map, typename Key, typename F>
@@ -783,6 +786,9 @@ private:
   std::vector<Dwarf_Die> *module_compile_units();
   cu_function_cache_t *ensure_cu_function_cache(Dwarf_Die *cu);
   cu_function_cache_t *fill_module_function_cache();
+
+  // libdwfl intern_cu / addrarange are not MT-safe (tsearch + lazycu).
+  std::set<void*> module_addrdie_ready;
 
   std::set<void*> cu_inl_function_cache_done; // CUs that are already cached
   cu_inl_function_cache_t cu_inl_function_cache;

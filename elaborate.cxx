@@ -3563,13 +3563,16 @@ symresolution_info::find_functions (functioncall *call, const string& name, unsi
   vector<functiondecl*> functions;
   functiondecl* last = 0; // used for error message
 
-  // the common path
-
-  // internal global functions bypassing the parser, such as __global_dwarf_tvar_[gs]et
-  if ((session.functions.find(name) != session.functions.end()) && startswith(name, "__private_"))
+  // Fully-qualified / synthetic keys already in the map (__clone_*,
+  // __private_*, __global_*__overload_N, __global_dwarf_tvar_*, …).
+  // Parser-facing names ("tid") are not keys; those use overload_count
+  // below.  Early var-expand rewrites functioncall::function to the
+  // clone key; if referents were lost, lookup used to miss the clone
+  // even though it was in session.functions (similar-list showed it).
+  auto it = session.functions.find(name);
+  if (it != session.functions.end() && it->second)
     {
-      functiondecl* fd = session.functions[name];
-      assert (fd->name == name);
+      functiondecl* fd = it->second;
       if (fd->formal_args.size() == arity)
         functions.push_back(fd);
       else
@@ -3577,7 +3580,7 @@ symresolution_info::find_functions (functioncall *call, const string& name, unsi
     }
 
   // functions scanned by the parser are overloaded
-  unsigned alternatives = session.overload_count[name];
+  unsigned alternatives = functions.empty() ? session.overload_count[name] : 0;
   for (unsigned alt = 0; alt < alternatives; alt++)
     {
       bool found = false; // multiple inclusion guard

@@ -39,6 +39,7 @@
 #include <iostream>
 #include <fstream>
 #include <map>
+#include <memory>
 #include <mutex>
 #include <set>
 #include <sstream>
@@ -90,6 +91,11 @@ dwarf_expand_nthreads (size_t work_items)
 #else
 #error "need boost post.hpp"
 #endif
+#ifdef HAVE_ELFUTILS_THREAD_SAFETY
+#include <boost/asio/packaged_task.hpp>
+#endif
+
+#include <future>
 
 extern "C" {
 #include <fcntl.h>
@@ -113,6 +119,18 @@ extern "C" {
 
 using namespace std;
 using namespace __gnu_cxx;
+
+// Nested add_probe_point from expand (@entry / query_addr) plants
+// synchronously into this worker-local list instead of re-posting.
+static thread_local vector<derived_probe*>* tls_plant_results = nullptr;
+
+// Well-formed probe/location for an async plant worker.  The walker
+// unmounts q.base_probe after posting; ctor/expand must not read the
+// live cursor.  Nested extras clear these so query_addr's mount is used.
+static thread_local probe* tls_plant_base_probe = nullptr;
+static thread_local probe_point* tls_plant_base_loc = nullptr;
+
+struct dwarf_builder; // plant pool; dwarf_query is declared first
 
 // for elf.h where PPC64_LOCAL_ENTRY_OFFSET isn't defined
 #ifndef PPC64_LOCAL_ENTRY_OFFSET
@@ -1025,6 +1043,41 @@ struct dwarf_query : public base_query
   set<string> fanout_seen;
   bool collecting_fanout;
 
+  // Snapshot of one add_probe_point hit for async dwarf_derived_probe
+  // construction ($$parms / loc2stap) on dwarf_builder::plant_pool.
+  // DIE copies by value; focus.cu / function rebound on the worker.
+  struct plant_hit
+  {
+    interned_string funcname;
+    interned_string filename;
+    interned_string module;
+    interned_string reloc_section;
+    interned_string symbol_name;
+    int line;
+    Dwarf_Addr addr;
+    Dwarf_Addr reloc_addr;
+    Dwarf_Addr offset;
+    bool has_process;
+    bool has_module;
+    bool scope_null;
+    bool cu_null;
+    bool function_null;
+    Dwarf_Die scope_die;
+    Dwarf_Die cu_die;
+    Dwarf_Die function_die;
+    dwflpp_focus focus;
+    probe *base_probe;
+    probe_point *base_loc;
+  };
+  dwarf_builder *plant_builder;
+  // Serializes walker mount/unmount against GNU_entry_value extras
+  // (query_addr) that temporarily swap q.base_probe / q.has_*.
+  recursive_mutex plant_q_mutex;
+  vector<future<vector<derived_probe*> > > plant_futures;
+  bool can_plant_async () const;
+  vector<derived_probe*> plant_hit_now (plant_hit hit);
+  void collect_plant_futures ();
+
   bool has_function_str;
   bool has_statement_str;
   bool has_function_num;
@@ -1095,6 +1148,18 @@ struct dwarf_query : public base_query
   bool is_fully_specified_function();
 };
 
+static probe *
+plant_base_probe (dwarf_query& q)
+{
+  return tls_plant_base_probe ? tls_plant_base_probe : q.base_probe;
+}
+
+static probe_point *
+plant_base_loc (dwarf_query& q)
+{
+  return tls_plant_base_loc ? tls_plant_base_loc : q.base_loc;
+}
+
 uprobe_derived_probe::uprobe_derived_probe (interned_string function,
                         interned_string filename,
                         int line,
@@ -1115,12 +1180,12 @@ uprobe_derived_probe::uprobe_derived_probe (interned_string function,
         int len;
         GElf_Addr vaddr;
 
-        len = dwfl_module_build_id(q.focus.module, &bits, &vaddr);
+        len = dwfl_module_build_id(q.dw.foc().module, &bits, &vaddr);
         if (len > 0)
           {
             Dwarf_Addr reloc_vaddr = vaddr;
 
-            len = dwfl_module_relocate_address(q.focus.module, &reloc_vaddr);
+            len = dwfl_module_relocate_address(q.dw.foc().module, &reloc_vaddr);
             DWFL_ASSERT ("dwfl_module_relocate_address reloc_vaddr", len >= 0);
 
             build_id_vaddr = reloc_vaddr;
@@ -1144,6 +1209,15 @@ struct dwarf_builder: public derived_probe_builder
   // Per-module dwflpp construction: later arrivals wait instead of
   // duplicating setup (debuginfod-style after-you).
   after_you_set<string> dw_fill_inflight;
+
+  // Separate from glob-parallel Asio pools: walkers post plant/expand
+  // work here and wait on futures, never join this pool from a worker
+  // of the same pool.  Destroyed first (declared last) so outstanding
+  // plants finish before kern_dw/user_dw.
+#ifdef HAVE_ELFUTILS_THREAD_SAFETY
+  unique_ptr<boost::asio::thread_pool> plant_pool;
+  boost::asio::thread_pool& ensure_plant_pool ();
+#endif
 
   explicit dwarf_builder(std::recursive_mutex& shared)
     : derived_probe_builder(shared) {}
@@ -1235,6 +1309,10 @@ struct dwarf_builder: public derived_probe_builder
 
   ~dwarf_builder()
   {
+#ifdef HAVE_ELFUTILS_THREAD_SAFETY
+    // Join plant workers before dwflpp maps are destroyed.
+    plant_pool.reset ();
+#endif
     dwarf_build_no_more (false);
   }
 
@@ -1245,6 +1323,17 @@ struct dwarf_builder: public derived_probe_builder
 
   virtual string name() { return "DWARF builder"; }
 };
+
+#ifdef HAVE_ELFUTILS_THREAD_SAFETY
+boost::asio::thread_pool&
+dwarf_builder::ensure_plant_pool ()
+{
+  lock_guard<recursive_mutex> g (lock);
+  if (!plant_pool)
+    plant_pool.reset (new boost::asio::thread_pool (stap_nthreads ()));
+  return *plant_pool;
+}
+#endif
 
 
 dwarf_query::dwarf_query(probe * base_probe,
@@ -1259,6 +1348,7 @@ dwarf_query::dwarf_query(probe * base_probe,
     resolved_library(false), callers(NULL),
     deferring_var_expand(false),
     collecting_fanout(false),
+    plant_builder(NULL),
     has_function_str(false), has_statement_str(false),
     has_function_num(false), has_statement_num(false),
     has_pc_num(false), has_die_num(false),
@@ -1750,7 +1840,7 @@ static Dwarf_Addr
 get_lep(dwarf_query *q, Dwarf_Addr gep)
 {
   Dwarf_Addr bias;
-  Dwfl_Module *mod = q->focus.module;
+  Dwfl_Module *mod = q->dw.foc().module;
   Elf* elf = (dwarf_getelf (dwfl_module_getdwarf (mod, &bias))
              ?: dwfl_module_getelf (mod, &bias));
 
@@ -1798,7 +1888,8 @@ dwarf_query::add_probe_point(interned_string dw_funcname,
   interned_string reloc_section; // base section for relocation purposes
   Dwarf_Addr orig_addr = addr;
   Dwarf_Addr reloc_addr; // relocated
-  interned_string module = focus.module_name; // "kernel" or other
+  dwflpp_focus &cur = dw.foc();
+  interned_string module = cur.module_name; // "kernel" or other
   interned_string funcname = dw_funcname;
 
   assert (! has_absolute); // already handled in dwarf_builder::build()
@@ -1845,59 +1936,109 @@ dwarf_query::add_probe_point(interned_string dw_funcname,
         sess.unwindsym_modules.insert (module);
       }
 
-      if (has_process)
+      auto make_probe = [&]() -> derived_probe* {
+        if (has_process)
+          {
+            string module_tgt = path_remove_sysroot(sess, module);
+            return new uprobe_derived_probe(funcname, filename, line,
+                                            module_tgt, reloc_section, addr,
+                                            reloc_addr, *this, scope_die);
+          }
+        assert (has_kernel || has_module);
+        if (has_module)
+          {
+            module_info *mi = cur.mod_info;
+
+            if (mi->symtab_status == info_unknown)
+              mi->get_symtab();
+            if (mi->symtab_status == info_absent)
+              throw SEMANTIC_ERROR(_F("can't retrieve symbol table for function %s",
+                                      module_val.to_string().c_str()));
+
+            symbol_table *sym_table = mi->sym_table;
+            func_info *symbol = sym_table->get_func_containing_address(addr);
+
+            if (!symbol)
+              throw SEMANTIC_ERROR(_F("can't find symbol for address %#"
+                                      PRIx64 " for module %s", addr,
+                                      module_val.to_string().c_str()));
+
+            Dwarf_Addr offset = orig_addr - symbol->addr;
+            return new dwarf_derived_probe(funcname, filename,
+                                           line, module,
+                                           reloc_section, addr,
+                                           reloc_addr,
+                                           *this, scope_die,
+                                           symbol->name,
+                                           offset);
+          }
+        return new dwarf_derived_probe(funcname, filename,
+                                       line, module,
+                                       reloc_section, addr,
+                                       reloc_addr,
+                                       *this, scope_die);
+      };
+
+      if (tls_plant_results)
+        tls_plant_results->push_back (make_probe ());
+#ifdef HAVE_ELFUTILS_THREAD_SAFETY
+      else if (can_plant_async ())
         {
-          string module_tgt = path_remove_sysroot(sess, module);
-          results.push_back (new uprobe_derived_probe(funcname, filename, line,
-                                                      module_tgt, reloc_section, addr, reloc_addr,
-                                                      *this, scope_die));
-        }
-      else
-        {
-          assert (has_kernel || has_module);
-
-	  // We could only convert probes in the module's .init
-	  // section to symbol+offset probes. However, the module
-	  // refresh code only expects to be called once on a module
-	  // load, so we'll go ahead and convert them all.
-	  if (has_module)
-	    {
-	      module_info *mi = focus.mod_info;
-
-	      if (mi->symtab_status == info_unknown)
-		mi->get_symtab();
-	      if (mi->symtab_status == info_absent)
-		throw SEMANTIC_ERROR(_F("can't retrieve symbol table for function %s",
-					module_val.to_string().c_str()));
-
-	      symbol_table *sym_table = mi->sym_table;
-	      func_info *symbol = sym_table->get_func_containing_address(addr);
-
-              // RHEL-149811: misbehaving kernel module/symbol
-              // processing can generate wrong addresses and leave symbol=null
+          plant_hit hit;
+          hit.funcname = funcname;
+          hit.filename = filename;
+          hit.module = has_process ? interned_string (path_remove_sysroot (sess, module))
+                                   : module;
+          hit.reloc_section = reloc_section;
+          hit.line = line;
+          hit.addr = addr;
+          hit.reloc_addr = reloc_addr;
+          hit.has_process = has_process;
+          hit.has_module = has_module;
+          hit.offset = 0;
+          hit.symbol_name = "";
+          if (has_module && !has_process)
+            {
+              module_info *mi = cur.mod_info;
+              if (mi->symtab_status == info_unknown)
+                mi->get_symtab();
+              if (mi->symtab_status == info_absent)
+                throw SEMANTIC_ERROR(_F("can't retrieve symbol table for function %s",
+                                        module_val.to_string().c_str()));
+              func_info *symbol = mi->sym_table->get_func_containing_address(addr);
               if (!symbol)
                 throw SEMANTIC_ERROR(_F("can't find symbol for address %#"
                                         PRIx64 " for module %s", addr,
                                         module_val.to_string().c_str()));
-              
-	      // Do not use LEP to find offset here. When 'symbol_name'
-	      // is used to register probe, kernel itself will find LEP.
-	      Dwarf_Addr offset = orig_addr - symbol->addr;
-	      results.push_back (new dwarf_derived_probe(funcname, filename,
-							 line, module,
-							 reloc_section, addr,
-							 reloc_addr,
-							 *this, scope_die,
-							 symbol->name,
-							 offset));
-	    }
-	  else
-	    results.push_back (new dwarf_derived_probe(funcname, filename,
-						       line, module,
-						       reloc_section, addr,
-						       reloc_addr,
-						       *this, scope_die));
+              hit.offset = orig_addr - symbol->addr;
+              hit.symbol_name = symbol->name;
+            }
+          hit.scope_null = !scope_die || null_die (scope_die);
+          if (!hit.scope_null)
+            hit.scope_die = *scope_die;
+          hit.cu_null = !cur.cu || null_die (cur.cu);
+          if (!hit.cu_null)
+            hit.cu_die = *cur.cu;
+          hit.function_null = !cur.function || null_die (cur.function);
+          if (!hit.function_null)
+            hit.function_die = *cur.function;
+          hit.focus = cur;
+          hit.base_probe = base_probe;
+          hit.base_loc = base_loc;
+
+          dwarf_query *qq = this;
+          plant_futures.push_back (
+            boost::asio::post (plant_builder->ensure_plant_pool (),
+              std::packaged_task<vector<derived_probe*>()> (
+                [qq, hit] () mutable {
+                  stap_parallel_nesting_guard nest;
+                  assert_no_interrupts ();
+                  return qq->plant_hit_now (hit);
+                })));
         }
+#endif
+      else
+        results.push_back (make_probe ());
     }
   else
     {
@@ -1928,57 +2069,169 @@ dwarf_query::add_probe_point(interned_string dw_funcname,
     }
 }
 
+bool
+dwarf_query::can_plant_async () const
+{
+#ifdef HAVE_ELFUTILS_THREAD_SAFETY
+  // .return synthesizes sibling probes via save_and_restore on this
+  // query; keep that path synchronous.  Nested expand plants use
+  // tls_plant_results instead of re-posting.
+  return plant_builder
+    && stap_nthreads () > 1
+    && !has_return
+    && !has_absolute
+    && tls_plant_results == NULL;
+#else
+  return false;
+#endif
+}
+
+vector<derived_probe*>
+dwarf_query::plant_hit_now (plant_hit hit)
+{
+  if (!hit.cu_null)
+    hit.focus.cu = &hit.cu_die;
+  else
+    hit.focus.cu = NULL;
+  if (!hit.function_null)
+    hit.focus.function = &hit.function_die;
+  else
+    hit.focus.function = NULL;
+
+  dwflpp_focus_binder bind (hit.focus);
+
+  vector<derived_probe*> out;
+  struct tls_guard {
+    vector<derived_probe*>* prev;
+    tls_guard (vector<derived_probe*>* v)
+      : prev (tls_plant_results)
+    {
+      tls_plant_results = v;
+    }
+    ~tls_guard () { tls_plant_results = prev; }
+  } tls (&out);
+
+  struct tls_base_guard {
+    probe* prev_p;
+    probe_point* prev_l;
+    tls_base_guard (probe* p, probe_point* l)
+      : prev_p (tls_plant_base_probe), prev_l (tls_plant_base_loc)
+    {
+      tls_plant_base_probe = p;
+      tls_plant_base_loc = l;
+    }
+    ~tls_base_guard ()
+    {
+      tls_plant_base_probe = prev_p;
+      tls_plant_base_loc = prev_l;
+    }
+  } baseg (hit.base_probe, hit.base_loc);
+
+  Dwarf_Die *scope = hit.scope_null ? NULL : &hit.scope_die;
+  derived_probe *p;
+  if (hit.has_process)
+    p = new uprobe_derived_probe (hit.funcname, hit.filename, hit.line,
+                                  hit.module, hit.reloc_section,
+                                  hit.addr, hit.reloc_addr, *this, scope);
+  else if (hit.has_module)
+    p = new dwarf_derived_probe (hit.funcname, hit.filename, hit.line,
+                                 hit.module, hit.reloc_section,
+                                 hit.addr, hit.reloc_addr, *this, scope,
+                                 hit.symbol_name, hit.offset);
+  else
+    p = new dwarf_derived_probe (hit.funcname, hit.filename, hit.line,
+                                 hit.module, hit.reloc_section,
+                                 hit.addr, hit.reloc_addr, *this, scope);
+  out.push_back (p);
+  return out;
+}
+
+void
+dwarf_query::collect_plant_futures ()
+{
+  if (plant_futures.empty ())
+    return;
+  if (sess.verbose > 2)
+    clog << _F("dwarf plant async: %zu futures\n", plant_futures.size ());
+  exception_ptr first;
+  for (size_t i = 0; i < plant_futures.size (); i++)
+    {
+      try
+        {
+          vector<derived_probe*> v = plant_futures[i].get ();
+          results.insert (results.end (), v.begin (), v.end ());
+        }
+      catch (...)
+        {
+          if (!first)
+            first = current_exception ();
+        }
+    }
+  plant_futures.clear ();
+  if (first)
+    rethrow_exception (first);
+}
+
 void
 dwarf_query::mount_well_formed_probe_point()
 {
-  interned_string module = focus.module_name;
-  if (has_process)
-    module = path_remove_sysroot(sess, module);
-
-  vector<probe_point::component*> comps;
-  for (auto it = base_loc->components.begin();
-       it != base_loc->components.end(); ++it)
+  plant_q_mutex.lock ();
+  try
     {
-      if ((*it)->functor == TOK_PROCESS && this->build_id_val != "")
-        comps.push_back(new probe_point::component((*it)->functor,
-          new literal_string(this->build_id_val)));
-      else if ((*it)->functor == TOK_PROCESS || (*it)->functor == TOK_MODULE)
-        comps.push_back(new probe_point::component((*it)->functor,
-          new literal_string(has_library ? path : module)));
+      interned_string module = dw.foc().module_name;
+      if (has_process)
+        module = path_remove_sysroot(sess, module);
+
+      vector<probe_point::component*> comps;
+      for (auto it = base_loc->components.begin();
+           it != base_loc->components.end(); ++it)
+        {
+          if ((*it)->functor == TOK_PROCESS && this->build_id_val != "")
+            comps.push_back(new probe_point::component((*it)->functor,
+              new literal_string(this->build_id_val)));
+          else if ((*it)->functor == TOK_PROCESS || (*it)->functor == TOK_MODULE)
+            comps.push_back(new probe_point::component((*it)->functor,
+              new literal_string(has_library ? path : module)));
+          else
+            comps.push_back(*it);
+        }
+
+      probe_point *pp = new probe_point(*base_loc);
+      pp->well_formed = true;
+      pp->components = comps;
+
+      previous_bases.push(make_pair(base_loc, base_probe));
+
+      base_loc = pp;
+      if (collecting_fanout)
+        {
+          // Avoid N deep_copies of the script body during fanout collection;
+          // each re-derive copies once via probe(base, pp) / derived_probe.
+          // Preserve probe::synthetic from the original (PR18115), but do
+          // not force it true: the flag is copied onto the planted
+          // dwarf_derived_probe, and semantic_pass_opt8 skips synthetic
+          // probes (entry_handler).  Forcing it here left duplicate PCs
+          // uncombined under nthreads>1 (serial 760 vs parallel 763 on
+          // syscall.* — __*_sys_open also matches compat wrappers that
+          // __*_compat_sys_open already planted).
+          probe* syn = new probe ();
+          syn->locations.push_back (pp);
+          syn->body = base_probe->body;
+          syn->base = base_probe;
+          syn->tok = base_probe->tok;
+          syn->systemtap_v_conditional = base_probe->systemtap_v_conditional;
+          syn->privileged = base_probe->privileged;
+          syn->synthetic = base_probe->synthetic;
+          base_probe = syn;
+        }
       else
-        comps.push_back(*it);
+        base_probe = new probe(base_probe, pp);
     }
-
-  probe_point *pp = new probe_point(*base_loc);
-  pp->well_formed = true;
-  pp->components = comps;
-
-  previous_bases.push(make_pair(base_loc, base_probe));
-
-  base_loc = pp;
-  if (collecting_fanout)
+  catch (...)
     {
-      // Avoid N deep_copies of the script body during fanout collection;
-      // each re-derive copies once via probe(base, pp) / derived_probe.
-      // Preserve probe::synthetic from the original (PR18115), but do
-      // not force it true: the flag is copied onto the planted
-      // dwarf_derived_probe, and semantic_pass_opt8 skips synthetic
-      // probes (entry_handler).  Forcing it here left duplicate PCs
-      // uncombined under nthreads>1 (serial 760 vs parallel 763 on
-      // syscall.* — __*_sys_open also matches compat wrappers that
-      // __*_compat_sys_open already planted).
-      probe* syn = new probe ();
-      syn->locations.push_back (pp);
-      syn->body = base_probe->body;
-      syn->base = base_probe;
-      syn->tok = base_probe->tok;
-      syn->systemtap_v_conditional = base_probe->systemtap_v_conditional;
-      syn->privileged = base_probe->privileged;
-      syn->synthetic = base_probe->synthetic;
-      base_probe = syn;
+      plant_q_mutex.unlock ();
+      throw;
     }
-  else
-    base_probe = new probe(base_probe, pp);
 }
 
 void
@@ -1990,6 +2243,7 @@ dwarf_query::unmount_well_formed_probe_point()
   base_probe = previous_bases.top().second;
 
   previous_bases.pop();
+  plant_q_mutex.unlock ();
 }
 
 void
@@ -2161,13 +2415,13 @@ query_statement (interned_string func,
   // PC key matches query_addr after function_num + elf_bias - module_bias.
   // Skip a zeroed func_info::die (ELF-only symtab matches): there is no
   // DIE to walk, and foc().cu may already have been cleared.
-  if (scope_die && !null_die (scope_die) && q->focus.module && q->focus.cu)
+  if (scope_die && !null_die (scope_die) && q->dw.foc().module && q->dw.foc().cu)
     {
       Dwarf_Addr elf_bias = 0;
-      Elf *elf = dwfl_module_getelf (q->focus.module, &elf_bias);
+      Elf *elf = dwfl_module_getelf (q->dw.foc().module, &elf_bias);
       Dwarf_Addr pc = stmt_addr;
       if (elf)
-        pc = stmt_addr + elf_bias - q->focus.module_bias;
+        pc = stmt_addr + elf_bias - q->dw.foc().module_bias;
       q->dw.cache_scopes_at_pc (pc, scope_die);
     }
 
@@ -2231,7 +2485,7 @@ query_addr(Dwarf_Addr addr, dwarf_query *q)
   dw.focus_on_cu(cudie);
 
   // Now compensate for the dw bias
-  addr -= q->focus.module_bias;
+  addr -= dw.foc().module_bias;
 
   // Per PR5787, we look up the scope die even for
   // statement_num's, for blocklist sensitivity and $var
@@ -2287,7 +2541,7 @@ query_addr(Dwarf_Addr addr, dwarf_query *q)
           if (time_p) t0 = dwarf_timing_now_ns ();
           func_info func;
           func.die = *fnscope;
-          func.name = q->focus.function_name;
+          func.name = dw.foc().function_name;
           func.decl_file = file;
           func.decl_line = line;
           func.entrypc = addr;
@@ -2331,7 +2585,7 @@ query_addr(Dwarf_Addr addr, dwarf_query *q)
             msg << _F(" (try %#" PRIx64 ")", address_line_addr);
           else
             msg << _F(" (no line info found for '%s', in module '%s')",
-                      dw.cu_name().c_str(), q->focus.module_name.c_str());
+                      dw.cu_name().c_str(), dw.foc().module_name.c_str());
           if (! q->sess.guru_mode)
             throw SEMANTIC_ERROR(msg.str());
           else
@@ -2342,12 +2596,19 @@ query_addr(Dwarf_Addr addr, dwarf_query *q)
   // We're ready to build a probe, but before, we need to create the final,
   // well-formed version of this location with all the components filled in
   q->mount_well_formed_probe_point();
-  q->replace_probe_point_component_arg(TOK_FUNCTION, addr, true /* hex */ );
-  q->replace_probe_point_component_arg(TOK_STATEMENT, addr, true /* hex */ );
+  try
+    {
+      q->replace_probe_point_component_arg(TOK_FUNCTION, addr, true /* hex */ );
+      q->replace_probe_point_component_arg(TOK_STATEMENT, addr, true /* hex */ );
 
-  // Build a probe at this point
-  query_statement(q->focus.function_name, file, line, scope, addr, q);
-
+      // Build a probe at this point
+      query_statement(dw.foc().function_name, file, line, scope, addr, q);
+    }
+  catch (...)
+    {
+      q->unmount_well_formed_probe_point();
+      throw;
+    }
   q->unmount_well_formed_probe_point();
 }
 
@@ -3836,7 +4097,7 @@ var_expanding_visitor::visit_functioncall (functioncall* e)
               }
             }
           else
-            copyrefs = refs; // already added into s.functions[]
+            copyrefs.push_back(r); // already in s.functions[]
         }
 
       e->referents = copyrefs;
@@ -4721,9 +4982,15 @@ dwarf_pretty_print::deref (target_symbol* e)
   // The non-pretty $var path merges these in visit_target_symbol; do
   // the same here so $$parms$ / $foo$ pretty-print does not leave
   // unresolved __global_tvar_entry_value_* arrays.
-  dw.sess.globals.insert(dw.sess.globals.end(),
-                         ctx.globals.begin(),
-                         ctx.globals.end());
+  {
+    timed_recursive_lock gl (dw.sess.session_data_mutex,
+                             stap_dwarf_timing.sess_wait_ns,
+                             stap_dwarf_timing.sess_hold_ns,
+                             stap_dwarf_timing.sess_n);
+    dw.sess.globals.insert(dw.sess.globals.end(),
+                           ctx.globals.begin(),
+                           ctx.globals.end());
+  }
   if (entry_probes)
     {
       for (auto it = ctx.entry_probes.begin();
@@ -4849,14 +5116,21 @@ gen_mapped_saved_return(systemtap_session &sess, expression* e,
   vd->name = vd->unmangled_name = aname;
   vd->synthetic = true;
   vd->tok = e->tok;
-  sess.globals.push_back (vd);
 
   string ctrname = aname + "_ctr";
-  vd = new vardecl;
-  vd->name = vd->unmangled_name = ctrname;
-  vd->tok = e->tok;
-  vd->synthetic = true;
-  sess.globals.push_back (vd);
+  vardecl* vd_ctr = new vardecl;
+  vd_ctr->name = vd_ctr->unmangled_name = ctrname;
+  vd_ctr->tok = e->tok;
+  vd_ctr->synthetic = true;
+  // Parallel $$parms / fanout expand of .return probes race here.
+  {
+    timed_recursive_lock gl (sess.session_data_mutex,
+                             stap_dwarf_timing.sess_wait_ns,
+                             stap_dwarf_timing.sess_hold_ns,
+                             stap_dwarf_timing.sess_n);
+    sess.globals.push_back (vd);
+    sess.globals.push_back (vd_ctr);
+  }
 
   // (2) Create a new code block we're going to insert at the
   // beginning of this probe to get the cached value into a
@@ -5290,9 +5564,9 @@ dwarf_var_expanding_visitor::visit_atvar_op (atvar_op *e)
 {
   // Fill in our current module context if needed
   if (e->module.empty())
-    e->module = q.focus.module_name;
+    e->module = q.dw.foc().module_name;
 
-  if (e->module == q.focus.module_name && e->cu_name.empty())
+  if (e->module == q.dw.foc().module_name && e->cu_name.empty())
     {
       // process like any other local
       // e->sym_name() will do the right thing
@@ -5357,7 +5631,7 @@ dwarf_var_expanding_visitor::visit_target_symbol (target_symbol *e)
       // scope_die in which to search for them. If produce an error.
       if (null_die(scope_die))
         throw SEMANTIC_ERROR(_F("debuginfo scope not found for module '%s', cannot resolve context variable [man error::dwarf]",
-                                q.focus.module_name.c_str()), e->tok);
+                                q.dw.foc().module_name.c_str()), e->tok);
 
       if (e->check_pretty_print (lvalue))
         {
@@ -5399,17 +5673,23 @@ dwarf_var_expanding_visitor::visit_target_symbol (target_symbol *e)
             (q.sess.kernel_config["CONFIG_RETPOLINE"] == string("y") ||
              q.sess.kernel_config["CONFIG_MITIGATION_RETPOLINE"] == string("y")))
           q.sess.print_warning(_F("liveness analysis skipped on CONFIG_RETPOLINE kernel %s",
-                                  q.focus.mod_info->elf_path.c_str()), e->tok);
+                                  q.dw.foc().mod_info->elf_path.c_str()), e->tok);
         
-        else if (liveness(q.sess, e, q.focus.mod_info->elf_path, addr, ctx) < 0) {
+        else if (liveness(q.sess, e, q.dw.foc().mod_info->elf_path, addr, ctx) < 0) {
           q.sess.print_warning(_F("write at %p will have no effect",
                                   (void *)addr), e->tok);
         }
       }
 
-      q.dw.sess.globals.insert(q.dw.sess.globals.end(),
-                              ctx.globals.begin(),
-                              ctx.globals.end());
+      {
+        timed_recursive_lock gl (q.dw.sess.session_data_mutex,
+                                 stap_dwarf_timing.sess_wait_ns,
+                                 stap_dwarf_timing.sess_hold_ns,
+                                 stap_dwarf_timing.sess_n);
+        q.dw.sess.globals.insert(q.dw.sess.globals.end(),
+                                ctx.globals.begin(),
+                                ctx.globals.end());
+      }
 
       for (auto it = ctx.entry_probes.begin(); it != ctx.entry_probes.end(); ++it)
         {
@@ -5462,17 +5742,17 @@ dwarf_var_expanding_visitor::visit_cast_op (cast_op *e)
       else
         {
           // absolute /user/space/path/name xor kernel xor kernel-module name
-          if (is_user_module (q.focus.module_name))
-            e->module = q.focus.module_name;
+          if (is_user_module (q.dw.foc().module_name))
+            e->module = q.dw.foc().module_name;
           else if ((strverscmp(sess.compatible.c_str(), "5.4") >= 0) && // default on new enough systemtap
                    access(string(sess.kernel_build_tree+"/vmlinux.h").c_str(), R_OK) == 0)  // file exists; not just kernel 6.7+
             {
               if (sess.verbose > 3)
-                clog << _("added implicit kernel<vmlinux.h> for @cast context") << " " << q.focus.module_name << endl;
-              e->module = string(TOK_KERNEL_VMLINUX_H) + string(":") + q.focus.module_name; // PR33428: prefix
+                clog << _("added implicit kernel<vmlinux.h> for @cast context") << " " << q.dw.foc().module_name << endl;
+              e->module = string(TOK_KERNEL_VMLINUX_H) + string(":") + q.dw.foc().module_name; // PR33428: prefix
             }
           else
-            e->module = q.focus.module_name;            
+            e->module = q.dw.foc().module_name;            
         }
     }
   
@@ -5690,18 +5970,18 @@ dwarf_var_expanding_visitor::visit_enumname_op (enumname_op *e)
             e->module = "kernel";
           else
             {
-              if (is_user_module (q.focus.module_name))
-                e->module = q.focus.module_name;
+              if (is_user_module (q.dw.foc().module_name))
+                e->module = q.dw.foc().module_name;
               else if ((strverscmp(sess.compatible.c_str(), "5.4") >= 0) &&
                        access(string(sess.kernel_build_tree+"/vmlinux.h").c_str(), R_OK) == 0)
                 {
                   if (sess.verbose > 3)
                     clog << _("added implicit kernel<vmlinux.h> for @enumname context")
-                         << " " << q.focus.module_name << endl;
-                  e->module = string(TOK_KERNEL_VMLINUX_H) + string(":") + q.focus.module_name;
+                         << " " << q.dw.foc().module_name << endl;
+                  e->module = string(TOK_KERNEL_VMLINUX_H) + string(":") + q.dw.foc().module_name;
                 }
               else
-                e->module = q.focus.module_name;
+                e->module = q.dw.foc().module_name;
             }
         }
       replace (e->operand);
@@ -5773,7 +6053,7 @@ dwarf_var_expanding_visitor::getscopes(target_symbol *e)
                               + (null_die(scope_die) ? ""
                                  : (string (" in ")
                                     + (dwarf_diename(scope_die) ?: "<unknown>")
-                                    + "(" + (dwarf_diename(q.focus.cu) ?: "<unknown>")
+                                    + "(" + (dwarf_diename(q.dw.foc().cu) ?: "<unknown>")
                                     + ")"))
                               + " while searching for local '"
                               + e->sym_name() + "'",
@@ -6639,6 +6919,18 @@ dwarf_derived_probe::expand_target_vars (dwarf_query& q,
 
     for (auto it = v.entry_probes.begin(); it != v.entry_probes.end(); ++it)
       {
+        // GNU_entry_value extras call query_addr, which nest-mounts
+        // q.base_probe.  Serialize against the walker mount/unmount,
+        // and point q at this probe's well-formed base (async plants
+        // cannot use the live walker cursor).
+        probe *bp = plant_base_probe (q);
+        probe_point *bl = plant_base_loc (q);
+        lock_guard<recursive_mutex> extras_lock (q.plant_q_mutex);
+        save_and_restore<probe*> tmp_tls_bp (&tls_plant_base_probe, (probe*)NULL);
+        save_and_restore<probe_point*> tmp_tls_bl (&tls_plant_base_loc,
+                                                  (probe_point*)NULL);
+        save_and_restore<probe*> tmp_base (&q.base_probe, bp);
+        save_and_restore<probe_point*> tmp_loc (&q.base_loc, bl);
         save_and_restore<statement*> tmp_body (&q.base_probe->body, it->second);
         save_and_restore<bool> tmp_function_num (&q.has_function_num, true);
         query_addr (it->first, &q);
@@ -6649,7 +6941,13 @@ dwarf_derived_probe::expand_target_vars (dwarf_query& q,
     if (!null_die(scope_die) &&
         (q.sess.dump_mode == systemtap_session::dump_matched_probes_vars ||
          q.sess.language_server_mode))
-      saveargs(q, scope_die, dwfl_addr);
+      {
+        timed_recursive_lock gl (q.sess.session_data_mutex,
+                                 stap_dwarf_timing.sess_wait_ns,
+                                 stap_dwarf_timing.sess_hold_ns,
+                                 stap_dwarf_timing.sess_n);
+        saveargs(q, scope_die, dwfl_addr);
+      }
 
     if (time_p)
       stap_dwarf_timing.expand_ns += dwarf_timing_now_ns () - t_expand0;
@@ -6682,8 +6980,9 @@ dwarf_query::expand_pending_target_vars ()
       pend.focus.cu = pend.cu_die_null ? NULL : &pend.cu_die;
       pend.focus.function
         = pend.function_die_null ? NULL : &pend.function_die;
-      // Visitors still read q.focus in places; keep it in sync with tls focus.
-      dwflpp_focus saved_qfocus = focus;
+      // Visitors use TLS foc(); keep q.focus in sync for remaining walker
+  // paths that still read q.focus directly.
+  dwflpp_focus saved_qfocus = focus;
       focus = pend.focus;
       dwflpp_focus_binder bind (focus);
       try
@@ -6727,7 +7026,8 @@ dwarf_derived_probe::dwarf_derived_probe(interned_string funcname,
                                          Dwarf_Die* scope_die /* may be null */,
 					 interned_string symbol_name,
 					 Dwarf_Addr offset)
-  : generic_kprobe_derived_probe (q.base_probe, q.base_loc, module, section,
+  : generic_kprobe_derived_probe (plant_base_probe (q), plant_base_loc (q),
+				  module, section,
 				  addr, q.has_return,
 				  q.has_maxactive, q.maxactive_val, "", offset),
     path (q.path),
@@ -6762,8 +7062,8 @@ dwarf_derived_probe::dwarf_derived_probe(interned_string funcname,
       // ditto for userspace runtimes (dyninst)
       if ((kernel_supports_inode_uprobes(q.dw.sess) || q.dw.sess.runtime_usermode_p()) &&
           section == ".absolute" && addr == dwfl_addr &&
-          addr >= q.focus.module_start && addr < q.focus.module_end)
-        this->addr = addr - q.focus.module_start;
+          addr >= q.dw.foc().module_start && addr < q.dw.foc().module_end)
+        this->addr = addr - q.dw.foc().module_start;
     }
   else
     {
@@ -6808,13 +7108,13 @@ dwarf_derived_probe::dwarf_derived_probe(interned_string funcname,
       // Copy CU/function DIEs by value: focus stores bare pointers into
       // module_cu_cache / local scope vectors / dwfl_cu slots that may not
       // remain valid until expand_pending_target_vars runs after the walk.
-      pend.cu_die_null = null_die (q.focus.cu);
+      pend.cu_die_null = null_die (q.dw.foc().cu);
       if (!pend.cu_die_null)
-        pend.cu_die = *q.focus.cu;
-      pend.function_die_null = null_die (q.focus.function);
+        pend.cu_die = *q.dw.foc().cu;
+      pend.function_die_null = null_die (q.dw.foc().function);
       if (!pend.function_die_null)
-        pend.function_die = *q.focus.function;
-      pend.focus = q.focus;
+        pend.function_die = *q.dw.foc().function;
+      pend.focus = q.dw.foc();
       q.pending_var_expands.push_back (pend);
     }
   else
@@ -10244,6 +10544,7 @@ dwarf_builder::build(systemtap_session & sess,
     }
 
   dwarf_query q(base, location, *dw, filled_parameters, finished_results, user_path, user_lib);
+  q.plant_builder = this;
 
   // XXX: kernel.statement.absolute is a special case that requires no
   // dwfl processing.  This code should be in a separate builder.
@@ -10271,25 +10572,30 @@ dwarf_builder::build(systemtap_session & sess,
       return finished_results;
     }
 
-  // Prefer wildcard synthetic fanout (parallel per-address re-derive,
-  // including $$parms) when thread-safe elfutils allows overlapping
-  // builds.  Skip for listing (-l/-L): fanout would still work with
-  // hidden .pc/.die cookies, but listing does not need the parallel
-  // path and must keep names users expect.  Otherwise defer $$parms
-  // across matches from one walk.  Skip defer for address queries
-  // (already the fanout unit) and .return.
+  // Prefer async dwarf_derived_probe construction ($$parms on
+  // plant_pool while this walk continues) when thread-safe elfutils
+  // allows overlapping libdw.  Otherwise fanout re-derives, or defer
+  // $$parms after the walk.  Skip fanout for listing (-l/-L).
   bool can_fanout = false;
 #ifdef HAVE_ELFUTILS_THREAD_SAFETY
-  can_fanout = !location->well_formed
-    && stap_nthreads () > 1
-    && sess.dump_mode == systemtap_session::dump_none
-    && ((q.has_function_str && dw->name_has_wildcard (q.function))
-        || (q.has_statement_str && dw->name_has_wildcard (q.function)));
-  if (can_fanout)
-    q.collecting_fanout = true;
-  else if (stap_nthreads () > 1 && !q.has_return && !q.has_absolute
-           && !q.has_function_num && !q.has_statement_num)
-    q.deferring_var_expand = true;
+  if (q.can_plant_async ())
+    {
+      if (sess.verbose > 2)
+        clog << _("dwarf plant async: ctor/expand on plant_pool\n");
+    }
+  else
+    {
+      can_fanout = !location->well_formed
+        && stap_nthreads () > 1
+        && sess.dump_mode == systemtap_session::dump_none
+        && ((q.has_function_str && dw->name_has_wildcard (q.function))
+            || (q.has_statement_str && dw->name_has_wildcard (q.function)));
+      if (can_fanout)
+        q.collecting_fanout = true;
+      else if (stap_nthreads () > 1 && !q.has_return && !q.has_absolute
+               && !q.has_function_num && !q.has_statement_num)
+        q.deferring_var_expand = true;
+    }
 #endif
 
   const bool time_fanout = can_fanout && dwarf_timing_wanted (sess);
@@ -10300,7 +10606,26 @@ dwarf_builder::build(systemtap_session & sess,
       t_preamble1 = dwarf_timing_now_ns ();
       stap_dwarf_timing.preamble_ns += t_preamble1 - t_build0;
     }
-  dw->iterate_over_modules<base_query>(&query_module, &q);
+  exception_ptr walk_ex;
+  try
+    {
+      dw->iterate_over_modules<base_query>(&query_module, &q);
+    }
+  catch (...)
+    {
+      walk_ex = current_exception ();
+    }
+  try
+    {
+      q.collect_plant_futures ();
+    }
+  catch (...)
+    {
+      if (!walk_ex)
+        walk_ex = current_exception ();
+    }
+  if (walk_ex)
+    rethrow_exception (walk_ex);
   auto t_collect1 = chrono::steady_clock::now ();
   if (time_rebuild)
     {
