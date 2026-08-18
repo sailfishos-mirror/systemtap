@@ -5,8 +5,8 @@
 global saw_echo, did_cat
 
 %(runtime == "kernel" %?
-probe kernel.function("do_sys_open")
-%: 
+probe kernel.function("do_exit")
+%:
 # The dyninst runtime doesn't have kernel.function probes. Instead,
 # we'll just use a begin probe to run system().
 probe begin
@@ -14,7 +14,7 @@ probe begin
 {
   if (!saw_echo) {
     # very inefficient. Testing only. DO NOT DO THIS
-    msg="echo do_sys_open"
+    msg="echo do_exit"
     system(msg)
     saw_echo = 1
   }

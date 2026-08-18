@@ -35,7 +35,7 @@ probe kernel.function("vfs_read"),
   printf("%s %s\n", probefunc(), $$parms$)
 }
 
-probe kernel.function("do_sys_open*") ?
+probe kernel.function("do_exit") ?
 {
   printf("%s %s\n", pp(), $$parms$)
 }

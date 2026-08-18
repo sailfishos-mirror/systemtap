@@ -131,7 +131,7 @@ if {[sysroot_sysenv_ns_setup]} { fail "$test - namespace setup" }
 
 # Make sure a basic kernel function probe works with our "sysroot".
 set subtest "kernel function probe"
-set script "probe kernel.function(\"sys_read\") { println(\"called\") }"
+set script "probe kernel.function(\"do_exit\") { println(\"called\") }"
 set stap_path $env(SYSTEMTAP_PATH)/stap
 lassign [sysroot_sysenv_ns_run "${stap_path} -p4 --sysroot=${sysroot_base_dir} -e '$script'"] rc output
 if {$rc == 0} {
