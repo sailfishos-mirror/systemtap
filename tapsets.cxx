@@ -2151,7 +2151,7 @@ dwarf_query::collect_plant_futures ()
 {
   if (plant_futures.empty ())
     return;
-  if (sess.verbose > 2)
+  if (sess.verbose > 2 || dwarf_timing_wanted (sess))
     clog << _F("dwarf plant async: %zu futures\n", plant_futures.size ());
   exception_ptr first;
   for (size_t i = 0; i < plant_futures.size (); i++)
@@ -10114,6 +10114,17 @@ dwarf_builder::build(systemtap_session & sess,
   // XXX: but they should be per-session, as this builder object
   // may be reused if we try to cross-instrument multiple targets.
 
+  // Fanout dumps when it re-derives synthetics; plant-async / deferred
+  // $$parms never took that path, so STAP_DWARF_TIMING was silent.
+  bool dump_local_timing = false;
+  if (dwarf_timing_wanted (sess)
+      && ! stap_dwarf_timing.enabled.load (memory_order_relaxed))
+    {
+      stap_dwarf_timing.reset ();
+      stap_dwarf_timing.enabled.store (true);
+      dump_local_timing = true;
+    }
+
   const bool time_rebuild =
     stap_dwarf_timing.enabled.load (memory_order_relaxed);
   uint64_t t_build0 = time_rebuild ? dwarf_timing_now_ns () : 0;
@@ -10694,6 +10705,12 @@ dwarf_builder::build(systemtap_session & sess,
     }
   else
     q.expand_pending_target_vars ();
+
+  if (dump_local_timing)
+    {
+      stap_dwarf_timing.enabled.store (false);
+      stap_dwarf_timing.dump (clog);
+    }
 
   // PR11553 special processing: .return probes requested, but
   // some inlined function instances matched.
