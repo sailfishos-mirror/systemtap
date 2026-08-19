@@ -2253,7 +2253,7 @@ semantic_pass_symbols (systemtap_session& s)
             }
         }
       auto t_symres1 = chrono::steady_clock::now ();
-      if (s.verbose > 0 && n_derived > 1)
+      if (s.verbose > 2 && n_derived > 1)
         {
           double derive_ms =
             chrono::duration<double, milli> (t_derive1 - t_derive0).count ();
