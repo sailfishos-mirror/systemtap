@@ -153,6 +153,14 @@ Using general verbosity flags like `-vv` prints the SystemTap version header to 
 stap --vp 02 script.stp
 ```
 
+**Do not add new `clog`/`cerr` diagnostics at `verbose < 2`.** Most of
+the testsuite runs `stap -v` (`sess.verbose == 1`). Extra lines there
+show up as unexpected output: dejagnu matchers fail, and runtime cases
+often sit until the ~3 minute timeout. Gate new timing / debug dumps at
+`sess.verbose > 2` (`-vvv`, or `--vp` for that pass), or behind an
+explicit env var (e.g. `STAP_DWARF_TIMING`). Do not print “just for `-v`”
+(`verbose > 0`).
+
 ## Script Language Quirks
 
 ### Field access (`->` vs `.`)
