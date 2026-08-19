@@ -1,0 +1,65 @@
+set test "library-glob-noload"
+
+# PR34432: glob-expand a library that is not DT_NEEDED of the process.
+# After TLS dwflpp focus (49634e7f), build_library_probe called
+# dw.module_name() with no binder and aborted:
+#   Assertion `tls_focus' failed.
+# python3.exp HelperSDT marks hit the same path.
+
+proc cleanup_handler { verbose } {
+    if { $verbose == 0 } {
+	catch {exec rm -f libnoload.so noload.x}
+    }
+}
+
+cleanup_handler 0
+
+set F additional_flags
+set libflags "[sdt_includes] $F=-g $F=-shared $F=-fPIC $F=-O0"
+set res [target_compile $srcdir/$subdir/library-glob-noload.c \
+	     ./libnoload.so executable $libflags]
+if { $res != "" } {
+    verbose -log "target_compile libnoload.so failed: $res"
+    untested "$test compiling libnoload.so"
+    return
+}
+pass "$test compiling libnoload.so"
+
+set res [target_compile $srcdir/$subdir/library-glob-noload-main.c \
+	     ./noload.x executable "$F=-g"]
+if { $res != "" } {
+    verbose -log "target_compile noload.x failed: $res"
+    untested "$test compiling noload.x"
+    cleanup_handler $verbose
+    return
+}
+pass "$test compiling noload.x"
+
+set exe "[pwd]/noload.x"
+set libglob "[pwd]/libnoload*.so"
+set script "probe process(\"$exe\").library(\"$libglob\").mark(\"ping\") \{ printf(\"ok\\n\") \}"
+
+spawn stap -p2 -e $script
+set assertion 0
+set semerr 0
+expect {
+    -timeout 120
+    -re {Assertion `tls_focus'} { incr assertion; exp_continue }
+    -re {semantic error} { incr semerr; exp_continue }
+    -re {^[^\r\n]*\r\n} { exp_continue }
+    timeout { fail "$test -p2 (timeout)" }
+    eof {}
+}
+catch {close}
+set wait_status [wait]
+set rc [lindex $wait_status 3]
+
+if { $assertion } {
+    fail "$test -p2 (tls_focus abort)"
+} elseif { $semerr || $rc != 0 } {
+    fail "$test -p2 (rc=$rc semantic=$semerr)"
+} else {
+    pass "$test -p2"
+}
+
+cleanup_handler $verbose

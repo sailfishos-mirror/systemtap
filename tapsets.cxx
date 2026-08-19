@@ -812,6 +812,13 @@ struct base_query
   interned_string  build_id_val; // if non-empty, buildid that resulted in resolved path
   int64_t pid_val;
 
+  // Process executable for rewriting process() when expanding library().
+  // path is set when module_val was retargeted at a resolved .so.
+  interned_string process_path () const
+  {
+    return path.empty () ? module_val : path;
+  }
+
   virtual void handle_query_module() = 0;
 };
 
@@ -3465,7 +3472,8 @@ base_query::query_library_callback (base_query *me, const char *data)
 
 
 probe*
-build_library_probe(dwflpp& dw,
+build_library_probe(systemtap_session& sess,
+                    const string& process_path,
                     const string& library,
                     probe *base_probe,
                     probe_point *base_loc)
@@ -3476,14 +3484,18 @@ build_library_probe(dwflpp& dw,
   // Create new probe point for the matching library. This is what will be
   // shown in listing mode. Also replace the process(str) with the real
   // absolute path rather than keeping what the user typed in.
+  //
+  // Do not use dwflpp::module_name() here: resolve_library_by_path
+  // runs after iterate_over_modules, so there is no dwflpp_focus_binder
+  // (tls_focus).  Pass the query's process path instead.
   for (auto it = specific_loc->components.begin();
        it != specific_loc->components.end(); ++it)
     if ((*it)->functor == TOK_PROCESS)
       derived_comps.push_back(new probe_point::component(TOK_PROCESS,
-          new literal_string(path_remove_sysroot(dw.sess, dw.module_name()))));
+          new literal_string(path_remove_sysroot(sess, process_path))));
     else if ((*it)->functor == TOK_LIBRARY)
       derived_comps.push_back(new probe_point::component(TOK_LIBRARY,
-          new literal_string(path_remove_sysroot(dw.sess, library)),
+          new literal_string(path_remove_sysroot(sess, library)),
           true /* from_glob */ ));
     else
       derived_comps.push_back(*it);
@@ -3494,6 +3506,7 @@ build_library_probe(dwflpp& dw,
 
 bool
 query_one_library (const char *library, dwflpp & dw,
+    interned_string process_path,
     const string user_lib, probe * base_probe, probe_point *base_loc,
     vector<derived_probe *> & results)
 {
@@ -3501,7 +3514,8 @@ query_one_library (const char *library, dwflpp & dw,
     {
       string library_path = find_executable (library, "", dw.sess.sysenv,
                                              "LD_LIBRARY_PATH");
-      probe *new_base = build_library_probe(dw, library_path,
+      probe *new_base = build_library_probe(dw.sess, process_path,
+                                            library_path,
                                             base_probe, base_loc);
 
       // We pass true for the optional parameter of derive_probes() here to
@@ -3525,7 +3539,8 @@ void
 dwarf_query::query_library (const char *library)
 {
   visited_libraries.insert(library);
-  if (query_one_library (library, dw, user_lib, base_probe, base_loc, results))
+  if (query_one_library (library, dw, process_path (), user_lib,
+                         base_probe, base_loc, results))
     resolved_library = true;
 }
 
@@ -9765,7 +9780,8 @@ void
 sdt_query::query_library (const char *library)
 {
   visited_libraries.insert(library);
-  if (query_one_library (library, dw, user_lib, base_probe, base_loc, results))
+  if (query_one_library (library, dw, process_path (), user_lib,
+                         base_probe, base_loc, results))
     resolved_library = true;
 }
 
@@ -9989,7 +10005,7 @@ resolve_library_by_path(base_query & q,
 {
   size_t results_pre = finished_results.size();
   systemtap_session & sess = q.sess;
-  dwflpp & dw = q.dw;
+  interned_string process_path = q.process_path ();
 
   interned_string lib;
   if (!location->from_globby_comp(TOK_LIBRARY) && q.has_library
@@ -10024,7 +10040,8 @@ resolve_library_by_path(base_query & q,
               // than "all", sort of similarly how
               // module("*").function("...") patterns work.
 
-              batch.push_back (build_library_probe(dw, globbed,
+              batch.push_back (build_library_probe(sess, process_path,
+                                                   globbed,
                                                    base, location));
             }
           vector<vector<derived_probe*> > per;
@@ -10043,7 +10060,8 @@ resolve_library_by_path(base_query & q,
                                                 "LD_LIBRARY_PATH");
           if (resolved_lib.find('/') != string::npos)
             {
-              probe *new_base = build_library_probe(dw, resolved_lib,
+              probe *new_base = build_library_probe(sess, process_path,
+                                                    resolved_lib,
                                                     base, location);
               vector<derived_probe*> dps;
               {
