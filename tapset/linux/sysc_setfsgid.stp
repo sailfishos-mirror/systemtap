@@ -50,8 +50,8 @@
           set_int_arg(1, fsgid)
 %)
 
-probe syscall.setfsgid = dw_syscall.setfsgid !, nd_syscall.setfsgid ? {}
-probe syscall.setfsgid.return = dw_syscall.setfsgid.return !,
+probe syscall.setfsgid = tp_syscall.setfsgid !, dw_syscall.setfsgid !, nd_syscall.setfsgid ? {}
+probe syscall.setfsgid.return = tp_syscall.setfsgid.return !, dw_syscall.setfsgid.return !,
                                 nd_syscall.setfsgid.return ? {}
 
 # dw_setfsgid _____________________________________________________
@@ -109,7 +109,7 @@ probe nd2_syscall.setfsgid = kprobe.function(@arch_syscall_prefix "sys_setfsgid"
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SETFSGID_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.setfsgid = __tp_syscall.setfsgid, __tp_syscall.setfsgid16
 {
 	@__set_syscall_pt_regs
@@ -120,11 +120,11 @@ probe tp_syscall.setfsgid = __tp_syscall.setfsgid, __tp_syscall.setfsgid16
 {
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SETFSGID_REGARGS_STORE %)
 }
-probe __tp_syscall.setfsgid = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.setfsgid = tp_syscall("setfsgid,~compat_setfsgid32") !, kernel.trace("sys_enter")
 {
 	@__syscall_compat_gate(@const("__NR_setfsgid"), @const("__NR_compat_setfsgid32"))
 }
-probe __tp_syscall.setfsgid16 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.setfsgid16 = tp_syscall("~compat_setfsgid") !, kernel.trace("sys_enter")
 {
 	@__compat_syscall_gate(@const("__NR_compat_setfsgid"))
 }
@@ -152,18 +152,18 @@ probe nd2_syscall.setfsgid.return =
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.setfsgid.return = __tp_syscall.setfsgid.return, __tp_syscall.setfsgid16.return
 {
 	@__set_syscall_pt_regs
 	@_SYSCALL_SETFSGID_NAME
 	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.setfsgid.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.setfsgid.return = tp_syscall("setfsgid,~compat_setfsgid32").return !, kernel.trace("sys_exit")
 {
 	@__syscall_compat_gate(@const("__NR_setfsgid"), @const("__NR_compat_setfsgid32"))
 }
-probe __tp_syscall.setfsgid16.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.setfsgid16.return = tp_syscall("~compat_setfsgid").return !, kernel.trace("sys_exit")
 {
 	@__compat_syscall_gate(@const("__NR_compat_setfsgid"))
 }

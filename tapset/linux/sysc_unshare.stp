@@ -24,8 +24,8 @@
           set_ulong_arg(1, unshare_flags)
 %)
 
-probe syscall.unshare = dw_syscall.unshare !, nd_syscall.unshare ? {}
-probe syscall.unshare.return = dw_syscall.unshare.return !,
+probe syscall.unshare = tp_syscall.unshare !, dw_syscall.unshare !, nd_syscall.unshare ? {}
+probe syscall.unshare.return = tp_syscall.unshare.return !, dw_syscall.unshare.return !,
                                nd_syscall.unshare.return ? {}
 
 # dw_unshare _____________________________________________________
@@ -68,8 +68,8 @@ probe nd2_syscall.unshare = kprobe.function(@arch_syscall_prefix "sys_unshare") 
         %( @_IS_SREG_KERNEL %? @_SYSCALL_UNSHARE_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.unshare = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.unshare = tp_syscall("unshare,~compat_unshare") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_unshare"), @const("__NR_compat_unshare"))
@@ -97,8 +97,8 @@ probe nd2_syscall.unshare.return = kprobe.function(@arch_syscall_prefix "sys_uns
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.unshare.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.unshare.return = tp_syscall("unshare,~compat_unshare").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_unshare"), @const("__NR_compat_unshare"))

@@ -45,8 +45,8 @@
 	  set_int_arg(5, msgflg)
 %)
 
-probe syscall.msgrcv = dw_syscall.msgrcv !, nd_syscall.msgrcv ? {}
-probe syscall.msgrcv.return = dw_syscall.msgrcv.return !,
+probe syscall.msgrcv = tp_syscall.msgrcv !, dw_syscall.msgrcv !, nd_syscall.msgrcv ? {}
+probe syscall.msgrcv.return = tp_syscall.msgrcv.return !, dw_syscall.msgrcv.return !,
                               nd_syscall.msgrcv.return ? {}
 
 # dw_msgrcv _____________________________________________________
@@ -96,8 +96,8 @@ probe nd2_syscall.msgrcv = kprobe.function(@arch_syscall_prefix "sys_msgrcv") ?
         %( @_IS_SREG_KERNEL %? @_SYSCALL_MSGRCV_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.msgrcv = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.msgrcv = tp_syscall("msgrcv") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_msgrcv"))
@@ -126,8 +126,8 @@ probe nd2_syscall.msgrcv.return = kprobe.function(@arch_syscall_prefix "sys_msgr
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.msgrcv.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.msgrcv.return = tp_syscall("msgrcv").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_msgrcv"))
@@ -147,9 +147,9 @@ probe tp_syscall.msgrcv.return = kernel.tracepoint("sys_exit")!, kernel.trace("s
 # endif
 #
 
-probe syscall.compat_sys_msgrcv = dw_syscall.compat_sys_msgrcv !,
+probe syscall.compat_sys_msgrcv = tp_syscall.compat_sys_msgrcv !, dw_syscall.compat_sys_msgrcv !,
                                   nd_syscall.compat_sys_msgrcv ? {}
-probe syscall.compat_sys_msgrcv.return = dw_syscall.compat_sys_msgrcv.return !,
+probe syscall.compat_sys_msgrcv.return = tp_syscall.compat_sys_msgrcv.return !, dw_syscall.compat_sys_msgrcv.return !,
                                          nd_syscall.compat_sys_msgrcv.return ? {}
 
 # dw_compat_sys_msgrcv _____________________________________________________
@@ -309,8 +309,8 @@ probe nd2_syscall.compat_sys_msgrcv = kprobe.function(@arch_syscall_prefix "comp
         %( @_IS_SREG_KERNEL %? @_SYSCALL_COMPAT_IPC_MSGRCV_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_sys_msgrcv = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.compat_sys_msgrcv = tp_syscall("~compat_ipc") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_ipc"))
@@ -357,8 +357,8 @@ probe nd2_syscall.compat_sys_msgrcv.return =
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_sys_msgrcv.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.compat_sys_msgrcv.return = tp_syscall("~compat_ipc").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_ipc"))

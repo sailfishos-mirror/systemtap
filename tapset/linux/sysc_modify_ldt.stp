@@ -31,8 +31,8 @@
 	  set_ulong_arg(3, bytecount)
 %)
 
-probe syscall.modify_ldt = dw_syscall.modify_ldt !, nd_syscall.modify_ldt ? {}
-probe syscall.modify_ldt.return = dw_syscall.modify_ldt.return !,
+probe syscall.modify_ldt = tp_syscall.modify_ldt !, dw_syscall.modify_ldt !, nd_syscall.modify_ldt ? {}
+probe syscall.modify_ldt.return = tp_syscall.modify_ldt.return !, dw_syscall.modify_ldt.return !,
                                   nd_syscall.modify_ldt.return ? {}
 
 # dw_modify_ldt _____________________________________________________
@@ -76,8 +76,8 @@ probe nd2_syscall.modify_ldt = kprobe.function(@arch_syscall_prefix "sys_modify_
         %( @_IS_SREG_KERNEL %? @_SYSCALL_MODIFY_LDT_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.modify_ldt = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.modify_ldt = tp_syscall("modify_ldt,~compat_modify_ldt") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_modify_ldt"), @const("__NR_compat_modify_ldt"))
@@ -105,8 +105,8 @@ probe nd2_syscall.modify_ldt.return = kprobe.function(@arch_syscall_prefix "sys_
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.modify_ldt.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.modify_ldt.return = tp_syscall("modify_ldt,~compat_modify_ldt").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_modify_ldt"), @const("__NR_compat_modify_ldt"))

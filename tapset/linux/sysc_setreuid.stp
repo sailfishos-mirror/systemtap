@@ -67,8 +67,8 @@
 	if (@probewrite(euid))
 	  set_uint_arg(2, __short(euid))
 %)
-probe syscall.setreuid = dw_syscall.setreuid !, nd_syscall.setreuid ? {}
-probe syscall.setreuid.return = dw_syscall.setreuid.return !,
+probe syscall.setreuid = tp_syscall.setreuid !, dw_syscall.setreuid !, nd_syscall.setreuid ? {}
+probe syscall.setreuid.return = tp_syscall.setreuid.return !, dw_syscall.setreuid.return !,
                                 nd_syscall.setreuid.return ? {}
 
 # dw_setreuid _____________________________________________________
@@ -114,8 +114,8 @@ probe nd2_syscall.setreuid = kprobe.function(@arch_syscall_prefix "sys_setreuid"
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SETREUID_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.setreuid = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.setreuid = tp_syscall("setreuid,~compat_setreuid32") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_setreuid"), @const("__NR_compat_setreuid32"))
@@ -144,8 +144,8 @@ probe nd2_syscall.setreuid.return = kprobe.function(@arch_syscall_prefix "sys_se
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.setreuid.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.setreuid.return = tp_syscall("setreuid,~compat_setreuid32").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_setreuid"), @const("__NR_compat_setreuid32"))
@@ -157,8 +157,8 @@ probe tp_syscall.setreuid.return = kernel.tracepoint("sys_exit")!, kernel.trace(
 # long sys_setreuid16(old_uid_t ruid, old_uid_t euid)
 #
 
-probe syscall.setreuid16 = dw_syscall.setreuid16 !, nd_syscall.setreuid16 ? {}
-probe syscall.setreuid16.return = dw_syscall.setreuid16.return !,
+probe syscall.setreuid16 = tp_syscall.setreuid16 !, dw_syscall.setreuid16 !, nd_syscall.setreuid16 ? {}
+probe syscall.setreuid16.return = tp_syscall.setreuid16.return !, dw_syscall.setreuid16.return !,
                                   nd_syscall.setreuid16.return ? {}
 
 # dw_setreuid16 _____________________________________________________
@@ -201,8 +201,8 @@ probe nd2_syscall.setreuid16 = kprobe.function(@arch_syscall_prefix "sys_setreui
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SETREUID16_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.setreuid16 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.setreuid16 = tp_syscall("~compat_setreuid") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_setreuid"))
@@ -230,8 +230,8 @@ probe nd2_syscall.setreuid16.return = kprobe.function(@arch_syscall_prefix "sys_
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.setreuid16.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.setreuid16.return = tp_syscall("~compat_setreuid").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_setreuid"))

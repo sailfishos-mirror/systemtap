@@ -31,8 +31,8 @@
 	  set_int_arg(3, flags)
 %)
 
-probe syscall.msync = dw_syscall.msync !, nd_syscall.msync ? {}
-probe syscall.msync.return = dw_syscall.msync.return !,
+probe syscall.msync = tp_syscall.msync !, dw_syscall.msync !, nd_syscall.msync ? {}
+probe syscall.msync.return = tp_syscall.msync.return !, dw_syscall.msync.return !,
                              nd_syscall.msync.return ? {}
 
 # dw_msync _____________________________________________________
@@ -77,8 +77,8 @@ probe nd2_syscall.msync = kprobe.function(@arch_syscall_prefix "sys_msync") ?
         %( @_IS_SREG_KERNEL %? @_SYSCALL_MSYNC_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.msync = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.msync = tp_syscall("msync,~compat_msync") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_msync"), @const("__NR_compat_msync"))
@@ -106,8 +106,8 @@ probe nd2_syscall.msync.return = kprobe.function(@arch_syscall_prefix "sys_msync
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.msync.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.msync.return = tp_syscall("msync,~compat_msync").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_msync"), @const("__NR_compat_msync"))

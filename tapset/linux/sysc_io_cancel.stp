@@ -32,8 +32,8 @@
 	  set_pointer_arg(3, result_uaddr)
 %)
 
-probe syscall.io_cancel = dw_syscall.io_cancel !, nd_syscall.io_cancel ? {}
-probe syscall.io_cancel.return = dw_syscall.io_cancel.return !, nd_syscall.io_cancel.return ? {}
+probe syscall.io_cancel = tp_syscall.io_cancel !, dw_syscall.io_cancel !, nd_syscall.io_cancel ? {}
+probe syscall.io_cancel.return = tp_syscall.io_cancel.return !, dw_syscall.io_cancel.return !, nd_syscall.io_cancel.return ? {}
 
 # dw_io_cancel __________________________________________________
 # long sys_io_cancel(aio_context_t ctx_id,
@@ -82,8 +82,8 @@ probe nd2_syscall.io_cancel = kprobe.function(@arch_syscall_prefix "sys_io_cance
         %( @_IS_SREG_KERNEL %? @_SYSCALL_IO_CANCEL_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.io_cancel = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.io_cancel = tp_syscall("io_cancel,~compat_io_cancel") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_io_cancel"), @const("__NR_compat_io_cancel"))
@@ -111,8 +111,8 @@ probe nd2_syscall.io_cancel.return = kprobe.function(@arch_syscall_prefix "sys_i
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.io_cancel.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.io_cancel.return = tp_syscall("io_cancel,~compat_io_cancel").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_io_cancel"), @const("__NR_compat_io_cancel"))

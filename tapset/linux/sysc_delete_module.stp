@@ -28,8 +28,8 @@
 	  set_uint_arg(2, flags)
 %)
 
-probe syscall.delete_module = dw_syscall.delete_module !, nd_syscall.delete_module ? {}
-probe syscall.delete_module.return = dw_syscall.delete_module.return !, nd_syscall.delete_module.return ? {}
+probe syscall.delete_module = tp_syscall.delete_module !, dw_syscall.delete_module !, nd_syscall.delete_module ? {}
+probe syscall.delete_module.return = tp_syscall.delete_module.return !, dw_syscall.delete_module.return !, nd_syscall.delete_module.return ? {}
 
 # dw_delete_module _____________________________________________________
 
@@ -73,8 +73,8 @@ probe nd2_syscall.delete_module = kprobe.function(@arch_syscall_prefix "sys_dele
         %( @_IS_SREG_KERNEL %? @_SYSCALL_DELETE_MODULE_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.delete_module = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.delete_module = tp_syscall("delete_module,~compat_delete_module") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_delete_module"), @const("__NR_compat_delete_module"))
@@ -103,8 +103,8 @@ probe nd2_syscall.delete_module.return = kprobe.function(@arch_syscall_prefix "s
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.delete_module.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.delete_module.return = tp_syscall("delete_module,~compat_delete_module").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_delete_module"), @const("__NR_compat_delete_module"))

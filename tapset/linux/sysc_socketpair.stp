@@ -57,8 +57,8 @@
 	sv_uaddr = user_uint32(&@uint_cast(__args)[3])
 %)
 
-probe syscall.socketpair = dw_syscall.socketpair !, nd_syscall.socketpair ? {}
-probe syscall.socketpair.return = dw_syscall.socketpair.return !,
+probe syscall.socketpair = tp_syscall.socketpair !, dw_syscall.socketpair !, nd_syscall.socketpair ? {}
+probe syscall.socketpair.return = tp_syscall.socketpair.return !, dw_syscall.socketpair.return !,
                                   nd_syscall.socketpair.return ? {}
 
 # dw_socketpair _____________________________________________________
@@ -186,7 +186,7 @@ probe __nd2_syscall.compat_socketcall.socketpair =
 	@_SYSCALL_COMPAT_SOCKETCALL_SOCKETPAIR_REGARGS
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.socketpair = __tp_syscall.socketpair ?,
 	__tp_syscall.socketcall.socketpair ?
 {
@@ -196,7 +196,7 @@ probe tp_syscall.socketpair = __tp_syscall.socketpair ?,
 	protocol_str = _sock_protocol_str(family, protocol)
 	@_SYSCALL_SOCKETPAIR_ARGSTR
 }
-probe __tp_syscall.socketpair = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.socketpair = tp_syscall("socketpair") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_socketpair"))
@@ -205,7 +205,7 @@ probe __tp_syscall.socketpair = kernel.tracepoint("sys_enter")!, kernel.trace("s
 {
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SOCKETPAIR_REGARGS_STORE %)
 }
-probe __tp_syscall.socketcall.socketpair = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.socketcall.socketpair = tp_syscall("socketcall,~compat_socketcall") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_socketcall"), @const("__NR_compat_socketcall"))
@@ -253,18 +253,18 @@ probe __nd2_syscall.socketcall.socketpair.return =
 	if (int_arg(1) != @const("SYS_SOCKETPAIR")) next;
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.socketpair.return = __tp_syscall.socketpair.return ?,
 	__tp_syscall.socketcall.socketpair.return ?
 {
 	@_SYSCALL_SOCKETPAIR_NAME
 	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.socketpair.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.socketpair.return = tp_syscall("socketpair").return !, kernel.trace("sys_exit")
 {
 	@__syscall_gate(@const("__NR_socketpair"))
 }
-probe __tp_syscall.socketcall.socketpair.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.socketcall.socketpair.return = tp_syscall("socketcall,~compat_socketcall").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_socketcall"), @const("__NR_compat_socketcall"))

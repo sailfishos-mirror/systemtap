@@ -30,9 +30,9 @@
 	  set_pointer_arg(2, tz_uaddr)
 %)
 
-probe syscall.settimeofday = dw_syscall.settimeofday !,
+probe syscall.settimeofday = tp_syscall.settimeofday !, dw_syscall.settimeofday !,
                              nd_syscall.settimeofday ? {}
-probe syscall.settimeofday.return = dw_syscall.settimeofday.return !,
+probe syscall.settimeofday.return = tp_syscall.settimeofday.return !, dw_syscall.settimeofday.return !,
                                     nd_syscall.settimeofday.return ? {}
 
 # dw_settimeofday _____________________________________________________
@@ -79,8 +79,8 @@ probe nd2_syscall.settimeofday = kprobe.function(@arch_syscall_prefix "sys_setti
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SETTIMEOFDAY_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.settimeofday = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.settimeofday = tp_syscall("settimeofday") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_settimeofday"))
@@ -109,8 +109,8 @@ probe nd2_syscall.settimeofday.return = kprobe.function(@arch_syscall_prefix "sy
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.settimeofday.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.settimeofday.return = tp_syscall("settimeofday").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_settimeofday"))
@@ -123,9 +123,9 @@ probe tp_syscall.settimeofday.return = kernel.tracepoint("sys_exit")!, kernel.tr
 # long compat_sys_settimeofday(struct compat_timeval __user *tv, struct timezone __user *tz)
 #
 
-probe syscall.settimeofday32 = dw_syscall.settimeofday32 !,
+probe syscall.settimeofday32 = tp_syscall.settimeofday32 !, dw_syscall.settimeofday32 !,
                                nd_syscall.settimeofday32 ? {}
-probe syscall.settimeofday32.return = dw_syscall.settimeofday32.return !,
+probe syscall.settimeofday32.return = tp_syscall.settimeofday32.return !, dw_syscall.settimeofday32.return !,
                                       nd_syscall.settimeofday32.return ? {}
 
 # dw_settimeofday32 _____________________________________________________
@@ -175,8 +175,8 @@ probe nd2_syscall.settimeofday32 = kprobe.function(@arch_syscall_prefix "compat_
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SETTIMEOFDAY_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.settimeofday32 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.settimeofday32 = tp_syscall("~compat_settimeofday") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_settimeofday"))
@@ -206,8 +206,8 @@ probe nd2_syscall.settimeofday32.return = kprobe.function(@arch_syscall_prefix "
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.settimeofday32.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.settimeofday32.return = tp_syscall("~compat_settimeofday").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_settimeofday"))

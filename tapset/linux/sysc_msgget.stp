@@ -46,8 +46,8 @@
 	  set_int_arg(3, msgflg)
 %)
 
-probe syscall.msgget = dw_syscall.msgget !, nd_syscall.msgget ? {}
-probe syscall.msgget.return = dw_syscall.msgget.return !, nd_syscall.msgget.return ? {}
+probe syscall.msgget = tp_syscall.msgget !, dw_syscall.msgget !, nd_syscall.msgget ? {}
+probe syscall.msgget.return = tp_syscall.msgget.return !, dw_syscall.msgget.return !, nd_syscall.msgget.return ? {}
 
 # dw_msgget _____________________________________________________
 
@@ -105,13 +105,13 @@ probe __nd2_syscall.compat_ipc.msgget =
         %( @_IS_SREG_KERNEL %? @_SYSCALL_IPC_MSGGET_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.msgget = __tp_syscall.msgget, __tp_syscall.ipc.msgget
 {
 	@_SYSCALL_MSGGET_NAME
 	@_SYSCALL_MSGGET_ARGSTR
 }
-probe __tp_syscall.msgget = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.msgget = tp_syscall("msgget") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_msgget"))
@@ -120,7 +120,7 @@ probe __tp_syscall.msgget = kernel.tracepoint("sys_enter")!, kernel.trace("sys_e
 {
         %( @_IS_SREG_KERNEL %? @_SYSCALL_MSGGET_REGARGS_STORE %)
 }
-probe __tp_syscall.ipc.msgget = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.ipc.msgget = tp_syscall("ipc,~compat_ipc") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_ipc"), @const("__NR_compat_ipc"))
@@ -155,17 +155,17 @@ probe __nd2_syscall.compat_ipc.msgget.return =
 	if ((uint_arg(1) & 0xffff) != @const("MSGGET")) next;
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.msgget.return = __tp_syscall.msgget.return, __tp_syscall.ipc.msgget.return
 {
 	@_SYSCALL_MSGGET_NAME
 	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.msgget.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.msgget.return = tp_syscall("msgget").return !, kernel.trace("sys_exit")
 {
 	@__syscall_gate(@const("__NR_msgget"))
 }
-probe __tp_syscall.ipc.msgget.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.ipc.msgget.return = tp_syscall("ipc,~compat_ipc").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_ipc"), @const("__NR_compat_ipc"))

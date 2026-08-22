@@ -54,8 +54,8 @@
 	  set_user_string_arg(pointer_arg(5), data_unquoted)
 %)
 
-probe syscall.mount = dw_syscall.mount !, nd_syscall.mount ? {}
-probe syscall.mount.return = dw_syscall.mount.return !, nd_syscall.mount.return ? {}
+probe syscall.mount = tp_syscall.mount !, dw_syscall.mount !, nd_syscall.mount ? {}
+probe syscall.mount.return = tp_syscall.mount.return !, dw_syscall.mount.return !, nd_syscall.mount.return ? {}
 
 # dw_mount _____________________________________________________
 
@@ -105,8 +105,8 @@ probe nd2_syscall.mount = kprobe.function(@arch_syscall_prefix "sys_mount") ?,
         %( @_IS_SREG_KERNEL %? @_SYSCALL_MOUNT_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.mount = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.mount = tp_syscall("mount,~compat_mount") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_mount"), @const("__NR_compat_mount"))
@@ -136,8 +136,8 @@ probe nd2_syscall.mount.return = kprobe.function(@arch_syscall_prefix "sys_mount
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.mount.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.mount.return = tp_syscall("mount,~compat_mount").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_mount"), @const("__NR_compat_mount"))

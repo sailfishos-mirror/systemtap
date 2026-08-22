@@ -39,9 +39,9 @@
 	}
 %)
 
-probe syscall.compat_truncate64 = dw_syscall.compat_truncate64 !,
+probe syscall.compat_truncate64 = tp_syscall.compat_truncate64 !, dw_syscall.compat_truncate64 !,
                                   nd_syscall.compat_truncate64 ? {}
-probe syscall.compat_truncate64.return = dw_syscall.compat_truncate64.return !,
+probe syscall.compat_truncate64.return = tp_syscall.compat_truncate64.return !, dw_syscall.compat_truncate64.return !,
                                          nd_syscall.compat_truncate64.return ? {}
 
 # dw_compat_truncate64 _____________________________________________________
@@ -92,8 +92,8 @@ probe nd2_syscall.compat_truncate64 =
         %( @_IS_SREG_KERNEL %? @_SYSCALL_COMPAT_TRUNCATE64_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_truncate64 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.compat_truncate64 = tp_syscall("~ia32_truncate64") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_ia32_truncate64"))
@@ -124,8 +124,8 @@ probe nd2_syscall.compat_truncate64.return =
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_truncate64.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.compat_truncate64.return = tp_syscall("~ia32_truncate64").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_ia32_truncate64"))

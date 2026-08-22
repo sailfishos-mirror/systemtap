@@ -68,6 +68,7 @@ struct timer_derived_probe_group;
 struct netfilter_derived_probe_group;
 struct profile_derived_probe_group;
 struct tracepoint_derived_probe_group;
+struct syscall_dispatch_derived_probe_group;
 struct lsm_derived_probe_group;
 struct hrtimer_derived_probe_group;
 struct procfs_derived_probe_group;
@@ -417,6 +418,7 @@ public:
   netfilter_derived_probe_group* netfilter_derived_probes;
   profile_derived_probe_group* profile_derived_probes;
   tracepoint_derived_probe_group* tracepoint_derived_probes;
+  syscall_dispatch_derived_probe_group* syscall_dispatch_derived_probes;
   lsm_derived_probe_group* lsm_derived_probes;
   hrtimer_derived_probe_group* hrtimer_derived_probes;
   procfs_derived_probe_group* procfs_derived_probes;

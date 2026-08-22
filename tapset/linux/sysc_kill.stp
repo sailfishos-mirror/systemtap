@@ -27,8 +27,8 @@
 	  set_int_arg(2, sig)
 %)
 
-probe syscall.kill = dw_syscall.kill !, nd_syscall.kill ? {}
-probe syscall.kill.return = dw_syscall.kill.return !, nd_syscall.kill.return ? {}
+probe syscall.kill = tp_syscall.kill !, dw_syscall.kill !, nd_syscall.kill ? {}
+probe syscall.kill.return = tp_syscall.kill.return !, dw_syscall.kill.return !, nd_syscall.kill.return ? {}
 
 # dw_kill _____________________________________________________
 
@@ -71,8 +71,8 @@ probe nd2_syscall.kill = kprobe.function(@arch_syscall_prefix "sys_kill") ?
         %( @_IS_SREG_KERNEL %? @_SYSCALL_KILL_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.kill = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.kill = tp_syscall("kill,~compat_kill") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_kill"), @const("__NR_compat_kill"))
@@ -100,8 +100,8 @@ probe nd2_syscall.kill.return = kprobe.function(@arch_syscall_prefix "sys_kill")
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.kill.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.kill.return = tp_syscall("kill,~compat_kill").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_kill"), @const("__NR_compat_kill"))

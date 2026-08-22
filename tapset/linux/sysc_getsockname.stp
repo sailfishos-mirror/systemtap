@@ -48,8 +48,8 @@
 	namelen_uaddr = user_uint32(&@uint_cast(__argsi)[2])
 %)
 
-probe syscall.getsockname = dw_syscall.getsockname !, nd_syscall.getsockname ? {}
-probe syscall.getsockname.return = dw_syscall.getsockname.return !,
+probe syscall.getsockname = tp_syscall.getsockname !, dw_syscall.getsockname !, nd_syscall.getsockname ? {}
+probe syscall.getsockname.return = tp_syscall.getsockname.return !, dw_syscall.getsockname.return !,
                                    nd_syscall.getsockname.return ? {}
 
 # dw_getsockname _____________________________________________________
@@ -164,14 +164,14 @@ probe __nd2_syscall.compat_socketcall.getsockname =
 	@_SYSCALL_COMPAT_SOCKETCALL_GETSOCKNAME_REGARGS
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.getsockname = __tp_syscall.getsockname ?,
 	__tp_syscall.socketcall.getsockname ?
 {
 	@_SYSCALL_GETSOCKNAME_NAME
 	@_SYSCALL_GETSOCKNAME_ARGSTR
 }
-probe __tp_syscall.getsockname = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.getsockname = tp_syscall("getsockname") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_getsockname"))
@@ -180,7 +180,7 @@ probe __tp_syscall.getsockname = kernel.tracepoint("sys_enter")!, kernel.trace("
 {
         @_SYSCALL_GETSOCKNAME_REGARGS_STORE
 }
-probe __tp_syscall.socketcall.getsockname = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.socketcall.getsockname = tp_syscall("socketcall,~compat_socketcall") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_socketcall"), @const("__NR_compat_socketcall"))
@@ -231,18 +231,18 @@ probe __nd2_syscall.socketcall.getsockname.return =
 	if (int_arg(1) != @const("SYS_GETSOCKNAME")) next;
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.getsockname.return = __tp_syscall.getsockname.return ?,
 	__tp_syscall.socketcall.getsockname.return ?
 {
 	@_SYSCALL_GETSOCKNAME_NAME
 	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.getsockname.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.getsockname.return = tp_syscall("getsockname").return !, kernel.trace("sys_exit")
 {
 	@__syscall_gate(@const("__NR_getsockname"))
 }
-probe __tp_syscall.socketcall.getsockname.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.socketcall.getsockname.return = tp_syscall("socketcall,~compat_socketcall").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_socketcall"), @const("__NR_compat_socketcall"))

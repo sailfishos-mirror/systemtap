@@ -77,8 +77,8 @@
 	if (@probewrite(flags))
 	  set_int_arg(6, flags)
 %)
-probe syscall.pwritev2 = dw_syscall.pwritev2 !, nd_syscall.pwritev2 ? {}
-probe syscall.pwritev2.return = dw_syscall.pwritev2.return !,
+probe syscall.pwritev2 = tp_syscall.pwritev2 !, dw_syscall.pwritev2 !, nd_syscall.pwritev2 ? {}
+probe syscall.pwritev2.return = tp_syscall.pwritev2.return !, dw_syscall.pwritev2.return !,
                                 nd_syscall.pwritev2.return ? {}
 
 # dw_pwritev2 _____________________________________________________
@@ -164,13 +164,13 @@ probe __nd2_syscall.compat_pwritev2 =
         %( @_IS_SREG_KERNEL %? @_SYSCALL_COMPAT_PWRITEV2_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.pwritev2 = __tp_syscall.pwritev2 ?,
 	__tp_syscall.compat_pwritev2 ?
 {
 	@_SYSCALL_PWRITEV2_NAME
 }
-probe __tp_syscall.pwritev2 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.pwritev2 = tp_syscall("pwritev2") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_pwritev2"))
@@ -180,7 +180,7 @@ probe __tp_syscall.pwritev2 = kernel.tracepoint("sys_enter")!, kernel.trace("sys
 {
         %( @_IS_SREG_KERNEL %? @_SYSCALL_PWRITEV2_REGARGS_STORE %)
 }
-probe __tp_syscall.compat_pwritev2 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.compat_pwritev2 = tp_syscall("~compat_pwritev2") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_pwritev2"))
@@ -209,8 +209,8 @@ probe nd2_syscall.pwritev2.return = kprobe.function(@arch_syscall_prefix "sys_pw
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.pwritev2.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.pwritev2.return = tp_syscall("pwritev2,~compat_pwritev2").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_pwritev2"), @const("__NR_compat_pwritev2"))

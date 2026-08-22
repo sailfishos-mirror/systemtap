@@ -44,9 +44,9 @@
 	  set_pointer_arg(5, abs_timeout_uaddr)
 %)
 
-probe syscall.mq_timedsend = dw_syscall.mq_timedsend !,
+probe syscall.mq_timedsend = tp_syscall.mq_timedsend !, dw_syscall.mq_timedsend !,
                              nd_syscall.mq_timedsend ? {}
-probe syscall.mq_timedsend.return = dw_syscall.mq_timedsend.return !,
+probe syscall.mq_timedsend.return = tp_syscall.mq_timedsend.return !, dw_syscall.mq_timedsend.return !,
                                     nd_syscall.mq_timedsend.return ? {}
 
 # dw_mq_timedsend _____________________________________________________
@@ -147,7 +147,7 @@ probe __nd2_syscall.mq_timedsend = kprobe.function(@arch_syscall_prefix "sys_mq_
 %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.mq_timedsend =
 	__tp_syscall.mq_timedsend ?,
 	__tp_syscall.compat_mq_timedsend ?
@@ -156,7 +156,7 @@ probe tp_syscall.mq_timedsend =
 	@_SYSCALL_MQ_TIMEDSEND_REGARGS
 	@_SYSCALL_MQ_TIMEDSEND_ARGSTR
 }
-probe __tp_syscall.compat_mq_timedsend = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.compat_mq_timedsend = tp_syscall("~compat_mq_timedsend") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_mq_timedsend"))
@@ -169,7 +169,7 @@ probe __tp_syscall.compat_mq_timedsend = kernel.tracepoint("sys_enter")!, kernel
 	  set_uint_arg(3, msg_len)
 %)
 }
-probe __tp_syscall.mq_timedsend = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.mq_timedsend = tp_syscall("mq_timedsend") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_mq_timedsend"))
@@ -207,8 +207,8 @@ probe nd2_syscall.mq_timedsend.return =
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.mq_timedsend.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.mq_timedsend.return = tp_syscall("mq_timedsend,~compat_mq_timedsend").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_mq_timedsend"), @const("__NR_compat_mq_timedsend"))

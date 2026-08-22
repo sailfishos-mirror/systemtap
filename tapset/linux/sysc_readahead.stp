@@ -36,8 +36,8 @@
 %)
 %)
 
-probe syscall.readahead = dw_syscall.readahead !, nd_syscall.readahead ? {}
-probe syscall.readahead.return = dw_syscall.readahead.return !,
+probe syscall.readahead = tp_syscall.readahead !, dw_syscall.readahead !, nd_syscall.readahead ? {}
+probe syscall.readahead.return = tp_syscall.readahead.return !, dw_syscall.readahead.return !,
                                  nd_syscall.readahead.return ? {}
 
 # dw_readahead _____________________________________________________
@@ -106,8 +106,8 @@ probe nd2_syscall.readahead = kprobe.function(@arch_syscall_prefix "sys_readahea
         %( @_IS_SREG_KERNEL %? @_SYSCALL_READAHEAD_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.readahead = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.readahead = tp_syscall("readahead") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_readahead"))
@@ -138,8 +138,8 @@ probe nd2_syscall.readahead.return = kprobe.function(@arch_syscall_prefix "sys_r
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.readahead.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.readahead.return = tp_syscall("readahead").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_readahead"))

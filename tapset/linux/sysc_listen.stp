@@ -40,8 +40,8 @@
 	backlog = user_int(&@uint_cast(__args)[1])
 %)
 
-probe syscall.listen = dw_syscall.listen !, nd_syscall.listen ? {}
-probe syscall.listen.return = dw_syscall.listen.return !,
+probe syscall.listen = tp_syscall.listen !, dw_syscall.listen !, nd_syscall.listen ? {}
+probe syscall.listen.return = tp_syscall.listen.return !, dw_syscall.listen.return !,
                               nd_syscall.listen.return ? {}
 
 # dw_listen _____________________________________________________
@@ -150,14 +150,14 @@ probe __nd2_syscall.compat_socketcall.listen =
 	@_SYSCALL_COMPAT_SOCKETCALL_LISTEN_REGARGS
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.listen = __tp_syscall.listen ?,
 	__tp_syscall.socketcall.listen ?
 {
 	@_SYSCALL_LISTEN_NAME
 	@_SYSCALL_LISTEN_ARGSTR
 }
-probe __tp_syscall.listen = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.listen = tp_syscall("listen") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_listen"))
@@ -166,7 +166,7 @@ probe __tp_syscall.listen = kernel.tracepoint("sys_enter")!, kernel.trace("sys_e
 {
         %( @_IS_SREG_KERNEL %? @_SYSCALL_LISTEN_REGARGS_STORE %)
 }
-probe __tp_syscall.socketcall.listen = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.socketcall.listen = tp_syscall("socketcall,~compat_socketcall") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_socketcall"), @const("__NR_compat_socketcall"))
@@ -215,18 +215,18 @@ probe __nd2_syscall.socketcall.listen.return =
 	if (int_arg(1) != @const("SYS_LISTEN")) next;
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.listen.return = __tp_syscall.listen.return ?,
 	__tp_syscall.socketcall.listen.return ?
 {
 	@_SYSCALL_LISTEN_NAME
 	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.listen.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.listen.return = tp_syscall("listen").return !, kernel.trace("sys_exit")
 {
 	@__syscall_gate(@const("__NR_listen"))
 }
-probe __tp_syscall.socketcall.listen.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.socketcall.listen.return = tp_syscall("socketcall,~compat_socketcall").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_socketcall"), @const("__NR_compat_socketcall"))

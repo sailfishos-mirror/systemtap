@@ -24,9 +24,9 @@
           set_int_arg(1, pid)
 %)
 
-probe syscall.sched_getscheduler = dw_syscall.sched_getscheduler !,
+probe syscall.sched_getscheduler = tp_syscall.sched_getscheduler !, dw_syscall.sched_getscheduler !,
                                    nd_syscall.sched_getscheduler ? {}
-probe syscall.sched_getscheduler.return = dw_syscall.sched_getscheduler.return !,
+probe syscall.sched_getscheduler.return = tp_syscall.sched_getscheduler.return !, dw_syscall.sched_getscheduler.return !,
                                           nd_syscall.sched_getscheduler.return ? {}
 
 # dw_sched_getscheduler _____________________________________________________
@@ -68,8 +68,8 @@ probe nd2_syscall.sched_getscheduler = kprobe.function(@arch_syscall_prefix "sys
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SCHED_GETSCHEDULER_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.sched_getscheduler = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.sched_getscheduler = tp_syscall("sched_getscheduler,~compat_sched_getscheduler") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_sched_getscheduler"), @const("__NR_compat_sched_getscheduler"))
@@ -97,8 +97,8 @@ probe nd2_syscall.sched_getscheduler.return = kprobe.function(@arch_syscall_pref
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.sched_getscheduler.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.sched_getscheduler.return = tp_syscall("sched_getscheduler,~compat_sched_getscheduler").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_sched_getscheduler"), @const("__NR_compat_sched_getscheduler"))

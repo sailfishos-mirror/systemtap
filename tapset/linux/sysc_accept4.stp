@@ -56,8 +56,8 @@
 	flags = user_int(&@uint_cast(__argsi)[3])
 %)
 
-probe syscall.accept4 = dw_syscall.accept4 !, nd_syscall.accept4 ? {}
-probe syscall.accept4.return = dw_syscall.accept4.return !, nd_syscall.accept4.return ? {}
+probe syscall.accept4 = tp_syscall.accept4 !, dw_syscall.accept4 !, nd_syscall.accept4 ? {}
+probe syscall.accept4.return = tp_syscall.accept4.return !, dw_syscall.accept4.return !, nd_syscall.accept4.return ? {}
 
 # dw_accept4 _____________________________________________________
 
@@ -178,7 +178,7 @@ probe __nd2_syscall.compat_socketcall.accept4 =
 	@_SYSCALL_COMPAT_SOCKETCALL_ACCEPT4_REGARGS
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.accept4 = __tp_syscall.accept4 ?,
 	__tp_syscall.socketcall.accept4 ?
 {
@@ -186,7 +186,7 @@ probe tp_syscall.accept4 = __tp_syscall.accept4 ?,
 	flags_str = _sock_flags_str(flags)
 	@_SYSCALL_ACCEPT4_ARGSTR
 }
-probe __tp_syscall.accept4 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.accept4 = tp_syscall("accept4") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_accept4"))
@@ -195,7 +195,7 @@ probe __tp_syscall.accept4 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_
 {
         %( @_IS_SREG_KERNEL %? @_SYSCALL_ACCEPT4_REGARGS_STORE %)
 }
-probe __tp_syscall.socketcall.accept4 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.socketcall.accept4 = tp_syscall("socketcall,~compat_socketcall") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_socketcall"), @const("__NR_compat_socketcall"))
@@ -244,18 +244,18 @@ probe __nd2_syscall.socketcall.accept4.return =
 	if (int_arg(1) != @const("SYS_ACCEPT4")) next;
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.accept4.return = __tp_syscall.accept4.return ?,
 	__tp_syscall.socketcall.accept4.return ?
 {
 	@_SYSCALL_ACCEPT4_NAME
 	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.accept4.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.accept4.return = tp_syscall("accept4").return !, kernel.trace("sys_exit")
 {
 	@__syscall_nr_gate(@const("__NR_accept4"))
 }
-probe __tp_syscall.accept4.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.socketcall.accept4.return = tp_syscall("socketcall,~compat_socketcall").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_socketcall"), @const("__NR_compat_socketcall"))

@@ -44,8 +44,8 @@
 	  set_pointer_arg(5, timeout_uaddr)
 %)
 
-probe syscall.select = dw_syscall.select !, nd_syscall.select ? {}
-probe syscall.select.return = dw_syscall.select.return !,
+probe syscall.select = tp_syscall.select !, dw_syscall.select !, nd_syscall.select ? {}
+probe syscall.select.return = tp_syscall.select.return !, dw_syscall.select.return !,
                               nd_syscall.select.return ? {}
 
 # dw_select _____________________________________________________
@@ -94,8 +94,8 @@ probe nd2_syscall.select = kprobe.function(@arch_syscall_prefix "sys_select") ?
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SELECT_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.select = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.select = tp_syscall("select,_newselect") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate2(@const("__NR_select"), @const("__NR__newselect"))
@@ -124,8 +124,8 @@ probe nd2_syscall.select.return = kprobe.function(@arch_syscall_prefix "sys_sele
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.select.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.select.return = tp_syscall("select,_newselect").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate2(@const("__NR_select"), @const("__NR__newselect"))
@@ -140,8 +140,8 @@ probe tp_syscall.select.return = kernel.tracepoint("sys_exit")!, kernel.trace("s
 #		struct compat_timeval __user *tvp)
 #
 
-probe syscall.compat_select = dw_syscall.compat_select !, nd_syscall.compat_select ? {}
-probe syscall.compat_select.return = dw_syscall.compat_select.return !,
+probe syscall.compat_select = tp_syscall.compat_select !, dw_syscall.compat_select !, nd_syscall.compat_select ? {}
+probe syscall.compat_select.return = tp_syscall.compat_select.return !, dw_syscall.compat_select.return !,
                                      nd_syscall.compat_select.return ? {}
 
 # dw_compat_select _____________________________________________________
@@ -190,8 +190,8 @@ probe nd2_syscall.compat_select = kprobe.function(@arch_syscall_prefix "compat_s
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SELECT_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_select = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.compat_select = tp_syscall("~compat__newselect") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat__newselect"))
@@ -220,8 +220,8 @@ probe nd2_syscall.compat_select.return = kprobe.function(@arch_syscall_prefix "c
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_select.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.compat_select.return = tp_syscall("~compat__newselect").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat__newselect"))

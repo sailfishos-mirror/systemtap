@@ -26,9 +26,9 @@
           set_int_arg(1, policy)
 %)
 
-probe syscall.sched_get_priority_max = dw_syscall.sched_get_priority_max !,
+probe syscall.sched_get_priority_max = tp_syscall.sched_get_priority_max !, dw_syscall.sched_get_priority_max !,
                                        nd_syscall.sched_get_priority_max ? {}
-probe syscall.sched_get_priority_max.return = dw_syscall.sched_get_priority_max.return !,
+probe syscall.sched_get_priority_max.return = tp_syscall.sched_get_priority_max.return !, dw_syscall.sched_get_priority_max.return !,
                                               nd_syscall.sched_get_priority_max.return ? {}
 
 # dw_sched_get_priority_max _____________________________________________________
@@ -71,8 +71,8 @@ probe nd2_syscall.sched_get_priority_max = kprobe.function(@arch_syscall_prefix 
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SCHED_GET_PRIORITY_MAX_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.sched_get_priority_max = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.sched_get_priority_max = tp_syscall("sched_get_priority_max,~compat_sched_get_priority_max") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_sched_get_priority_max"), @const("__NR_compat_sched_get_priority_max"))
@@ -100,8 +100,8 @@ probe nd2_syscall.sched_get_priority_max.return = kprobe.function(@arch_syscall_
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.sched_get_priority_max.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.sched_get_priority_max.return = tp_syscall("sched_get_priority_max,~compat_sched_get_priority_max").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_sched_get_priority_max"), @const("__NR_compat_sched_get_priority_max"))

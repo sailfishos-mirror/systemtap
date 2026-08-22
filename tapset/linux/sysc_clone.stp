@@ -13,8 +13,8 @@
 # syscall.
 #
 
-probe syscall.clone = dw_syscall.clone !, nd_syscall.clone {}
-probe syscall.clone.return = dw_syscall.clone.return !, nd_syscall.clone.return {}
+probe syscall.clone = tp_syscall.clone !, dw_syscall.clone !, nd_syscall.clone {}
+probe syscall.clone.return = tp_syscall.clone.return !, dw_syscall.clone.return !, nd_syscall.clone.return {}
 
 # dw_clone _____________________________________________________
 
@@ -128,7 +128,7 @@ probe nd1_syscall.clone = kprobe.function("_do_fork").call !,
 %)
 }
 
-probe tp_syscall.clone = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe tp_syscall.clone = tp_syscall("clone,~compat_clone,clone2") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 %( arch != "ia64" %?
@@ -185,7 +185,7 @@ probe nd1_syscall.clone.return = kprobe.function("_do_fork").return !,
 	@SYSC_RETVALSTR(returnval())
 }
 
-probe tp_syscall.clone.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe tp_syscall.clone.return = tp_syscall("clone,~compat_clone,clone2").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 %( arch != "ia64" %?

@@ -43,8 +43,8 @@
 	  set_uint_arg(3, count)
 %)
 
-probe syscall.getdents = dw_syscall.getdents !, nd_syscall.getdents ? {}
-probe syscall.getdents.return = dw_syscall.getdents.return !,
+probe syscall.getdents = tp_syscall.getdents !, dw_syscall.getdents !, nd_syscall.getdents ? {}
+probe syscall.getdents.return = tp_syscall.getdents.return !, dw_syscall.getdents.return !,
                                 nd_syscall.getdents.return ? {}
 
 # dw_getdents _____________________________________________________
@@ -112,7 +112,7 @@ probe nd2_syscall.getdents = kprobe.function(@arch_syscall_prefix "sys_getdents"
         @_SYSCALL_GETDENTS_REGARGS_STORE
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.getdents = __tp_syscall.getdents, __tp_syscall.getdents64
 {
 	@__set_syscall_pt_regs
@@ -123,11 +123,11 @@ probe tp_syscall.getdents = __tp_syscall.getdents, __tp_syscall.getdents64
 {
         @_SYSCALL_GETDENTS_REGARGS_STORE
 }
-probe __tp_syscall.getdents = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.getdents = tp_syscall("getdents,~compat_getdents") !, kernel.trace("sys_enter")
 {
 	@__syscall_compat_gate(@const("__NR_getdents"), @const("__NR_compat_getdents"))
 }
-probe __tp_syscall.getdents64 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.getdents64 = tp_syscall("getdents64,~compat_getdents64") !, kernel.trace("sys_enter")
 {
 	@__syscall_compat_gate(@const("__NR_getdents64"), @const("__NR_compat_getdents64"))
 }
@@ -158,18 +158,18 @@ probe nd2_syscall.getdents.return = kprobe.function(@arch_syscall_prefix "sys_ge
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.getdents.return = __tp_syscall.getdents.return, __tp_syscall.getdents64.return 
 {
 	@__set_syscall_pt_regs
 	@_SYSCALL_GETDENTS_NAME
 	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.getdents.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.getdents.return = tp_syscall("getdents,~compat_getdents").return !, kernel.trace("sys_exit")
 {
 	@__syscall_compat_gate(@const("__NR_getdents"), @const("__NR_compat_getdents"))
 }
-probe __tp_syscall.getdents64.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.getdents64.return = tp_syscall("getdents64,~compat_getdents64").return !, kernel.trace("sys_exit")
 {
 	@__syscall_compat_gate(@const("__NR_getdents64"), @const("__NR_compat_getdents64"))
 }

@@ -30,8 +30,8 @@
 	  set_user_string_arg(pointer_arg(2), old_root_str_unquoted)
 %)
 
-probe syscall.pivot_root = dw_syscall.pivot_root !, nd_syscall.pivot_root ? {}
-probe syscall.pivot_root.return = dw_syscall.pivot_root.return !,
+probe syscall.pivot_root = tp_syscall.pivot_root !, dw_syscall.pivot_root !, nd_syscall.pivot_root ? {}
+probe syscall.pivot_root.return = tp_syscall.pivot_root.return !, dw_syscall.pivot_root.return !,
                                   nd_syscall.pivot_root.return ? {}
 
 # dw_pivot_root _____________________________________________________
@@ -74,8 +74,8 @@ probe nd2_syscall.pivot_root = kprobe.function(@arch_syscall_prefix "sys_pivot_r
         %( @_IS_SREG_KERNEL %? @_SYSCALL_PIVOT_ROOT_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.pivot_root = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.pivot_root = tp_syscall("pivot_root,~compat_pivot_root") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_pivot_root"), @const("__NR_compat_pivot_root"))
@@ -103,8 +103,8 @@ probe nd2_syscall.pivot_root.return = kprobe.function(@arch_syscall_prefix "sys_
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.pivot_root.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.pivot_root.return = tp_syscall("pivot_root,~compat_pivot_root").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_pivot_root"), @const("__NR_compat_pivot_root"))

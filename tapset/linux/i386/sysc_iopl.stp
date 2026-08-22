@@ -23,8 +23,8 @@
 	level = uint_arg(1)
 %)
 
-probe syscall.iopl = dw_syscall.iopl !, nd_syscall.iopl {}
-probe syscall.iopl.return = dw_syscall.iopl.return !, nd_syscall.iopl.return {}
+probe syscall.iopl = tp_syscall.iopl !, dw_syscall.iopl !, nd_syscall.iopl {}
+probe syscall.iopl.return = tp_syscall.iopl.return !, dw_syscall.iopl.return !, nd_syscall.iopl.return {}
 
 # dw_iopl _____________________________________________________
 
@@ -62,8 +62,8 @@ probe nd2_syscall.iopl = kprobe.function(@arch_syscall_prefix "sys_iopl") ?
 	@_SYSCALL_IOPL_ARGSTR
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.iopl = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.iopl = tp_syscall("iopl") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_iopl"))
@@ -88,8 +88,8 @@ probe nd2_syscall.iopl.return = kprobe.function(@arch_syscall_prefix "sys_iopl")
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.iopl.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.iopl.return = tp_syscall("iopl").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_iopl"))

@@ -46,8 +46,8 @@
 	  set_user_string_arg(pointer_arg(2), name_str_unquoted)
 %)
 
-probe syscall.lremovexattr = dw_syscall.lremovexattr !, nd_syscall.lremovexattr ? {}
-probe syscall.lremovexattr.return = dw_syscall.lremovexattr.return !, nd_syscall.lremovexattr.return ? {}
+probe syscall.lremovexattr = tp_syscall.lremovexattr !, dw_syscall.lremovexattr !, nd_syscall.lremovexattr ? {}
+probe syscall.lremovexattr.return = tp_syscall.lremovexattr.return !, dw_syscall.lremovexattr.return !, nd_syscall.lremovexattr.return ? {}
 
 # dw_lremovexattr _____________________________________________________
 
@@ -95,8 +95,8 @@ probe nd2_syscall.lremovexattr = kprobe.function(@arch_syscall_prefix "sys_lremo
         %( @_IS_SREG_KERNEL %? @_SYSCALL_LREMOVEXATTR_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.lremovexattr = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.lremovexattr = tp_syscall("lremovexattr,~compat_lremovexattr") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_lremovexattr"), @const("__NR_compat_lremovexattr"))
@@ -124,8 +124,8 @@ probe nd2_syscall.lremovexattr.return = kprobe.function(@arch_syscall_prefix "sy
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.lremovexattr.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.lremovexattr.return = tp_syscall("lremovexattr,~compat_lremovexattr").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_lremovexattr"), @const("__NR_compat_lremovexattr"))

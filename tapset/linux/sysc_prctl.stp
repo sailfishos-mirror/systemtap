@@ -45,8 +45,8 @@
 	  set_ulong_arg(5, arg5)
 %)
 
-probe syscall.prctl = dw_syscall.prctl !, nd_syscall.prctl ? {}
-probe syscall.prctl.return = dw_syscall.prctl.return !, nd_syscall.prctl.return ? {}
+probe syscall.prctl = tp_syscall.prctl !, dw_syscall.prctl !, nd_syscall.prctl ? {}
+probe syscall.prctl.return = tp_syscall.prctl.return !, dw_syscall.prctl.return !, nd_syscall.prctl.return ? {}
 
 # dw_prctl _____________________________________________________
 
@@ -91,8 +91,8 @@ probe nd2_syscall.prctl = kprobe.function(@arch_syscall_prefix "sys_prctl") ?
         %( @_IS_SREG_KERNEL %? @_SYSCALL_PRCTL_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.prctl = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.prctl = tp_syscall("prctl,~compat_prctl") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_prctl"), @const("__NR_compat_prctl"))
@@ -120,8 +120,8 @@ probe nd2_syscall.prctl.return = kprobe.function(@arch_syscall_prefix "sys_prctl
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.prctl.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.prctl.return = tp_syscall("prctl,~compat_prctl").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_prctl"), @const("__NR_compat_prctl"))

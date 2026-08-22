@@ -24,8 +24,8 @@
 %)
 
 
-probe syscall.acct = dw_syscall.acct !, nd_syscall.acct ? {}
-probe syscall.acct.return = dw_syscall.acct.return !, nd_syscall.acct.return ? {}
+probe syscall.acct = tp_syscall.acct !, dw_syscall.acct !, nd_syscall.acct ? {}
+probe syscall.acct.return = tp_syscall.acct.return !, dw_syscall.acct.return !, nd_syscall.acct.return ? {}
 
 # dw_acct _____________________________________________________
 
@@ -66,8 +66,8 @@ probe nd2_syscall.acct = kprobe.function(@arch_syscall_prefix "sys_acct") ?
         %( @_IS_SREG_KERNEL %? @_SYSCALL_ACCT_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.acct = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.acct = tp_syscall("acct,~compat_acct") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_acct"), @const("__NR_compat_acct"))
@@ -95,8 +95,8 @@ probe nd2_syscall.acct.return = kprobe.function(@arch_syscall_prefix "sys_acct")
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.acct.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.acct.return = tp_syscall("acct,~compat_acct").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_acct"), @const("__NR_compat_acct"))

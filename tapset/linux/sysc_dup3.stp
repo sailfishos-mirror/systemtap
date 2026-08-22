@@ -31,8 +31,8 @@
 	  set_int_arg(3, flags)
 %)
 
-probe syscall.dup3 = dw_syscall.dup3 !, nd_syscall.dup3 ? {}
-probe syscall.dup3.return = dw_syscall.dup3.return !, nd_syscall.dup3.return ? {}
+probe syscall.dup3 = tp_syscall.dup3 !, dw_syscall.dup3 !, nd_syscall.dup3 ? {}
+probe syscall.dup3.return = tp_syscall.dup3.return !, dw_syscall.dup3.return !, nd_syscall.dup3.return ? {}
 
 # dw_dup3 _____________________________________________________
 
@@ -79,8 +79,8 @@ probe nd2_syscall.dup3 = kprobe.function(@arch_syscall_prefix "sys_dup3") ?
         %( @_IS_SREG_KERNEL %? @_SYSCALL_DUP3_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.dup3 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.dup3 = tp_syscall("dup3,~compat_dup3") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_dup3"), @const("__NR_compat_dup3"))
@@ -109,8 +109,8 @@ probe nd2_syscall.dup3.return = kprobe.function(@arch_syscall_prefix "sys_dup3")
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.dup3.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.dup3.return = tp_syscall("dup3,~compat_dup3").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_dup3"), @const("__NR_compat_dup3"))

@@ -31,8 +31,8 @@
 	  set_uint_arg(3, __int32(group))
 %)
 
-probe syscall.chown = dw_syscall.chown !, nd_syscall.chown ? {}
-probe syscall.chown.return = dw_syscall.chown.return !, nd_syscall.chown.return ? {}
+probe syscall.chown = tp_syscall.chown !, dw_syscall.chown !, nd_syscall.chown ? {}
+probe syscall.chown.return = tp_syscall.chown.return !, dw_syscall.chown.return !, nd_syscall.chown.return ? {}
 
 # dw_chown _____________________________________________________
 
@@ -95,8 +95,8 @@ probe nd2_syscall.chown = kprobe.function(@arch_syscall_prefix "sys_chown") ?
 	%( @_IS_SREG_KERNEL %? @_SYSCALL_CHOWN_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.chown = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.chown = tp_syscall("chown,~compat_chown32,chown32") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 %( CONFIG_64BIT == "y" %?
@@ -134,8 +134,8 @@ probe nd2_syscall.chown.return = kprobe.function(@arch_syscall_prefix "sys_chown
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.chown.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.chown.return = tp_syscall("chown,~compat_chown32,chown32").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 %( CONFIG_64BIT == "y" %?

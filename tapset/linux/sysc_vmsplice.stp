@@ -40,8 +40,8 @@
 	  set_uint_arg(4, flags)
 %)
 
-probe syscall.vmsplice = dw_syscall.vmsplice !, nd_syscall.vmsplice ? {}
-probe syscall.vmsplice.return = dw_syscall.vmsplice.return !,
+probe syscall.vmsplice = tp_syscall.vmsplice !, dw_syscall.vmsplice !, nd_syscall.vmsplice ? {}
+probe syscall.vmsplice.return = tp_syscall.vmsplice.return !, dw_syscall.vmsplice.return !,
                                 nd_syscall.vmsplice.return ? {}
 
 # dw_vmsplice _____________________________________________________
@@ -91,8 +91,8 @@ probe nd2_syscall.vmsplice = kprobe.function(@arch_syscall_prefix "sys_vmsplice"
         %( @_IS_SREG_KERNEL %? @_SYSCALL_VMSPLICE_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.vmsplice = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.vmsplice = tp_syscall("vmsplice") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_vmsplice"))
@@ -121,8 +121,8 @@ probe nd2_syscall.vmsplice.return = kprobe.function(@arch_syscall_prefix "sys_vm
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.vmsplice.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.vmsplice.return = tp_syscall("vmsplice").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_vmsplice"))
@@ -138,9 +138,9 @@ probe tp_syscall.vmsplice.return = kernel.tracepoint("sys_exit")!, kernel.trace(
 #	    unsigned int nr_segs, unsigned int flags)
 #
 
-probe syscall.compat_vmsplice = dw_syscall.compat_vmsplice !,
+probe syscall.compat_vmsplice = tp_syscall.compat_vmsplice !, dw_syscall.compat_vmsplice !,
                                 nd_syscall.compat_vmsplice ? {}
-probe syscall.compat_vmsplice.return = dw_syscall.compat_vmsplice.return !,
+probe syscall.compat_vmsplice.return = tp_syscall.compat_vmsplice.return !, dw_syscall.compat_vmsplice.return !,
                                        nd_syscall.compat_vmsplice.return ? {}
 
 # dw_compat_vmsplice _____________________________________________________
@@ -187,8 +187,8 @@ probe nd2_syscall.compat_vmsplice =
         %( @_IS_SREG_KERNEL %? @_SYSCALL_VMSPLICE_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_vmsplice = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.compat_vmsplice = tp_syscall("~compat_vmsplice") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_vmsplice"))
@@ -217,8 +217,8 @@ probe nd2_syscall.compat_vmsplice.return =
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_vmsplice.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.compat_vmsplice.return = tp_syscall("~compat_vmsplice").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_vmsplice"))

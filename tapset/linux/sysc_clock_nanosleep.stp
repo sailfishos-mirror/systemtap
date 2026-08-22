@@ -44,8 +44,8 @@
 	  set_pointer_arg(4, rem_uaddr)
 %)
 
-probe syscall.clock_nanosleep = dw_syscall.clock_nanosleep !, nd_syscall.clock_nanosleep {}
-probe syscall.clock_nanosleep.return = dw_syscall.clock_nanosleep.return !, nd_syscall.clock_nanosleep.return {}
+probe syscall.clock_nanosleep = tp_syscall.clock_nanosleep !, dw_syscall.clock_nanosleep !, nd_syscall.clock_nanosleep {}
+probe syscall.clock_nanosleep.return = tp_syscall.clock_nanosleep.return !, dw_syscall.clock_nanosleep.return !, nd_syscall.clock_nanosleep.return {}
 
 # dw_clock_nanosleep _____________________________________________________
 
@@ -101,8 +101,8 @@ probe nd2_syscall.clock_nanosleep = kprobe.function(@arch_syscall_prefix "sys_cl
         %( @_IS_SREG_KERNEL %? @_SYSCALL_CLOCK_NANOSLEEP_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.clock_nanosleep = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.clock_nanosleep = tp_syscall("clock_nanosleep") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_clock_nanosleep"))
@@ -134,8 +134,8 @@ probe nd2_syscall.clock_nanosleep.return =
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.clock_nanosleep.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.clock_nanosleep.return = tp_syscall("clock_nanosleep").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_clock_nanosleep"))
@@ -150,9 +150,9 @@ probe tp_syscall.clock_nanosleep.return = kernel.tracepoint("sys_exit")!, kernel
 #			struct compat_timespec __user *rmtp)
 #
 
-probe syscall.compat_clock_nanosleep = dw_syscall.compat_clock_nanosleep !,
+probe syscall.compat_clock_nanosleep = tp_syscall.compat_clock_nanosleep !, dw_syscall.compat_clock_nanosleep !,
                                        nd_syscall.compat_clock_nanosleep ? {}
-probe syscall.compat_clock_nanosleep.return = dw_syscall.compat_clock_nanosleep.return !,
+probe syscall.compat_clock_nanosleep.return = tp_syscall.compat_clock_nanosleep.return !, dw_syscall.compat_clock_nanosleep.return !,
                                               nd_syscall.compat_clock_nanosleep.return ? {}
 
 # dw_compat_clock_nanosleep _____________________________________________________
@@ -212,8 +212,8 @@ probe nd2_syscall.compat_clock_nanosleep =
         %( @_IS_SREG_KERNEL %? @_SYSCALL_CLOCK_NANOSLEEP_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_clock_nanosleep = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.compat_clock_nanosleep = tp_syscall("~compat_clock_nanosleep") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_clock_nanosleep"))
@@ -245,8 +245,8 @@ probe nd2_syscall.compat_clock_nanosleep.return =
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_clock_nanosleep.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.compat_clock_nanosleep.return = tp_syscall("~compat_clock_nanosleep").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_clock_nanosleep"))

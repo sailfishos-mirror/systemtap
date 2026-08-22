@@ -34,8 +34,8 @@
 	  set_pointer_arg(3, tcache_uaddr)
 %)
 
-probe syscall.getcpu = dw_syscall.getcpu !, nd_syscall.getcpu ? {}
-probe syscall.getcpu.return = dw_syscall.getcpu.return !, nd_syscall.getcpu.return ? {}
+probe syscall.getcpu = tp_syscall.getcpu !, dw_syscall.getcpu !, nd_syscall.getcpu ? {}
+probe syscall.getcpu.return = tp_syscall.getcpu.return !, dw_syscall.getcpu.return !, nd_syscall.getcpu.return ? {}
 
 # dw_getcpu _____________________________________________________
 
@@ -78,8 +78,8 @@ probe nd2_syscall.getcpu = kprobe.function(@arch_syscall_prefix "sys_getcpu") ?
         @_SYSCALL_GETCPU_REGARGS_STORE
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.getcpu = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.getcpu = tp_syscall("getcpu,~compat_getcpu") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_getcpu"), @const("__NR_compat_getcpu"))
@@ -107,8 +107,8 @@ probe nd2_syscall.getcpu.return = kprobe.function(@arch_syscall_prefix "sys_getc
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.getcpu.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.getcpu.return = tp_syscall("getcpu,~compat_getcpu").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_getcpu"), @const("__NR_compat_getcpu"))

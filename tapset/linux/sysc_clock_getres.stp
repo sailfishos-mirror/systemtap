@@ -29,8 +29,8 @@
 	  set_pointer_arg(2, res_uaddr)
 %)
 
-probe syscall.clock_getres = dw_syscall.clock_getres !, nd_syscall.clock_getres ? {}
-probe syscall.clock_getres.return = dw_syscall.clock_getres.return !, nd_syscall.clock_getres.return ? {}
+probe syscall.clock_getres = tp_syscall.clock_getres !, dw_syscall.clock_getres !, nd_syscall.clock_getres ? {}
+probe syscall.clock_getres.return = tp_syscall.clock_getres.return !, dw_syscall.clock_getres.return !, nd_syscall.clock_getres.return ? {}
 
 # dw_clock_getres _____________________________________________________
 
@@ -94,8 +94,8 @@ probe nd2_syscall.clock_getres = kprobe.function(@arch_syscall_prefix "compat_sy
         %( @_IS_SREG_KERNEL %? @_SYSCALL_CLOCK_GETRES_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.clock_getres = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.clock_getres = tp_syscall("clock_getres,~compat_clock_getres") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_clock_getres"), @const("__NR_compat_clock_getres"))
@@ -133,8 +133,8 @@ probe nd2_syscall.clock_getres.return =
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.clock_getres.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.clock_getres.return = tp_syscall("clock_getres,~compat_clock_getres").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_clock_getres"), @const("__NR_compat_clock_getres"))

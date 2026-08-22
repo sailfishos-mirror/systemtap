@@ -11,8 +11,8 @@
 	argstr = ""
 %)
 
-probe syscall.gettid = dw_syscall.gettid !, nd_syscall.gettid {}
-probe syscall.gettid.return = dw_syscall.gettid.return !,
+probe syscall.gettid = tp_syscall.gettid !, dw_syscall.gettid !, nd_syscall.gettid {}
+probe syscall.gettid.return = tp_syscall.gettid.return !, dw_syscall.gettid.return !,
                               nd_syscall.gettid.return {}
 
 # dw_gettid _____________________________________________________
@@ -46,8 +46,8 @@ probe nd2_syscall.gettid = kprobe.function(@arch_syscall0_prefix "sys_gettid") ?
 	@_SYSCALL_GETTID_ARGSTR
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.gettid = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.gettid = tp_syscall("gettid,~compat_gettid") !, kernel.trace("sys_enter")
 {
 	@__syscall_compat_gate(@const("__NR_gettid"), @const("__NR_compat_gettid"))
 	@_SYSCALL_GETTID_NAME
@@ -70,8 +70,8 @@ probe nd2_syscall.gettid.return = kprobe.function(@arch_syscall0_prefix "sys_get
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.gettid.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.gettid.return = tp_syscall("gettid,~compat_gettid").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_gettid"), @const("__NR_compat_gettid"))

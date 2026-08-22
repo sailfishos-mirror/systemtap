@@ -30,9 +30,9 @@
 	  set_pointer_arg(2, usage_uaddr)
 %)
 
-probe syscall.getrusage = dw_syscall.getrusage !,
+probe syscall.getrusage = tp_syscall.getrusage !, dw_syscall.getrusage !,
                           nd_syscall.getrusage ? {}
-probe syscall.getrusage.return = dw_syscall.getrusage.return !,
+probe syscall.getrusage.return = tp_syscall.getrusage.return !, dw_syscall.getrusage.return !,
                                  nd_syscall.getrusage.return ? {}
 
 # dw_getrusage _____________________________________________________
@@ -92,8 +92,8 @@ probe nd2_syscall.getrusage = kprobe.function(@arch_syscall_prefix "sys_getrusag
         @_SYSCALL_GETRUSAGE_REGARGS_STORE
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.getrusage = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.getrusage = tp_syscall("getrusage,~compat_getrusage") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_getrusage"), @const("__NR_compat_getrusage"))
@@ -127,8 +127,8 @@ probe nd2_syscall.getrusage.return = kprobe.function(@arch_syscall_prefix "sys_g
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.getrusage.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.getrusage.return = tp_syscall("getrusage,~compat_getrusage").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_getrusage"), @const("__NR_compat_getrusage"))

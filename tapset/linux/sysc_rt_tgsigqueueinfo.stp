@@ -45,9 +45,9 @@
 	  set_pointer_arg(4, uinfo_uaddr)
 %)
 
-probe syscall.rt_tgsigqueueinfo = dw_syscall.rt_tgsigqueueinfo !,
+probe syscall.rt_tgsigqueueinfo = tp_syscall.rt_tgsigqueueinfo !, dw_syscall.rt_tgsigqueueinfo !,
                                   nd_syscall.rt_tgsigqueueinfo ? {}
-probe syscall.rt_tgsigqueueinfo.return = dw_syscall.rt_tgsigqueueinfo.return !,
+probe syscall.rt_tgsigqueueinfo.return = tp_syscall.rt_tgsigqueueinfo.return !, dw_syscall.rt_tgsigqueueinfo.return !,
                                          nd_syscall.rt_tgsigqueueinfo.return ? {}
 
 # dw_rt_tgsigqueueinfo _____________________________________________________
@@ -103,8 +103,8 @@ probe nd2_syscall.rt_tgsigqueueinfo =
         %( @_IS_SREG_KERNEL %? @_SYSCALL_RT_TGSIGQUEUEINFO_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.rt_tgsigqueueinfo = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.rt_tgsigqueueinfo = tp_syscall("rt_tgsigqueueinfo,~compat_rt_tgsigqueueinfo") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_rt_tgsigqueueinfo"), @const("__NR_compat_rt_tgsigqueueinfo"))
@@ -136,8 +136,8 @@ probe nd2_syscall.rt_tgsigqueueinfo.return =
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.rt_tgsigqueueinfo.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.rt_tgsigqueueinfo.return = tp_syscall("rt_tgsigqueueinfo,~compat_rt_tgsigqueueinfo").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_rt_tgsigqueueinfo"), @const("__NR_compat_rt_tgsigqueueinfo"))

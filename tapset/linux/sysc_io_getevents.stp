@@ -60,8 +60,8 @@
 	  set_pointer_arg(5, timeout_uaddr)
 %)
 
-probe syscall.io_getevents = dw_syscall.io_getevents !, nd_syscall.io_getevents ? {}
-probe syscall.io_getevents.return = dw_syscall.io_getevents.return !,
+probe syscall.io_getevents = tp_syscall.io_getevents !, dw_syscall.io_getevents !, nd_syscall.io_getevents ? {}
+probe syscall.io_getevents.return = tp_syscall.io_getevents.return !, dw_syscall.io_getevents.return !,
                                     nd_syscall.io_getevents.return ? {}
 
 # dw_io_getevents _____________________________________________________
@@ -126,8 +126,8 @@ probe nd2_syscall.io_getevents = kprobe.function(@arch_syscall_prefix "sys_io_ge
         %( @_IS_SREG_KERNEL %? @_SYSCALL_IO_GETEVENTS_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.io_getevents = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.io_getevents = tp_syscall("io_getevents,~compat_io_getevents") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_io_getevents"), @const("__NR_compat_io_getevents"))
@@ -162,8 +162,8 @@ probe nd2_syscall.io_getevents.return = kprobe.function(@arch_syscall_prefix "sy
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.io_getevents.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.io_getevents.return = tp_syscall("io_getevents,~compat_io_getevents").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_io_getevents"), @const("__NR_compat_io_getevents"))

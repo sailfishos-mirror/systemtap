@@ -24,8 +24,8 @@
           set_int_arg(1, flags)
 %)
 
-probe syscall.mlockall = dw_syscall.mlockall !, nd_syscall.mlockall ? {}
-probe syscall.mlockall.return = dw_syscall.mlockall.return !,
+probe syscall.mlockall = tp_syscall.mlockall !, dw_syscall.mlockall !, nd_syscall.mlockall ? {}
+probe syscall.mlockall.return = tp_syscall.mlockall.return !, dw_syscall.mlockall.return !,
                                 nd_syscall.mlockall.return ? {}
 
 # dw_mlockall _____________________________________________________
@@ -68,8 +68,8 @@ probe nd2_syscall.mlockall = kprobe.function(@arch_syscall_prefix "sys_mlockall"
         %( @_IS_SREG_KERNEL %? @_SYSCALL_MLOCKALL_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.mlockall = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.mlockall = tp_syscall("mlockall,~compat_mlockall") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_mlockall"), @const("__NR_compat_mlockall"))
@@ -97,8 +97,8 @@ probe nd2_syscall.mlockall.return = kprobe.function(@arch_syscall_prefix "sys_ml
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.mlockall.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.mlockall.return = tp_syscall("mlockall,~compat_mlockall").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_mlockall"), @const("__NR_compat_mlockall"))

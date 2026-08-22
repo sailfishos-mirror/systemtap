@@ -35,8 +35,8 @@
 	  set_pointer_arg(3, sgid_uaddr)
 %)
 
-probe syscall.getresgid = dw_syscall.getresgid !, nd_syscall.getresgid ? {}
-probe syscall.getresgid.return = dw_syscall.getresgid.return !,
+probe syscall.getresgid = tp_syscall.getresgid !, dw_syscall.getresgid !, nd_syscall.getresgid ? {}
+probe syscall.getresgid.return = tp_syscall.getresgid.return !, dw_syscall.getresgid.return !,
                                  nd_syscall.getresgid.return ? {}
 
 # dw_getresgid _____________________________________________________
@@ -84,7 +84,7 @@ probe nd2_syscall.getresgid = kprobe.function(@arch_syscall_prefix "sys_getresgi
         @_SYSCALL_GETRESGID_REGARGS_STORE
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.getresgid = __tp_syscall.getresgid, __tp_syscall.getresgid16
 {
 	@__set_syscall_pt_regs
@@ -95,11 +95,11 @@ probe tp_syscall.getresgid = __tp_syscall.getresgid, __tp_syscall.getresgid16
 {
         @_SYSCALL_GETRESGID_REGARGS_STORE
 }
-probe __tp_syscall.getresgid = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.getresgid = tp_syscall("getresgid,~compat_getresgid32") !, kernel.trace("sys_enter")
 {
 	@__syscall_compat_gate(@const("__NR_getresgid"), @const("__NR_compat_getresgid32"))
 }
-probe __tp_syscall.getresgid16 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.getresgid16 = tp_syscall("~compat_getresgid") !, kernel.trace("sys_enter")
 {
 	@__compat_syscall_gate(@const("__NR_compat_getresgid"))
 }
@@ -123,18 +123,18 @@ probe nd2_syscall.getresgid.return =
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.getresgid.return = __tp_syscall.getresgid.return, __tp_syscall.getresgid16.return
 {
 	@__set_syscall_pt_regs
 	@_SYSCALL_GETRESGID_NAME
 	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.getresgid.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.getresgid.return = tp_syscall("getresgid,~compat_getresgid32").return !, kernel.trace("sys_exit")
 {
 	@__syscall_compat_gate(@const("__NR_getresgid"), @const("__NR_compat_getresgid32"))
 }
-probe __tp_syscall.getresgid16.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.getresgid16.return = tp_syscall("~compat_getresgid").return !, kernel.trace("sys_exit")
 {
 	@__compat_syscall_gate(@const("__NR_compat_getresgid"))
 }

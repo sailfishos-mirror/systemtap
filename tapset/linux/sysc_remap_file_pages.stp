@@ -46,9 +46,9 @@
 	  set_ulong_arg(5, flags)
 %)
 
-probe syscall.remap_file_pages = dw_syscall.remap_file_pages !,
+probe syscall.remap_file_pages = tp_syscall.remap_file_pages !, dw_syscall.remap_file_pages !,
                                  nd_syscall.remap_file_pages ? {}
-probe syscall.remap_file_pages.return = dw_syscall.remap_file_pages.return !,
+probe syscall.remap_file_pages.return = tp_syscall.remap_file_pages.return !, dw_syscall.remap_file_pages.return !,
                                         nd_syscall.remap_file_pages.return ? {}
 
 # dw_remap_file_pages _____________________________________________________
@@ -96,8 +96,8 @@ probe nd2_syscall.remap_file_pages = kprobe.function(@arch_syscall_prefix "sys_r
         %( @_IS_SREG_KERNEL %? @_SYSCALL_REMAP_FILE_PAGES_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.remap_file_pages = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.remap_file_pages = tp_syscall("remap_file_pages,~compat_remap_file_pages") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_remap_file_pages"), @const("__NR_compat_remap_file_pages"))
@@ -125,8 +125,8 @@ probe nd2_syscall.remap_file_pages.return = kprobe.function(@arch_syscall_prefix
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.remap_file_pages.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.remap_file_pages.return = tp_syscall("remap_file_pages,~compat_remap_file_pages").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_remap_file_pages"), @const("__NR_compat_remap_file_pages"))

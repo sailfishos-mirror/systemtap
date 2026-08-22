@@ -56,8 +56,8 @@
 	  set_int_arg(5, flags)
 %)
 
-probe syscall.lsetxattr = dw_syscall.lsetxattr !, nd_syscall.lsetxattr ? {}
-probe syscall.lsetxattr.return = dw_syscall.lsetxattr.return !,
+probe syscall.lsetxattr = tp_syscall.lsetxattr !, dw_syscall.lsetxattr !, nd_syscall.lsetxattr ? {}
+probe syscall.lsetxattr.return = tp_syscall.lsetxattr.return !, dw_syscall.lsetxattr.return !,
                                  nd_syscall.lsetxattr.return ? {}
 
 # dw_lsetxattr _____________________________________________________
@@ -107,8 +107,8 @@ probe nd2_syscall.lsetxattr = kprobe.function(@arch_syscall_prefix "sys_lsetxatt
         %( @_IS_SREG_KERNEL %? @_SYSCALL_LSETXATTR_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.lsetxattr = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.lsetxattr = tp_syscall("lsetxattr,~compat_lsetxattr") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_lsetxattr"), @const("__NR_compat_lsetxattr"))
@@ -136,8 +136,8 @@ probe nd2_syscall.lsetxattr.return = kprobe.function(@arch_syscall_prefix "sys_l
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.lsetxattr.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.lsetxattr.return = tp_syscall("lsetxattr,~compat_lsetxattr").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_lsetxattr"), @const("__NR_compat_lsetxattr"))

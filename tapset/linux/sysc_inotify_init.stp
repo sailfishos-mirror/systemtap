@@ -4,9 +4,9 @@
 # SYSCALL_DEFINE1(inotify_init1, int, flags)
 #
 
-probe syscall.inotify_init = dw_syscall.inotify_init !,
+probe syscall.inotify_init = tp_syscall.inotify_init !, dw_syscall.inotify_init !,
                              nd_syscall.inotify_init ? {}
-probe syscall.inotify_init.return = dw_syscall.inotify_init.return !,
+probe syscall.inotify_init.return = tp_syscall.inotify_init.return !, dw_syscall.inotify_init.return !,
                                     nd_syscall.inotify_init.return ? {}
 
 # dw_inotify_init _____________________________________________________
@@ -101,12 +101,12 @@ probe __nd2_syscall.inotify_init =
 	argstr = ""
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.inotify_init = __tp_syscall.inotify_init1 ?,
                                 __tp_syscall.inotify_init ?
 {
 }
-probe __tp_syscall.inotify_init1 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.inotify_init1 = tp_syscall("inotify_init1,~compat_inotify_init1") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_inotify_init1"), 
@@ -121,7 +121,7 @@ probe __tp_syscall.inotify_init1 = kernel.tracepoint("sys_enter")!, kernel.trace
 	  set_int_arg(1, flags)
 %)
 }
-probe __tp_syscall.inotify_init = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.inotify_init = tp_syscall("inotify_init,~compat_inotify_init") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_inotify_init"),
@@ -171,12 +171,12 @@ probe __nd2_syscall.inotify_init.return =
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.inotify_init.return = __tp_syscall.inotify_init1.return ?,
                                        __tp_syscall.inotify_init.return ?
 {
 }
-probe __tp_syscall.inotify_init1.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.inotify_init1.return = tp_syscall("inotify_init1,~compat_inotify_init1").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_inotify_init1"), 
@@ -184,7 +184,7 @@ probe __tp_syscall.inotify_init1.return = kernel.tracepoint("sys_exit")!, kernel
 	name = "inotify_init1"
 	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.inotify_init.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.inotify_init.return = tp_syscall("inotify_init,~compat_inotify_init").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_inotify_init"),

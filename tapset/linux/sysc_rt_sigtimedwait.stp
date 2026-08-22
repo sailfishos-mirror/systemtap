@@ -47,9 +47,9 @@
 	  set_pointer_arg(3, uts_uaddr)
 %)
 
-probe syscall.rt_sigtimedwait = dw_syscall.rt_sigtimedwait !,
+probe syscall.rt_sigtimedwait = tp_syscall.rt_sigtimedwait !, dw_syscall.rt_sigtimedwait !,
                                 nd_syscall.rt_sigtimedwait ? {}
-probe syscall.rt_sigtimedwait.return = dw_syscall.rt_sigtimedwait.return !,
+probe syscall.rt_sigtimedwait.return = tp_syscall.rt_sigtimedwait.return !, dw_syscall.rt_sigtimedwait.return !,
                                        nd_syscall.rt_sigtimedwait.return ? {}
 
 # dw_rt_sigtimedwait _____________________________________________________
@@ -142,7 +142,7 @@ probe __nd2_syscall.compat_rt_sigtimedwait =
 %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.rt_sigtimedwait = __tp_syscall.rt_sigtimedwait ?,
 				   __tp_syscall.compat_rt_sigtimedwait ?
 {
@@ -151,7 +151,7 @@ probe tp_syscall.rt_sigtimedwait = __tp_syscall.rt_sigtimedwait ?,
 	sigsetsize = ulong_arg(4)
 	@_SYSCALL_RT_SIGTIMEDWAIT_ARGSTR
 }
-probe __tp_syscall.rt_sigtimedwait = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.rt_sigtimedwait = tp_syscall("rt_sigtimedwait") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_rt_sigtimedwait"))
@@ -164,7 +164,7 @@ probe __tp_syscall.rt_sigtimedwait = kernel.tracepoint("sys_enter")!, kernel.tra
 	  set_ulong_arg(4, sigsetsize)
 %)
 }
-probe __tp_syscall.compat_rt_sigtimedwait = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.compat_rt_sigtimedwait = tp_syscall("~compat_rt_sigtimedwait") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_rt_sigtimedwait"))
@@ -198,8 +198,8 @@ probe nd2_syscall.rt_sigtimedwait.return =
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.rt_sigtimedwait.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.rt_sigtimedwait.return = tp_syscall("rt_sigtimedwait,~compat_rt_sigtimedwait").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_rt_sigtimedwait"), @const("__NR_compat_rt_sigtimedwait"))

@@ -29,8 +29,8 @@
     %)
 %)
 
-probe syscall.truncate = dw_syscall.truncate !, nd_syscall.truncate ? {}
-probe syscall.truncate.return = dw_syscall.truncate.return !,
+probe syscall.truncate = tp_syscall.truncate !, dw_syscall.truncate !, nd_syscall.truncate ? {}
+probe syscall.truncate.return = tp_syscall.truncate.return !, dw_syscall.truncate.return !,
                                 nd_syscall.truncate.return ? {}
 
 # dw_truncate _____________________________________________________
@@ -148,7 +148,7 @@ probe __nd2_syscall.compat_truncate = kprobe.function(@arch_syscall_prefix "comp
 %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.truncate = __tp_syscall.truncate ?,
 			   __tp_syscall.truncate64 ?,
 			   __tp_syscall.compat_truncate ?
@@ -156,7 +156,7 @@ probe tp_syscall.truncate = __tp_syscall.truncate ?,
 	@_SYSCALL_TRUNCATE_NAME
 	@_SYSCALL_TRUNCATE_ARGSTR
 }
-probe __tp_syscall.truncate = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.truncate = tp_syscall("truncate") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_truncate"))
@@ -178,7 +178,7 @@ probe __tp_syscall.truncate = kernel.tracepoint("sys_enter")!, kernel.trace("sys
 %)
 }
 
-probe __tp_syscall.truncate64 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.truncate64 = tp_syscall("truncate64") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_truncate64"))
@@ -200,7 +200,7 @@ probe __tp_syscall.truncate64 = kernel.tracepoint("sys_enter")!, kernel.trace("s
 %)
 }
 
-probe __tp_syscall.compat_truncate = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.compat_truncate = tp_syscall("~compat_truncate") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_truncate"))
@@ -246,7 +246,7 @@ probe nd2_syscall.truncate.return =
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.truncate.return = __tp_syscall.truncate.return,
                                    __tp_syscall.truncate64.return
 {
@@ -254,11 +254,11 @@ probe tp_syscall.truncate.return = __tp_syscall.truncate.return,
 	@_SYSCALL_TRUNCATE_NAME
 	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.truncate.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.truncate.return = tp_syscall("truncate,~compat_truncate").return !, kernel.trace("sys_exit")
 {
 	@__syscall_compat_gate(@const("__NR_truncate"), @const("__NR_compat_truncate"))
 }
-probe __tp_syscall.truncate64.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.truncate64.return = tp_syscall("truncate64").return !, kernel.trace("sys_exit")
 {
 	@__syscall_gate(@const("__NR_truncate64"))
 }

@@ -22,8 +22,8 @@
           set_int_arg(1, fd)
 %)
 
-probe syscall.fdatasync = dw_syscall.fdatasync !, nd_syscall.fdatasync ? {}
-probe syscall.fdatasync.return = dw_syscall.fdatasync.return !, nd_syscall.fdatasync.return ? {}
+probe syscall.fdatasync = tp_syscall.fdatasync !, dw_syscall.fdatasync !, nd_syscall.fdatasync ? {}
+probe syscall.fdatasync.return = tp_syscall.fdatasync.return !, dw_syscall.fdatasync.return !, nd_syscall.fdatasync.return ? {}
 
 # dw_fdatasync _____________________________________________________
 
@@ -64,8 +64,8 @@ probe nd2_syscall.fdatasync = kprobe.function(@arch_syscall_prefix "sys_fdatasyn
 	%( @_IS_SREG_KERNEL %? @_SYSCALL_FDATASYNC_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.fdatasync = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.fdatasync = tp_syscall("fdatasync,~compat_fdatasync") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_fdatasync"), @const("__NR_compat_fdatasync"))
@@ -93,8 +93,8 @@ probe nd2_syscall.fdatasync.return = kprobe.function(@arch_syscall_prefix "sys_f
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.fdatasync.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.fdatasync.return = tp_syscall("fdatasync,~compat_fdatasync").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_fdatasync"), @const("__NR_compat_fdatasync"))

@@ -36,8 +36,8 @@
 	  set_ulong_arg(3, count)
 %)
 
-probe syscall.pwrite = dw_syscall.pwrite !, nd_syscall.pwrite ? {}
-probe syscall.pwrite.return = dw_syscall.pwrite.return !,
+probe syscall.pwrite = tp_syscall.pwrite !, dw_syscall.pwrite !, nd_syscall.pwrite ? {}
+probe syscall.pwrite.return = tp_syscall.pwrite.return !, dw_syscall.pwrite.return !,
                               nd_syscall.pwrite.return ? {}
 
 # dw_pwrite _____________________________________________________
@@ -99,8 +99,8 @@ probe nd2_syscall.pwrite = kprobe.function(@arch_syscall_prefix "sys_pwrite64") 
 %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.pwrite = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.pwrite = tp_syscall("pwrite64") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_pwrite64"))
@@ -137,8 +137,8 @@ probe nd2_syscall.pwrite.return = kprobe.function(@arch_syscall_prefix "sys_pwri
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.pwrite.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.pwrite.return = tp_syscall("pwrite64").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_pwrite64"))
@@ -152,8 +152,8 @@ probe tp_syscall.pwrite.return = kernel.tracepoint("sys_exit")!, kernel.trace("s
 #		         const char __user *, ubuf,
 #		         compat_size_t, count, u32, high, u32, low)
 
-probe syscall.pwrite32 = dw_syscall.pwrite32 !, nd_syscall.pwrite32 ? {}
-probe syscall.pwrite32.return = dw_syscall.pwrite32.return !,
+probe syscall.pwrite32 = tp_syscall.pwrite32 !, dw_syscall.pwrite32 !, nd_syscall.pwrite32 ? {}
+probe syscall.pwrite32.return = tp_syscall.pwrite32.return !, dw_syscall.pwrite32.return !,
                                 nd_syscall.pwrite32.return ? {}
 
 # dw_pwrite32 _____________________________________________________
@@ -230,8 +230,8 @@ probe nd2_syscall.pwrite32 = kprobe.function(@arch_syscall_prefix "compat_sys_x8
 %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.pwrite32 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.pwrite32 = tp_syscall("~compat_pwrite64") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_pwrite64"))
@@ -275,8 +275,8 @@ probe nd2_syscall.pwrite32.return =
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.pwrite32.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.pwrite32.return = tp_syscall("~compat_pwrite64").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_pwrite64"))

@@ -31,8 +31,8 @@
 	  set_ulong_arg(3, count)
 %)
 
-probe syscall.read = dw_syscall.read !, nd_syscall.read { }
-probe syscall.read.return = dw_syscall.read.return !, nd_syscall.read.return {}
+probe syscall.read = tp_syscall.read !, dw_syscall.read !, nd_syscall.read { }
+probe syscall.read.return = tp_syscall.read.return !, dw_syscall.read.return !, nd_syscall.read.return {}
 
 # dw_read _____________________________________________________
 
@@ -112,8 +112,8 @@ probe nd2_syscall.read = kprobe.function(@arch_syscall_prefix "sys_read")
         %( @_IS_SREG_KERNEL %? @_SYSCALL_READ_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.read = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter dispatcher (tp_syscall("read")), else kernel.trace fallback. */
+probe tp_syscall.read = tp_syscall("read,~compat_read") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_read"), @const("__NR_compat_read"))
@@ -153,8 +153,8 @@ probe nd2_syscall.read.return = kprobe.function(@arch_syscall_prefix "sys_read")
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.read.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_exit dispatcher (tp_syscall("read").return), else kernel.trace fallback. */
+probe tp_syscall.read.return = tp_syscall("read,~compat_read").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_read"), @const("__NR_compat_read"))

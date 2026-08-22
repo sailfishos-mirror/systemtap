@@ -29,9 +29,9 @@
 	  set_pointer_arg(2, value_uaddr)
 %)
 
-probe syscall.timerfd_gettime = dw_syscall.timerfd_gettime !,
+probe syscall.timerfd_gettime = tp_syscall.timerfd_gettime !, dw_syscall.timerfd_gettime !,
                                 nd_syscall.timerfd_gettime ? {}
-probe syscall.timerfd_gettime.return = dw_syscall.timerfd_gettime.return !,
+probe syscall.timerfd_gettime.return = tp_syscall.timerfd_gettime.return !, dw_syscall.timerfd_gettime.return !,
                                        nd_syscall.timerfd_gettime.return ? {}
 
 # dw_timerfd_gettime _____________________________________________________
@@ -93,8 +93,8 @@ probe nd2_syscall.timerfd_gettime =
         %( @_IS_SREG_KERNEL %? @_SYSCALL_TIMERFD_GETTIME_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.timerfd_gettime = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.timerfd_gettime = tp_syscall("timerfd_gettime,~compat_timerfd_gettime") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_timerfd_gettime"), @const("__NR_compat_timerfd_gettime"))
@@ -130,8 +130,8 @@ probe nd2_syscall.timerfd_gettime.return =
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.timerfd_gettime.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.timerfd_gettime.return = tp_syscall("timerfd_gettime,~compat_timerfd_gettime").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_timerfd_gettime"), @const("__NR_compat_timerfd_gettime"))

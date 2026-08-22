@@ -33,8 +33,8 @@
 	  set_int_arg(3, flags)
 %)
 
-probe syscall.mlock2 = dw_syscall.mlock2 !, nd_syscall.mlock2 ? {}
-probe syscall.mlock2.return = dw_syscall.mlock2.return !, nd_syscall.mlock2.return ? {}
+probe syscall.mlock2 = tp_syscall.mlock2 !, dw_syscall.mlock2 !, nd_syscall.mlock2 ? {}
+probe syscall.mlock2.return = tp_syscall.mlock2.return !, dw_syscall.mlock2.return !, nd_syscall.mlock2.return ? {}
 
 # dw_mlock2 _____________________________________________________
 
@@ -78,8 +78,8 @@ probe nd2_syscall.mlock2 = kprobe.function(@arch_syscall_prefix "sys_mlock2") ?
         %( @_IS_SREG_KERNEL %? @_SYSCALL_MLOCK2_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.mlock2 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.mlock2 = tp_syscall("mlock2,~compat_mlock2") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_mlock2"), @const("__NR_compat_mlock2"))
@@ -107,8 +107,8 @@ probe nd2_syscall.mlock2.return = kprobe.function(@arch_syscall_prefix "sys_mloc
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.mlock2.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.mlock2.return = tp_syscall("mlock2,~compat_mlock2").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_mlock2"), @const("__NR_compat_mlock2"))

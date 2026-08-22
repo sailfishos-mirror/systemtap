@@ -24,8 +24,8 @@
           set_int_arg(1, timerid)
 %)
 
-probe syscall.timer_delete = dw_syscall.timer_delete !, nd_syscall.timer_delete ? {}
-probe syscall.timer_delete.return = dw_syscall.timer_delete.return !,
+probe syscall.timer_delete = tp_syscall.timer_delete !, dw_syscall.timer_delete !, nd_syscall.timer_delete ? {}
+probe syscall.timer_delete.return = tp_syscall.timer_delete.return !, dw_syscall.timer_delete.return !,
                                     nd_syscall.timer_delete.return ? {}
 
 # dw_timer_delete _____________________________________________________
@@ -67,8 +67,8 @@ probe nd2_syscall.timer_delete = kprobe.function(@arch_syscall_prefix "sys_timer
         %( @_IS_SREG_KERNEL %? @_SYSCALL_TIMER_DELETE_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.timer_delete = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.timer_delete = tp_syscall("timer_delete,~compat_timer_delete") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_timer_delete"), @const("__NR_compat_timer_delete"))
@@ -96,8 +96,8 @@ probe nd2_syscall.timer_delete.return = kprobe.function(@arch_syscall_prefix "sy
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.timer_delete.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.timer_delete.return = tp_syscall("timer_delete,~compat_timer_delete").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_timer_delete"), @const("__NR_compat_timer_delete"))

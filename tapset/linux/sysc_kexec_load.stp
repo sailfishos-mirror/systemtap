@@ -43,8 +43,8 @@
 	  set_ulong_arg(4, flags)
 %)
 
-probe syscall.kexec_load = dw_syscall.kexec_load !, nd_syscall.kexec_load ? {}
-probe syscall.kexec_load.return = dw_syscall.kexec_load.return !,
+probe syscall.kexec_load = tp_syscall.kexec_load !, dw_syscall.kexec_load !, nd_syscall.kexec_load ? {}
+probe syscall.kexec_load.return = tp_syscall.kexec_load.return !, dw_syscall.kexec_load.return !,
                                   nd_syscall.kexec_load.return ? {}
 
 # dw_kexec_load _____________________________________________________
@@ -106,8 +106,8 @@ probe nd2_syscall.kexec_load = kprobe.function(@arch_syscall_prefix "sys_kexec_l
         %( @_IS_SREG_KERNEL %? @_SYSCALL_KEXEC_LOAD_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.kexec_load = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.kexec_load = tp_syscall("kexec_load,~compat_kexec_load") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_kexec_load"), @const("__NR_compat_kexec_load"))
@@ -141,8 +141,8 @@ probe nd2_syscall.kexec_load.return = kprobe.function(@arch_syscall_prefix "sys_
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.kexec_load.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.kexec_load.return = tp_syscall("kexec_load,~compat_kexec_load").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_kexec_load"), @const("__NR_compat_kexec_load"))

@@ -36,8 +36,8 @@
 	  set_int_arg(2, swapflags)
 %)
 
-probe syscall.swapon = dw_syscall.swapon !, nd_syscall.swapon ? {}
-probe syscall.swapon.return = dw_syscall.swapon.return !,
+probe syscall.swapon = tp_syscall.swapon !, dw_syscall.swapon !, nd_syscall.swapon ? {}
+probe syscall.swapon.return = tp_syscall.swapon.return !, dw_syscall.swapon.return !,
                               nd_syscall.swapon.return ? {}
 
 # dw_swapon _____________________________________________________
@@ -82,8 +82,8 @@ probe nd2_syscall.swapon = kprobe.function(@arch_syscall_prefix "sys_swapon") ?
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SWAPON_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.swapon = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.swapon = tp_syscall("swapon,~compat_swapon") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_swapon"), @const("__NR_compat_swapon"))
@@ -111,8 +111,8 @@ probe nd2_syscall.swapon.return = kprobe.function(@arch_syscall_prefix "sys_swap
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.swapon.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.swapon.return = tp_syscall("swapon,~compat_swapon").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_swapon"), @const("__NR_compat_swapon"))

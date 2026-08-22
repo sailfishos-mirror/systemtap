@@ -73,9 +73,9 @@
 %)
 
 
-probe syscall.compat_fadvise64 = dw_syscall.compat_fadvise64 !,
+probe syscall.compat_fadvise64 = tp_syscall.compat_fadvise64 !, dw_syscall.compat_fadvise64 !,
                                  nd_syscall.compat_fadvise64 ? {}
-probe syscall.compat_fadvise64.return = dw_syscall.compat_fadvise64.return !,
+probe syscall.compat_fadvise64.return = tp_syscall.compat_fadvise64.return !, dw_syscall.compat_fadvise64.return !,
                                         nd_syscall.compat_fadvise64.return ? {}
 
 # dw_compat_fadvise64 _____________________________________________________
@@ -126,8 +126,8 @@ probe nd2_syscall.compat_fadvise64 =
         %( @_IS_SREG_KERNEL %? @_SYSCALL_COMPAT_FADVISE64_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_fadvise64 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.compat_fadvise64 = tp_syscall("~ia32_fadvise64") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_ia32_fadvise64"))
@@ -158,8 +158,8 @@ probe nd2_syscall.compat_fadvise64.return =
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_fadvise64.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.compat_fadvise64.return = tp_syscall("~ia32_fadvise64").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_ia32_fadvise64"))
@@ -175,9 +175,9 @@ probe tp_syscall.compat_fadvise64.return = kernel.tracepoint("sys_exit")!, kerne
 # long sys32_fadvise64_64(int fd, __u32 offset_low, __u32 offset_high,
 #			__u32 len_low, __u32 len_high, int advice)
 
-probe syscall.compat_fadvise64_64 = dw_syscall.compat_fadvise64_64 !,
+probe syscall.compat_fadvise64_64 = tp_syscall.compat_fadvise64_64 !, dw_syscall.compat_fadvise64_64 !,
                                     nd_syscall.compat_fadvise64_64 ? {}
-probe syscall.compat_fadvise64_64.return = dw_syscall.compat_fadvise64_64.return !,
+probe syscall.compat_fadvise64_64.return = tp_syscall.compat_fadvise64_64.return !, dw_syscall.compat_fadvise64_64.return !,
                                            nd_syscall.compat_fadvise64_64.return ? {}
 
 # dw_compat_fadvise64_64 _____________________________________________________
@@ -227,8 +227,8 @@ probe nd2_syscall.compat_fadvise64_64 =
         %( @_IS_SREG_KERNEL %? @_SYSCALL_COMPAT_FADVISE64_64_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_fadvise64_64 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.compat_fadvise64_64 = tp_syscall("~ia32_fadvise64_64") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_ia32_fadvise64_64"))
@@ -259,8 +259,8 @@ probe nd2_syscall.compat_fadvise64_64.return =
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_fadvise64_64.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.compat_fadvise64_64.return = tp_syscall("~ia32_fadvise64_64").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_ia32_fadvise64_64"))

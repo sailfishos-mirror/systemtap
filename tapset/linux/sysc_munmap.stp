@@ -26,8 +26,8 @@
 	  set_ulong_arg(2, length)
 %)
 
-probe syscall.munmap = dw_syscall.munmap !, nd_syscall.munmap ? {}
-probe syscall.munmap.return = dw_syscall.munmap.return !,
+probe syscall.munmap = tp_syscall.munmap !, dw_syscall.munmap !, nd_syscall.munmap ? {}
+probe syscall.munmap.return = tp_syscall.munmap.return !, dw_syscall.munmap.return !,
                               nd_syscall.munmap.return ? {}
 
 # dw_munmap _____________________________________________________
@@ -70,8 +70,8 @@ probe nd2_syscall.munmap = kprobe.function(@arch_syscall_prefix "sys_munmap") ?
         %( @_IS_SREG_KERNEL %? @_SYSCALL_MUNMAP_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.munmap = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.munmap = tp_syscall("munmap,~compat_munmap") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_munmap"), @const("__NR_compat_munmap"))
@@ -99,8 +99,8 @@ probe nd2_syscall.munmap.return = kprobe.function(@arch_syscall_prefix "sys_munm
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.munmap.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.munmap.return = tp_syscall("munmap,~compat_munmap").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_munmap"), @const("__NR_compat_munmap"))

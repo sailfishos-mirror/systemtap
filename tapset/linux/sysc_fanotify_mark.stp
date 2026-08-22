@@ -108,8 +108,8 @@
 	  set_user_string_arg(pointer_arg(6), pathname_unquoted)
 %)
 
-probe syscall.fanotify_mark = dw_syscall.fanotify_mark !, nd_syscall.fanotify_mark ? {}
-probe syscall.fanotify_mark.return = dw_syscall.fanotify_mark.return !, nd_syscall.fanotify_mark.return ? {}
+probe syscall.fanotify_mark = tp_syscall.fanotify_mark !, dw_syscall.fanotify_mark !, nd_syscall.fanotify_mark ? {}
+probe syscall.fanotify_mark.return = tp_syscall.fanotify_mark.return !, dw_syscall.fanotify_mark.return !, nd_syscall.fanotify_mark.return ? {}
 
 # dw_fanotify_mark _____________________________________________________
 
@@ -206,7 +206,7 @@ probe __nd2_syscall.compat_fanotify_mark =
         %( @_IS_SREG_KERNEL %? @_SYSCALL_COMPAT_FANOTIFY_MARK_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.fanotify_mark = __tp_syscall.fanotify_mark ?,
 	__tp_syscall.compat_fanotify_mark ?
 {
@@ -216,7 +216,7 @@ probe tp_syscall.fanotify_mark = __tp_syscall.fanotify_mark ?,
 	dirfd_str = _dfd_str(dirfd)
 	@_SYSCALL_FANOTIFY_MARK_ARGSTR
 }
-probe __tp_syscall.fanotify_mark = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.fanotify_mark = tp_syscall("fanotify_mark") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_fanotify_mark"))
@@ -225,7 +225,7 @@ probe __tp_syscall.fanotify_mark = kernel.tracepoint("sys_enter")!, kernel.trace
 {
         %( @_IS_SREG_KERNEL %? @_SYSCALL_FANOTIFY_MARK_REGARGS_STORE %)
 }
-probe __tp_syscall.compat_fanotify_mark = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.compat_fanotify_mark = tp_syscall("~compat_fanotify_mark") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_fanotify_mark"))
@@ -255,8 +255,8 @@ probe nd2_syscall.fanotify_mark.return =
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.fanotify_mark.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.fanotify_mark.return = tp_syscall("fanotify_mark,~compat_fanotify_mark").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_fanotify_mark"), @const("__NR_compat_fanotify_mark"))

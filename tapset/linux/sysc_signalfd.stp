@@ -9,13 +9,13 @@
 #		 compat_size_t sigsetsize, int flags)
 #
 
-probe syscall.signalfd = dw_syscall.signalfd !, nd_syscall.signalfd ? {}
-probe syscall.signalfd.return = dw_syscall.signalfd.return !,
+probe syscall.signalfd = tp_syscall.signalfd !, dw_syscall.signalfd !, nd_syscall.signalfd ? {}
+probe syscall.signalfd.return = tp_syscall.signalfd.return !, dw_syscall.signalfd.return !,
                                 nd_syscall.signalfd.return ? {}
 
-probe syscall.compat_signalfd = dw_syscall.compat_signalfd !,
+probe syscall.compat_signalfd = tp_syscall.compat_signalfd !, dw_syscall.compat_signalfd !,
                                 nd_syscall.compat_signalfd ? {}
-probe syscall.compat_signalfd.return = dw_syscall.compat_signalfd.return !,
+probe syscall.compat_signalfd.return = tp_syscall.compat_signalfd.return !, dw_syscall.compat_signalfd.return !,
                                        nd_syscall.compat_signalfd.return ? {}
 
 @define _SYSCALL_SIGNALFD4_REGARGS_STORE
@@ -177,12 +177,12 @@ probe __nd2_syscall.signalfd = kprobe.function(@arch_syscall_prefix "sys_signalf
 			 ulong_arg(3))
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.signalfd = __tp_syscall.signalfd4 !,
                             __tp_syscall.signalfd ?
 {
 }
-probe __tp_syscall.signalfd4 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.signalfd4 = tp_syscall("signalfd4") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_signalfd4"))
@@ -200,7 +200,7 @@ probe __tp_syscall.signalfd4 = kernel.tracepoint("sys_enter")!, kernel.trace("sy
 {
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SIGNALFD4_REGARGS_STORE %)
 }
-probe __tp_syscall.signalfd = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.signalfd = tp_syscall("signalfd") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_signalfd"))
@@ -249,20 +249,20 @@ probe __nd2_syscall.signalfd.return = kprobe.function(@arch_syscall_prefix "sys_
 	name = "signalfd"
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.signalfd.return = __tp_syscall.signalfd4.return !,
                                    __tp_syscall.signalfd.return ?
 {
 	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.signalfd4.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.signalfd4.return = tp_syscall("signalfd4").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_signalfd4"))
 	flags = int_arg(4)
 	name = (flags == 0) ? "signalfd" : "signalfd4"
 }
-probe __tp_syscall.signalfd.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.signalfd.return = tp_syscall("signalfd4").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_signalfd4"))
@@ -333,12 +333,12 @@ probe __nd2_syscall.compat_signalfd = kprobe.function(@arch_syscall_prefix "comp
 			 u32_arg(3))
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.compat_signalfd = __tp_syscall.compat_signalfd4 !,
                                    __tp_syscall.compat_signalfd ?
 {
 }
-probe __tp_syscall.compat_signalfd4 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.compat_signalfd4 = tp_syscall("~compat_signalfd4") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_signalfd4"))
@@ -416,13 +416,13 @@ probe __nd2_syscall.compat_signalfd.return =
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.compat_signalfd.return =
 		__tp_syscall.compat_signalfd4.return !,
 		__tp_syscall.compat_signalfd.return ?
 {
 }
-probe __tp_syscall.compat_signalfd4.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.compat_signalfd4.return = tp_syscall("~compat_signalfd4").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_signalfd4"))
@@ -430,7 +430,7 @@ probe __tp_syscall.compat_signalfd4.return = kernel.tracepoint("sys_exit")!, ker
 	name = (flags == 0) ? "signalfd" : "signalfd4"
 	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.compat_signalfd.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.compat_signalfd.return = tp_syscall("~compat_signalfd").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_signalfd"))

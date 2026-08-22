@@ -28,8 +28,8 @@
 	  set_uint_arg(2, flags)
 %)
 
-probe syscall.memfd_create = dw_syscall.memfd_create !, nd_syscall.memfd_create ? {}
-probe syscall.memfd_create.return = dw_syscall.memfd_create.return !, nd_syscall.memfd_create.return ? {}
+probe syscall.memfd_create = tp_syscall.memfd_create !, dw_syscall.memfd_create !, nd_syscall.memfd_create ? {}
+probe syscall.memfd_create.return = tp_syscall.memfd_create.return !, dw_syscall.memfd_create.return !, nd_syscall.memfd_create.return ? {}
 
 # dw_memfd_create _____________________________________________________
 
@@ -72,8 +72,8 @@ probe nd2_syscall.memfd_create = kprobe.function(@arch_syscall_prefix "sys_memfd
         %( @_IS_SREG_KERNEL %? @_SYSCALL_MEMFD_CREATE_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.memfd_create = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.memfd_create = tp_syscall("memfd_create,~compat_memfd_create") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_memfd_create"), @const("__NR_compat_memfd_create"))
@@ -101,8 +101,8 @@ probe nd2_syscall.memfd_create.return = kprobe.function(@arch_syscall_prefix "sy
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.memfd_create.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.memfd_create.return = tp_syscall("memfd_create,~compat_memfd_create").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_memfd_create"), @const("__NR_compat_memfd_create"))

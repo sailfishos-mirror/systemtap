@@ -35,8 +35,8 @@
 	  set_pointer_arg(3, ovalue_uaddr)
 %)
 
-probe syscall.setitimer = dw_syscall.setitimer !, nd_syscall.setitimer ? {}
-probe syscall.setitimer.return = dw_syscall.setitimer.return !,
+probe syscall.setitimer = tp_syscall.setitimer !, dw_syscall.setitimer !, nd_syscall.setitimer ? {}
+probe syscall.setitimer.return = tp_syscall.setitimer.return !, dw_syscall.setitimer.return !,
                                  nd_syscall.setitimer.return ? {}
 
 # dw_setitimer _____________________________________________________
@@ -84,8 +84,8 @@ probe nd2_syscall.setitimer = kprobe.function(@arch_syscall_prefix "sys_setitime
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SETITIMER_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.setitimer = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.setitimer = tp_syscall("setitimer") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_setitimer"))
@@ -114,8 +114,8 @@ probe nd2_syscall.setitimer.return = kprobe.function(@arch_syscall_prefix "sys_s
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.setitimer.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.setitimer.return = tp_syscall("setitimer").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_setitimer"))
@@ -128,9 +128,9 @@ probe tp_syscall.setitimer.return = kernel.tracepoint("sys_exit")!, kernel.trace
 #		struct compat_itimerval __user *out)
 #
 
-probe syscall.compat_setitimer = dw_syscall.compat_setitimer !,
+probe syscall.compat_setitimer = tp_syscall.compat_setitimer !, dw_syscall.compat_setitimer !,
                                  nd_syscall.compat_setitimer ? {}
-probe syscall.compat_setitimer.return = dw_syscall.compat_setitimer.return !,
+probe syscall.compat_setitimer.return = tp_syscall.compat_setitimer.return !, dw_syscall.compat_setitimer.return !,
                                         nd_syscall.compat_setitimer.return ? {}
 
 # dw_compat_setitimer _____________________________________________________
@@ -178,8 +178,8 @@ probe nd2_syscall.compat_setitimer = kprobe.function(@arch_syscall_prefix "compa
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SETITIMER_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_setitimer = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.compat_setitimer = tp_syscall("~compat_setitimer") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_setitimer"))
@@ -208,8 +208,8 @@ probe nd2_syscall.compat_setitimer.return = kprobe.function(@arch_syscall_prefix
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_setitimer.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.compat_setitimer.return = tp_syscall("~compat_setitimer").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_setitimer"))

@@ -24,9 +24,9 @@
           set_int_arg(1, timerid)
 %)
 
-probe syscall.timer_getoverrun = dw_syscall.timer_getoverrun !,
+probe syscall.timer_getoverrun = tp_syscall.timer_getoverrun !, dw_syscall.timer_getoverrun !,
                                  nd_syscall.timer_getoverrun ? {}
-probe syscall.timer_getoverrun.return = dw_syscall.timer_getoverrun.return !,
+probe syscall.timer_getoverrun.return = tp_syscall.timer_getoverrun.return !, dw_syscall.timer_getoverrun.return !,
                                         nd_syscall.timer_getoverrun.return ? {}
 
 # dw_timer_getoverrun _____________________________________________________
@@ -68,8 +68,8 @@ probe nd2_syscall.timer_getoverrun = kprobe.function(@arch_syscall_prefix "sys_t
         %( @_IS_SREG_KERNEL %? @_SYSCALL_TIMER_GETOVERRUN_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.timer_getoverrun = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.timer_getoverrun = tp_syscall("timer_getoverrun,~compat_timer_getoverrun") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_timer_getoverrun"), @const("__NR_compat_timer_getoverrun"))
@@ -97,8 +97,8 @@ probe nd2_syscall.timer_getoverrun.return = kprobe.function(@arch_syscall_prefix
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.timer_getoverrun.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.timer_getoverrun.return = tp_syscall("timer_getoverrun,~compat_timer_getoverrun").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_timer_getoverrun"), @const("__NR_compat_timer_getoverrun"))

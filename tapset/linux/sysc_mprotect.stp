@@ -32,8 +32,8 @@
 	  set_ulong_arg(3, prot)
 %)
 
-probe syscall.mprotect = dw_syscall.mprotect !, nd_syscall.mprotect ? {}
-probe syscall.mprotect.return = dw_syscall.mprotect.return !, nd_syscall.mprotect.return ? {}
+probe syscall.mprotect = tp_syscall.mprotect !, dw_syscall.mprotect !, nd_syscall.mprotect ? {}
+probe syscall.mprotect.return = tp_syscall.mprotect.return !, dw_syscall.mprotect.return !, nd_syscall.mprotect.return ? {}
 
 # dw_mprotect _____________________________________________________
 
@@ -77,8 +77,8 @@ probe nd2_syscall.mprotect = kprobe.function(@arch_syscall_prefix "sys_mprotect"
         %( @_IS_SREG_KERNEL %? @_SYSCALL_MPROTECT_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.mprotect = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.mprotect = tp_syscall("mprotect,~compat_mprotect") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_mprotect"), @const("__NR_compat_mprotect"))
@@ -106,8 +106,8 @@ probe nd2_syscall.mprotect.return = kprobe.function(@arch_syscall_prefix "sys_mp
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.mprotect.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.mprotect.return = tp_syscall("mprotect,~compat_mprotect").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_mprotect"), @const("__NR_compat_mprotect"))

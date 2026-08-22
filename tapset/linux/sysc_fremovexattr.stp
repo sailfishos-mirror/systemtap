@@ -31,8 +31,8 @@
 	  set_user_string_arg(pointer_arg(2), name_str_unquoted)
 %)
 
-probe syscall.fremovexattr = dw_syscall.fremovexattr !, nd_syscall.fremovexattr ? {}
-probe syscall.fremovexattr.return = dw_syscall.fremovexattr.return !, nd_syscall.fremovexattr.return ? {}
+probe syscall.fremovexattr = tp_syscall.fremovexattr !, dw_syscall.fremovexattr !, nd_syscall.fremovexattr ? {}
+probe syscall.fremovexattr.return = tp_syscall.fremovexattr.return !, dw_syscall.fremovexattr.return !, nd_syscall.fremovexattr.return ? {}
 
 # dw_fremovexattr _____________________________________________________
 
@@ -75,8 +75,8 @@ probe nd2_syscall.fremovexattr = kprobe.function(@arch_syscall_prefix "sys_fremo
         @_SYSCALL_FREMOVEXATTR_REGARGS_STORE
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.fremovexattr = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.fremovexattr = tp_syscall("fremovexattr,~compat_fremovexattr") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_fremovexattr"), @const("__NR_compat_fremovexattr"))
@@ -104,8 +104,8 @@ probe nd2_syscall.fremovexattr.return = kprobe.function(@arch_syscall_prefix "sy
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.fremovexattr.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.fremovexattr.return = tp_syscall("fremovexattr,~compat_fremovexattr").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_fremovexattr"), @const("__NR_compat_fremovexattr"))

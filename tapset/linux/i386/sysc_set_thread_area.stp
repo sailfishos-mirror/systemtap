@@ -20,8 +20,8 @@
 	u_info_str = _struct_user_desc_u(u_info_uaddr)
 %)
 
-probe syscall.set_thread_area = dw_syscall.set_thread_area !, nd_syscall.set_thread_area {}
-probe syscall.set_thread_area.return = dw_syscall.set_thread_area.return !, nd_syscall.set_thread_area.return {}
+probe syscall.set_thread_area = tp_syscall.set_thread_area !, dw_syscall.set_thread_area !, nd_syscall.set_thread_area {}
+probe syscall.set_thread_area.return = tp_syscall.set_thread_area.return !, dw_syscall.set_thread_area.return !, nd_syscall.set_thread_area.return {}
 
 # dw_set_thread_area _____________________________________________________
 
@@ -51,8 +51,8 @@ probe nd1_syscall.set_thread_area = kprobe.function("sys_set_thread_area")
 	@_SYSCALL_SET_THREAD_AREA_ARGSTR
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.set_thread_area = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.set_thread_area = tp_syscall("set_thread_area") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_set_thread_area"))
@@ -70,8 +70,8 @@ probe nd1_syscall.set_thread_area.return = kprobe.function("sys_set_thread_area"
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.set_thread_area.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.set_thread_area.return = tp_syscall("set_thread_area").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_set_thread_area"))

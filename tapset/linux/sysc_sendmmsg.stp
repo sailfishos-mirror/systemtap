@@ -46,8 +46,8 @@
 	flags = user_uint32(&@uint_cast(__args)[3])
 %)
 
-probe syscall.sendmmsg = dw_syscall.sendmmsg !, nd_syscall.sendmmsg ? {}
-probe syscall.sendmmsg.return = dw_syscall.sendmmsg.return !,
+probe syscall.sendmmsg = tp_syscall.sendmmsg !, dw_syscall.sendmmsg !, nd_syscall.sendmmsg ? {}
+probe syscall.sendmmsg.return = tp_syscall.sendmmsg.return !, dw_syscall.sendmmsg.return !,
                                 nd_syscall.sendmmsg.return ? {}
 
 # dw_sendmmsg _____________________________________________________
@@ -205,7 +205,7 @@ probe tp_syscall.sendmmsg = __tp_syscall.sendmmsg ?,
 	flags_str = _msg_flags_str(flags)
 	@_SYSCALL_SENDMMSG_ARGSTR
 }
-probe __tp_syscall.sendmmsg = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.sendmmsg = tp_syscall("sendmmsg,~compat_sendmmsg") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_sendmmsg"), @const("__NR_compat_sendmmsg"))
@@ -214,7 +214,7 @@ probe __tp_syscall.sendmmsg = kernel.tracepoint("sys_enter")!, kernel.trace("sys
 {
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SENDMMSG_REGARGS_STORE %)
 }
-probe __tp_syscall.compat_socketcall.sendmmsg = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.compat_socketcall.sendmmsg = tp_syscall("~compat_socketcall") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_socketcall"))
@@ -286,11 +286,11 @@ probe tp_syscall.sendmmsg.return = __tp_syscall.sendmmsg.return ?,
 	@_SYSCALL_SENDMMSG_NAME
 	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.sendmmsg.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.sendmmsg.return = tp_syscall("sendmmsg,~compat_sendmmsg").return !, kernel.trace("sys_exit")
 {
 	@__syscall_compat_gate(@const("__NR_sendmmsg"), @const("__NR_compat_sendmmsg"))
 }
-probe __tp_syscall.compat_socketcall.sendmmsg.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.compat_socketcall.sendmmsg.return = tp_syscall("~compat_socketcall").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_socketcall"))

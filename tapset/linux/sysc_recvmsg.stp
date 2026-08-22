@@ -51,8 +51,8 @@
 	flags_str = _msg_flags_str(flags)
 %)
 
-probe syscall.recvmsg = dw_syscall.recvmsg !, nd_syscall.recvmsg ? {}
-probe syscall.recvmsg.return = dw_syscall.recvmsg.return !, nd_syscall.recvmsg.return ? {}
+probe syscall.recvmsg = tp_syscall.recvmsg !, dw_syscall.recvmsg !, nd_syscall.recvmsg ? {}
+probe syscall.recvmsg.return = tp_syscall.recvmsg.return !, dw_syscall.recvmsg.return !, nd_syscall.recvmsg.return ? {}
 
 # dw_recvmsg _____________________________________________________
 
@@ -161,7 +161,7 @@ probe __nd2_syscall.socketcall.recvmsg = kprobe.function(@arch_syscall_prefix "s
 	@_SYSCALL_SOCKETCALL_RECVMSG_REGARGS
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.recvmsg = __tp_syscall.recvmsg ?,
 	__tp_syscall.socketcall.recvmsg ?
 {
@@ -176,7 +176,7 @@ probe tp_syscall.recvmsg = __tp_syscall.recvmsg ?,
 	flags_str = _msg_flags_str(flags)
 	@_SYSCALL_RECVMSG_ARGSTR
 }
-probe __tp_syscall.recvmsg = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.recvmsg = tp_syscall("recvmsg") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_recvmsg"))
@@ -185,7 +185,7 @@ probe __tp_syscall.recvmsg = kernel.tracepoint("sys_enter")!, kernel.trace("sys_
 {
         %( @_IS_SREG_KERNEL %? @_SYSCALL_RECVMSG_REGARGS_STORE %)
 }
-probe __tp_syscall.socketcall.recvmsg = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.socketcall.recvmsg = tp_syscall("socketcall") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_socketcall"))
@@ -236,11 +236,11 @@ probe tp_syscall.recvmsg.return = __tp_syscall.recvmsg.return ?,
 	@_SYSCALL_RECVMSG_NAME
 	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.recvmsg.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.recvmsg.return = tp_syscall("recvmsg").return !, kernel.trace("sys_exit")
 {
 	@__syscall_gate(@const("__NR_recvmsg"))
 }
-probe __tp_syscall.socketcall.recvmsg.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.socketcall.recvmsg.return = tp_syscall("socketcall").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_socketcall"))
@@ -263,9 +263,9 @@ probe __tp_syscall.socketcall.recvmsg.return = kernel.tracepoint("sys_exit")!, k
 # 'syscall.compat_recvmsg' or just merged with 'syscall.recvmsg'.
 #
 
-probe syscall.compat_sys_recvmsg = dw_syscall.compat_sys_recvmsg !,
+probe syscall.compat_sys_recvmsg = tp_syscall.compat_sys_recvmsg !, dw_syscall.compat_sys_recvmsg !,
                                    nd_syscall.compat_sys_recvmsg ? {}
-probe syscall.compat_sys_recvmsg.return = dw_syscall.compat_sys_recvmsg.return !,
+probe syscall.compat_sys_recvmsg.return = tp_syscall.compat_sys_recvmsg.return !, dw_syscall.compat_sys_recvmsg.return !,
                                           nd_syscall.compat_sys_recvmsg.return ? {}
 
 # dw_compat_sys_recvmsg _____________________________________________________
@@ -315,8 +315,8 @@ probe nd2_syscall.compat_sys_recvmsg =
 	@_SYSCALL_RECVMSG_ARGSTR
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_sys_recvmsg = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.compat_sys_recvmsg = tp_syscall("~compat_socketcall") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_socketcall"))
@@ -347,8 +347,8 @@ probe nd2_syscall.compat_sys_recvmsg.return =
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_sys_recvmsg.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.compat_sys_recvmsg.return = tp_syscall("~compat_socketcall").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_socketcall"))

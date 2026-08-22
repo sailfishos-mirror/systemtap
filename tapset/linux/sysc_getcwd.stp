@@ -26,8 +26,8 @@
 	  set_ulong_arg(2, size)
 %)
 
-probe syscall.getcwd = dw_syscall.getcwd !, nd_syscall.getcwd ? {}
-probe syscall.getcwd.return = dw_syscall.getcwd.return !, nd_syscall.getcwd.return ? {}
+probe syscall.getcwd = tp_syscall.getcwd !, dw_syscall.getcwd !, nd_syscall.getcwd ? {}
+probe syscall.getcwd.return = tp_syscall.getcwd.return !, dw_syscall.getcwd.return !, nd_syscall.getcwd.return ? {}
 
 # dw_getcwd _____________________________________________________
 # long sys_getcwd(char __user *buf, unsigned long size)
@@ -70,8 +70,8 @@ probe nd2_syscall.getcwd = kprobe.function(@arch_syscall_prefix "sys_getcwd") ?
         @_SYSCALL_GETCWD_REGARGS_STORE
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.getcwd = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.getcwd = tp_syscall("getcwd,~compat_getcwd") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_getcwd"), @const("__NR_compat_getcwd"))
@@ -99,8 +99,8 @@ probe nd2_syscall.getcwd.return = kprobe.function(@arch_syscall_prefix "sys_getc
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.getcwd.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.getcwd.return = tp_syscall("getcwd,~compat_getcwd").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_getcwd"), @const("__NR_compat_getcwd"))

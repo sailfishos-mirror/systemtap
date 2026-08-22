@@ -36,9 +36,9 @@
 	  set_ulong_arg(4, len)
 %)
 
-probe syscall.compat_lookup_dcookie = dw_syscall.compat_lookup_dcookie !,
+probe syscall.compat_lookup_dcookie = tp_syscall.compat_lookup_dcookie !, dw_syscall.compat_lookup_dcookie !,
                                       nd_syscall.compat_lookup_dcookie ? {}
-probe syscall.compat_lookup_dcookie.return = dw_syscall.compat_lookup_dcookie.return !,
+probe syscall.compat_lookup_dcookie.return = tp_syscall.compat_lookup_dcookie.return !, dw_syscall.compat_lookup_dcookie.return !,
                                              nd_syscall.compat_lookup_dcookie.return ? {}
 
 # dw_compat_lookup_dcookie _____________________________________________________
@@ -88,8 +88,8 @@ probe nd2_syscall.compat_lookup_dcookie = kprobe.function(@arch_syscall_prefix "
         %( @_IS_SREG_KERNEL %? @_SYSCALL_COMPAT_LOOKUP_DCOOKIE_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_lookup_dcookie = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.compat_lookup_dcookie = tp_syscall("~ia32_lookup_dcookie") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_ia32_lookup_dcookie"))
@@ -119,8 +119,8 @@ probe nd2_syscall.compat_lookup_dcookie.return = kprobe.function(@arch_syscall_p
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_lookup_dcookie.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.compat_lookup_dcookie.return = tp_syscall("~ia32_lookup_dcookie").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_ia32_lookup_dcookie"))

@@ -47,8 +47,8 @@
 	addrlen = user_int(&@uint_cast(__argsi)[2])
 %)
 
-probe syscall.bind = dw_syscall.bind !, nd_syscall.bind ? {}
-probe syscall.bind.return = dw_syscall.bind.return !, nd_syscall.bind.return ? {}
+probe syscall.bind = tp_syscall.bind !, dw_syscall.bind !, nd_syscall.bind ? {}
+probe syscall.bind.return = tp_syscall.bind.return !, dw_syscall.bind.return !, nd_syscall.bind.return ? {}
 
 # dw_bind _____________________________________________________
 
@@ -161,7 +161,7 @@ probe __nd2_syscall.compat_socketcall.bind =
 	@_SYSCALL_COMPAT_SOCKETCALL_BIND_REGARGS
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.bind = __tp_syscall.bind ?,
 	__tp_syscall.socketcall.bind ?
 {
@@ -169,7 +169,7 @@ probe tp_syscall.bind = __tp_syscall.bind ?,
 	@_af_inet_info_u(my_addr_uaddr, addrlen)
 	@_SYSCALL_BIND_ARGSTR
 }
-probe __tp_syscall.bind = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.bind = tp_syscall("bind") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_bind"))
@@ -178,7 +178,7 @@ probe __tp_syscall.bind = kernel.tracepoint("sys_enter")!, kernel.trace("sys_ent
 {
         %( @_IS_SREG_KERNEL %? @_SYSCALL_BIND_REGARGS_STORE %)
 }
-probe __tp_syscall.socketcall.bind = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.socketcall.bind = tp_syscall("socketcall,~compat_socketcall") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_socketcall"), @const("__NR_compat_socketcall"))
@@ -227,18 +227,18 @@ probe __nd2_syscall.socketcall.bind.return =
 	if (int_arg(1) != @const("SYS_BIND")) next;
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.bind.return = __tp_syscall.bind.return ?,
 	__tp_syscall.socketcall.bind.return ?
 {
 	@_SYSCALL_BIND_NAME
 	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.bind.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.bind.return = tp_syscall("bind").return !, kernel.trace("sys_exit")
 {
 	@__syscall_gate(@const("__NR_bind"))
 }
-probe __tp_syscall.socketcall.bind.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.socketcall.bind.return = tp_syscall("socketcall,~compat_socketcall").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_socketcall"), @const("__NR_compat_socketcall"))

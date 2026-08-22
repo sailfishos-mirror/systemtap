@@ -27,9 +27,9 @@
           set_pointer_arg(1, u_info_uaddr)
 %)
 
-probe syscall.get_thread_area = dw_syscall.get_thread_area !,
+probe syscall.get_thread_area = tp_syscall.get_thread_area !, dw_syscall.get_thread_area !,
                                 nd_syscall.get_thread_area ? {}
-probe syscall.get_thread_area.return = dw_syscall.get_thread_area.return !,
+probe syscall.get_thread_area.return = tp_syscall.get_thread_area.return !, dw_syscall.get_thread_area.return !,
                                        nd_syscall.get_thread_area.return ? {}
 
 # dw_get_thread_area _____________________________________________________
@@ -77,8 +77,8 @@ probe nd2_syscall.get_thread_area =
         %( @_IS_SREG_KERNEL %? @_SYSCALL_GET_THREAD_AREA_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.get_thread_area = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.get_thread_area = tp_syscall("get_thread_area,~ia32_get_thread_area") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_get_thread_area"), @const("__NR_ia32_get_thread_area"))
@@ -109,8 +109,8 @@ probe nd2_syscall.get_thread_area.return =
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.get_thread_area.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.get_thread_area.return = tp_syscall("get_thread_area,~ia32_get_thread_area").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_get_thread_area"), @const("__NR_ia32_get_thread_area"))

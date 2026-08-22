@@ -22,8 +22,8 @@
           set_ulong_arg(1, brk)
 %)
 
-probe syscall.brk = dw_syscall.brk !, nd_syscall.brk ? {}
-probe syscall.brk.return = dw_syscall.brk.return !, nd_syscall.brk.return ? {}
+probe syscall.brk = tp_syscall.brk !, dw_syscall.brk !, nd_syscall.brk ? {}
+probe syscall.brk.return = tp_syscall.brk.return !, dw_syscall.brk.return !, nd_syscall.brk.return ? {}
 
 # dw_brk _____________________________________________________
 
@@ -67,8 +67,8 @@ probe nd2_syscall.brk = kprobe.function(@arch_syscall_prefix "sys_brk")
         %( @_IS_SREG_KERNEL %? @_SYSCALL_BRK_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.brk = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.brk = tp_syscall("brk,~compat_brk") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_brk"), @const("__NR_compat_brk"))
@@ -97,8 +97,8 @@ probe nd2_syscall.brk.return = kprobe.function(@arch_syscall_prefix "sys_brk").r
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.brk.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.brk.return = tp_syscall("brk,~compat_brk").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_brk"), @const("__NR_compat_brk"))

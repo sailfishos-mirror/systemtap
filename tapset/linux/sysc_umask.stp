@@ -23,8 +23,8 @@
           set_uint_arg(1, mask)
 %)
 
-probe syscall.umask = dw_syscall.umask !, nd_syscall.umask ? {}
-probe syscall.umask.return = dw_syscall.umask.return !,
+probe syscall.umask = tp_syscall.umask !, dw_syscall.umask !, nd_syscall.umask ? {}
+probe syscall.umask.return = tp_syscall.umask.return !, dw_syscall.umask.return !,
                              nd_syscall.umask.return ? {}
 
 # dw_umask _____________________________________________________
@@ -66,8 +66,8 @@ probe nd2_syscall.umask = kprobe.function(@arch_syscall_prefix "sys_umask") ?
         %( @_IS_SREG_KERNEL %? @_SYSCALL_UMASK_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.umask = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.umask = tp_syscall("umask,~compat_umask") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_umask"), @const("__NR_compat_umask"))
@@ -95,8 +95,8 @@ probe nd2_syscall.umask.return = kprobe.function(@arch_syscall_prefix "sys_umask
 	@SYSC_RETVALSTR3(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.umask.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.umask.return = tp_syscall("umask,~compat_umask").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_umask"), @const("__NR_compat_umask"))

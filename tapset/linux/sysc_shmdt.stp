@@ -35,8 +35,8 @@
           set_pointer_arg(5, shmaddr_uaddr)
 %)
 
-probe syscall.shmdt = dw_syscall.shmdt !, nd_syscall.shmdt ? {}
-probe syscall.shmdt.return = dw_syscall.shmdt.return !,
+probe syscall.shmdt = tp_syscall.shmdt !, dw_syscall.shmdt !, nd_syscall.shmdt ? {}
+probe syscall.shmdt.return = tp_syscall.shmdt.return !, dw_syscall.shmdt.return !,
                              nd_syscall.shmdt.return ? {}
 
 # dw_shmdt _____________________________________________________
@@ -92,13 +92,13 @@ probe __nd2_syscall.compat_ipc.shmdt =
         %( @_IS_SREG_KERNEL %? @_SYSCALL_IPC_SHMDT_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.shmdt = __tp_syscall.shmdt, __tp_syscall.compat_ipc.shmdt
 {
 	@_SYSCALL_SHMDT_NAME
 	@_SYSCALL_SHMDT_ARGSTR
 }
-probe __tp_syscall.shmdt = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.shmdt = tp_syscall("shmdt") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_shmdt"))
@@ -107,7 +107,7 @@ probe __tp_syscall.shmdt = kernel.tracepoint("sys_enter")!, kernel.trace("sys_en
 {
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SHMDT_REGARGS_STORE %)
 }
-probe __tp_syscall.compat_ipc.shmdt = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.compat_ipc.shmdt = tp_syscall("~compat_ipc") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_ipc"))
@@ -142,18 +142,18 @@ probe __nd2_syscall.compat_ipc.shmdt.return =
 	if (int_arg(1) != @const("SHMDT")) next;
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.shmdt.return =	__tp_syscall.shmdt.return,
 	 __tp_syscall.compat_ipc.shmdt.return
 {
 	@_SYSCALL_SHMDT_NAME
 	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.shmdt.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.shmdt.return = tp_syscall("shmdt").return !, kernel.trace("sys_exit")
 {
 	@__syscall_gate(@const("__NR_shmdt"))
 }
-probe __tp_syscall.compat_ipc.shmdt.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.compat_ipc.shmdt.return = tp_syscall("~compat_ipc").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_ipc"))

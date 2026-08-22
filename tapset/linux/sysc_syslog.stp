@@ -32,8 +32,8 @@
 	  set_int_arg(3, len)
 %)
 
-probe syscall.syslog = dw_syscall.syslog !, nd_syscall.syslog ? {}
-probe syscall.syslog.return = dw_syscall.syslog.return !,
+probe syscall.syslog = tp_syscall.syslog !, dw_syscall.syslog !, nd_syscall.syslog ? {}
+probe syscall.syslog.return = tp_syscall.syslog.return !, dw_syscall.syslog.return !,
                               nd_syscall.syslog.return ? {}
 
 # dw_syslog _____________________________________________________
@@ -77,8 +77,8 @@ probe nd2_syscall.syslog = kprobe.function(@arch_syscall_prefix "sys_syslog") ?
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SYSLOG_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.syslog = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.syslog = tp_syscall("syslog,~compat_syslog") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_syslog"), @const("__NR_compat_syslog"))
@@ -106,8 +106,8 @@ probe nd2_syscall.syslog.return = kprobe.function(@arch_syscall_prefix "sys_sysl
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.syslog.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.syslog.return = tp_syscall("syslog,~compat_syslog").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_syslog"), @const("__NR_compat_syslog"))

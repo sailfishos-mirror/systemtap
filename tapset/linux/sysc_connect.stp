@@ -47,8 +47,8 @@
 	addrlen = user_uint32(&@uint_cast(__argsi)[2])
 %)
 
-probe syscall.connect = dw_syscall.connect !, nd_syscall.connect ? {}
-probe syscall.connect.return = dw_syscall.connect.return !, nd_syscall.connect.return ? {}
+probe syscall.connect = tp_syscall.connect !, dw_syscall.connect !, nd_syscall.connect ? {}
+probe syscall.connect.return = tp_syscall.connect.return !, dw_syscall.connect.return !, nd_syscall.connect.return ? {}
 
 # dw_connect _____________________________________________________
 
@@ -165,7 +165,7 @@ probe __nd2_syscall.compat_socketcall.connect =
 	@_SYSCALL_COMPAT_SOCKETCALL_CONNECT_REGARGS
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.connect = __tp_syscall.connect ?,
 	__tp_syscall.socketcall.connect ?,
 	__tp_syscall.compat_socketcall.connect ?
@@ -174,7 +174,7 @@ probe tp_syscall.connect = __tp_syscall.connect ?,
 	@_af_inet_info_u(serv_addr_uaddr, addrlen)
 	@_SYSCALL_CONNECT_ARGSTR
 }
-probe __tp_syscall.connect = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.connect = tp_syscall("connect") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_connect"))
@@ -183,7 +183,7 @@ probe __tp_syscall.connect = kernel.tracepoint("sys_enter")!, kernel.trace("sys_
 {
         %( @_IS_SREG_KERNEL %? @_SYSCALL_CONNECT_REGARGS_STORE %)
 }
-probe __tp_syscall.socketcall.connect = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.socketcall.connect = tp_syscall("socketcall,~compat_socketcall") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_socketcall"), @const("__NR_compat_socketcall"))
@@ -232,18 +232,18 @@ probe __nd2_syscall.socketcall.connect.return =
 	if (int_arg(1) != @const("SYS_CONNECT")) next;
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.connect.return = __tp_syscall.connect.return ?,
 	__tp_syscall.socketcall.connect.return ?
 {
 	@_SYSCALL_CONNECT_NAME
 	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.connect.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.connect.return = tp_syscall("connect").return !, kernel.trace("sys_exit")
 {
 	@__syscall_gate(@const("__NR_connect"))
 }
-probe __tp_syscall.connect.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.socketcall.connect.return = tp_syscall("socketcall,~compat_socketcall").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_socketcall"), @const("__NR_compat_socketcall"))

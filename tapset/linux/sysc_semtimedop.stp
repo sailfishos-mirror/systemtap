@@ -47,8 +47,8 @@
 	  set_pointer_arg(6, timeout_uaddr)
 %)
 
-probe syscall.semtimedop = dw_syscall.semtimedop !, nd_syscall.semtimedop ? {}
-probe syscall.semtimedop.return = dw_syscall.semtimedop.return !,
+probe syscall.semtimedop = tp_syscall.semtimedop !, dw_syscall.semtimedop !, nd_syscall.semtimedop ? {}
+probe syscall.semtimedop.return = tp_syscall.semtimedop.return !, dw_syscall.semtimedop.return !,
                                   nd_syscall.semtimedop.return ? {}
 
 # dw_semtimedop _____________________________________________________
@@ -108,8 +108,8 @@ probe nd2_syscall.semtimedop = kprobe.function(@arch_syscall_prefix "sys_semtime
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SEMTIMEDOP_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.semtimedop = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.semtimedop = tp_syscall("semtimedop") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_semtimedop"))
@@ -142,8 +142,8 @@ probe nd2_syscall.semtimedop.return = kprobe.function(@arch_syscall_prefix "sys_
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.semtimedop.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.semtimedop.return = tp_syscall("semtimedop").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_semtimedop"))
@@ -157,9 +157,9 @@ probe tp_syscall.semtimedop.return = kernel.tracepoint("sys_exit")!, kernel.trac
 #		unsigned nsops, const struct compat_timespec __user *timeout)
 #
 
-probe syscall.compat_sys_semtimedop = dw_syscall.compat_sys_semtimedop !,
+probe syscall.compat_sys_semtimedop = tp_syscall.compat_sys_semtimedop !, dw_syscall.compat_sys_semtimedop !,
 	                              nd_syscall.compat_sys_semtimedop ? {}
-probe syscall.compat_sys_semtimedop.return = dw_syscall.compat_sys_semtimedop.return !,
+probe syscall.compat_sys_semtimedop.return = tp_syscall.compat_sys_semtimedop.return !, dw_syscall.compat_sys_semtimedop.return !,
 	                                     nd_syscall.compat_sys_semtimedop.return ? {}
 
 # dw_compat_sys_semtimedop _____________________________________________________
@@ -272,8 +272,8 @@ probe nd2_syscall.compat_sys_semtimedop =
         %( @_IS_SREG_KERNEL %? @_SYSCALL_COMPAT_SEMTIMEDOP_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_sys_semtimedop = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.compat_sys_semtimedop = tp_syscall("~compat_ipc") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_ipc"))
@@ -322,8 +322,8 @@ probe nd2_syscall.compat_sys_semtimedop.return =
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_sys_semtimedop.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.compat_sys_semtimedop.return = tp_syscall("~compat_ipc").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_ipc"))

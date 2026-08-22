@@ -34,8 +34,8 @@
 	  set_uint_arg(3, count)
 %)
 
-probe syscall.readdir = dw_syscall.readdir !, nd_syscall.readdir ? {}
-probe syscall.readdir.return = dw_syscall.readdir.return !,
+probe syscall.readdir = tp_syscall.readdir !, dw_syscall.readdir !, nd_syscall.readdir ? {}
+probe syscall.readdir.return = tp_syscall.readdir.return !, dw_syscall.readdir.return !,
                                nd_syscall.readdir.return ? {}
 
 # dw_readdir _____________________________________________________
@@ -88,8 +88,8 @@ probe nd2_syscall.readdir = kprobe.function(@arch_syscall_prefix "compat_sys_old
         %( @_IS_SREG_KERNEL %? @_SYSCALL_READDIR_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.readdir = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.readdir = tp_syscall("readdir,~compat_readdir") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_readdir"), @const("__NR_compat_readdir"))
@@ -120,8 +120,8 @@ probe nd2_syscall.readdir.return = kprobe.function(@arch_syscall_prefix "compat_
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.readdir.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.readdir.return = tp_syscall("readdir,~compat_readdir").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_readdir"), @const("__NR_compat_readdir"))

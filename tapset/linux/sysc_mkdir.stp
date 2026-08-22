@@ -31,8 +31,8 @@
 	  set_uint_arg(2, mode)
 %)
 
-probe syscall.mkdir = dw_syscall.mkdir !, nd_syscall.mkdir ? {}
-probe syscall.mkdir.return = dw_syscall.mkdir.return !, nd_syscall.mkdir.return ? {}
+probe syscall.mkdir = tp_syscall.mkdir !, dw_syscall.mkdir !, nd_syscall.mkdir ? {}
+probe syscall.mkdir.return = tp_syscall.mkdir.return !, dw_syscall.mkdir.return !, nd_syscall.mkdir.return ? {}
 
 # dw_mkdir _____________________________________________________
 
@@ -75,8 +75,8 @@ probe nd2_syscall.mkdir = kprobe.function(@arch_syscall_prefix "sys_mkdir")
 	%( @_IS_SREG_KERNEL %? @_SYSCALL_MKDIR_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.mkdir = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.mkdir = tp_syscall("mkdir,~compat_mkdir") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_mkdir"), @const("__NR_compat_mkdir"))
@@ -104,8 +104,8 @@ probe nd2_syscall.mkdir.return = kprobe.function(@arch_syscall_prefix "sys_mkdir
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.mkdir.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.mkdir.return = tp_syscall("mkdir,~compat_mkdir").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_mkdir"), @const("__NR_compat_mkdir"))

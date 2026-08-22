@@ -22,8 +22,8 @@
           set_ulong_arg(1, ctx)
 %)
 
-probe syscall.io_destroy = dw_syscall.io_destroy !, nd_syscall.io_destroy ? {}
-probe syscall.io_destroy.return = dw_syscall.io_destroy.return !,
+probe syscall.io_destroy = tp_syscall.io_destroy !, dw_syscall.io_destroy !, nd_syscall.io_destroy ? {}
+probe syscall.io_destroy.return = tp_syscall.io_destroy.return !, dw_syscall.io_destroy.return !,
                                   nd_syscall.io_destroy.return ? {}
 
 # dw_io_destroy _____________________________________________________
@@ -65,8 +65,8 @@ probe nd2_syscall.io_destroy = kprobe.function(@arch_syscall_prefix "sys_io_dest
         %( @_IS_SREG_KERNEL %? @_SYSCALL_IO_DESTROY_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.io_destroy = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.io_destroy = tp_syscall("io_destroy,~compat_io_destroy") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_io_destroy"), @const("__NR_compat_io_destroy"))
@@ -94,8 +94,8 @@ probe nd2_syscall.io_destroy.return = kprobe.function(@arch_syscall_prefix "sys_
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.io_destroy.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.io_destroy.return = tp_syscall("io_destroy,~compat_io_destroy").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_io_destroy"), @const("__NR_compat_io_destroy"))

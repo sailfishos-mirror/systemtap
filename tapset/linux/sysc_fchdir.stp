@@ -22,8 +22,8 @@
           set_int_arg(1, fd)
 %)
 
-probe syscall.fchdir = dw_syscall.fchdir !, nd_syscall.fchdir ? {}
-probe syscall.fchdir.return = dw_syscall.fchdir.return !, nd_syscall.fchdir.return ? {}
+probe syscall.fchdir = tp_syscall.fchdir !, dw_syscall.fchdir !, nd_syscall.fchdir ? {}
+probe syscall.fchdir.return = tp_syscall.fchdir.return !, dw_syscall.fchdir.return !, nd_syscall.fchdir.return ? {}
 
 # dw_fchdir _____________________________________________________
 
@@ -64,8 +64,8 @@ probe nd2_syscall.fchdir = kprobe.function(@arch_syscall_prefix "sys_fchdir")
         %( @_IS_SREG_KERNEL %? @_SYSCALL_FCHDIR_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.fchdir = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.fchdir = tp_syscall("fchdir,~compat_fchdir") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_fchdir"), @const("__NR_compat_fchdir"))
@@ -93,8 +93,8 @@ probe nd2_syscall.fchdir.return = kprobe.function(@arch_syscall_prefix "sys_fchd
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.fchdir.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.fchdir.return = tp_syscall("fchdir,~compat_fchdir").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_fchdir"), @const("__NR_compat_fchdir"))

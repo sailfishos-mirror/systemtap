@@ -32,8 +32,8 @@
 	  set_uint_arg(3, dev)
 %)
 
-probe syscall.mknod = dw_syscall.mknod !, nd_syscall.mknod ? {}
-probe syscall.mknod.return = dw_syscall.mknod.return !, nd_syscall.mknod.return ? {}
+probe syscall.mknod = tp_syscall.mknod !, dw_syscall.mknod !, nd_syscall.mknod ? {}
+probe syscall.mknod.return = tp_syscall.mknod.return !, dw_syscall.mknod.return !, nd_syscall.mknod.return ? {}
 
 # dw_mknod _____________________________________________________
 
@@ -78,8 +78,8 @@ probe nd2_syscall.mknod = kprobe.function(@arch_syscall_prefix "sys_mknod") ?
         %( @_IS_SREG_KERNEL %? @_SYSCALL_MKNOD_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.mknod = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.mknod = tp_syscall("mknod,~compat_mknod") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_mknod"), @const("__NR_compat_mknod"))
@@ -107,8 +107,8 @@ probe nd2_syscall.mknod.return = kprobe.function(@arch_syscall_prefix "sys_mknod
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.mknod.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.mknod.return = tp_syscall("mknod,~compat_mknod").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_mknod"), @const("__NR_compat_mknod"))

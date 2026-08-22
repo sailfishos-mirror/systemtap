@@ -48,6 +48,7 @@
 #include <stack>
 #include <cstdarg>
 #include <cassert>
+#include <cctype>
 #include <iomanip>
 #include <chrono>
 
@@ -557,6 +558,7 @@ static const string TOK_PROVIDER("provider");
 static const string TOK_MARK("mark");
 static const string TOK_TRACE("trace");
 static const string TOK_TRACEPOINT("tracepoint");
+static const string TOK_TP_SYSCALL("tp_syscall");
 static const string TOK_LSM("lsm");
 static const string TOK_LABEL("label");
 static const string TOK_LIBRARY("library");
@@ -12984,6 +12986,53 @@ struct tracepoint_derived_probe_group: public generic_dpg<tracepoint_derived_pro
 };
 
 
+// One match token from tp_syscall("..."): __NR_<name> in the native or
+// compat-task switch (~ prefix in the spec).
+struct syscall_dispatch_token {
+  string name;
+  bool compat;
+};
+
+struct syscall_dispatch_parsed {
+  vector<syscall_dispatch_token> match;
+  // Merge-only links (spec "preferred=alias"); not extra match NRs.
+  vector<pair<syscall_dispatch_token, syscall_dispatch_token> > aliases;
+  string error;
+};
+
+static syscall_dispatch_parsed syscall_dispatch_parse_spec (const string& spec);
+
+// tp_syscall("read")[.return]: one sys_enter / sys_exit registration with a
+// C switch on __NR_* instead of N isolated next-gates (opt8).
+struct syscall_dispatch_derived_probe: public tracepoint_derived_probe
+{
+  string syscall_name;          // original spec, possibly comma-separated
+  vector<syscall_dispatch_token> nr_tokens;
+  vector<pair<syscall_dispatch_token, syscall_dispatch_token> > nr_aliases;
+  bool is_return;
+
+  syscall_dispatch_derived_probe (systemtap_session& s,
+                                  dwflpp& dw,
+                                  const string& tracepoint_name,
+                                  const string& btf_typedef_name,
+                                  bool declare_trace_hook_p,
+                                  const string& syscall_name,
+                                  bool is_return,
+                                  probe* base_probe, probe_point* location);
+
+  void join_group (systemtap_session& s);
+};
+
+
+struct syscall_dispatch_derived_probe_group:
+  public generic_dpg<syscall_dispatch_derived_probe>
+{
+  void emit_module_decls (systemtap_session& s);
+  void emit_module_init (systemtap_session& s);
+  void emit_module_exit (systemtap_session& s);
+};
+
+
 struct lsm_derived_probe: public derived_probe
 {
   lsm_derived_probe (systemtap_session& s,
@@ -14864,6 +14913,672 @@ lsm_derived_probe_group::emit_module_exit (systemtap_session& s)
 }
 
 
+static bool syscall_dispatch_name_ok (const string& n);
+
+syscall_dispatch_derived_probe::syscall_dispatch_derived_probe (
+    systemtap_session& s, dwflpp& dw,
+    const string& tracepoint_name,
+    const string& btf_typedef_name,
+    bool declare_trace_hook_p,
+    const string& syscall_name,
+    bool is_return,
+    probe* base, probe_point* loc):
+  tracepoint_derived_probe (s, dw, tracepoint_name, btf_typedef_name,
+                            declare_trace_hook_p, base, loc),
+  syscall_name (syscall_name), is_return (is_return)
+{
+  syscall_dispatch_parsed parsed = syscall_dispatch_parse_spec (syscall_name);
+  if (! parsed.error.empty ())
+    throw SEMANTIC_ERROR (parsed.error, loc->components[0]->tok);
+  nr_tokens = parsed.match;
+  nr_aliases = parsed.aliases;
+  vector<probe_point::component*> comps;
+  comps.push_back (new probe_point::component (
+                     TOK_TP_SYSCALL, new literal_string (syscall_name)));
+  if (is_return)
+    comps.push_back (new probe_point::component (TOK_RETURN));
+  this->sole_location()->components = comps;
+
+  if (sess.verbose > 2)
+    clog << "syscall-dispatch " << syscall_name
+         << (is_return ? " on sys_exit" : " on sys_enter") << endl;
+}
+
+
+void
+syscall_dispatch_derived_probe::join_group (systemtap_session& s)
+{
+  if (! s.syscall_dispatch_derived_probes)
+    s.syscall_dispatch_derived_probes = new syscall_dispatch_derived_probe_group ();
+  s.syscall_dispatch_derived_probes->enroll (this);
+  this->group = s.syscall_dispatch_derived_probes;
+}
+
+
+static bool
+syscall_dispatch_name_ok (const string& n)
+{
+  if (n.empty () || !(isalpha ((unsigned char) n[0]) || n[0] == '_'))
+    return false;
+  for (size_t i = 0; i < n.size (); i++)
+    if (!isalnum ((unsigned char) n[i]) && n[i] != '_')
+      return false;
+  return true;
+}
+
+static vector<string>
+syscall_dispatch_split_names (const string& spec)
+{
+  vector<string> out;
+  string cur;
+  for (size_t i = 0; i <= spec.size (); ++i)
+    {
+      if (i == spec.size () || spec[i] == ',')
+        {
+          size_t a = 0, b = cur.size ();
+          while (a < b && isspace ((unsigned char) cur[a])) ++a;
+          while (b > a && isspace ((unsigned char) cur[b - 1])) --b;
+          if (b > a)
+            out.push_back (cur.substr (a, b - a));
+          cur.clear ();
+        }
+      else
+        cur.push_back (spec[i]);
+    }
+  return out;
+}
+
+// tp_syscall() functor grammar:
+//   spec   := token (',' token)*
+//   token  := ['~'] name ('=' name)*
+//   name   := C identifier (the __NR_* suffix)
+// '~' selects the compat-task NR table.  Unmarked names are native.
+// '=' names are merge-only aliases (same ABI as the '~' flag): if their
+// __NR_* values coincide, share one case.  They are not extra match NRs
+// for this probe.  Comma-separated match names on the same probe are
+// also merged if their NRs coincide.
+static syscall_dispatch_parsed
+syscall_dispatch_parse_spec (const string& spec)
+{
+  syscall_dispatch_parsed r;
+  vector<string> parts = syscall_dispatch_split_names (spec);
+  if (parts.empty ())
+    {
+      r.error = _("tp_syscall() name list is empty");
+      return r;
+    }
+  set<pair<string, bool> > seen;
+  for (unsigned i = 0; i < parts.size (); ++i)
+    {
+      string part = parts[i];
+      bool compat = false;
+      if (! part.empty () && part[0] == '~')
+        {
+          compat = true;
+          part = part.substr (1);
+          size_t a = 0, b = part.size ();
+          while (a < b && isspace ((unsigned char) part[a])) ++a;
+          while (b > a && isspace ((unsigned char) part[b - 1])) --b;
+          part = part.substr (a, b - a);
+        }
+      vector<string> names;
+      string cur;
+      for (size_t j = 0; j <= part.size (); ++j)
+        {
+          if (j == part.size () || part[j] == '=')
+            {
+              size_t a = 0, b = cur.size ();
+              while (a < b && isspace ((unsigned char) cur[a])) ++a;
+              while (b > a && isspace ((unsigned char) cur[b - 1])) --b;
+              if (b > a)
+                names.push_back (cur.substr (a, b - a));
+              cur.clear ();
+            }
+          else
+            cur.push_back (part[j]);
+        }
+      if (names.empty ())
+        {
+          r.error = _("tp_syscall() name must be a C identifier, "
+                      "optionally '~' for the compat NR table and '=' for "
+                      "NR aliases (e.g. \"read,~compat_read\", "
+                      "\"umount2=umount\")");
+          return r;
+        }
+      for (unsigned n = 0; n < names.size (); ++n)
+        if (! syscall_dispatch_name_ok (names[n]))
+          {
+            r.error = _("tp_syscall() name must be a C identifier, "
+                        "optionally '~' for the compat NR table and '=' for "
+                        "NR aliases (e.g. \"read,~compat_read\", "
+                        "\"umount2=umount\")");
+            return r;
+          }
+      syscall_dispatch_token head;
+      head.name = names[0];
+      head.compat = compat;
+      if (seen.insert (make_pair (head.name, head.compat)).second)
+        r.match.push_back (head);
+      for (unsigned n = 1; n < names.size (); ++n)
+        {
+          syscall_dispatch_token al;
+          al.name = names[n];
+          al.compat = compat;
+          r.aliases.push_back (make_pair (head, al));
+        }
+    }
+  return r;
+}
+
+static string
+syscall_dispatch_uf_find (map<string, string>& p, const string& x)
+{
+  map<string, string>::iterator it = p.find (x);
+  if (it == p.end ())
+    {
+      p[x] = x;
+      return x;
+    }
+  if (it->second != x)
+    it->second = syscall_dispatch_uf_find (p, it->second);
+  return it->second;
+}
+
+static void
+syscall_dispatch_uf_union (map<string, string>& p,
+                           const string& a, const string& b)
+{
+  string ra = syscall_dispatch_uf_find (p, a);
+  string rb = syscall_dispatch_uf_find (p, b);
+  if (ra != rb)
+    p[ra] = rb;
+}
+
+static bool
+syscall_dispatch_uf_same (map<string, string>& p,
+                          const string& a, const string& b)
+{
+  return syscall_dispatch_uf_find (p, a) == syscall_dispatch_uf_find (p, b);
+}
+
+static map<string, string>
+syscall_dispatch_alias_parent (
+    const vector<syscall_dispatch_derived_probe*>& dprobes,
+    bool compat)
+{
+  map<string, string> p;
+  for (unsigned i = 0; i < dprobes.size (); ++i)
+    {
+      vector<string> local;
+      const vector<syscall_dispatch_token>& toks = dprobes[i]->nr_tokens;
+      for (unsigned t = 0; t < toks.size (); ++t)
+        if (toks[t].compat == compat)
+          local.push_back (toks[t].name);
+      for (unsigned t = 0; t < local.size (); ++t)
+        {
+          syscall_dispatch_uf_find (p, local[t]);
+          if (t)
+            syscall_dispatch_uf_union (p, local[0], local[t]);
+        }
+      const vector<pair<syscall_dispatch_token, syscall_dispatch_token> >& al
+        = dprobes[i]->nr_aliases;
+      for (unsigned a = 0; a < al.size (); ++a)
+        if (al[a].first.compat == compat)
+          syscall_dispatch_uf_union (p, al[a].first.name, al[a].second.name);
+    }
+  return p;
+}
+
+static void
+syscall_dispatch_prefer_order (
+    vector<string>& toks,
+    const vector<pair<string, string> >& pref)
+{
+  for (unsigned pass = 0; pass < toks.size (); ++pass)
+    {
+      bool moved = false;
+      for (unsigned e = 0; e < pref.size (); ++e)
+        {
+          const string& want = pref[e].first;
+          const string& other = pref[e].second;
+          int ip = -1, io = -1;
+          for (unsigned i = 0; i < toks.size (); ++i)
+            {
+              if (toks[i] == want)
+                ip = (int) i;
+              if (toks[i] == other)
+                io = (int) i;
+            }
+          if (ip >= 0 && io >= 0 && ip > io)
+            {
+              string hold = toks[ip];
+              toks.erase (toks.begin () + ip);
+              toks.insert (toks.begin () + io, hold);
+              moved = true;
+            }
+        }
+      if (! moved)
+        break;
+    }
+}
+
+
+static string
+emit_syscall_dispatch_run_fn (systemtap_session& s,
+                              syscall_dispatch_derived_probe *p,
+                              const vector<const tracepoint_arg*>& pass_args)
+{
+  string fn = "stap_syscall_dispatch_run_" + lex_cast (p->session_index);
+  s.op->newline () << "static void " << fn << "(";
+  if (pass_args.empty ())
+    s.op->line () << "void";
+  else
+    {
+      s.op->indent (2);
+      for (unsigned j = 0; j < pass_args.size (); ++j)
+        {
+          if (j)
+            s.op->line () << ",";
+          s.op->newline () << "int64_t __tracepoint_arg_" << pass_args[j]->name;
+        }
+      s.op->indent (-2);
+    }
+  s.op->newline () << ")";
+  s.op->newline () << "{";
+  s.op->newline (1) << "const struct stap_probe * const probe = "
+                    << common_probe_init (p) << ";";
+  common_probe_entryfn_prologue (s, "STAP_SESSION_RUNNING", "", "probe",
+                                 "stp_probe_type_tracepoint");
+  s.op->newline () << "c->ips.tp.tracepoint_system = "
+                   << lex_cast_qstring (p->tracepoint_system) << ";";
+  s.op->newline () << "c->ips.tp.tracepoint_name = "
+                   << lex_cast_qstring (p->tracepoint_name) << ";";
+  for (unsigned j = 0; j < pass_args.size (); ++j)
+    {
+      bool used = false;
+      for (unsigned k = 0; k < p->args.size (); ++k)
+        if (p->args[k].name == pass_args[j]->name && p->args[k].used)
+          {
+            used = true;
+            break;
+          }
+      if (! used)
+        continue;
+      s.op->newline () << "c->probe_locals." << p->name ()
+                       << "." + s.up->c_localname ("__tracepoint_arg_"
+                                                   + pass_args[j]->name)
+                       << " = __tracepoint_arg_" << pass_args[j]->name << ";";
+    }
+  s.op->newline () << "(*probe->ph) (c);";
+  common_probe_entryfn_epilogue (s, true, false);
+  s.op->newline (-1) << "}";
+  return fn;
+}
+
+
+static void
+emit_syscall_dispatch_run_calls (
+    systemtap_session& s,
+    const vector<syscall_dispatch_derived_probe*>& plist,
+    const map<syscall_dispatch_derived_probe*, string>& run_fn,
+    const vector<const tracepoint_arg*>& pass_args,
+    set<syscall_dispatch_derived_probe*>& already)
+{
+  for (unsigned i = 0; i < plist.size (); ++i)
+    {
+      syscall_dispatch_derived_probe *p = plist[i];
+      if (! already.insert (p).second)
+        continue;
+      map<syscall_dispatch_derived_probe*, string>::const_iterator fn
+        = run_fn.find (p);
+      if (fn == run_fn.end ())
+        continue;
+      s.op->newline () << fn->second << "(";
+      for (unsigned j = 0; j < pass_args.size (); ++j)
+        {
+          if (j)
+            s.op->line () << ", ";
+          s.op->line () << "__tracepoint_arg_" << pass_args[j]->name;
+        }
+      s.op->line () << ");";
+    }
+}
+
+
+static void
+emit_syscall_dispatch_nr_switch (
+    systemtap_session& s,
+    const vector<string>& tok_order,
+    map<string, vector<syscall_dispatch_derived_probe*> >& by_tok,
+    const map<syscall_dispatch_derived_probe*, string>& run_fn,
+    const vector<const tracepoint_arg*>& pass_args,
+    map<string, string>& alias_parent)
+{
+  s.op->newline () << "switch (__stp_sc_nr) {";
+  for (unsigned i = 0; i < tok_order.size (); ++i)
+    {
+      const string& tok = tok_order[i];
+      const string nr = "__NR_" + tok;
+      s.op->newline () << "#ifdef " << nr;
+      s.op->newline () << "#if (" << nr << " != (__NR_syscall_max + 1))";
+      for (unsigned j = 0; j < i; ++j)
+        {
+          if (! syscall_dispatch_uf_same (alias_parent, tok, tok_order[j]))
+            continue;
+          const string nrj = "__NR_" + tok_order[j];
+          s.op->line () << " \\";
+          s.op->newline () << " && (!defined(" << nrj << ") || ("
+                           << nr << " != " << nrj << "))";
+        }
+      s.op->newline () << "case " << nr << ":";
+      set<syscall_dispatch_derived_probe*> already;
+      emit_syscall_dispatch_run_calls (s, by_tok[tok], run_fn,
+                                       pass_args, already);
+      for (unsigned k = i + 1; k < tok_order.size (); ++k)
+        {
+          if (! syscall_dispatch_uf_same (alias_parent, tok, tok_order[k]))
+            continue;
+          const vector<syscall_dispatch_derived_probe*>& extra
+            = by_tok[tok_order[k]];
+          bool need = false;
+          for (unsigned e = 0; e < extra.size (); ++e)
+            if (! already.count (extra[e]))
+              {
+                need = true;
+                break;
+              }
+          if (! need)
+            continue;
+          const string nrk = "__NR_" + tok_order[k];
+          s.op->newline () << "#ifdef " << nrk;
+          s.op->newline () << "#if " << nrk << " == " << nr;
+          emit_syscall_dispatch_run_calls (s, extra, run_fn,
+                                           pass_args, already);
+          s.op->newline () << "#endif";
+          s.op->newline () << "#endif";
+        }
+      s.op->newline () << "break;";
+      s.op->newline () << "#endif";
+      s.op->newline () << "#endif";
+    }
+  s.op->newline () << "default: break;";
+  s.op->newline () << "}";
+}
+
+
+// One BTF sys_enter or sys_exit registration plus a switch on syscall nr.
+static void
+emit_syscall_dispatcher (systemtap_session& s,
+                         const vector<syscall_dispatch_derived_probe*>& dprobes,
+                         unsigned slot)
+{
+  if (dprobes.empty ())
+    return;
+
+  syscall_dispatch_derived_probe *tmpl = dprobes[0];
+  const bool btf_catalog_p = (tmpl->header == "vmlinux.h");
+
+  vector<const tracepoint_arg*> pass_args;
+  for (unsigned j = 0; j < tmpl->args.size (); ++j)
+    if (tmpl->args[j].usable)
+      pass_args.push_back (&tmpl->args[j]);
+
+  const tracepoint_arg *regs_arg = NULL;
+  for (unsigned j = 0; j < pass_args.size (); ++j)
+    if (pass_args[j]->name == "regs")
+      {
+        regs_arg = pass_args[j];
+        break;
+      }
+  if (! regs_arg)
+    for (unsigned j = 0; j < pass_args.size (); ++j)
+      if (pass_args[j]->name == "arg1")
+        {
+          regs_arg = pass_args[j];
+          break;
+        }
+
+  translator_output *tpop = s.op_create_auxiliary ();
+  tpop->newline () << "#include <linux/stp_tracepoint.h>" << endl;
+  tpop->newline () << "#include \"linux/compat_unistd.h\"" << endl;
+  tpop->newline () << "#include \"syscall.h\"" << endl;
+
+  s.op->newline () << "#include \"linux/compat_unistd.h\"";
+  s.op->newline () << "#include \"compatdefs.h\"";
+  s.op->newline () << "#include \"syscall.h\"";
+
+  map<syscall_dispatch_derived_probe*, string> run_fn;
+  for (unsigned i = 0; i < dprobes.size (); ++i)
+    run_fn[dprobes[i]] = emit_syscall_dispatch_run_fn (s, dprobes[i], pass_args);
+
+  string enter_real_fn = "enter_real_syscall_dispatch_" + lex_cast (slot);
+  if (pass_args.empty ())
+    {
+      tpop->newline () << "STP_TRACE_ENTER_REAL_NOARGS(" << enter_real_fn << ");";
+      s.op->newline () << "STP_TRACE_ENTER_REAL_NOARGS(" << enter_real_fn << ");";
+      s.op->newline () << "STP_TRACE_ENTER_REAL_NOARGS(" << enter_real_fn << ")";
+    }
+  else
+    {
+      tpop->newline () << "STP_TRACE_ENTER_REAL(" << enter_real_fn;
+      s.op->newline () << "STP_TRACE_ENTER_REAL(" << enter_real_fn;
+      s.op->indent (2);
+      for (unsigned j = 0; j < pass_args.size (); ++j)
+        {
+          tpop->line () << ", int64_t";
+          s.op->newline () << ", int64_t __tracepoint_arg_" << pass_args[j]->name;
+        }
+      tpop->line () << ");";
+      s.op->newline () << ");";
+      s.op->indent (-2);
+      s.op->newline () << "STP_TRACE_ENTER_REAL(" << enter_real_fn;
+      s.op->indent (2);
+      for (unsigned j = 0; j < pass_args.size (); ++j)
+        s.op->newline () << ", int64_t __tracepoint_arg_" << pass_args[j]->name;
+      s.op->newline () << ")";
+      s.op->indent (-2);
+    }
+  s.op->newline () << "{";
+  s.op->newline (1);
+  if (regs_arg)
+    {
+      s.op->newline () << "struct pt_regs *__stp_sc_regs = (struct pt_regs *)(uintptr_t) __tracepoint_arg_"
+                       << regs_arg->name << ";";
+      s.op->newline () << "long __stp_sc_nr = _stp_syscall_get_nr (current, __stp_sc_regs);";
+      s.op->newline () << "if (unlikely (__stp_sc_nr < 0)) return;";
+    }
+  else
+    s.op->newline () << "return; /* no pt_regs argument to dispatch on */";
+
+  if (regs_arg)
+    {
+      // Native and compat ABIs reuse the same small integers
+      // (__NR_writev == __NR_ia32_getpid == 20 on x86_64), so they
+      // cannot share one switch.  Split on _stp_is_compat_task().
+      // Within one ABI, aliases that share a token share that case,
+      // and a probe with several tokens gets its run_fn replicated.
+      map<string, vector<syscall_dispatch_derived_probe*> > native_by, compat_by;
+      vector<string> native_toks, compat_toks;
+      set<string> native_seen, compat_seen;
+      vector<pair<string, string> > native_pref, compat_pref;
+      for (unsigned i = 0; i < dprobes.size (); ++i)
+        {
+          const vector<syscall_dispatch_token>& toks = dprobes[i]->nr_tokens;
+          for (unsigned t = 0; t < toks.size (); ++t)
+            {
+              const syscall_dispatch_token& tok = toks[t];
+              map<string, vector<syscall_dispatch_derived_probe*> >& by
+                = tok.compat ? compat_by : native_by;
+              vector<string>& order = tok.compat ? compat_toks : native_toks;
+              set<string>& seen = tok.compat ? compat_seen : native_seen;
+              if (seen.insert (tok.name).second)
+                order.push_back (tok.name);
+              vector<syscall_dispatch_derived_probe*>& v = by[tok.name];
+              if (find (v.begin (), v.end (), dprobes[i]) == v.end ())
+                v.push_back (dprobes[i]);
+            }
+          const vector<pair<syscall_dispatch_token, syscall_dispatch_token> >& al
+            = dprobes[i]->nr_aliases;
+          for (unsigned a = 0; a < al.size (); ++a)
+            {
+              vector<pair<string, string> >& pref
+                = al[a].first.compat ? compat_pref : native_pref;
+              pref.push_back (make_pair (al[a].first.name, al[a].second.name));
+            }
+        }
+      syscall_dispatch_prefer_order (native_toks, native_pref);
+      syscall_dispatch_prefer_order (compat_toks, compat_pref);
+      map<string, string> native_parent
+        = syscall_dispatch_alias_parent (dprobes, false);
+      map<string, string> compat_parent
+        = syscall_dispatch_alias_parent (dprobes, true);
+
+      s.op->newline () << "if (_stp_is_compat_task ()) {";
+      s.op->newline (1);
+      emit_syscall_dispatch_nr_switch (s, compat_toks, compat_by, run_fn,
+                                       pass_args, compat_parent);
+      s.op->newline (-1) << "} else {";
+      s.op->newline (1);
+      emit_syscall_dispatch_nr_switch (s, native_toks, native_by, run_fn,
+                                       pass_args, native_parent);
+      s.op->newline (-1) << "}";
+    }
+  s.op->newline (-1) << "}";
+
+  string enter_fn = "enter_syscall_dispatch_" + lex_cast (slot);
+  if (tmpl->args.empty ())
+    tpop->newline () << "static STP_TRACE_ENTER_NOARGS(" << enter_fn << ")";
+  else
+    {
+      tpop->newline () << "static STP_TRACE_ENTER(" << enter_fn;
+      s.op->indent (2);
+      for (unsigned j = 0; j < tmpl->args.size (); ++j)
+        tpop->newline () << ", " << tmpl->args[j].c_decl;
+      tpop->newline () << ")";
+      s.op->indent (-2);
+    }
+  tpop->newline () << "{";
+  tpop->newline (1) << enter_real_fn << "(";
+  tpop->indent (2);
+  for (unsigned j = 0; j < pass_args.size (); ++j)
+    {
+      if (j > 0)
+        tpop->line () << ", ";
+      tpop->newline () << "(int64_t)" << pass_args[j]->typecast
+                       << "__tracepoint_arg_" << pass_args[j]->name;
+    }
+  tpop->newline () << ");";
+  tpop->newline (-3) << "}";
+
+  s.op->newline () << "int register_syscall_dispatch_" << slot << "(void);";
+  tpop->newline () << "int register_syscall_dispatch_" << slot << "(void);" << endl;
+  tpop->newline () << "int register_syscall_dispatch_" << slot << "(void) {";
+  if (btf_catalog_p)
+    tpop->newline (1) << "return stp_tracepoint_probe_register("
+                      << lex_cast_qstring (tmpl->tracepoint_name) << ", (void*)"
+                      << enter_fn << ", NULL);";
+  else
+    tpop->newline (1) << "return STP_TRACE_REGISTER2(" << tmpl->tracepoint_name
+                      << ", " << tmpl->tracepoint_name << ", "
+                      << enter_fn << ");";
+  tpop->newline (-1) << "}";
+
+  s.op->newline () << "void unregister_syscall_dispatch_" << slot << "(void);";
+  tpop->newline () << "void unregister_syscall_dispatch_" << slot << "(void);" << endl;
+  tpop->newline () << "void unregister_syscall_dispatch_" << slot << "(void) {";
+  if (btf_catalog_p)
+    tpop->newline (1) << "(void) stp_tracepoint_probe_unregister("
+                      << lex_cast_qstring (tmpl->tracepoint_name) << ", (void*)"
+                      << enter_fn << ", NULL);";
+  else
+    tpop->newline (1) << "(void) STP_TRACE_UNREGISTER2(" << tmpl->tracepoint_name
+                      << ", " << tmpl->tracepoint_name << ", "
+                      << enter_fn << ");";
+  tpop->newline (-1) << "}";
+  tpop->newline ();
+  tpop->assert_0_indent ();
+}
+
+
+void
+syscall_dispatch_derived_probe_group::emit_module_decls (systemtap_session& s)
+{
+  if (probes.empty ())
+    return;
+  if (s.runtime_mode == systemtap_session::bpf_runtime)
+    return;
+
+  s.op->newline () << "/* ---- syscall-dispatch (tp_syscall) probes ---- */";
+  s.op->newline () << "#include <linux/stp_tracepoint.h>" << endl;
+
+  vector<syscall_dispatch_derived_probe*> enter_p, return_p;
+  for (unsigned i = 0; i < probes.size (); ++i)
+    {
+      if (probes[i]->is_return)
+        return_p.push_back (probes[i]);
+      else
+        enter_p.push_back (probes[i]);
+    }
+
+  unsigned nslot = 0;
+  if (! enter_p.empty ())
+    emit_syscall_dispatcher (s, enter_p, nslot++);
+  if (! return_p.empty ())
+    emit_syscall_dispatcher (s, return_p, nslot++);
+
+  s.op->newline () << "static struct stap_syscall_dispatch_probe {";
+  s.op->newline (1) << "int (*reg)(void);";
+  s.op->newline (0) << "void (*unreg)(void);";
+  s.op->newline (-1) << "} stap_syscall_dispatch_probes[] = {";
+  s.op->indent (1);
+  for (unsigned i = 0; i < nslot; ++i)
+    {
+      s.op->newline () << "{";
+      s.op->line () << " .reg=&register_syscall_dispatch_" << i << ",";
+      s.op->line () << " .unreg=&unregister_syscall_dispatch_" << i;
+      s.op->line () << " },";
+    }
+  s.op->newline (-1) << "};";
+  s.op->newline () << "#define STAP_SYSCALL_DISPATCH_N " << nslot;
+  s.op->newline ();
+}
+
+
+void
+syscall_dispatch_derived_probe_group::emit_module_init (systemtap_session &s)
+{
+  if (probes.empty () || s.runtime_mode == systemtap_session::bpf_runtime)
+    return;
+
+  s.op->newline () << "/* init syscall-dispatch probes */";
+  s.op->newline () << "for (i=0; i<STAP_SYSCALL_DISPATCH_N; i++) {";
+  s.op->newline (1) << "rc = stap_syscall_dispatch_probes[i].reg();";
+  s.op->newline () << "if (rc) {";
+  s.op->newline (1) << "for (j=i-1; j>=0; j--)";
+  s.op->newline (1) << "stap_syscall_dispatch_probes[j].unreg();";
+  s.op->newline (-1) << "break;";
+  s.op->newline (-1) << "}";
+  s.op->newline (-1) << "}";
+  s.op->newline () << "if (rc)";
+  s.op->newline (1) << "tracepoint_synchronize_unregister();";
+  s.op->indent (-1);
+}
+
+
+void
+syscall_dispatch_derived_probe_group::emit_module_exit (systemtap_session& s)
+{
+  if (probes.empty () || s.runtime_mode == systemtap_session::bpf_runtime)
+    return;
+
+  s.op->newline () << "/* deregister syscall-dispatch probes */";
+  s.op->newline () << "for (i=0; i<STAP_SYSCALL_DISPATCH_N; i++)";
+  s.op->newline (1) << "stap_syscall_dispatch_probes[i].unreg();";
+  s.op->indent (-1);
+  s.op->newline () << "tracepoint_synchronize_unregister();";
+}
+
+
 struct tracepoint_query : public base_query
 {
   probe * base_probe;
@@ -16058,6 +16773,96 @@ lsm_builder::build(systemtap_session& s,
   return finished_results;
 }
 
+struct syscall_dispatch_builder: public derived_probe_builder
+{
+  dwflpp *dw;
+  dwflpp_focus dw_focus;
+
+  explicit syscall_dispatch_builder(std::recursive_mutex& shared)
+    : derived_probe_builder(shared), dw(0) {}
+  ~syscall_dispatch_builder() { delete dw; }
+
+  bool init_dw(systemtap_session& s)
+  {
+    if (dw)
+      return true;
+
+    string vpath;
+    if (!vmlinux_h_path(s, vpath))
+      return false;
+
+    string mod = "kernel<vmlinux.h>";
+    if (make_typequery(s, mod) != 0)
+      {
+        s.print_warning(_("failed to build vmlinux.h typequery module for tp_syscall()"));
+        return false;
+      }
+
+    dw = new dwflpp(s, mod, true);
+    if (!focus_typequery_module(s, *dw, dw_focus))
+      {
+        delete dw;
+        dw = 0;
+        s.print_warning(_("failed to focus on vmlinux.h typequery module for tp_syscall()"));
+        return false;
+      }
+    return true;
+  }
+
+  vector<derived_probe*> build(systemtap_session& s,
+             probe *base, probe_point *location,
+             literal_map_t const& parameters);
+
+  virtual string name() { return "syscall dispatch builder"; }
+};
+
+vector<derived_probe*>
+syscall_dispatch_builder::build(systemtap_session& s,
+                                probe *base, probe_point *location,
+                                literal_map_t const& parameters)
+{
+  vector<derived_probe*> finished_results;
+  if (s.runtime_mode == systemtap_session::bpf_runtime)
+    throw SEMANTIC_ERROR (_("tp_syscall() is not supported with --runtime=bpf yet"),
+                          location->components[0]->tok);
+
+  interned_string sc_name;
+  assert (get_param (parameters, TOK_TP_SYSCALL, sc_name));
+  string syscall_name (sc_name);
+  syscall_dispatch_parsed parsed = syscall_dispatch_parse_spec (syscall_name);
+  if (! parsed.error.empty ())
+    throw SEMANTIC_ERROR (parsed.error, location->components[0]->tok);
+
+  if (!init_dw(s))
+    throw SEMANTIC_ERROR (_("tp_syscall() requires vmlinux.h in the kernel build tree "
+                            "(kernel-devel with CONFIG_DEBUG_INFO_BTF)"),
+                          location->components[0]->tok);
+
+  dwflpp_focus_binder bind (dw_focus);
+
+  const bool is_return = has_null_param (parameters, TOK_RETURN);
+  const string want = is_return ? "sys_exit" : "sys_enter";
+
+  const vector<btf_tracepoint_meta>& catalog = get_btf_tracepoint_catalog(s);
+  const btf_tracepoint_meta *meta = NULL;
+  for (size_t i = 0; i < catalog.size(); i++)
+    if (catalog[i].hook_name == want)
+      {
+        meta = &catalog[i];
+        break;
+      }
+  if (!meta)
+    throw SEMANTIC_ERROR (_F("tp_syscall() cannot find kernel.tracepoint(\"%s\") "
+                             "in vmlinux.h BTF catalog", want.c_str()),
+                          location->components[0]->tok);
+
+  finished_results.push_back (
+    new syscall_dispatch_derived_probe (s, *dw, meta->hook_name, meta->btf_name,
+                                        meta->declare_trace_hook, syscall_name,
+                                        is_return, base, location));
+  return finished_results;
+}
+
 // ------------------------------------------------------------------------
 //  Standard tapset registry.
 // ------------------------------------------------------------------------
@@ -16092,6 +16897,17 @@ register_standard_tapsets(systemtap_session & s)
   // kernel.tracepoint() from vmlinux.h BTF callback typedefs ($arg1..$argN)
   s.pattern_root->bind(TOK_KERNEL)->bind_str(TOK_TRACEPOINT)
     ->bind(new btf_tracepoint_builder(dwarf_family_builder_lock()));
+
+  // tp_syscall("read")[.return]: BTF sys_enter/sys_exit + C switch on __NR_*
+  // New in 5.6; below that floor the name stays unrecognized so
+  // tp_syscall.foo aliases fall back to kernel.trace("sys_enter").
+  if (strverscmp(s.compatible.c_str(), "5.6") >= 0)
+    {
+      syscall_dispatch_builder *scb =
+        new syscall_dispatch_builder(dwarf_family_builder_lock());
+      s.pattern_root->bind_str(TOK_TP_SYSCALL)->bind(scb);
+      s.pattern_root->bind_str(TOK_TP_SYSCALL)->bind(TOK_RETURN)->bind(scb);
+    }
 
   // module("foo").tracepoint() from module BTF/DWARF ($arg1..$argN)
   s.pattern_root->bind_str(TOK_MODULE)->bind_str(TOK_TRACEPOINT)
@@ -16199,6 +17015,7 @@ all_session_groups(systemtap_session& s)
   DOONE(timer);
   DOONE(profile);
   DOONE(tracepoint);
+  DOONE(syscall_dispatch);
   DOONE(lsm);
   DOONE(hwbkpt);
   DOONE(perf);

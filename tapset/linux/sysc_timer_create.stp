@@ -38,8 +38,8 @@
 	  set_pointer_arg(3, timerid_uaddr)
 %)
 
-probe syscall.timer_create = dw_syscall.timer_create !, nd_syscall.timer_create ? {}
-probe syscall.timer_create.return = dw_syscall.timer_create.return !,
+probe syscall.timer_create = tp_syscall.timer_create !, dw_syscall.timer_create !, nd_syscall.timer_create ? {}
+probe syscall.timer_create.return = tp_syscall.timer_create.return !, dw_syscall.timer_create.return !,
                                     nd_syscall.timer_create.return ? {}
 
 # dw_timer_create _____________________________________________________
@@ -121,8 +121,8 @@ probe __nd2_syscall.compat_timer_create =
         %( @_IS_SREG_KERNEL %? @_SYSCALL_TIMER_CREATE_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.timer_create = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.timer_create = tp_syscall("timer_create,~compat_timer_create") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_timer_create"), @const("__NR_compat_timer_create"))
@@ -158,8 +158,8 @@ probe nd2_syscall.timer_create.return =
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.timer_create.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.timer_create.return = tp_syscall("timer_create,~compat_timer_create").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_timer_create"), @const("__NR_compat_timer_create"))

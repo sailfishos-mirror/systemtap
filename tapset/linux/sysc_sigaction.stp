@@ -43,10 +43,10 @@
 	oact_uaddr = pointer_arg(3)
 %)
 
-probe syscall.sigaction32 = dw_syscall.sigaction32 !, nd_syscall.sigaction32 ? {}
+probe syscall.sigaction32 = tp_syscall.sigaction32 !, dw_syscall.sigaction32 !, nd_syscall.sigaction32 ? {}
 
-probe syscall.sigaction = dw_syscall.sigaction !, nd_syscall.sigaction ? {}
-probe syscall.sigaction.return = dw_syscall.sigaction.return !,
+probe syscall.sigaction = tp_syscall.sigaction !, dw_syscall.sigaction !, nd_syscall.sigaction ? {}
+probe syscall.sigaction.return = tp_syscall.sigaction.return !, dw_syscall.sigaction.return !,
                                  nd_syscall.sigaction.return ? {}
 
 # dw_sigaction _____________________________________________________
@@ -80,8 +80,8 @@ probe nd1_syscall.sigaction = kprobe.function("sys_sigaction") ?
 	@_SYSCALL_SIGACTION_ARGSTR
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.sigaction = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.sigaction = tp_syscall("sigaction") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_sigaction"))
@@ -102,8 +102,8 @@ probe nd1_syscall.sigaction.return = kprobe.function("sys_sigaction").return ?
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.sigaction.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.sigaction.return = tp_syscall("sigaction").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_sigaction"))
@@ -113,7 +113,7 @@ probe tp_syscall.sigaction.return = kernel.tracepoint("sys_exit")!, kernel.trace
 
 # sigaction _________________________________________________________
 
-probe syscall.sigaction32.return = dw_syscall.sigaction32.return !,
+probe syscall.sigaction32.return = tp_syscall.sigaction32.return !, dw_syscall.sigaction32.return !,
                                    nd_syscall.sigaction32.return ? {}
 
 # dw_sigaction32 _____________________________________________________
@@ -163,8 +163,8 @@ probe nd2_syscall.sigaction32 =
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SIGACTION_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.sigaction32 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.sigaction32 = tp_syscall("~compat_sigaction") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_sigaction"))
@@ -194,8 +194,8 @@ probe nd2_syscall.sigaction32.return =
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.sigaction32.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.sigaction32.return = tp_syscall("~compat_sigaction").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_sigaction"))

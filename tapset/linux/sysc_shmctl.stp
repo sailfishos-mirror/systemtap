@@ -47,8 +47,8 @@
 	  set_pointer_arg(5, buf_uaddr)
 %)
 
-probe syscall.shmctl = dw_syscall.shmctl !, nd_syscall.shmctl ? {}
-probe syscall.shmctl.return = dw_syscall.shmctl.return !,
+probe syscall.shmctl = tp_syscall.shmctl !, dw_syscall.shmctl !, nd_syscall.shmctl ? {}
+probe syscall.shmctl.return = tp_syscall.shmctl.return !, dw_syscall.shmctl.return !,
                               nd_syscall.shmctl.return ? {}
 
 # dw_shmctl _____________________________________________________
@@ -102,8 +102,8 @@ probe nd2_syscall.shmctl = kprobe.function(@arch_syscall_prefix "sys_shmctl") ?
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SHMCTL_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.shmctl = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.shmctl = tp_syscall("shmctl") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_shmctl"))
@@ -134,8 +134,8 @@ probe nd2_syscall.shmctl.return = kprobe.function(@arch_syscall_prefix "sys_shmc
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.shmctl.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.shmctl.return = tp_syscall("shmctl").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_shmctl"))
@@ -148,9 +148,9 @@ probe tp_syscall.shmctl.return = kernel.tracepoint("sys_exit")!, kernel.trace("s
 # long compat_sys_shmctl(int first, int second, void __user *uptr)
 #
 
-probe syscall.compat_sys_shmctl = dw_syscall.compat_sys_shmctl !,
+probe syscall.compat_sys_shmctl = tp_syscall.compat_sys_shmctl !, dw_syscall.compat_sys_shmctl !,
                                   nd_syscall.compat_sys_shmctl ? {}
-probe syscall.compat_sys_shmctl.return = dw_syscall.compat_sys_shmctl.return !,
+probe syscall.compat_sys_shmctl.return = tp_syscall.compat_sys_shmctl.return !, dw_syscall.compat_sys_shmctl.return !,
                                          nd_syscall.compat_sys_shmctl.return ? {}
 
 # dw_compat_sys_shmctl _____________________________________________________
@@ -249,8 +249,8 @@ probe nd2_syscall.compat_sys_shmctl =
         %( @_IS_SREG_KERNEL %? @_SYSCALL_COMPAT_SHMCTL_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_sys_shmctl = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.compat_sys_shmctl = tp_syscall("~compat_ipc") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_ipc"))
@@ -293,8 +293,8 @@ probe nd2_syscall.compat_sys_shmctl.return =
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_sys_shmctl.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.compat_sys_shmctl.return = tp_syscall("~compat_ipc").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_ipc"))

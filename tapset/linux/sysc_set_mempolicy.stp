@@ -34,9 +34,9 @@
 	  set_ulong_arg(3, maxnode)
 %)
 
-probe syscall.set_mempolicy = dw_syscall.set_mempolicy !,
+probe syscall.set_mempolicy = tp_syscall.set_mempolicy !, dw_syscall.set_mempolicy !,
                               nd_syscall.set_mempolicy ? {}
-probe syscall.set_mempolicy.return = dw_syscall.set_mempolicy.return !,
+probe syscall.set_mempolicy.return = tp_syscall.set_mempolicy.return !, dw_syscall.set_mempolicy.return !,
                                      nd_syscall.set_mempolicy.return ? {}
 
 # dw_set_mempolicy _____________________________________________________
@@ -104,8 +104,8 @@ probe nd2_syscall.set_mempolicy = kprobe.function(@arch_syscall_prefix "sys_set_
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SET_MEMPOLICY_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.set_mempolicy = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.set_mempolicy = tp_syscall("set_mempolicy,~compat_set_mempolicy") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_set_mempolicy"), @const("__NR_compat_set_mempolicy"))
@@ -142,8 +142,8 @@ probe nd2_syscall.set_mempolicy.return = kprobe.function(@arch_syscall_prefix "s
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.set_mempolicy.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.set_mempolicy.return = tp_syscall("set_mempolicy,~compat_set_mempolicy").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_set_mempolicy"), @const("__NR_compat_set_mempolicy"))

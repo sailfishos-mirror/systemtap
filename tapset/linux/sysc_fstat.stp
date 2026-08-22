@@ -33,8 +33,8 @@
 	  set_pointer_arg(2, buf_uaddr)
 %)
 
-probe syscall.fstat = dw_syscall.fstat !, nd_syscall.fstat ? {}
-probe syscall.fstat.return = dw_syscall.fstat.return !, nd_syscall.fstat.return ? {}
+probe syscall.fstat = tp_syscall.fstat !, dw_syscall.fstat !, nd_syscall.fstat ? {}
+probe syscall.fstat.return = tp_syscall.fstat.return !, dw_syscall.fstat.return !, nd_syscall.fstat.return ? {}
 
 # dw_fstat _____________________________________________________
 
@@ -114,7 +114,7 @@ probe nd2_syscall.fstat =
         @_SYSCALL_FSTAT_REGARGS_STORE
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.fstat = __tp_syscall.fstat,
                          __tp_syscall.fstat64,
                          __tp_syscall.newfstat
@@ -127,15 +127,15 @@ probe tp_syscall.fstat = __tp_syscall.fstat,
 {
         @_SYSCALL_FSTAT_REGARGS_STORE
 }
-probe __tp_syscall.fstat = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.fstat = tp_syscall("oldfstat,~compat_oldfstat") !, kernel.trace("sys_enter")
 {
 	@__syscall_compat_gate(@const("__NR_oldfstat"), @const("__NR_compat_oldfstat"))
 }
-probe __tp_syscall.fstat64 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.fstat64 = tp_syscall("fstat64,~compat_fstat64") !, kernel.trace("sys_enter")
 {
 	@__syscall_compat_gate(@const("__NR_fstat64"), @const("__NR_compat_fstat64"))
 }
-probe __tp_syscall.newfstat = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.newfstat = tp_syscall("fstat,~compat_fstat") !, kernel.trace("sys_enter")
 {
 	@__syscall_compat_gate(@const("__NR_fstat"), @const("__NR_compat_fstat"))
 }
@@ -171,7 +171,7 @@ probe nd2_syscall.fstat.return =
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.fstat.return = __tp_syscall.fstat.return,
                                 __tp_syscall.fstat64.return,
                                 __tp_syscall.newfstat.return
@@ -180,15 +180,15 @@ probe tp_syscall.fstat.return = __tp_syscall.fstat.return,
 	@_SYSCALL_FSTAT_NAME
 	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.fstat.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.fstat.return = tp_syscall("oldfstat,~compat_oldfstat").return !, kernel.trace("sys_exit")
 {
 	@__syscall_compat_gate(@const("__NR_oldfstat"), @const("__NR_compat_oldfstat"))
 }
-probe __tp_syscall.fstat64.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.fstat64.return = tp_syscall("fstat64,~compat_fstat64").return !, kernel.trace("sys_exit")
 {
 	@__syscall_compat_gate(@const("__NR_fstat64"), @const("__NR_compat_fstat64"))
 }
-probe __tp_syscall.newfstat.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.newfstat.return = tp_syscall("fstat,~compat_fstat").return !, kernel.trace("sys_exit")
 {
 	@__syscall_compat_gate(@const("__NR_fstat"), @const("__NR_compat_fstat"))
 }

@@ -26,8 +26,8 @@
 	  set_ulong_arg(2, len)
 %)
 
-probe syscall.munlock = dw_syscall.munlock !, nd_syscall.munlock ? {}
-probe syscall.munlock.return = dw_syscall.munlock.return !,
+probe syscall.munlock = tp_syscall.munlock !, dw_syscall.munlock !, nd_syscall.munlock ? {}
+probe syscall.munlock.return = tp_syscall.munlock.return !, dw_syscall.munlock.return !,
                                nd_syscall.munlock.return ? {}
 
 # dw_munlock _____________________________________________________
@@ -70,8 +70,8 @@ probe nd2_syscall.munlock = kprobe.function(@arch_syscall_prefix "sys_munlock") 
         %( @_IS_SREG_KERNEL %? @_SYSCALL_MUNLOCK_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.munlock = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.munlock = tp_syscall("munlock,~compat_munlock") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_munlock"), @const("__NR_compat_munlock"))
@@ -99,8 +99,8 @@ probe nd2_syscall.munlock.return = kprobe.function(@arch_syscall_prefix "sys_mun
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.munlock.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.munlock.return = tp_syscall("munlock,~compat_munlock").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_munlock"), @const("__NR_compat_munlock"))

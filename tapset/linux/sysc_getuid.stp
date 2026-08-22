@@ -14,8 +14,8 @@
 	argstr = ""
 %)
 
-probe syscall.getuid = dw_syscall.getuid !, nd_syscall.getuid ? {}
-probe syscall.getuid.return = dw_syscall.getuid.return !, nd_syscall.getuid.return ? {}
+probe syscall.getuid = tp_syscall.getuid !, dw_syscall.getuid !, nd_syscall.getuid ? {}
+probe syscall.getuid.return = tp_syscall.getuid.return !, dw_syscall.getuid.return !, nd_syscall.getuid.return ? {}
 
 # dw_getuid _____________________________________________________
 
@@ -64,17 +64,17 @@ probe nd2_syscall.getuid = kprobe.function(@arch_syscall0_prefix "sys_getuid") ?
 	@_SYSCALL_GETUID_ARGSTR
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.getuid = __tp_syscall.getuid, __tp_syscall.getuid16
 {
 	@_SYSCALL_GETUID_NAME
 	@_SYSCALL_GETUID_ARGSTR
 }
-probe __tp_syscall.getuid = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.getuid = tp_syscall("getuid,~compat_getuid32") !, kernel.trace("sys_enter")
 {
 	@__syscall_compat_gate(@const("__NR_getuid"), @const("__NR_compat_getuid32"))
 }
-probe __tp_syscall.getuid16 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.getuid16 = tp_syscall("~compat_getuid") !, kernel.trace("sys_enter")
 {
 	@__compat_syscall_gate(@const("__NR_compat_getuid"))
 }
@@ -102,18 +102,18 @@ probe nd2_syscall.getuid.return =
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.getuid.return = __tp_syscall.getuid.return, __tp_syscall.getuid16.return
 {
 	@__set_syscall_pt_regs
 	@_SYSCALL_GETUID_NAME
 	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.getuid.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.getuid.return = tp_syscall("getuid,~compat_getuid32").return !, kernel.trace("sys_exit")
 {
 	@__syscall_compat_gate(@const("__NR_getuid"), @const("__NR_compat_getuid32"))
 }
-probe __tp_syscall.getuid16.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.getuid16.return = tp_syscall("~compat_getuid").return !, kernel.trace("sys_exit")
 {
 	@__compat_syscall_gate(@const("__NR_compat_getuid"))
 }

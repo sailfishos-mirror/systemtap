@@ -36,8 +36,8 @@
 	  set_uint_arg(4, flags)
 %)
 
-probe syscall.tee = dw_syscall.tee !, nd_syscall.tee ? {}
-probe syscall.tee.return = dw_syscall.tee.return !, nd_syscall.tee.return ? {}
+probe syscall.tee = tp_syscall.tee !, dw_syscall.tee !, nd_syscall.tee ? {}
+probe syscall.tee.return = tp_syscall.tee.return !, dw_syscall.tee.return !, nd_syscall.tee.return ? {}
 
 # dw_tee _____________________________________________________
 
@@ -81,8 +81,8 @@ probe nd2_syscall.tee = kprobe.function(@arch_syscall_prefix "sys_tee") ?
         %( @_IS_SREG_KERNEL %? @_SYSCALL_TEE_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.tee = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.tee = tp_syscall("tee,~compat_tee") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_tee"), @const("__NR_compat_tee"))
@@ -110,8 +110,8 @@ probe nd2_syscall.tee.return = kprobe.function(@arch_syscall_prefix "sys_tee").r
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.tee.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.tee.return = tp_syscall("tee,~compat_tee").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_tee"), @const("__NR_compat_tee"))

@@ -54,9 +54,9 @@
           set_ulong_arg(6, flags)
 %)
 
-probe syscall.process_vm_writev = dw_syscall.process_vm_writev !,
+probe syscall.process_vm_writev = tp_syscall.process_vm_writev !, dw_syscall.process_vm_writev !,
                                   nd_syscall.process_vm_writev ? {}
-probe syscall.process_vm_writev.return = dw_syscall.process_vm_writev.return !,
+probe syscall.process_vm_writev.return = tp_syscall.process_vm_writev.return !, dw_syscall.process_vm_writev.return !,
                                          nd_syscall.process_vm_writev.return ? {}
 
 # dw_process_vm_writev _____________________________________________________
@@ -111,8 +111,8 @@ probe nd2_syscall.process_vm_writev =
         %( @_IS_SREG_KERNEL %? @_SYSCALL_PROCESS_VM_READV_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.process_vm_writev = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.process_vm_writev = tp_syscall("process_vm_writev,~compat_process_vm_writev") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_process_vm_writev"), @const("__NR_compat_process_vm_writev"))
@@ -144,8 +144,8 @@ probe nd2_syscall.process_vm_writev.return =
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.process_vm_writev.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.process_vm_writev.return = tp_syscall("process_vm_writev,~compat_process_vm_writev").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_process_vm_writev"), @const("__NR_compat_process_vm_writev"))

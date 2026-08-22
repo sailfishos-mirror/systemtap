@@ -29,8 +29,8 @@
 	  set_user_string_arg(pointer_arg(2), newpath_unquoted)
 %)
 
-probe syscall.symlink = dw_syscall.symlink !, nd_syscall.symlink ? {}
-probe syscall.symlink.return = dw_syscall.symlink.return !,
+probe syscall.symlink = tp_syscall.symlink !, dw_syscall.symlink !, nd_syscall.symlink ? {}
+probe syscall.symlink.return = tp_syscall.symlink.return !, dw_syscall.symlink.return !,
                                nd_syscall.symlink.return ? {}
 
 # dw_symlink _____________________________________________________
@@ -73,8 +73,8 @@ probe nd2_syscall.symlink = kprobe.function(@arch_syscall_prefix "sys_symlink") 
         @_SYSCALL_SYMLINK_REGARGS_STORE
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.symlink = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.symlink = tp_syscall("symlink,~compat_symlink") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_symlink"), @const("__NR_compat_symlink"))
@@ -102,8 +102,8 @@ probe nd2_syscall.symlink.return = kprobe.function(@arch_syscall_prefix "sys_sym
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.symlink.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.symlink.return = tp_syscall("symlink,~compat_symlink").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_symlink"), @const("__NR_compat_symlink"))

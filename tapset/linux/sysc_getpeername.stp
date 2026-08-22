@@ -48,8 +48,8 @@
 	namelen_uaddr = user_uint32(&@uint_cast(__argsi)[2])
 %)
 
-probe syscall.getpeername = dw_syscall.getpeername !, nd_syscall.getpeername ? {}
-probe syscall.getpeername.return = dw_syscall.getpeername.return !, nd_syscall.getpeername.return ? {}
+probe syscall.getpeername = tp_syscall.getpeername !, dw_syscall.getpeername !, nd_syscall.getpeername ? {}
+probe syscall.getpeername.return = tp_syscall.getpeername.return !, dw_syscall.getpeername.return !, nd_syscall.getpeername.return ? {}
 
 # dw_getpeername _____________________________________________________
 
@@ -163,14 +163,14 @@ probe __nd2_syscall.compat_socketcall.getpeername =
 	@_SYSCALL_COMPAT_SOCKETCALL_GETPEERNAME_REGARGS
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.getpeername = __tp_syscall.getpeername ?,
 	__tp_syscall.socketcall.getpeername ?
 {
 	@_SYSCALL_GETPEERNAME_NAME
 	@_SYSCALL_GETPEERNAME_ARGSTR
 }
-probe __tp_syscall.getpeername = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.getpeername = tp_syscall("getpeername") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_getpeername"))
@@ -179,7 +179,7 @@ probe __tp_syscall.getpeername = kernel.tracepoint("sys_enter")!, kernel.trace("
 {
         @_SYSCALL_GETPEERNAME_REGARGS_STORE
 }
-probe __tp_syscall.socketcall.getpeername = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.socketcall.getpeername = tp_syscall("socketcall,~compat_socketcall") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_socketcall"), @const("__NR_compat_socketcall"))
@@ -230,18 +230,18 @@ probe __nd2_syscall.socketcall.getpeername.return =
 	if (int_arg(1) != @const("SYS_GETPEERNAME")) next;
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.getpeername.return = __tp_syscall.getpeername.return ?,
 	__tp_syscall.socketcall.getpeername.return ?
 {
 	@_SYSCALL_GETPEERNAME_NAME
 	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.getpeername.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.getpeername.return = tp_syscall("getpeername").return !, kernel.trace("sys_exit")
 {
 	@__syscall_gate(@const("__NR_getpeername"))
 }
-probe __tp_syscall.socketcall.getpeername.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.socketcall.getpeername.return = tp_syscall("socketcall,~compat_socketcall").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_socketcall"), @const("__NR_compat_socketcall"))

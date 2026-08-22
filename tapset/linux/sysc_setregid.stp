@@ -68,8 +68,8 @@
           set_uint_arg(2, __short(egid))
 %)
 
-probe syscall.setregid = dw_syscall.setregid !, nd_syscall.setregid ? {}
-probe syscall.setregid.return = dw_syscall.setregid.return !,
+probe syscall.setregid = tp_syscall.setregid !, dw_syscall.setregid !, nd_syscall.setregid ? {}
+probe syscall.setregid.return = tp_syscall.setregid.return !, dw_syscall.setregid.return !,
                                 nd_syscall.setregid.return ? {}
 
 # dw_setregid _____________________________________________________
@@ -115,8 +115,8 @@ probe nd2_syscall.setregid = kprobe.function(@arch_syscall_prefix "sys_setregid"
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SETREGID_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.setregid = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.setregid = tp_syscall("setregid,~compat_setregid32") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_setregid"), @const("__NR_compat_setregid32"))
@@ -145,8 +145,8 @@ probe nd2_syscall.setregid.return = kprobe.function(@arch_syscall_prefix "sys_se
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.setregid.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.setregid.return = tp_syscall("setregid,~compat_setregid32").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_setregid"), @const("__NR_compat_setregid32"))
@@ -158,8 +158,8 @@ probe tp_syscall.setregid.return = kernel.tracepoint("sys_exit")!, kernel.trace(
 # long sys_setregid16(old_gid_t rgid, old_gid_t egid)
 #
 
-probe syscall.setregid16 = dw_syscall.setregid16 !, nd_syscall.setregid16 ? {}
-probe syscall.setregid16.return = dw_syscall.setregid16.return !,
+probe syscall.setregid16 = tp_syscall.setregid16 !, dw_syscall.setregid16 !, nd_syscall.setregid16 ? {}
+probe syscall.setregid16.return = tp_syscall.setregid16.return !, dw_syscall.setregid16.return !,
                                   nd_syscall.setregid16.return ? {}
 
 # dw_setregid16 _____________________________________________________
@@ -202,8 +202,8 @@ probe nd2_syscall.setregid16 = kprobe.function(@arch_syscall_prefix "sys_setregi
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SETREGID16_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.setregid16 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.setregid16 = tp_syscall("~compat_setregid") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_setregid"))
@@ -231,8 +231,8 @@ probe nd2_syscall.setregid16.return = kprobe.function(@arch_syscall_prefix "sys_
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.setregid16.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.setregid16.return = tp_syscall("~compat_setregid").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_setregid"))

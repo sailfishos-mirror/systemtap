@@ -44,8 +44,8 @@
           set_user_string_arg(pointer_arg(1), target_unquoted)
 %)
 
-probe syscall.umount = dw_syscall.umount !, nd_syscall.umount ? {}
-probe syscall.umount.return = dw_syscall.umount.return !,
+probe syscall.umount = tp_syscall.umount !, dw_syscall.umount !, nd_syscall.umount ? {}
+probe syscall.umount.return = tp_syscall.umount.return !, dw_syscall.umount.return !,
                               nd_syscall.umount.return ? {}
 
 # dw_umount _____________________________________________________
@@ -127,12 +127,12 @@ probe __nd2_syscall.oldumount = kprobe.function(@arch_syscall_prefix "sys_oldumo
         %( @_IS_SREG_KERNEL %? @_SYSCALL_OLDUMOUNT_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.umount = __tp_syscall.umount, __tp_syscall.oldumount ?
 {
 	@_SYSCALL_UMOUNT_NAME
 }
-probe __tp_syscall.umount = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.umount = tp_syscall("umount2=umount,~compat_umount2=compat_umount") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_umount2"), @const("__NR_compat_umount2"))
@@ -142,7 +142,7 @@ probe __tp_syscall.umount = kernel.tracepoint("sys_enter")!, kernel.trace("sys_e
 {
         %( @_IS_SREG_KERNEL %? @_SYSCALL_UMOUNT_REGARGS_STORE %)
 }
-probe __tp_syscall.oldumount = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter") 
+probe __tp_syscall.oldumount = tp_syscall("umount,~compat_umount") !, kernel.trace("sys_enter") 
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_umount"), @const("__NR_compat_umount"))
@@ -175,18 +175,18 @@ probe nd2_syscall.umount.return = kprobe.function(@arch_syscall_prefix "sys_umou
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.umount.return = __tp_syscall.umount.return, __tp_syscall.oldumount.return ?
 {
 	@__set_syscall_pt_regs
 	@_SYSCALL_UMOUNT_NAME
 	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.umount.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.umount.return = tp_syscall("umount2=umount,~compat_umount2=compat_umount").return !, kernel.trace("sys_exit")
 {
 	@__syscall_compat_gate(@const("__NR_umount2"), @const("__NR_compat_umount2"))
 }
-probe __tp_syscall.oldumount.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.oldumount.return = tp_syscall("umount,~compat_umount").return !, kernel.trace("sys_exit")
 {
 	@__syscall_compat_gate(@const("__NR_umount"), @const("__NR_compat_umount"))
 }

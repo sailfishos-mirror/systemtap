@@ -55,8 +55,8 @@
 
 %)
 
-probe syscall.file_getattr = dw_syscall.file_getattr !, nd_syscall.file_getattr ? {}
-probe syscall.file_getattr.return = dw_syscall.file_getattr.return !, nd_syscall.file_getattr.return ? {}
+probe syscall.file_getattr = tp_syscall.file_getattr !, dw_syscall.file_getattr !, nd_syscall.file_getattr ? {}
+probe syscall.file_getattr.return = tp_syscall.file_getattr.return !, dw_syscall.file_getattr.return !, nd_syscall.file_getattr.return ? {}
 
 # dw_file_getattr _____________________________________________________
 
@@ -118,8 +118,8 @@ probe nd2_syscall.file_getattr = kprobe.function(@arch_syscall_prefix "__do_sys_
         %( @_IS_SREG_KERNEL %? @_SYSCALL_FILE_GETATTR_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.file_getattr = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.file_getattr = tp_syscall("file_getattr") !, kernel.trace("sys_enter")
 {
         # Old kernels not having this define __NR_file_getattr work too because in that case we
         # define __NR_file_getattr (__NR_syscall_max + 1) in runtime/linux/compat_unistd.h
@@ -148,8 +148,8 @@ probe nd1_syscall.file_getattr.return = kprobe.function("__do_sys_file_getattr")
 # 	@SYSC_RETVALSTR(returnval())
 # }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.file_getattr.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.file_getattr.return = tp_syscall("file_getattr").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@_SYSCALL_FILE_GETATTR_NAME

@@ -31,8 +31,8 @@
 	  set_pointer_arg(3, vec_uaddr)
 %)
 
-probe syscall.mincore = dw_syscall.mincore !, nd_syscall.mincore ? {}
-probe syscall.mincore.return = dw_syscall.mincore.return !, nd_syscall.mincore.return ? {}
+probe syscall.mincore = tp_syscall.mincore !, dw_syscall.mincore !, nd_syscall.mincore ? {}
+probe syscall.mincore.return = tp_syscall.mincore.return !, dw_syscall.mincore.return !, nd_syscall.mincore.return ? {}
 
 # dw_mincore _____________________________________________________
 
@@ -75,8 +75,8 @@ probe nd2_syscall.mincore = kprobe.function(@arch_syscall_prefix "sys_mincore") 
         %( @_IS_SREG_KERNEL %? @_SYSCALL_MINCORE_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.mincore = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.mincore = tp_syscall("mincore,~compat_mincore") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_mincore"), @const("__NR_compat_mincore"))
@@ -104,8 +104,8 @@ probe nd2_syscall.mincore.return = kprobe.function(@arch_syscall_prefix "sys_min
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.mincore.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.mincore.return = tp_syscall("mincore,~compat_mincore").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_mincore"), @const("__NR_compat_mincore"))

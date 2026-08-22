@@ -32,8 +32,8 @@
 	  set_uint_arg(3, size)
 %)
 
-probe syscall.bpf = dw_syscall.bpf !, nd_syscall.bpf ? {}
-probe syscall.bpf.return = dw_syscall.bpf.return !, nd_syscall.bpf.return ? {}
+probe syscall.bpf = tp_syscall.bpf !, dw_syscall.bpf !, nd_syscall.bpf ? {}
+probe syscall.bpf.return = tp_syscall.bpf.return !, dw_syscall.bpf.return !, nd_syscall.bpf.return ? {}
 
 # dw_bpf _____________________________________________________
 
@@ -77,8 +77,8 @@ probe nd2_syscall.bpf = kprobe.function(@arch_syscall_prefix "sys_bpf") ?
         %( @_IS_SREG_KERNEL %? @_SYSCALL_BPF_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.bpf = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.bpf = tp_syscall("bpf,~compat_bpf") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_bpf"), @const("__NR_compat_bpf"))
@@ -106,8 +106,8 @@ probe nd2_syscall.bpf.return = kprobe.function(@arch_syscall_prefix "sys_bpf").r
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.bpf.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.bpf.return = tp_syscall("bpf,~compat_bpf").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_bpf"), @const("__NR_compat_bpf"))

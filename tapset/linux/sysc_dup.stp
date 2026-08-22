@@ -22,8 +22,8 @@
           set_int_arg(1, oldfd)
 %)
 
-probe syscall.dup = dw_syscall.dup !, nd_syscall.dup ? {}
-probe syscall.dup.return = dw_syscall.dup.return !, nd_syscall.dup.return ? {}
+probe syscall.dup = tp_syscall.dup !, dw_syscall.dup !, nd_syscall.dup ? {}
+probe syscall.dup.return = tp_syscall.dup.return !, dw_syscall.dup.return !, nd_syscall.dup.return ? {}
 
 # dw_dup _____________________________________________________
 
@@ -64,8 +64,8 @@ probe nd2_syscall.dup = kprobe.function(@arch_syscall_prefix "sys_dup") ?
         %( @_IS_SREG_KERNEL %? @_SYSCALL_DUP_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.dup = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.dup = tp_syscall("dup,~compat_dup") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_dup"), @const("__NR_compat_dup"))
@@ -93,8 +93,8 @@ probe nd2_syscall.dup.return = kprobe.function(@arch_syscall_prefix "sys_dup").r
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.dup.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.dup.return = tp_syscall("dup,~compat_dup").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_dup"), @const("__NR_compat_dup"))

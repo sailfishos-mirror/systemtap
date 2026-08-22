@@ -32,8 +32,8 @@
 	  set_int_arg(3, advice)
 %)
 
-probe syscall.madvise = dw_syscall.madvise !, nd_syscall.madvise ? {}
-probe syscall.madvise.return = dw_syscall.madvise.return !, nd_syscall.madvise.return ? {}
+probe syscall.madvise = tp_syscall.madvise !, dw_syscall.madvise !, nd_syscall.madvise ? {}
+probe syscall.madvise.return = tp_syscall.madvise.return !, dw_syscall.madvise.return !, nd_syscall.madvise.return ? {}
 
 # dw_madvise _____________________________________________________
 
@@ -77,8 +77,8 @@ probe nd2_syscall.madvise = kprobe.function(@arch_syscall_prefix "sys_madvise") 
         %( @_IS_SREG_KERNEL %? @_SYSCALL_MADVISE_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.madvise = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.madvise = tp_syscall("madvise,~compat_madvise") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_madvise"), @const("__NR_compat_madvise"))
@@ -106,8 +106,8 @@ probe nd2_syscall.madvise.return = kprobe.function(@arch_syscall_prefix "sys_mad
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.madvise.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.madvise.return = tp_syscall("madvise,~compat_madvise").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_madvise"), @const("__NR_compat_madvise"))

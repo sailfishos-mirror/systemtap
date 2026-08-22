@@ -34,9 +34,9 @@
 	len = u_register("r5")
 %)
 
-probe syscall.compat_fallocate = dw_syscall.compat_fallocate !,
+probe syscall.compat_fallocate = tp_syscall.compat_fallocate !, dw_syscall.compat_fallocate !,
                                  nd_syscall.compat_fallocate ? {}
-probe syscall.compat_fallocate.return = dw_syscall.compat_fallocate.return !,
+probe syscall.compat_fallocate.return = tp_syscall.compat_fallocate.return !, dw_syscall.compat_fallocate.return !,
                                         nd_syscall.compat_fallocate.return ? {}
 
 # dw_compat_fallocate _____________________________________________________
@@ -74,8 +74,8 @@ probe nd1_syscall.compat_fallocate = kprobe.function("sys_fallocate") ?
 	@_SYSCALL_COMPAT_FALLOCATE_ARGSTR
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_fallocate = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.compat_fallocate = tp_syscall("~fallocate") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_fallocate"))
@@ -95,8 +95,8 @@ probe nd1_syscall.compat_fallocate.return =
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_fallocate.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.compat_fallocate.return = tp_syscall("~fallocate").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_fallocate"))

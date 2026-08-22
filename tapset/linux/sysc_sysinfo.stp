@@ -25,8 +25,8 @@
           set_pointer_arg(1, info_uaddr)
 %)
 
-probe syscall.sysinfo = dw_syscall.sysinfo !, nd_syscall.sysinfo ? {}
-probe syscall.sysinfo.return = dw_syscall.sysinfo.return !, nd_syscall.sysinfo.return ? {}
+probe syscall.sysinfo = tp_syscall.sysinfo !, dw_syscall.sysinfo !, nd_syscall.sysinfo ? {}
+probe syscall.sysinfo.return = tp_syscall.sysinfo.return !, dw_syscall.sysinfo.return !, nd_syscall.sysinfo.return ? {}
 
 # dw_sysinfo _____________________________________________________
 
@@ -72,8 +72,8 @@ probe nd2_syscall.sysinfo = kprobe.function(@arch_syscall_prefix "compat_sys_sys
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SYSINFO_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.sysinfo = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.sysinfo = tp_syscall("sysinfo,~compat_sysinfo") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_sysinfo"), @const("__NR_compat_sysinfo"))
@@ -103,8 +103,8 @@ probe nd2_syscall.sysinfo.return = kprobe.function(@arch_syscall_prefix "compat_
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.sysinfo.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.sysinfo.return = tp_syscall("sysinfo,~compat_sysinfo").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_sysinfo"), @const("__NR_compat_sysinfo"))

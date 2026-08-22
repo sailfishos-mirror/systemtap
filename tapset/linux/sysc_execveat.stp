@@ -53,13 +53,13 @@
 	flags_str = _at_flag_str(flags)
 %)
 
-probe syscall.execveat = dw_syscall.execveat !, nd_syscall.execveat ? {}
-probe syscall.execveat.return = dw_syscall.execveat.return !,
+probe syscall.execveat = tp_syscall.execveat !, dw_syscall.execveat !, nd_syscall.execveat ? {}
+probe syscall.execveat.return = tp_syscall.execveat.return !, dw_syscall.execveat.return !,
                                 nd_syscall.execveat.return ? {}
 
-probe syscall.compat_execveat = dw_syscall.compat_execveat !,
+probe syscall.compat_execveat = tp_syscall.compat_execveat !, dw_syscall.compat_execveat !,
                                 nd_syscall.compat_execveat ? {}
-probe syscall.compat_execveat.return = dw_syscall.compat_execveat.return !,
+probe syscall.compat_execveat.return = tp_syscall.compat_execveat.return !, dw_syscall.compat_execveat.return !,
                                        nd_syscall.compat_execveat.return ? {}
 
 # dw_execveat _____________________________________________________
@@ -141,8 +141,8 @@ probe nd2_syscall.execveat = kprobe.function(@arch_syscall_prefix "sys_execveat"
 	@_SYSCALL_EXECVEAT_ARGSTR
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.execveat = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.execveat = tp_syscall("execveat") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_execveat"))
@@ -167,8 +167,8 @@ probe nd2_syscall.execveat.return = kprobe.function(@arch_syscall_prefix "sys_ex
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.execveat.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.execveat.return = tp_syscall("execveat").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_execveat"))
@@ -196,8 +196,8 @@ probe nd2_syscall.compat_execveat = kprobe.function(@arch_syscall_prefix "compat
 	@_SYSCALL_EXECVEAT_ARGSTR
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_execveat = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.compat_execveat = tp_syscall("~compat_execveat") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_execveat"))
@@ -223,8 +223,8 @@ probe nd2_syscall.compat_execveat.return = kprobe.function(@arch_syscall_prefix 
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_execveat.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.compat_execveat.return = tp_syscall("~compat_execveat").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_execveat"))

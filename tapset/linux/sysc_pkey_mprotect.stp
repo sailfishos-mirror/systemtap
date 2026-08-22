@@ -35,8 +35,8 @@
 	  set_int_arg(4, pkey)
 %)
 
-probe syscall.pkey_mprotect = dw_syscall.pkey_mprotect !, nd_syscall.pkey_mprotect ? {}
-probe syscall.pkey_mprotect.return = dw_syscall.pkey_mprotect.return !, nd_syscall.pkey_mprotect.return ? {}
+probe syscall.pkey_mprotect = tp_syscall.pkey_mprotect !, dw_syscall.pkey_mprotect !, nd_syscall.pkey_mprotect ? {}
+probe syscall.pkey_mprotect.return = tp_syscall.pkey_mprotect.return !, dw_syscall.pkey_mprotect.return !, nd_syscall.pkey_mprotect.return ? {}
 
 # dw_pkey_mprotect _____________________________________________________
 
@@ -81,8 +81,8 @@ probe nd2_syscall.pkey_mprotect = kprobe.function(@arch_syscall_prefix "sys_pkey
         %( @_IS_SREG_KERNEL %? @_SYSCALL_PKEY_MPROTECT_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.pkey_mprotect = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.pkey_mprotect = tp_syscall("pkey_mprotect,~compat_pkey_mprotect") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_pkey_mprotect"), @const("__NR_compat_pkey_mprotect"))
@@ -110,8 +110,8 @@ probe nd2_syscall.pkey_mprotect.return = kprobe.function(@arch_syscall_prefix "s
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.pkey_mprotect.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.pkey_mprotect.return = tp_syscall("pkey_mprotect,~compat_pkey_mprotect").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_pkey_mprotect"), @const("__NR_compat_pkey_mprotect"))

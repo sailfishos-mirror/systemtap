@@ -47,8 +47,8 @@
 	  set_int_arg(5, ringid)
 %)
 
-probe syscall.add_key = dw_syscall.add_key !, nd_syscall.add_key ? {}
-probe syscall.add_key.return = dw_syscall.add_key.return !, nd_syscall.add_key.return ? {}
+probe syscall.add_key = tp_syscall.add_key !, dw_syscall.add_key !, nd_syscall.add_key ? {}
+probe syscall.add_key.return = tp_syscall.add_key.return !, dw_syscall.add_key.return !, nd_syscall.add_key.return ? {}
 
 # dw_add_key _____________________________________________________
 
@@ -93,8 +93,8 @@ probe nd2_syscall.add_key = kprobe.function(@arch_syscall_prefix "sys_add_key") 
         %( @_IS_SREG_KERNEL %? @_SYSCALL_ADD_KEY_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.add_key = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.add_key = tp_syscall("add_key,~compat_add_key") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_add_key"), @const("__NR_compat_add_key"))
@@ -122,8 +122,8 @@ probe nd2_syscall.add_key.return = kprobe.function(@arch_syscall_prefix "sys_add
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.add_key.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.add_key.return = tp_syscall("add_key,~compat_add_key").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_add_key"), @const("__NR_compat_add_key"))

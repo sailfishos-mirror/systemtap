@@ -25,8 +25,8 @@
           set_pointer_arg(1, buf_uaddr)
 %)
 
-probe syscall.times = dw_syscall.times !, nd_syscall.times ? {}
-probe syscall.times.return = dw_syscall.times.return !,
+probe syscall.times = tp_syscall.times !, dw_syscall.times !, nd_syscall.times ? {}
+probe syscall.times.return = tp_syscall.times.return !, dw_syscall.times.return !,
                              nd_syscall.times.return ? {}
 
 # dw_times _____________________________________________________
@@ -73,8 +73,8 @@ probe nd2_syscall.times = kprobe.function(@arch_syscall_prefix "compat_sys_times
         %( @_IS_SREG_KERNEL %? @_SYSCALL_TIMES_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.times = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.times = tp_syscall("times,~compat_times") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_times"), @const("__NR_compat_times"))
@@ -104,8 +104,8 @@ probe nd2_syscall.times.return = kprobe.function(@arch_syscall_prefix "compat_sy
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.times.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.times.return = tp_syscall("times,~compat_times").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_times"), @const("__NR_compat_times"))

@@ -28,8 +28,8 @@
           set_pointer_arg(1, name_uaddr)
 %)
 
-probe syscall.uname = dw_syscall.uname !, nd_syscall.uname ? {}
-probe syscall.uname.return = dw_syscall.uname.return !, nd_syscall.uname.return ? {}
+probe syscall.uname = tp_syscall.uname !, dw_syscall.uname !, nd_syscall.uname ? {}
+probe syscall.uname.return = tp_syscall.uname.return !, dw_syscall.uname.return !, nd_syscall.uname.return ? {}
 
 # dw_uname _____________________________________________________
 
@@ -92,7 +92,7 @@ probe nd2_syscall.uname =
         %( @_IS_SREG_KERNEL %? @_SYSCALL_UNAME_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.uname = __tp_syscall.uname,
                          __tp_syscall.olduname,
 			 __tp_syscall.newuname
@@ -105,15 +105,15 @@ probe tp_syscall.uname = __tp_syscall.uname,
 {
         %( @_IS_SREG_KERNEL %? @_SYSCALL_UNAME_REGARGS_STORE %)
 }
-probe __tp_syscall.uname = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.uname = tp_syscall("olduname,~compat_olduname") !, kernel.trace("sys_enter")
 {
 	@__syscall_compat_gate(@const("__NR_olduname"), @const("__NR_compat_olduname"))
 }
-probe __tp_syscall.olduname = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.olduname = tp_syscall("oldolduname,~compat_oldolduname") !, kernel.trace("sys_enter")
 {
 	@__syscall_compat_gate(@const("__NR_oldolduname"), @const("__NR_compat_oldolduname"))
 }
-probe __tp_syscall.newuname = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.newuname = tp_syscall("uname,~compat_uname") !, kernel.trace("sys_enter")
 {
 	@__syscall_compat_gate(@const("__NR_uname"), @const("__NR_compat_uname"))
 }
@@ -141,7 +141,7 @@ probe nd2_syscall.uname.return =
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.uname.return = __tp_syscall.uname.return,
                                 __tp_syscall.olduname.return,
 				__tp_syscall.newuname.return
@@ -150,15 +150,15 @@ probe tp_syscall.uname.return = __tp_syscall.uname.return,
 	@_SYSCALL_UNAME_NAME
 	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.uname.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.uname.return = tp_syscall("olduname,~compat_olduname").return !, kernel.trace("sys_exit")
 {
 	@__syscall_compat_gate(@const("__NR_olduname"), @const("__NR_compat_olduname"))
 }
-probe __tp_syscall.olduname.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.olduname.return = tp_syscall("oldolduname,~compat_oldolduname").return !, kernel.trace("sys_exit")
 {
 	@__syscall_compat_gate(@const("__NR_oldolduname"), @const("__NR_compat_oldolduname"))
 }
-probe __tp_syscall.newuname.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.newuname.return = tp_syscall("uname,~compat_uname").return !, kernel.trace("sys_exit")
 {
 	@__syscall_compat_gate(@const("__NR_uname"), @const("__NR_compat_uname"))
 }

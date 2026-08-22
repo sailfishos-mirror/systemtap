@@ -49,8 +49,8 @@
 	  set_ulong_arg(5, flags)
 %)
 
-probe syscall.get_mempolicy = dw_syscall.get_mempolicy !, nd_syscall.get_mempolicy ? {}
-probe syscall.get_mempolicy.return = dw_syscall.get_mempolicy.return !, nd_syscall.get_mempolicy.return ? {}
+probe syscall.get_mempolicy = tp_syscall.get_mempolicy !, dw_syscall.get_mempolicy !, nd_syscall.get_mempolicy ? {}
+probe syscall.get_mempolicy.return = tp_syscall.get_mempolicy.return !, dw_syscall.get_mempolicy.return !, nd_syscall.get_mempolicy.return ? {}
 
 # dw_get_mempolicy _____________________________________________________
 
@@ -114,8 +114,8 @@ probe nd2_syscall.get_mempolicy = kprobe.function(@arch_syscall_prefix "sys_get_
         @_SYSCALL_GET_MEMPOLICY_REGARGS_STORE
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.get_mempolicy = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.get_mempolicy = tp_syscall("get_mempolicy,~compat_get_mempolicy") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_get_mempolicy"), @const("__NR_compat_get_mempolicy"))
@@ -152,8 +152,8 @@ probe nd2_syscall.get_mempolicy.return =
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.get_mempolicy.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.get_mempolicy.return = tp_syscall("get_mempolicy,~compat_get_mempolicy").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_get_mempolicy"), @const("__NR_compat_get_mempolicy"))

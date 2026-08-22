@@ -23,8 +23,8 @@
           set_int_arg(1, fd)
 %)
 
-probe syscall.syncfs = dw_syscall.syncfs !, nd_syscall.syncfs ? {}
-probe syscall.syncfs.return = dw_syscall.syncfs.return !,
+probe syscall.syncfs = tp_syscall.syncfs !, dw_syscall.syncfs !, nd_syscall.syncfs ? {}
+probe syscall.syncfs.return = tp_syscall.syncfs.return !, dw_syscall.syncfs.return !,
                               nd_syscall.syncfs.return ? {}
 
 # dw_syncfs _____________________________________________________
@@ -66,8 +66,8 @@ probe nd2_syscall.syncfs = kprobe.function(@arch_syscall_prefix "sys_syncfs") ?
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SYNCFS_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.syncfs = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.syncfs = tp_syscall("syncfs,~compat_syncfs") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_syncfs"), @const("__NR_compat_syncfs"))
@@ -95,8 +95,8 @@ probe nd2_syscall.syncfs.return = kprobe.function(@arch_syscall_prefix "sys_sync
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.syncfs.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.syncfs.return = tp_syscall("syncfs,~compat_syncfs").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_syncfs"), @const("__NR_compat_syncfs"))

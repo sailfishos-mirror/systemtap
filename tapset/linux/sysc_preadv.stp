@@ -69,8 +69,8 @@
         }
 %)
 
-probe syscall.preadv = dw_syscall.preadv !, nd_syscall.preadv ? {}
-probe syscall.preadv.return = dw_syscall.preadv.return !,
+probe syscall.preadv = tp_syscall.preadv !, dw_syscall.preadv !, nd_syscall.preadv ? {}
+probe syscall.preadv.return = tp_syscall.preadv.return !, dw_syscall.preadv.return !,
                               nd_syscall.preadv.return ? {}
 
 # dw_preadv _____________________________________________________
@@ -148,12 +148,12 @@ probe __nd2_syscall.compat_preadv = kprobe.function(@arch_syscall_prefix "compat
 	%( @_IS_SREG_KERNEL %? @_SYSCALL_COMPAT_PREADV_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.preadv = __tp_syscall.preadv ?, __tp_syscall.compat_preadv ?
 {
 	@_SYSCALL_PREADV_NAME
 }
-probe __tp_syscall.preadv = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.preadv = tp_syscall("preadv") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_preadv"))
@@ -163,7 +163,7 @@ probe __tp_syscall.preadv = kernel.tracepoint("sys_enter")!, kernel.trace("sys_e
 {
 	%( @_IS_SREG_KERNEL %? @_SYSCALL_PREADV_REGARGS_STORE %)
 }
-probe __tp_syscall.compat_preadv = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.compat_preadv = tp_syscall("~compat_preadv") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_preadv"))
@@ -192,8 +192,8 @@ probe nd2_syscall.preadv.return = kprobe.function(@arch_syscall_prefix "sys_prea
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.preadv.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.preadv.return = tp_syscall("preadv,~compat_preadv").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_preadv"), @const("__NR_compat_preadv"))

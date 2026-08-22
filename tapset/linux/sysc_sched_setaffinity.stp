@@ -33,9 +33,9 @@
 	  set_pointer_arg(3, mask_uaddr)
 %)
 
-probe syscall.sched_setaffinity = dw_syscall.sched_setaffinity !,
+probe syscall.sched_setaffinity = tp_syscall.sched_setaffinity !, dw_syscall.sched_setaffinity !,
                                   nd_syscall.sched_setaffinity ? {}
-probe syscall.sched_setaffinity.return = dw_syscall.sched_setaffinity.return !,
+probe syscall.sched_setaffinity.return = tp_syscall.sched_setaffinity.return !, dw_syscall.sched_setaffinity.return !,
                                          nd_syscall.sched_setaffinity.return ? {}
 
 # dw_sched_setaffinity _____________________________________________________
@@ -87,8 +87,8 @@ probe nd2_syscall.sched_setaffinity =
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SCHED_SETAFFINITY_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.sched_setaffinity = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.sched_setaffinity = tp_syscall("sched_setaffinity,~compat_sched_setaffinity") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_sched_setaffinity"), @const("__NR_compat_sched_setaffinity"))
@@ -120,8 +120,8 @@ probe nd2_syscall.sched_setaffinity.return =
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.sched_setaffinity.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.sched_setaffinity.return = tp_syscall("sched_setaffinity,~compat_sched_setaffinity").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_sched_setaffinity"), @const("__NR_compat_sched_setaffinity"))

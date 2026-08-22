@@ -52,8 +52,8 @@
 	  set_ulong_arg(6, sigsetsize)
 %)
 
-probe syscall.epoll_pwait = dw_syscall.epoll_pwait !, nd_syscall.epoll_pwait ? {}
-probe syscall.epoll_pwait.return = dw_syscall.epoll_pwait.return !, nd_syscall.epoll_pwait.return ? {}
+probe syscall.epoll_pwait = tp_syscall.epoll_pwait !, dw_syscall.epoll_pwait !, nd_syscall.epoll_pwait ? {}
+probe syscall.epoll_pwait.return = tp_syscall.epoll_pwait.return !, dw_syscall.epoll_pwait.return !, nd_syscall.epoll_pwait.return ? {}
 
 # dw_epoll_pwait _____________________________________________________
 
@@ -102,8 +102,8 @@ probe nd2_syscall.epoll_pwait = kprobe.function(@arch_syscall_prefix "sys_epoll_
         %( @_IS_SREG_KERNEL %? @_SYSCALL_EPOLL_PWAIT_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.epoll_pwait = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.epoll_pwait = tp_syscall("epoll_pwait,~compat_epoll_pwait") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_epoll_pwait"), @const("__NR_compat_epoll_pwait"))
@@ -133,8 +133,8 @@ probe nd2_syscall.epoll_pwait.return = kprobe.function(@arch_syscall_prefix "sys
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.epoll_pwait.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.epoll_pwait.return = tp_syscall("epoll_pwait,~compat_epoll_pwait").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_epoll_pwait"), @const("__NR_compat_epoll_pwait"))

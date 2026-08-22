@@ -30,8 +30,8 @@
 	  set_int_arg(2, pgid)
 %)
 
-probe syscall.setpgid = dw_syscall.setpgid !, nd_syscall.setpgid ? {}
-probe syscall.setpgid.return = dw_syscall.setpgid.return !,
+probe syscall.setpgid = tp_syscall.setpgid !, dw_syscall.setpgid !, nd_syscall.setpgid ? {}
+probe syscall.setpgid.return = tp_syscall.setpgid.return !, dw_syscall.setpgid.return !,
                                nd_syscall.setpgid.return ? {}
 
 # dw_setpgid _____________________________________________________
@@ -74,8 +74,8 @@ probe nd2_syscall.setpgid = kprobe.function(@arch_syscall_prefix "sys_setpgid") 
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SETPGID_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.setpgid = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.setpgid = tp_syscall("setpgid,~compat_setpgid") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_setpgid"), @const("__NR_compat_setpgid"))
@@ -103,8 +103,8 @@ probe nd2_syscall.setpgid.return = kprobe.function(@arch_syscall_prefix "sys_set
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.setpgid.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.setpgid.return = tp_syscall("setpgid,~compat_setpgid").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_setpgid"), @const("__NR_compat_setpgid"))

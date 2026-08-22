@@ -33,8 +33,8 @@
 	  set_uint_arg(3, __short(group))
 %)
 
-probe syscall.lchown16 = dw_syscall.lchown16 !, nd_syscall.lchown16 ? {}
-probe syscall.lchown16.return = dw_syscall.lchown16.return !, nd_syscall.lchown16.return ? {}
+probe syscall.lchown16 = tp_syscall.lchown16 !, dw_syscall.lchown16 !, nd_syscall.lchown16 ? {}
+probe syscall.lchown16.return = tp_syscall.lchown16.return !, dw_syscall.lchown16.return !, nd_syscall.lchown16.return ? {}
 
 # dw_lchown16 _____________________________________________________
 
@@ -77,8 +77,8 @@ probe nd2_syscall.lchown16 = kprobe.function(@arch_syscall_prefix "sys_lchown16"
         %( @_IS_SREG_KERNEL %? @_SYSCALL_LCHOWN16_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.lchown16 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.lchown16 = tp_syscall("~compat_lchown,lchown") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 %( CONFIG_64BIT == "y" %?
@@ -110,8 +110,8 @@ probe nd2_syscall.lchown16.return = kprobe.function(@arch_syscall_prefix "sys_lc
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.lchown16.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.lchown16.return = tp_syscall("~compat_lchown,lchown").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 %( CONFIG_64BIT == "y" %?

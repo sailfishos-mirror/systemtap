@@ -24,8 +24,8 @@
           set_uint_arg(1, seconds)
 %)
 
-probe syscall.alarm = dw_syscall.alarm !, nd_syscall.alarm ? {}
-probe syscall.alarm.return = dw_syscall.alarm.return !, nd_syscall.alarm.return ? {}
+probe syscall.alarm = tp_syscall.alarm !, dw_syscall.alarm !, nd_syscall.alarm ? {}
+probe syscall.alarm.return = tp_syscall.alarm.return !, dw_syscall.alarm.return !, nd_syscall.alarm.return ? {}
 
 # dw_alarm _____________________________________________________
 
@@ -69,8 +69,8 @@ probe nd2_syscall.alarm = kprobe.function(@arch_syscall_prefix "sys_alarm") ?
         %( @_IS_SREG_KERNEL %? @_SYSCALL_ALARM_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.alarm = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.alarm = tp_syscall("alarm,~compat_alarm") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_alarm"), @const("__NR_compat_alarm"))
@@ -99,8 +99,8 @@ probe nd2_syscall.alarm.return = kprobe.function(@arch_syscall_prefix "sys_alarm
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.alarm.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.alarm.return = tp_syscall("alarm,~compat_alarm").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_alarm"), @const("__NR_compat_alarm"))

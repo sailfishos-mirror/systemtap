@@ -6,8 +6,8 @@
 #	     unsigned long arg2)
 #
 
-probe syscall.sysfs = dw_syscall.sysfs !, nd_syscall.sysfs ? {}
-probe syscall.sysfs.return = dw_syscall.sysfs.return !, nd_syscall.sysfs.return ? {}
+probe syscall.sysfs = tp_syscall.sysfs !, dw_syscall.sysfs !, nd_syscall.sysfs ? {}
+probe syscall.sysfs.return = tp_syscall.sysfs.return !, dw_syscall.sysfs.return !, nd_syscall.sysfs.return ? {}
 
 @define _SYSCALL_SYSFS_REGARGS_STORE
 %(
@@ -89,8 +89,8 @@ probe nd2_syscall.sysfs = kprobe.function(@arch_syscall_prefix "sys_sysfs") ?
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SYSFS_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.sysfs = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.sysfs = tp_syscall("sysfs,~compat_sysfs") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_sysfs"), @const("__NR_compat_sysfs"))
@@ -127,8 +127,8 @@ probe nd2_syscall.sysfs.return = kprobe.function(@arch_syscall_prefix "sys_sysfs
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.sysfs.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.sysfs.return = tp_syscall("sysfs,~compat_sysfs").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_sysfs"), @const("__NR_compat_sysfs"))

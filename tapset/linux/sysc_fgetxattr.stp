@@ -46,8 +46,8 @@
 	  set_ulong_arg(4, size)
 %)
 
-probe syscall.fgetxattr = dw_syscall.fgetxattr !, nd_syscall.fgetxattr ? {}
-probe syscall.fgetxattr.return = dw_syscall.fgetxattr.return !, nd_syscall.fgetxattr.return ? {}
+probe syscall.fgetxattr = tp_syscall.fgetxattr !, dw_syscall.fgetxattr !, nd_syscall.fgetxattr ? {}
+probe syscall.fgetxattr.return = tp_syscall.fgetxattr.return !, dw_syscall.fgetxattr.return !, nd_syscall.fgetxattr.return ? {}
 
 # dw_fgetxattr _____________________________________________________
 
@@ -95,8 +95,8 @@ probe nd2_syscall.fgetxattr = kprobe.function(@arch_syscall_prefix "sys_fgetxatt
         %( @_IS_SREG_KERNEL %? @_SYSCALL_FGETXATTR_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.fgetxattr = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.fgetxattr = tp_syscall("fgetxattr,~compat_fgetxattr") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_fgetxattr"), @const("__NR_compat_fgetxattr"))
@@ -124,8 +124,8 @@ probe nd2_syscall.fgetxattr.return = kprobe.function(@arch_syscall_prefix "sys_f
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.fgetxattr.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.fgetxattr.return = tp_syscall("fgetxattr,~compat_fgetxattr").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_fgetxattr"), @const("__NR_compat_fgetxattr"))

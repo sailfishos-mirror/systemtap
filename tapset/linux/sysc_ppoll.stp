@@ -72,8 +72,8 @@
 	  set_u32_arg(5, sigsetsize)
 %)
 
-probe syscall.ppoll = dw_syscall.ppoll !, nd_syscall.ppoll ? {}
-probe syscall.ppoll.return = dw_syscall.ppoll.return !,
+probe syscall.ppoll = tp_syscall.ppoll !, dw_syscall.ppoll !, nd_syscall.ppoll ? {}
+probe syscall.ppoll.return = tp_syscall.ppoll.return !, dw_syscall.ppoll.return !,
                              nd_syscall.ppoll.return ? {}
 
 # dw_ppoll _____________________________________________________
@@ -120,8 +120,8 @@ probe nd2_syscall.ppoll = kprobe.function(@arch_syscall_prefix "sys_ppoll") ?
         %( @_IS_SREG_KERNEL %? @_SYSCALL_PPOLL_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.ppoll = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.ppoll = tp_syscall("ppoll") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_ppoll"))
@@ -149,8 +149,8 @@ probe nd2_syscall.ppoll.return = kprobe.function(@arch_syscall_prefix "sys_ppoll
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.ppoll.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.ppoll.return = tp_syscall("ppoll").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_ppoll"))
@@ -165,9 +165,9 @@ probe tp_syscall.ppoll.return = kernel.tracepoint("sys_exit")!, kernel.trace("sy
 #	const compat_sigset_t __user *sigmask, compat_size_t sigsetsize)
 #
 
-probe syscall.compat_ppoll = dw_syscall.compat_ppoll !,
+probe syscall.compat_ppoll = tp_syscall.compat_ppoll !, dw_syscall.compat_ppoll !,
                              nd_syscall.compat_ppoll ? {}
-probe syscall.compat_ppoll.return = dw_syscall.compat_ppoll.return !,
+probe syscall.compat_ppoll.return = tp_syscall.compat_ppoll.return !, dw_syscall.compat_ppoll.return !,
                                     nd_syscall.compat_ppoll.return ? {}
 
 # dw_compat_ppoll _____________________________________________________
@@ -214,8 +214,8 @@ probe nd2_syscall.compat_ppoll = kprobe.function(@arch_syscall_prefix "compat_sy
         %( @_IS_SREG_KERNEL %? @_SYSCALL_COMPAT_PPOLL_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_ppoll = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.compat_ppoll = tp_syscall("~compat_ppoll") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_ppoll"))
@@ -243,8 +243,8 @@ probe nd2_syscall.compat_ppoll.return = kprobe.function(@arch_syscall_prefix "co
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_ppoll.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.compat_ppoll.return = tp_syscall("~compat_ppoll").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_ppoll"))

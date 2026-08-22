@@ -30,8 +30,8 @@
 	  set_ulong_arg(2, sigsetsize)
 %)
 
-probe syscall.rt_sigsuspend = dw_syscall.rt_sigsuspend !, nd_syscall.rt_sigsuspend ? {}
-probe syscall.rt_sigsuspend.return = dw_syscall.rt_sigsuspend.return !,
+probe syscall.rt_sigsuspend = tp_syscall.rt_sigsuspend !, dw_syscall.rt_sigsuspend !, nd_syscall.rt_sigsuspend ? {}
+probe syscall.rt_sigsuspend.return = tp_syscall.rt_sigsuspend.return !, dw_syscall.rt_sigsuspend.return !,
                                      nd_syscall.rt_sigsuspend.return ? {}
 
 # dw_rt_sigsuspend _____________________________________________________
@@ -83,8 +83,8 @@ probe nd2_syscall.rt_sigsuspend = kprobe.function(@arch_syscall_prefix "sys_rt_s
         %( @_IS_SREG_KERNEL %? @_SYSCALL_RT_SIGSUSPEND_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.rt_sigsuspend = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.rt_sigsuspend = tp_syscall("rt_sigsuspend,~compat_rt_sigsuspend") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_rt_sigsuspend"), @const("__NR_compat_rt_sigsuspend"))
@@ -115,8 +115,8 @@ probe nd2_syscall.rt_sigsuspend.return = kprobe.function(@arch_syscall_prefix "s
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.rt_sigsuspend.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.rt_sigsuspend.return = tp_syscall("rt_sigsuspend,~compat_rt_sigsuspend").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_rt_sigsuspend"), @const("__NR_compat_rt_sigsuspend"))

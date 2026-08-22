@@ -30,9 +30,9 @@
 	  set_pointer_arg(2, p_uaddr)
 %)
 
-probe syscall.sched_getparam = dw_syscall.sched_getparam !,
+probe syscall.sched_getparam = tp_syscall.sched_getparam !, dw_syscall.sched_getparam !,
                                nd_syscall.sched_getparam ? {}
-probe syscall.sched_getparam.return = dw_syscall.sched_getparam.return !,
+probe syscall.sched_getparam.return = tp_syscall.sched_getparam.return !, dw_syscall.sched_getparam.return !,
                                       nd_syscall.sched_getparam.return ? {}
 
 # dw_sched_getparam _____________________________________________________
@@ -75,8 +75,8 @@ probe nd2_syscall.sched_getparam = kprobe.function(@arch_syscall_prefix "sys_sch
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SCHED_GETPARAM_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.sched_getparam = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.sched_getparam = tp_syscall("sched_getparam,~compat_sched_getparam") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_sched_getparam"), @const("__NR_compat_sched_getparam"))
@@ -104,8 +104,8 @@ probe nd2_syscall.sched_getparam.return = kprobe.function(@arch_syscall_prefix "
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.sched_getparam.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.sched_getparam.return = tp_syscall("sched_getparam,~compat_sched_getparam").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_sched_getparam"), @const("__NR_compat_sched_getparam"))

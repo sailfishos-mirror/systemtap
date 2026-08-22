@@ -13,8 +13,8 @@
 	argstr = ""
 %)
 
-probe syscall.getgid = dw_syscall.getgid !, nd_syscall.getgid ? {}
-probe syscall.getgid.return = dw_syscall.getgid.return !, nd_syscall.getgid.return ? {}
+probe syscall.getgid = tp_syscall.getgid !, dw_syscall.getgid !, nd_syscall.getgid ? {}
+probe syscall.getgid.return = tp_syscall.getgid.return !, dw_syscall.getgid.return !, nd_syscall.getgid.return ? {}
 
 # dw_getgid _____________________________________________________
 
@@ -63,17 +63,17 @@ probe nd2_syscall.getgid = kprobe.function(@arch_syscall0_prefix "sys_getgid") ?
 	@_SYSCALL_GETGID_ARGSTR
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.getgid = __tp_syscall.getgid, __tp_syscall.getgid16
 {
 	@_SYSCALL_GETGID_NAME
 	@_SYSCALL_GETGID_ARGSTR
 }
-probe __tp_syscall.getgid = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.getgid = tp_syscall("getgid,~compat_getgid32") !, kernel.trace("sys_enter")
 {
 	@__syscall_compat_gate(@const("__NR_getgid"), @const("__NR_compat_getgid32"))
 }
-probe __tp_syscall.getgid16 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.getgid16 = tp_syscall("~compat_getgid") !, kernel.trace("sys_enter")
 {
 	@__compat_syscall_gate(@const("__NR_compat_getgid"))
 }
@@ -101,18 +101,18 @@ probe nd2_syscall.getgid.return =
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.getgid.return = __tp_syscall.getgid.return, __tp_syscall.getgid16.return
 {
 	@__set_syscall_pt_regs
 	@_SYSCALL_GETGID_NAME
 	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.getgid.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.getgid.return = tp_syscall("getgid,~compat_getgid32").return !, kernel.trace("sys_exit")
 {
 	@__syscall_compat_gate(@const("__NR_getgid"), @const("__NR_compat_getgid32"))
 }
-probe __tp_syscall.getgid16.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.getgid16.return = tp_syscall("~compat_getgid").return !, kernel.trace("sys_exit")
 {
 	@__compat_syscall_gate(@const("__NR_compat_getgid"))
 }

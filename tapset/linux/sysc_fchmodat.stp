@@ -34,8 +34,8 @@
 	  set_uint_arg(3, mode)
 %)
 
-probe syscall.fchmodat = dw_syscall.fchmodat !, nd_syscall.fchmodat ? {}
-probe syscall.fchmodat.return = dw_syscall.fchmodat.return !, nd_syscall.fchmodat.return ? {}
+probe syscall.fchmodat = tp_syscall.fchmodat !, dw_syscall.fchmodat !, nd_syscall.fchmodat ? {}
+probe syscall.fchmodat.return = tp_syscall.fchmodat.return !, dw_syscall.fchmodat.return !, nd_syscall.fchmodat.return ? {}
 
 # dw_fchmodat _____________________________________________________
 
@@ -92,8 +92,8 @@ probe nd2_syscall.fchmodat = kprobe.function(@arch_syscall_prefix "sys_fchmodat"
         %( @_IS_SREG_KERNEL %? @_SYSCALL_FCHMODAT_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.fchmodat = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.fchmodat = tp_syscall("fchmodat,~compat_fchmodat") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_fchmodat"), @const("__NR_compat_fchmodat"))
@@ -123,8 +123,8 @@ probe nd2_syscall.fchmodat.return = kprobe.function(@arch_syscall_prefix "sys_fc
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.fchmodat.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.fchmodat.return = tp_syscall("fchmodat,~compat_fchmodat").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_fchmodat"), @const("__NR_compat_fchmodat"))

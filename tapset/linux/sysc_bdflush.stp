@@ -26,8 +26,8 @@
 	  set_long_arg(2, data)
 %)
 
-probe syscall.bdflush = dw_syscall.bdflush !, nd_syscall.bdflush ? {}
-probe syscall.bdflush.return = dw_syscall.bdflush.return !, nd_syscall.bdflush.return ? {}
+probe syscall.bdflush = tp_syscall.bdflush !, dw_syscall.bdflush !, nd_syscall.bdflush ? {}
+probe syscall.bdflush.return = tp_syscall.bdflush.return !, dw_syscall.bdflush.return !, nd_syscall.bdflush.return ? {}
 
 # dw_bdflush _____________________________________________________
 
@@ -83,8 +83,8 @@ probe nd2_syscall.bdflush = kprobe.function(@arch_syscall_prefix "sys_bdflush") 
         %( @_IS_SREG_KERNEL %? @_SYSCALL_BDFLUSH_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.bdflush = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.bdflush = tp_syscall("bdflush,~compat_bdflush") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_bdflush"), @const("__NR_compat_bdflush"))
@@ -117,8 +117,8 @@ probe nd2_syscall.bdflush.return = kprobe.function(@arch_syscall_prefix "sys_bdf
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.bdflush.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.bdflush.return = tp_syscall("bdflush,~compat_bdflush").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_bdflush"), @const("__NR_compat_bdflush"))

@@ -29,8 +29,8 @@
 	  set_pointer_arg(2, handler)
 %)
 
-probe syscall.signal = dw_syscall.signal !, nd_syscall.signal ? {}
-probe syscall.signal.return = dw_syscall.signal.return !,
+probe syscall.signal = tp_syscall.signal !, dw_syscall.signal !, nd_syscall.signal ? {}
+probe syscall.signal.return = tp_syscall.signal.return !, dw_syscall.signal.return !,
                               nd_syscall.signal.return ? {}
 
 # dw_signal _____________________________________________________
@@ -75,8 +75,8 @@ probe nd2_syscall.signal = kprobe.function(@arch_syscall_prefix "sys_signal") ?
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SIGNAL_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.signal = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.signal = tp_syscall("signal,~compat_signal") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_signal"), @const("__NR_compat_signal"))
@@ -104,8 +104,8 @@ probe nd2_syscall.signal.return = kprobe.function(@arch_syscall_prefix "sys_sign
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.signal.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.signal.return = tp_syscall("signal,~compat_signal").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_signal"), @const("__NR_compat_signal"))

@@ -37,8 +37,8 @@
 	  set_pointer_arg(2, data_uaddr)
 %)
 
-probe syscall.capset = dw_syscall.capset !, nd_syscall.capset ? {}
-probe syscall.capset.return = dw_syscall.capset.return !, nd_syscall.capset.return ? {}
+probe syscall.capset = tp_syscall.capset !, dw_syscall.capset !, nd_syscall.capset ? {}
+probe syscall.capset.return = tp_syscall.capset.return !, dw_syscall.capset.return !, nd_syscall.capset.return ? {}
 
 # dw_capset _____________________________________________________
 
@@ -80,8 +80,8 @@ probe nd2_syscall.capset = kprobe.function(@arch_syscall_prefix "sys_capset")
         %( @_IS_SREG_KERNEL %? @_SYSCALL_CAPSET_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.capset = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.capset = tp_syscall("capset,~compat_capset") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_capset"), @const("__NR_compat_capset"))
@@ -109,8 +109,8 @@ probe nd2_syscall.capset.return = kprobe.function(@arch_syscall_prefix "sys_caps
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.capset.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.capset.return = tp_syscall("capset,~compat_capset").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_capset"), @const("__NR_compat_capset"))

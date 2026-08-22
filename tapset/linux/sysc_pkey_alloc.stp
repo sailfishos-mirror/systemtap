@@ -27,8 +27,8 @@
 	  set_ulong_arg(2, init_val)
 %)
 
-probe syscall.pkey_alloc = dw_syscall.pkey_alloc !, nd_syscall.pkey_alloc ? {}
-probe syscall.pkey_alloc.return = dw_syscall.pkey_alloc.return !, nd_syscall.pkey_alloc.return ? {}
+probe syscall.pkey_alloc = tp_syscall.pkey_alloc !, dw_syscall.pkey_alloc !, nd_syscall.pkey_alloc ? {}
+probe syscall.pkey_alloc.return = tp_syscall.pkey_alloc.return !, dw_syscall.pkey_alloc.return !, nd_syscall.pkey_alloc.return ? {}
 
 # dw_pkey_alloc _____________________________________________________
 
@@ -71,8 +71,8 @@ probe nd2_syscall.pkey_alloc = kprobe.function(@arch_syscall_prefix "sys_pkey_al
         %( @_IS_SREG_KERNEL %? @_SYSCALL_PKEY_ALLOC_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.pkey_alloc = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.pkey_alloc = tp_syscall("pkey_alloc,~compat_pkey_alloc") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_pkey_alloc"), @const("__NR_compat_pkey_alloc"))
@@ -100,8 +100,8 @@ probe nd2_syscall.pkey_alloc.return = kprobe.function(@arch_syscall_prefix "sys_
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.pkey_alloc.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.pkey_alloc.return = tp_syscall("pkey_alloc,~compat_pkey_alloc").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_pkey_alloc"), @const("__NR_compat_pkey_alloc"))

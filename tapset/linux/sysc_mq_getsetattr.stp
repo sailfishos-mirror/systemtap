@@ -36,8 +36,8 @@
 	  set_pointer_arg(3, u_omqstat_uaddr)
 %)
 
-probe syscall.mq_getsetattr = dw_syscall.mq_getsetattr !, nd_syscall.mq_getsetattr ? {}
-probe syscall.mq_getsetattr.return = dw_syscall.mq_getsetattr.return !, nd_syscall.mq_getsetattr.return ? {}
+probe syscall.mq_getsetattr = tp_syscall.mq_getsetattr !, dw_syscall.mq_getsetattr !, nd_syscall.mq_getsetattr ? {}
+probe syscall.mq_getsetattr.return = tp_syscall.mq_getsetattr.return !, dw_syscall.mq_getsetattr.return !, nd_syscall.mq_getsetattr.return ? {}
 
 # dw_mq_getsetattr _____________________________________________________
 
@@ -100,8 +100,8 @@ probe nd2_syscall.mq_getsetattr =
         %( @_IS_SREG_KERNEL %? @_SYSCALL_MQ_GETSETATTR_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.mq_getsetattr = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.mq_getsetattr = tp_syscall("mq_getsetattr,~compat_mq_getsetattr") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_mq_getsetattr"), @const("__NR_compat_mq_getsetattr"))
@@ -137,8 +137,8 @@ probe nd2_syscall.mq_getsetattr.return =
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.mq_getsetattr.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.mq_getsetattr.return = tp_syscall("mq_getsetattr,~compat_mq_getsetattr").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_mq_getsetattr"), @const("__NR_compat_mq_getsetattr"))

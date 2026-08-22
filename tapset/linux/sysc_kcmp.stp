@@ -40,8 +40,8 @@
 	  set_ulong_arg(5, idx2)
 %)
 
-probe syscall.kcmp = dw_syscall.kcmp !, nd_syscall.kcmp ? {}
-probe syscall.kcmp.return = dw_syscall.kcmp.return !, nd_syscall.kcmp.return ? {}
+probe syscall.kcmp = tp_syscall.kcmp !, dw_syscall.kcmp !, nd_syscall.kcmp ? {}
+probe syscall.kcmp.return = tp_syscall.kcmp.return !, dw_syscall.kcmp.return !, nd_syscall.kcmp.return ? {}
 
 # dw_kcmp _____________________________________________________
 
@@ -86,8 +86,8 @@ probe nd2_syscall.kcmp = kprobe.function(@arch_syscall_prefix "sys_kcmp") ?
         %( @_IS_SREG_KERNEL %? @_SYSCALL_KCMP_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.kcmp = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.kcmp = tp_syscall("kcmp,~compat_kcmp") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_kcmp"), @const("__NR_compat_kcmp"))
@@ -115,8 +115,8 @@ probe nd2_syscall.kcmp.return = kprobe.function(@arch_syscall_prefix "sys_kcmp")
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.kcmp.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.kcmp.return = tp_syscall("kcmp,~compat_kcmp").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_kcmp"), @const("__NR_compat_kcmp"))

@@ -53,8 +53,8 @@
 	  set_int_arg(3, shmflg)
 %)
 
-probe syscall.shmat = dw_syscall.shmat !, nd_syscall.shmat ? {}
-probe syscall.shmat.return = dw_syscall.shmat.return !, nd_syscall.shmat.return ? {}
+probe syscall.shmat = tp_syscall.shmat !, dw_syscall.shmat !, nd_syscall.shmat ? {}
+probe syscall.shmat.return = tp_syscall.shmat.return !, dw_syscall.shmat.return !, nd_syscall.shmat.return ? {}
 
 # dw_shmat _____________________________________________________
 
@@ -98,8 +98,8 @@ probe nd2_syscall.shmat = kprobe.function(@arch_syscall_prefix "sys_shmat") ?
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SHMAT_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.shmat = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.shmat = tp_syscall("shmat") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_shmat"))
@@ -127,8 +127,8 @@ probe nd2_syscall.shmat.return = kprobe.function(@arch_syscall_prefix "sys_shmat
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.shmat.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.shmat.return = tp_syscall("shmat").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_shmat"))
@@ -144,9 +144,9 @@ probe tp_syscall.shmat.return = kernel.tracepoint("sys_exit")!, kernel.trace("sy
 #			 int, shmflg)
 #
 
-probe syscall.compat_sys_shmat = dw_syscall.compat_sys_shmat !,
+probe syscall.compat_sys_shmat = tp_syscall.compat_sys_shmat !, dw_syscall.compat_sys_shmat !,
                                  nd_syscall.compat_sys_shmat ? {}
-probe syscall.compat_sys_shmat.return = dw_syscall.compat_sys_shmat.return !,
+probe syscall.compat_sys_shmat.return = tp_syscall.compat_sys_shmat.return !, dw_syscall.compat_sys_shmat.return !,
                                         nd_syscall.compat_sys_shmat.return ? {}
 
 # dw_compat_sys_shmat _____________________________________________________
@@ -213,8 +213,8 @@ probe nd2_syscall.compat_sys_shmat =
         %( @_IS_SREG_KERNEL %? @_SYSCALL_IPC_SHMAT_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_sys_shmat = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.compat_sys_shmat = tp_syscall("~compat_ipc") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_ipc"))
@@ -246,8 +246,8 @@ probe nd2_syscall.compat_sys_shmat.return =
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_sys_shmat.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.compat_sys_shmat.return = tp_syscall("~compat_ipc").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_ipc"))

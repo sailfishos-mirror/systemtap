@@ -52,8 +52,8 @@
 	  set_pointer_arg(5, buf_uaddr)
 %)
 
-probe syscall.msgctl = dw_syscall.msgctl !, nd_syscall.msgctl ? {}
-probe syscall.msgctl.return = dw_syscall.msgctl.return !,
+probe syscall.msgctl = tp_syscall.msgctl !, dw_syscall.msgctl !, nd_syscall.msgctl ? {}
+probe syscall.msgctl.return = tp_syscall.msgctl.return !, dw_syscall.msgctl.return !,
                               nd_syscall.msgctl.return ? {}
 
 # dw_msgctl _____________________________________________________
@@ -101,8 +101,8 @@ probe nd2_syscall.msgctl = kprobe.function(@arch_syscall_prefix "sys_msgctl") ?
         %( @_IS_SREG_KERNEL %? @_SYSCALL_MSGCTL_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.msgctl = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.msgctl = tp_syscall("msgctl") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_msgctl"))
@@ -131,8 +131,8 @@ probe nd2_syscall.msgctl.return = kprobe.function(@arch_syscall_prefix "sys_msgc
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.msgctl.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.msgctl.return = tp_syscall("msgctl").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_msgctl"))
@@ -149,9 +149,9 @@ probe tp_syscall.msgctl.return = kernel.tracepoint("sys_exit")!, kernel.trace("s
 # endif
 #
 
-probe syscall.compat_sys_msgctl = dw_syscall.compat_sys_msgctl !,
+probe syscall.compat_sys_msgctl = tp_syscall.compat_sys_msgctl !, dw_syscall.compat_sys_msgctl !,
                                   nd_syscall.compat_sys_msgctl ? {}
-probe syscall.compat_sys_msgctl.return = dw_syscall.compat_sys_msgctl.return !,
+probe syscall.compat_sys_msgctl.return = tp_syscall.compat_sys_msgctl.return !, dw_syscall.compat_sys_msgctl.return !,
                                          nd_syscall.compat_sys_msgctl.return ? {}
 
 # dw_compat_sys_msgctl _____________________________________________________
@@ -236,8 +236,8 @@ probe nd2_syscall.compat_sys_msgctl = kprobe.function(@arch_syscall_prefix "comp
         %( @_IS_SREG_KERNEL %? @_SYSCALL_IPC_MSGCTL_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_sys_msgctl = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.compat_sys_msgctl = tp_syscall("~compat_ipc") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_ipc"))
@@ -282,8 +282,8 @@ probe nd2_syscall.compat_sys_msgctl.return =
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_sys_msgctl.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.compat_sys_msgctl.return = tp_syscall("~compat_ipc").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_ipc"))

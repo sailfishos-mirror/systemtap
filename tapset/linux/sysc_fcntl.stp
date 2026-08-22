@@ -35,8 +35,8 @@
 	  set_long_arg(3, arg)
 %)
 
-probe syscall.fcntl = dw_syscall.fcntl !, nd_syscall.fcntl ? {}
-probe syscall.fcntl.return = dw_syscall.fcntl.return !, nd_syscall.fcntl.return ? {}
+probe syscall.fcntl = tp_syscall.fcntl !, dw_syscall.fcntl !, nd_syscall.fcntl ? {}
+probe syscall.fcntl.return = tp_syscall.fcntl.return !, dw_syscall.fcntl.return !, nd_syscall.fcntl.return ? {}
 
 # dw_fcntl _____________________________________________________
 
@@ -104,7 +104,7 @@ probe nd2_syscall.fcntl = kprobe.function(@arch_syscall_prefix "sys_fcntl") ?,
         %( @_IS_SREG_KERNEL %? @_SYSCALL_FCNTL_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.fcntl = __tp_syscall.fcntl, __tp_syscall.fcntl64
 {
 	@__set_syscall_pt_regs
@@ -115,11 +115,11 @@ probe tp_syscall.fcntl = __tp_syscall.fcntl, __tp_syscall.fcntl64
 {
         %( @_IS_SREG_KERNEL %? @_SYSCALL_FCNTL_REGARGS_STORE %)
 }
-probe __tp_syscall.fcntl = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.fcntl = tp_syscall("fcntl,~compat_fcntl") !, kernel.trace("sys_enter")
 {
 	@__syscall_compat_gate(@const("__NR_fcntl"), @const("__NR_compat_fcntl"))
 }
-probe __tp_syscall.fcntl64 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.fcntl64 = tp_syscall("fcntl64,~compat_fcntl64") !, kernel.trace("sys_enter")
 {
 	@__syscall_compat_gate(@const("__NR_fcntl64"), @const("__NR_compat_fcntl64"))
 }
@@ -148,18 +148,18 @@ probe nd2_syscall.fcntl.return = kprobe.function(@arch_syscall_prefix "sys_fcntl
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.fcntl.return = __tp_syscall.fcntl.return, __tp_syscall.fcntl64.return
 {
 	@__set_syscall_pt_regs
 	@_SYSCALL_FCNTL_NAME
 	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.fcntl.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.fcntl.return = tp_syscall("fcntl,~compat_fcntl").return !, kernel.trace("sys_exit")
 {
 	@__syscall_compat_gate(@const("__NR_fcntl"), @const("__NR_compat_fcntl"))
 }
-probe __tp_syscall.fcntl64.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.fcntl64.return = tp_syscall("fcntl64,~compat_fcntl64").return !, kernel.trace("sys_exit")
 {
 	@__syscall_compat_gate(@const("__NR_fcntl64"), @const("__NR_compat_fcntl64"))
 }

@@ -32,8 +32,8 @@
 	  set_int_arg(3, timeout)
 %)
 
-probe syscall.poll = dw_syscall.poll !, nd_syscall.poll ? {}
-probe syscall.poll.return = dw_syscall.poll.return !, nd_syscall.poll.return ? {}
+probe syscall.poll = tp_syscall.poll !, dw_syscall.poll !, nd_syscall.poll ? {}
+probe syscall.poll.return = tp_syscall.poll.return !, dw_syscall.poll.return !, nd_syscall.poll.return ? {}
 
 # dw_poll _____________________________________________________
 
@@ -76,8 +76,8 @@ probe nd2_syscall.poll = kprobe.function(@arch_syscall_prefix "sys_poll") ?
         %( @_IS_SREG_KERNEL %? @_SYSCALL_POLL_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.poll = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.poll = tp_syscall("poll,~compat_poll") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_poll"), @const("__NR_compat_poll"))
@@ -105,8 +105,8 @@ probe nd2_syscall.poll.return = kprobe.function(@arch_syscall_prefix "sys_poll")
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.poll.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.poll.return = tp_syscall("poll,~compat_poll").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_poll"), @const("__NR_compat_poll"))

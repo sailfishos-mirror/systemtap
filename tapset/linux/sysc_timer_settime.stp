@@ -43,9 +43,9 @@
 	  set_pointer_arg(4, ovalue_uaddr)
 %)
 
-probe syscall.timer_settime = dw_syscall.timer_settime !,
+probe syscall.timer_settime = tp_syscall.timer_settime !, dw_syscall.timer_settime !,
                               nd_syscall.timer_settime ? {}
-probe syscall.timer_settime.return = dw_syscall.timer_settime.return !,
+probe syscall.timer_settime.return = tp_syscall.timer_settime.return !, dw_syscall.timer_settime.return !,
                                      nd_syscall.timer_settime.return ? {}
 
 # dw_timer_settime _____________________________________________________
@@ -140,13 +140,13 @@ probe __nd2_syscall.compat_timer_settime =
         %( @_IS_SREG_KERNEL %? @_SYSCALL_TIMER_SETTIME_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.timer_settime = __tp_syscall.timer_settime,
                                  __tp_syscall.compat_timer_settime ?
 {
 	@_SYSCALL_TIMER_SETTIME_NAME
 }
-probe __tp_syscall.timer_settime = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.timer_settime = tp_syscall("timer_settime") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_timer_settime"))
@@ -157,7 +157,7 @@ probe __tp_syscall.timer_settime = kernel.tracepoint("sys_enter")!, kernel.trace
 {
         %( @_IS_SREG_KERNEL %? @_SYSCALL_TIMER_SETTIME_REGARGS_STORE %)
 }
-probe __tp_syscall.compat_timer_settime = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.compat_timer_settime = tp_syscall("~compat_timer_settime") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_timer_settime"))
@@ -194,8 +194,8 @@ probe nd2_syscall.timer_settime.return =
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.timer_settime.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.timer_settime.return = tp_syscall("timer_settime,~compat_timer_settime").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_timer_settime"), @const("__NR_compat_timer_settime"))

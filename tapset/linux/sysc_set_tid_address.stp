@@ -25,9 +25,9 @@
           set_pointer_arg(1, tidptr_uaddr)
 %)
 
-probe syscall.set_tid_address = dw_syscall.set_tid_address !,
+probe syscall.set_tid_address = tp_syscall.set_tid_address !, dw_syscall.set_tid_address !,
                                 nd_syscall.set_tid_address ? {}
-probe syscall.set_tid_address.return = dw_syscall.set_tid_address.return !,
+probe syscall.set_tid_address.return = tp_syscall.set_tid_address.return !, dw_syscall.set_tid_address.return !,
                                        nd_syscall.set_tid_address.return ? {}
 
 # dw_set_tid_address _____________________________________________________
@@ -69,8 +69,8 @@ probe nd2_syscall.set_tid_address = kprobe.function(@arch_syscall_prefix "sys_se
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SET_TID_ADDRESS_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.set_tid_address = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.set_tid_address = tp_syscall("set_tid_address,~compat_set_tid_address") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_set_tid_address"), @const("__NR_compat_set_tid_address"))
@@ -98,8 +98,8 @@ probe nd2_syscall.set_tid_address.return = kprobe.function(@arch_syscall_prefix 
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.set_tid_address.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.set_tid_address.return = tp_syscall("set_tid_address,~compat_set_tid_address").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_set_tid_address"), @const("__NR_compat_set_tid_address"))

@@ -43,8 +43,8 @@
 	  set_int_arg(4, flags)
 %)
 
-probe syscall.utimensat = dw_syscall.utimensat !, nd_syscall.utimensat ? {}
-probe syscall.utimensat.return = dw_syscall.utimensat.return !,
+probe syscall.utimensat = tp_syscall.utimensat !, dw_syscall.utimensat !, nd_syscall.utimensat ? {}
+probe syscall.utimensat.return = tp_syscall.utimensat.return !, dw_syscall.utimensat.return !,
                                  nd_syscall.utimensat.return ? {}
 
 # dw_utimensat _____________________________________________________
@@ -95,8 +95,8 @@ probe nd2_syscall.utimensat = kprobe.function(@arch_syscall_prefix "sys_utimensa
         %( @_IS_SREG_KERNEL %? @_SYSCALL_UTIMENSAT_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.utimensat = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.utimensat = tp_syscall("utimensat") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_utimensat"))
@@ -125,8 +125,8 @@ probe nd2_syscall.utimensat.return = kprobe.function(@arch_syscall_prefix "sys_u
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.utimensat.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.utimensat.return = tp_syscall("utimensat").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_utimensat"))
@@ -139,9 +139,9 @@ probe tp_syscall.utimensat.return = kernel.tracepoint("sys_exit")!, kernel.trace
 # long compat_sys_utimensat(unsigned int dfd, char __user *filename, struct compat_timespec __user *t, int flags)
 #
 
-probe syscall.compat_utimensat = dw_syscall.compat_utimensat !,
+probe syscall.compat_utimensat = tp_syscall.compat_utimensat !, dw_syscall.compat_utimensat !,
                                  nd_syscall.compat_utimensat ? {}
-probe syscall.compat_utimensat.return = dw_syscall.compat_utimensat.return !,
+probe syscall.compat_utimensat.return = tp_syscall.compat_utimensat.return !, dw_syscall.compat_utimensat.return !,
                                         nd_syscall.compat_utimensat.return ? {}
 
 # dw_compat_utimensat _____________________________________________________
@@ -192,8 +192,8 @@ probe nd2_syscall.compat_utimensat = kprobe.function(@arch_syscall_prefix "compa
         %( @_IS_SREG_KERNEL %? @_SYSCALL_UTIMENSAT_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_utimensat = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.compat_utimensat = tp_syscall("~compat_utimensat") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_utimensat"))
@@ -222,8 +222,8 @@ probe nd2_syscall.compat_utimensat.return = kprobe.function(@arch_syscall_prefix
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_utimensat.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.compat_utimensat.return = tp_syscall("~compat_utimensat").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_utimensat"))

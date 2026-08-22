@@ -31,8 +31,8 @@
 	  set_uint_arg(3, turn_on)
 %)
 
-probe syscall.ioperm = dw_syscall.ioperm !, nd_syscall.ioperm ? {}
-probe syscall.ioperm.return = dw_syscall.ioperm.return !, nd_syscall.ioperm.return ? {}
+probe syscall.ioperm = tp_syscall.ioperm !, dw_syscall.ioperm !, nd_syscall.ioperm ? {}
+probe syscall.ioperm.return = tp_syscall.ioperm.return !, dw_syscall.ioperm.return !, nd_syscall.ioperm.return ? {}
 
 # dw_ioperm _____________________________________________________
 
@@ -75,8 +75,8 @@ probe nd2_syscall.ioperm = kprobe.function(@arch_syscall_prefix "sys_ioperm") ?
         %( @_IS_SREG_KERNEL %? @_SYSCALL_IOPERM_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.ioperm = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.ioperm = tp_syscall("ioperm,~compat_ioperm") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_ioperm"), @const("__NR_compat_ioperm"))
@@ -104,8 +104,8 @@ probe nd2_syscall.ioperm.return = kprobe.function(@arch_syscall_prefix "sys_iope
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.ioperm.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.ioperm.return = tp_syscall("ioperm,~compat_ioperm").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_ioperm"), @const("__NR_compat_ioperm"))

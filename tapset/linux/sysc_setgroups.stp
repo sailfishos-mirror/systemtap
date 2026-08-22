@@ -30,8 +30,8 @@
 	  set_pointer_arg(2, list_uaddr)
 %)
 
-probe syscall.setgroups = dw_syscall.setgroups !, nd_syscall.setgroups ? {}
-probe syscall.setgroups.return = dw_syscall.setgroups.return !,
+probe syscall.setgroups = tp_syscall.setgroups !, dw_syscall.setgroups !, nd_syscall.setgroups ? {}
+probe syscall.setgroups.return = tp_syscall.setgroups.return !, dw_syscall.setgroups.return !,
                                  nd_syscall.setgroups.return ? {}
 
 # dw_setgroups _____________________________________________________
@@ -91,7 +91,7 @@ probe nd2_syscall.setgroups =
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SETGROUPS_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.setgroups = __tp_syscall.setgroups, __tp_syscall.setgroups32
 {
 	@__set_syscall_pt_regs
@@ -102,11 +102,11 @@ probe tp_syscall.setgroups = __tp_syscall.setgroups, __tp_syscall.setgroups32
 {
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SETGROUPS_REGARGS_STORE %)
 }
-probe __tp_syscall.setgroups = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.setgroups = tp_syscall("setgroups,~compat_setgroups") !, kernel.trace("sys_enter")
 {
 	@__syscall_compat_gate(@const("__NR_setgroups"), @const("__NR_compat_setgroups"))
 }
-probe __tp_syscall.setgroups32 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.setgroups32 = tp_syscall("setgroups32,~compat_setgroups32") !, kernel.trace("sys_enter")
 {
 	@__syscall_compat_gate(@const("__NR_setgroups32"), @const("__NR_compat_setgroups32"))
 }
@@ -134,18 +134,18 @@ probe nd2_syscall.setgroups.return =
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.setgroups.return = __tp_syscall.setgroups.return, __tp_syscall.setgroups32.return
 {
 	@__set_syscall_pt_regs
 	@_SYSCALL_SETGROUPS_NAME
 	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.setgroups.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.setgroups.return = tp_syscall("setgroups,~compat_setgroups").return !, kernel.trace("sys_exit")
 {
 	@__syscall_compat_gate(@const("__NR_setgroups"), @const("__NR_compat_setgroups"))
 }
-probe __tp_syscall.setgroups32.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.setgroups32.return = tp_syscall("setgroups32,~compat_setgroups32").return !, kernel.trace("sys_exit")
 {
 	@__syscall_compat_gate(@const("__NR_setgroups32"), @const("__NR_compat_setgroups32"))
 }

@@ -28,8 +28,8 @@
 	  set_user_string_arg(pointer_arg(1), pathname_unquoted)
 %)
 
-probe syscall.unlink = dw_syscall.unlink !, nd_syscall.unlink ? {}
-probe syscall.unlink.return = dw_syscall.unlink.return !,
+probe syscall.unlink = tp_syscall.unlink !, dw_syscall.unlink !, nd_syscall.unlink ? {}
+probe syscall.unlink.return = tp_syscall.unlink.return !, dw_syscall.unlink.return !,
                               nd_syscall.unlink.return ? {}
 
 # dw_unlink _____________________________________________________
@@ -72,8 +72,8 @@ probe nd2_syscall.unlink = kprobe.function(@arch_syscall_prefix "sys_unlink") ?
         %( @_IS_SREG_KERNEL %? @_SYSCALL_UNLINK_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.unlink = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.unlink = tp_syscall("unlink,~compat_unlink") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_unlink"), @const("__NR_compat_unlink"))
@@ -101,8 +101,8 @@ probe nd2_syscall.unlink.return = kprobe.function(@arch_syscall_prefix "sys_unli
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.unlink.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.unlink.return = tp_syscall("unlink,~compat_unlink").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_unlink"), @const("__NR_compat_unlink"))

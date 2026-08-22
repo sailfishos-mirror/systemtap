@@ -17,8 +17,8 @@
 %(
 %)
 
-probe syscall.setsid = dw_syscall.setsid !, nd_syscall.setsid {}
-probe syscall.setsid.return = dw_syscall.setsid.return !,
+probe syscall.setsid = tp_syscall.setsid !, dw_syscall.setsid !, nd_syscall.setsid {}
+probe syscall.setsid.return = tp_syscall.setsid.return !, dw_syscall.setsid.return !,
                               nd_syscall.setsid.return {}
 
 # dw_setsid _____________________________________________________
@@ -52,8 +52,8 @@ probe nd2_syscall.setsid = kprobe.function(@arch_syscall0_prefix "sys_setsid") ?
 	@_SYSCALL_SETSID_ARGSTR
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.setsid = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter") ?
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.setsid = tp_syscall("setsid,~compat_setsid") !, kernel.trace("sys_enter") ?
 {
 	@__syscall_compat_gate(@const("__NR_setsid"), @const("__NR_compat_setsid"))
 	@_SYSCALL_SETSID_NAME
@@ -76,8 +76,8 @@ probe nd2_syscall.setsid.return = kprobe.function(@arch_syscall0_prefix "sys_set
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.setsid.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.setsid.return = tp_syscall("setsid,~compat_setsid").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_setsid"), @const("__NR_compat_setsid"))

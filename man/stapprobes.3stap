@@ -176,6 +176,7 @@ debuginfod	kernel.statement.absolute
 \fBAUTO-GENERATED-DWARF\fP	kprobe.function
 kernel.trace	process.statement.absolute
 kernel.tracepoint
+tp_syscall
 kernel.lsm
 	process.begin, .end
 	netfilter
@@ -1506,6 +1507,97 @@ $ stap -L 'kernel.tracepoint("sched_switch")'
 $ stap -l 'kernel.tracepoint("*")'
 .fi
 .PP
+
+.SS SYSCALL TRACEPOINT DISPATCH (tp_syscall)
+
+.BR tp_syscall("name")
+and
+.BR tp_syscall("name").return
+attach to the raw
+.BR sys_enter
+/
+.BR sys_exit
+tracepoints (BTF
+.BR kernel.tracepoint()
+catalog, requiring
+.BR vmlinux.h )
+but
+.I dispatch
+in generated C with a
+.BR switch
+on
+.BR __NR_name .
+Unmarked names are looked up in the native syscall table.
+
+Unfortunately, the full treatment of duplication, aliases, overlap, and backward-compatibility
+in kernel syscall numbering sometimes requires addition of special markup to make the decoder
+routine's work straightforward (and require no hard-coded heuristics in the translator).  A
+.B ~
+prefix selects the compat-task table instead
+.RB ( tp_syscall("~compat_read") ,
+.BR tp_syscall("~ia32_truncate64") ,
+or
+.BR tp_syscall("~fadvise64")
+when that table reuses the native number).
+There is no automatic
+.B compat_
+or
+.B ia32_
+rewrite of the identifier.
+Aliases that share an NR token share that
+.BR case ;
+a probe that lists several numbers has its handler call replicated
+on each label.  Native and compat ABIs use separate switches
+.RB ( _stp_is_compat_task() )
+because they reuse the same small integers.  Several names may be listed in one string
+.RB ( tp_syscall("chown,chown32,~compat_chown32") )
+to match extra NR tokens; names listed together on one probe share a
+case if their NRs coincide.  Use
+.B =
+to declare a merge-only alias that may have the same number as another
+probe's token, without matching that other name
+.RB ( tp_syscall("umount2=umount,~compat_umount2=compat_umount") ).
+The left-hand name is preferred as the
+.B case
+label.  Several
+.BR tp_syscall()
+probes in one script share a single tracepoint registration instead of
+N isolated
+.BR next
+filters concatenated by probe combining.
+
+Tapset aliases such as
+.BR tp_syscall.read
+expand to
+.BR tp_syscall("read,~compat_read")
+with a
+.BR kernel.trace("sys_enter")
+fallback.  Handler arguments are the same positional
+.BR $arg1
+\&... as
+.BR kernel.tracepoint("sys_enter")
+(typically
+.BR pt_regs
+then syscall id).  The usual tapset
+.BR name
+/
+.BR argstr
+locals are filled after dispatch.
+
+Example:
+.PP
+.nf
+probe tp_syscall("read"), tp_syscall("write") {
+  printf("syscall nr dispatch hit\\n")
+}
+.fi
+.PP
+Use the
+.BR tp_syscall.read
+tapset alias when you need
+.BR name
+/
+.BR argstr .
 
 .SS LSM (LINUX SECURITY MODULE) HOOKS
 

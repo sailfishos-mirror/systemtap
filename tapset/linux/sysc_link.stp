@@ -29,8 +29,8 @@
 	  set_user_string_arg(pointer_arg(2), newpath_unquoted)
 %)
 
-probe syscall.link = dw_syscall.link !, nd_syscall.link ? {}
-probe syscall.link.return = dw_syscall.link.return !, nd_syscall.link.return ? {}
+probe syscall.link = tp_syscall.link !, dw_syscall.link !, nd_syscall.link ? {}
+probe syscall.link.return = tp_syscall.link.return !, dw_syscall.link.return !, nd_syscall.link.return ? {}
 
 # dw_link _____________________________________________________
 
@@ -72,8 +72,8 @@ probe nd2_syscall.link = kprobe.function(@arch_syscall_prefix "sys_link") ?
         %( @_IS_SREG_KERNEL %? @_SYSCALL_LINK_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.link = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.link = tp_syscall("link,~compat_link") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_link"), @const("__NR_compat_link"))
@@ -101,8 +101,8 @@ probe nd2_syscall.link.return = kprobe.function(@arch_syscall_prefix "sys_link")
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.link.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.link.return = tp_syscall("link,~compat_link").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_link"), @const("__NR_compat_link"))

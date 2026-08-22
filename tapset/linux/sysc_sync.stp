@@ -13,8 +13,8 @@
 	argstr = ""
 %)
 
-probe syscall.sync = dw_syscall.sync !, nd_syscall.sync {}
-probe syscall.sync.return = dw_syscall.sync.return !, nd_syscall.sync.return {}
+probe syscall.sync = tp_syscall.sync !, dw_syscall.sync !, nd_syscall.sync {}
+probe syscall.sync.return = tp_syscall.sync.return !, dw_syscall.sync.return !, nd_syscall.sync.return {}
 
 # dw_sync _____________________________________________________
 
@@ -47,8 +47,8 @@ probe nd2_syscall.sync = kprobe.function(@arch_syscall0_prefix "sys_sync") ?
 	@_SYSCALL_SYNC_ARGSTR
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.sync = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter") ?
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.sync = tp_syscall("sync,~compat_sync") !, kernel.trace("sys_enter") ?
 {
 	@__syscall_compat_gate(@const("__NR_sync"), @const("__NR_compat_sync"))
 	@_SYSCALL_SYNC_NAME
@@ -71,8 +71,8 @@ probe nd2_syscall.sync.return = kprobe.function(@arch_syscall0_prefix "sys_sync"
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.sync.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.sync.return = tp_syscall("sync,~compat_sync").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_sync"), @const("__NR_compat_sync"))

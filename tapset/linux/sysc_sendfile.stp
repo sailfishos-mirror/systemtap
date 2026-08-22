@@ -45,8 +45,8 @@
 	  set_ulong_arg(4, count)
 %)
 
-probe syscall.sendfile = dw_syscall.sendfile !, nd_syscall.sendfile ? {}
-probe syscall.sendfile.return = dw_syscall.sendfile.return !,
+probe syscall.sendfile = tp_syscall.sendfile !, dw_syscall.sendfile !, nd_syscall.sendfile ? {}
+probe syscall.sendfile.return = tp_syscall.sendfile.return !, dw_syscall.sendfile.return !,
                                 nd_syscall.sendfile.return ? {}
 
 # dw_sendfile _____________________________________________________
@@ -117,8 +117,8 @@ probe nd2_syscall.sendfile =
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SENDFILE_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.sendfile = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.sendfile = tp_syscall("sendfile,~compat_sendfile") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_sendfile"), @const("__NR_compat_sendfile"))
@@ -156,8 +156,8 @@ probe nd2_syscall.sendfile.return =
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.sendfile.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.sendfile.return = tp_syscall("sendfile,~compat_sendfile").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_sendfile"), @const("__NR_compat_sendfile"))

@@ -65,8 +65,8 @@
 	optlen = user_uint32(&@uint_cast(__args)[4])
 %)
 
-probe syscall.setsockopt = dw_syscall.setsockopt !, nd_syscall.setsockopt ? {}
-probe syscall.setsockopt.return = dw_syscall.setsockopt.return !,
+probe syscall.setsockopt = tp_syscall.setsockopt !, dw_syscall.setsockopt !, nd_syscall.setsockopt ? {}
+probe syscall.setsockopt.return = tp_syscall.setsockopt.return !, dw_syscall.setsockopt.return !,
                                   nd_syscall.setsockopt.return ? {}
 
 # dw_setsockopt _____________________________________________________
@@ -193,7 +193,7 @@ probe __nd2_syscall.compat_socketcall.setsockopt =
 	@_SYSCALL_COMPAT_SOCKETCALL_SETSOCKOPT_REGARGS
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.setsockopt = __tp_syscall.setsockopt ?,
 	__tp_syscall.socketcall.setsockopt ?
 {
@@ -202,7 +202,7 @@ probe tp_syscall.setsockopt = __tp_syscall.setsockopt ?,
 	optname_str = _sockopt_optname_str(optname)
 	@_SYSCALL_SETSOCKOPT_ARGSTR
 }
-probe __tp_syscall.setsockopt = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.setsockopt = tp_syscall("setsockopt") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_setsockopt"))
@@ -211,7 +211,7 @@ probe __tp_syscall.setsockopt = kernel.tracepoint("sys_enter")!, kernel.trace("s
 {
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SETSOCKOPT_REGARGS_STORE %)
 }
-probe __tp_syscall.socketcall.setsockopt = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.socketcall.setsockopt = tp_syscall("socketcall,~compat_socketcall") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_socketcall"), @const("__NR_compat_socketcall"))
@@ -261,18 +261,18 @@ probe __nd2_syscall.socketcall.setsockopt.return =
 	if (int_arg(1) != @const("SYS_SETSOCKOPT")) next;
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.setsockopt.return = __tp_syscall.setsockopt.return ?,
 	__tp_syscall.socketcall.setsockopt.return ?
 {
 	@_SYSCALL_SETSOCKOPT_NAME
 	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.setsockopt.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.setsockopt.return = tp_syscall("setsockopt").return !, kernel.trace("sys_exit")
 {
 	@__syscall_gate(@const("__NR_setsockopt"))
 }
-probe __tp_syscall.socketcall.setsockopt.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.socketcall.setsockopt.return = tp_syscall("socketcall,~compat_socketcall").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_socketcall"), @const("__NR_compat_socketcall"))

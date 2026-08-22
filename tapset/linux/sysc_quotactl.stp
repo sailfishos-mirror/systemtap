@@ -42,8 +42,8 @@
 	  set_pointer_arg(4, addr_uaddr)
 %)
 
-probe syscall.quotactl = dw_syscall.quotactl !, nd_syscall.quotactl ? {}
-probe syscall.quotactl.return = dw_syscall.quotactl.return !,
+probe syscall.quotactl = tp_syscall.quotactl !, dw_syscall.quotactl !, nd_syscall.quotactl ? {}
+probe syscall.quotactl.return = tp_syscall.quotactl.return !, dw_syscall.quotactl.return !,
                                 nd_syscall.quotactl.return ? {}
 
 # dw_quotactl _____________________________________________________
@@ -114,8 +114,8 @@ probe nd2_syscall.quotactl = kprobe.function(@arch_syscall_prefix "sys_quotactl"
         %( @_IS_SREG_KERNEL %? @_SYSCALL_QUOTACTL_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.quotactl = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.quotactl = tp_syscall("quotactl,~compat_quotactl") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_quotactl"), @const("__NR_compat_quotactl"))
@@ -151,8 +151,8 @@ probe nd2_syscall.quotactl.return = kprobe.function(@arch_syscall_prefix "sys_qu
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.quotactl.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.quotactl.return = tp_syscall("quotactl,~compat_quotactl").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_quotactl"), @const("__NR_compat_quotactl"))

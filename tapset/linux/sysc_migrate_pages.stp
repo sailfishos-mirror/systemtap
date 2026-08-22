@@ -36,9 +36,9 @@
 	  set_pointer_arg(4, new_nodes)
 %)
 
-probe syscall.migrate_pages = dw_syscall.migrate_pages !,
+probe syscall.migrate_pages = tp_syscall.migrate_pages !, dw_syscall.migrate_pages !,
                               nd_syscall.migrate_pages ? {}
-probe syscall.migrate_pages.return = dw_syscall.migrate_pages.return !,
+probe syscall.migrate_pages.return = tp_syscall.migrate_pages.return !, dw_syscall.migrate_pages.return !,
                                      nd_syscall.migrate_pages.return ? {}
 
 # dw_migrate_pages _____________________________________________________
@@ -104,8 +104,8 @@ probe nd2_syscall.migrate_pages = kprobe.function(@arch_syscall_prefix "sys_migr
         %( @_IS_SREG_KERNEL %? @_SYSCALL_MIGRATE_PAGES_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.migrate_pages = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.migrate_pages = tp_syscall("migrate_pages,~compat_migrate_pages") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_migrate_pages"), @const("__NR_compat_migrate_pages"))
@@ -140,8 +140,8 @@ probe nd2_syscall.migrate_pages.return = kprobe.function(@arch_syscall_prefix "s
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.migrate_pages.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.migrate_pages.return = tp_syscall("migrate_pages,~compat_migrate_pages").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_migrate_pages"), @const("__NR_compat_migrate_pages"))

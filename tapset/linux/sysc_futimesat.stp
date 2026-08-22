@@ -40,13 +40,13 @@
 	  set_pointer_arg(3, tvp_uaddr)
 %)
 
-probe syscall.futimesat = dw_syscall.futimesat !, nd_syscall.futimesat ? {}
-probe syscall.futimesat.return = dw_syscall.futimesat.return !,
+probe syscall.futimesat = tp_syscall.futimesat !, dw_syscall.futimesat !, nd_syscall.futimesat ? {}
+probe syscall.futimesat.return = tp_syscall.futimesat.return !, dw_syscall.futimesat.return !,
                                  nd_syscall.futimesat.return ? {}
 
-probe syscall.compat_futimesat = dw_syscall.compat_futimesat !,
+probe syscall.compat_futimesat = tp_syscall.compat_futimesat !, dw_syscall.compat_futimesat !,
                                  nd_syscall.compat_futimesat ? {}
-probe syscall.compat_futimesat.return = dw_syscall.compat_futimesat.return !,
+probe syscall.compat_futimesat.return = tp_syscall.compat_futimesat.return !, dw_syscall.compat_futimesat.return !,
                                         nd_syscall.compat_futimesat.return ? {}
 
 
@@ -118,8 +118,8 @@ probe nd2_syscall.futimesat = kprobe.function(@arch_syscall_prefix "sys_futimesa
         @_SYSCALL_FUTIMESAT_REGARGS_STORE
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.futimesat = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.futimesat = tp_syscall("futimesat") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_futimesat"))
@@ -149,8 +149,8 @@ probe nd2_syscall.futimesat.return = kprobe.function(@arch_syscall_prefix "sys_f
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.futimesat.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.futimesat.return = tp_syscall("futimesat").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_futimesat"))
@@ -184,8 +184,8 @@ probe nd2_syscall.compat_futimesat = kprobe.function(@arch_syscall_prefix "compa
         @_SYSCALL_FUTIMESAT_REGARGS_STORE
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_futimesat = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.compat_futimesat = tp_syscall("~compat_futimesat") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_futimesat"))
@@ -215,8 +215,8 @@ probe nd2_syscall.compat_futimesat.return = kprobe.function(@arch_syscall_prefix
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_futimesat.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.compat_futimesat.return = tp_syscall("~compat_futimesat").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_futimesat"))

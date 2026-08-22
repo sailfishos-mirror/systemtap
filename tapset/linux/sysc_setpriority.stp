@@ -36,8 +36,8 @@
 	  set_int_arg(3, prio)
 %)
 
-probe syscall.setpriority = dw_syscall.setpriority !, nd_syscall.setpriority ? {}
-probe syscall.setpriority.return = dw_syscall.setpriority.return !,
+probe syscall.setpriority = tp_syscall.setpriority !, dw_syscall.setpriority !, nd_syscall.setpriority ? {}
+probe syscall.setpriority.return = tp_syscall.setpriority.return !, dw_syscall.setpriority.return !,
                                    nd_syscall.setpriority.return ? {}
 
 # dw_setpriority _____________________________________________________
@@ -82,8 +82,8 @@ probe nd2_syscall.setpriority = kprobe.function(@arch_syscall_prefix "sys_setpri
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SETPRIORITY_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.setpriority = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.setpriority = tp_syscall("setpriority,~compat_setpriority") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_setpriority"), @const("__NR_compat_setpriority"))
@@ -111,8 +111,8 @@ probe nd2_syscall.setpriority.return = kprobe.function(@arch_syscall_prefix "sys
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.setpriority.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.setpriority.return = tp_syscall("setpriority,~compat_setpriority").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_setpriority"), @const("__NR_compat_setpriority"))

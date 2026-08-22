@@ -48,8 +48,8 @@
           set_user_string_arg(pointer_arg(4), newname_str_unquoted)
 %)
 
-probe syscall.renameat = dw_syscall.renameat !, nd_syscall.renameat ? {}
-probe syscall.renameat.return = dw_syscall.renameat.return !,
+probe syscall.renameat = tp_syscall.renameat !, dw_syscall.renameat !, nd_syscall.renameat ? {}
+probe syscall.renameat.return = tp_syscall.renameat.return !, dw_syscall.renameat.return !,
                                 nd_syscall.renameat.return ? {}
 
 # dw_renameat _____________________________________________________
@@ -101,8 +101,8 @@ probe nd2_syscall.renameat = kprobe.function(@arch_syscall_prefix "sys_renameat"
 	%( @_IS_SREG_KERNEL %? @_SYSCALL_RENAMEAT_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.renameat = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.renameat = tp_syscall("renameat,~compat_renameat") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_renameat"), @const("__NR_compat_renameat"))
@@ -131,8 +131,8 @@ probe nd2_syscall.renameat.return = kprobe.function(@arch_syscall_prefix "sys_re
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.renameat.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.renameat.return = tp_syscall("renameat,~compat_renameat").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_renameat"), @const("__NR_compat_renameat"))

@@ -45,8 +45,8 @@
 	  set_uint_arg(6, flags)
 %)
 
-probe syscall.copy_file_range = dw_syscall.copy_file_range !, nd_syscall.copy_file_range ? {}
-probe syscall.copy_file_range.return = dw_syscall.copy_file_range.return !, nd_syscall.copy_file_range.return ? {}
+probe syscall.copy_file_range = tp_syscall.copy_file_range !, dw_syscall.copy_file_range !, nd_syscall.copy_file_range ? {}
+probe syscall.copy_file_range.return = tp_syscall.copy_file_range.return !, dw_syscall.copy_file_range.return !, nd_syscall.copy_file_range.return ? {}
 
 # dw_copy_file_range _____________________________________________________
 
@@ -93,8 +93,8 @@ probe nd2_syscall.copy_file_range = kprobe.function(@arch_syscall_prefix "sys_co
         %( @_IS_SREG_KERNEL %? @_SYSCALL_COPY_FILE_RANGE_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.copy_file_range = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.copy_file_range = tp_syscall("copy_file_range,~compat_copy_file_range") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_copy_file_range"), @const("__NR_compat_copy_file_range"))
@@ -123,8 +123,8 @@ probe nd2_syscall.copy_file_range.return = kprobe.function(@arch_syscall_prefix 
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.copy_file_range.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.copy_file_range.return = tp_syscall("copy_file_range,~compat_copy_file_range").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_copy_file_range"), @const("__NR_compat_copy_file_range"))

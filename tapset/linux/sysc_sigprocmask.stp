@@ -35,8 +35,8 @@
 	  set_pointer_arg(3, oldset_uaddr)
 %)
 
-probe syscall.sigprocmask = dw_syscall.sigprocmask !, nd_syscall.sigprocmask ? {}
-probe syscall.sigprocmask.return = dw_syscall.sigprocmask.return !,
+probe syscall.sigprocmask = tp_syscall.sigprocmask !, dw_syscall.sigprocmask !, nd_syscall.sigprocmask ? {}
+probe syscall.sigprocmask.return = tp_syscall.sigprocmask.return !, dw_syscall.sigprocmask.return !,
                                    nd_syscall.sigprocmask.return ? {}
 
 # dw_sigprocmask _____________________________________________________
@@ -98,8 +98,8 @@ probe nd2_syscall.sigprocmask =
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SIGPROCMASK_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.sigprocmask = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.sigprocmask = tp_syscall("sigprocmask,~compat_sigprocmask") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_sigprocmask"), @const("__NR_compat_sigprocmask"))
@@ -134,8 +134,8 @@ probe nd2_syscall.sigprocmask.return =
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.sigprocmask.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.sigprocmask.return = tp_syscall("sigprocmask,~compat_sigprocmask").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_sigprocmask"), @const("__NR_compat_sigprocmask"))

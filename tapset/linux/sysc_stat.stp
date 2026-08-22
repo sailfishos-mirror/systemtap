@@ -37,8 +37,8 @@
 	  set_pointer_arg(2, buf_uaddr)
 %)
 
-probe syscall.stat = dw_syscall.stat !, nd_syscall.stat ? {}
-probe syscall.stat.return = dw_syscall.stat.return !, nd_syscall.stat.return ? {}
+probe syscall.stat = tp_syscall.stat !, dw_syscall.stat !, nd_syscall.stat ? {}
+probe syscall.stat.return = tp_syscall.stat.return !, dw_syscall.stat.return !, nd_syscall.stat.return ? {}
 
 # dw_stat _____________________________________________________
 
@@ -118,7 +118,7 @@ probe nd2_syscall.stat =
         %( @_IS_SREG_KERNEL %? @_SYSCALL_STAT_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.stat = __tp_syscall.stat,
                         __tp_syscall.stat64,
                         __tp_syscall.newstat
@@ -131,15 +131,15 @@ probe tp_syscall.stat = __tp_syscall.stat,
 {
         %( @_IS_SREG_KERNEL %? @_SYSCALL_STAT_REGARGS_STORE %)
 }
-probe __tp_syscall.stat = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.stat = tp_syscall("oldstat,~compat_oldstat") !, kernel.trace("sys_enter")
 {
 	@__syscall_compat_gate(@const("__NR_oldstat"), @const("__NR_compat_oldstat"))
 }
-probe __tp_syscall.stat64 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.stat64 = tp_syscall("stat64,~compat_stat64") !, kernel.trace("sys_enter")
 {
 	@__syscall_compat_gate(@const("__NR_stat64"), @const("__NR_compat_stat64"))
 }
-probe __tp_syscall.newstat = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.newstat = tp_syscall("stat,~compat_stat") !, kernel.trace("sys_enter")
 {
 	@__syscall_compat_gate(@const("__NR_stat"), @const("__NR_compat_stat"))
 }
@@ -175,7 +175,7 @@ probe nd2_syscall.stat.return =
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.stat.return = __tp_syscall.stat.return,
                                __tp_syscall.stat64.return,
                                __tp_syscall.newstat.return
@@ -184,15 +184,15 @@ probe tp_syscall.stat.return = __tp_syscall.stat.return,
 	@_SYSCALL_STAT_NAME
 	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.stat.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.stat.return = tp_syscall("oldstat,~compat_oldstat").return !, kernel.trace("sys_exit")
 {
 	@__syscall_compat_gate(@const("__NR_oldstat"), @const("__NR_compat_oldstat"))
 }
-probe __tp_syscall.stat64.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.stat64.return = tp_syscall("stat64,~compat_stat64").return !, kernel.trace("sys_exit")
 {
 	@__syscall_compat_gate(@const("__NR_stat64"), @const("__NR_compat_stat64"))
 }
-probe __tp_syscall.newstat.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.newstat.return = tp_syscall("stat,~compat_stat").return !, kernel.trace("sys_exit")
 {
 	@__syscall_compat_gate(@const("__NR_stat"), @const("__NR_compat_stat"))
 }

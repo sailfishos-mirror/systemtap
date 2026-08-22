@@ -54,9 +54,9 @@
 	  set_ulong_arg(6, flags)
 %)
 
-probe syscall.process_vm_readv = dw_syscall.process_vm_readv !,
+probe syscall.process_vm_readv = tp_syscall.process_vm_readv !, dw_syscall.process_vm_readv !,
                                  nd_syscall.process_vm_readv ? {}
-probe syscall.process_vm_readv.return = dw_syscall.process_vm_readv.return !,
+probe syscall.process_vm_readv.return = tp_syscall.process_vm_readv.return !, dw_syscall.process_vm_readv.return !,
                                         nd_syscall.process_vm_readv.return ? {}
 
 # dw_process_vm_readv _____________________________________________________
@@ -109,8 +109,8 @@ probe nd2_syscall.process_vm_readv =
         %( @_IS_SREG_KERNEL %? @_SYSCALL_PROCESS_VM_READV_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.process_vm_readv = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.process_vm_readv = tp_syscall("process_vm_readv,~compat_process_vm_readv") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_process_vm_readv"), @const("__NR_compat_process_vm_readv"))
@@ -142,8 +142,8 @@ probe nd2_syscall.process_vm_readv.return =
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.process_vm_readv.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.process_vm_readv.return = tp_syscall("process_vm_readv,~compat_process_vm_readv").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_process_vm_readv"), @const("__NR_compat_process_vm_readv"))

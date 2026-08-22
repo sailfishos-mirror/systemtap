@@ -11,8 +11,8 @@
 	argstr = ""
 %)
 
-probe syscall.getpgrp = dw_syscall.getpgrp !, nd_syscall.getpgrp ? {}
-probe syscall.getpgrp.return = dw_syscall.getpgrp.return !, nd_syscall.getpgrp.return ? {}
+probe syscall.getpgrp = tp_syscall.getpgrp !, dw_syscall.getpgrp !, nd_syscall.getpgrp ? {}
+probe syscall.getpgrp.return = tp_syscall.getpgrp.return !, dw_syscall.getpgrp.return !, nd_syscall.getpgrp.return ? {}
 
 # dw_getpgrp _____________________________________________________
 
@@ -45,8 +45,8 @@ probe nd2_syscall.getpgrp = kprobe.function(@arch_syscall0_prefix "sys_getpgrp")
 	@_SYSCALL_GETPGRP_ARGSTR
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.getpgrp = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter") ?
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.getpgrp = tp_syscall("getpgrp,~compat_getpgrp") !, kernel.trace("sys_enter") ?
 {
 	@__syscall_compat_gate(@const("__NR_getpgrp"), @const("__NR_compat_getpgrp"))
 	@_SYSCALL_GETPGRP_NAME
@@ -69,8 +69,8 @@ probe nd2_syscall.getpgrp.return = kprobe.function(@arch_syscall0_prefix "sys_ge
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.getpgrp.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.getpgrp.return = tp_syscall("getpgrp,~compat_getpgrp").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_getpgrp"), @const("__NR_compat_getpgrp"))

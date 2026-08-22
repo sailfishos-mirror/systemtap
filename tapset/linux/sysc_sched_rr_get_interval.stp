@@ -28,9 +28,9 @@
 	  set_pointer_arg(2, tp_uaddr)
 %)
 
-probe syscall.sched_rr_get_interval = dw_syscall.sched_rr_get_interval !,
+probe syscall.sched_rr_get_interval = tp_syscall.sched_rr_get_interval !, dw_syscall.sched_rr_get_interval !,
                                       nd_syscall.sched_rr_get_interval ? {}
-probe syscall.sched_rr_get_interval.return = dw_syscall.sched_rr_get_interval.return !,
+probe syscall.sched_rr_get_interval.return = tp_syscall.sched_rr_get_interval.return !, dw_syscall.sched_rr_get_interval.return !,
                                              nd_syscall.sched_rr_get_interval.return ? {}
 
 # dw_sched_rr_get_interval _____________________________________________________
@@ -97,8 +97,8 @@ probe nd2_syscall.sched_rr_get_interval =
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SCHED_RR_GET_INTERVAL_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.sched_rr_get_interval = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.sched_rr_get_interval = tp_syscall("sched_rr_get_interval,~compat_sched_rr_get_interval") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_sched_rr_get_interval"), @const("__NR_compat_sched_rr_get_interval"))
@@ -136,8 +136,8 @@ probe nd2_syscall.sched_rr_get_interval.return =
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.sched_rr_get_interval.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.sched_rr_get_interval.return = tp_syscall("sched_rr_get_interval,~compat_sched_rr_get_interval").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_sched_rr_get_interval"), @const("__NR_compat_sched_rr_get_interval"))

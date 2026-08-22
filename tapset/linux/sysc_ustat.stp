@@ -27,8 +27,8 @@
 	  set_pointer_arg(2, ubuf_uaddr)
 %)
 
-probe syscall.ustat = dw_syscall.ustat !, nd_syscall.ustat ? {}
-probe syscall.ustat.return = dw_syscall.ustat.return !, nd_syscall.ustat.return ? {}
+probe syscall.ustat = tp_syscall.ustat !, dw_syscall.ustat !, nd_syscall.ustat ? {}
+probe syscall.ustat.return = tp_syscall.ustat.return !, dw_syscall.ustat.return !, nd_syscall.ustat.return ? {}
 
 # dw_ustat _____________________________________________________
 
@@ -70,8 +70,8 @@ probe nd2_syscall.ustat = kprobe.function(@arch_syscall_prefix "sys_ustat") ?
         %( @_IS_SREG_KERNEL %? @_SYSCALL_USTAT_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.ustat = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.ustat = tp_syscall("ustat") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_ustat"))
@@ -99,8 +99,8 @@ probe nd2_syscall.ustat.return = kprobe.function(@arch_syscall_prefix "sys_ustat
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.ustat.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.ustat.return = tp_syscall("ustat").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_ustat"))
@@ -112,8 +112,8 @@ probe tp_syscall.ustat.return = kernel.tracepoint("sys_exit")!, kernel.trace("sy
 # long compat_sys_ustat(unsigned dev, struct compat_ustat __user *u)
 #
 
-probe syscall.ustat32 = dw_syscall.ustat32 !, nd_syscall.ustat32 ? {}
-probe syscall.ustat32.return = dw_syscall.ustat32.return !,
+probe syscall.ustat32 = tp_syscall.ustat32 !, dw_syscall.ustat32 !, nd_syscall.ustat32 ? {}
+probe syscall.ustat32.return = tp_syscall.ustat32.return !, dw_syscall.ustat32.return !,
                                nd_syscall.ustat32.return ? {}
 
 # dw_ustat32 _____________________________________________________
@@ -168,8 +168,8 @@ probe nd2_syscall.ustat32 =
         %( @_IS_SREG_KERNEL %? @_SYSCALL_USTAT_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.ustat32 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.ustat32 = tp_syscall("~compat_ustat") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_ustat"))
@@ -199,8 +199,8 @@ probe nd2_syscall.ustat32.return =
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.ustat32.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.ustat32.return = tp_syscall("~compat_ustat").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_ustat"))

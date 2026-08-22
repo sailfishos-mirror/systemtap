@@ -46,8 +46,8 @@
 	  set_pointer_arg(4, rusage_uaddr)
 %)
 
-probe syscall.wait4 = dw_syscall.wait4 !, nd_syscall.wait4 ? {}
-probe syscall.wait4.return = dw_syscall.wait4.return !,
+probe syscall.wait4 = tp_syscall.wait4 !, dw_syscall.wait4 !, nd_syscall.wait4 ? {}
+probe syscall.wait4.return = tp_syscall.wait4.return !, dw_syscall.wait4.return !,
                              nd_syscall.wait4.return ? {}
 
 # dw_wait4 _____________________________________________________
@@ -127,7 +127,7 @@ probe nd2_syscall.wait4 = kprobe.function(@arch_syscall_prefix "sys_wait4") ?,
         %( @_IS_SREG_KERNEL %? @_SYSCALL_WAIT4_REGARGS_STORE %)
 }
 
-probe tp_syscall.wait4 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe tp_syscall.wait4 = tp_syscall("wait4,~compat_wait4") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_wait4"), @const("__NR_compat_wait4"))
@@ -185,7 +185,7 @@ probe nd2_syscall.wait4.return = kprobe.function(@arch_syscall_prefix "sys_wait4
 	@SYSC_RETVALSTR(returnval())
 }
 
-probe tp_syscall.wait4.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe tp_syscall.wait4.return = tp_syscall("wait4,~compat_wait4").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_wait4"), @const("__NR_compat_wait4"))

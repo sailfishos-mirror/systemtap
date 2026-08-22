@@ -23,8 +23,8 @@
           set_int_arg(1, inc)
 %)
 
-probe syscall.nice = dw_syscall.nice !, nd_syscall.nice ? {}
-probe syscall.nice.return = dw_syscall.nice.return !, nd_syscall.nice.return ? {}
+probe syscall.nice = tp_syscall.nice !, dw_syscall.nice !, nd_syscall.nice ? {}
+probe syscall.nice.return = tp_syscall.nice.return !, dw_syscall.nice.return !, nd_syscall.nice.return ? {}
 
 # dw_nice _____________________________________________________
 
@@ -65,8 +65,8 @@ probe nd2_syscall.nice = kprobe.function(@arch_syscall_prefix "sys_nice") ?
         %( @_IS_SREG_KERNEL %? @_SYSCALL_NICE_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.nice = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.nice = tp_syscall("nice,~compat_nice") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_nice"), @const("__NR_compat_nice"))
@@ -94,8 +94,8 @@ probe nd2_syscall.nice.return = kprobe.function(@arch_syscall_prefix "sys_nice")
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.nice.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.nice.return = tp_syscall("nice,~compat_nice").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_nice"), @const("__NR_compat_nice"))

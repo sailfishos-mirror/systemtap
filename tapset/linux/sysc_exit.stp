@@ -26,7 +26,7 @@
           set_int_arg(1, status)
 %)
 
-probe syscall.exit = dw_syscall.exit !, nd_syscall.exit {}
+probe syscall.exit = tp_syscall.exit !, dw_syscall.exit !, nd_syscall.exit {}
 
 probe syscall.exit.return = never
 {
@@ -81,8 +81,8 @@ probe nd2_syscall.exit = kprobe.function(@arch_syscall_prefix "sys_exit")
         %( @_IS_SREG_KERNEL %? @_SYSCALL_EXIT_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.exit = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.exit = tp_syscall("exit,~compat_exit") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_exit"), @const("__NR_compat_exit"))

@@ -5,8 +5,8 @@
 # SYSCALL_DEFINE2(pipe2, int __user *, fildes, int, flags)
 # pipe2() was added to Linux in version 2.6.27.
 
-probe syscall.pipe = dw_syscall.pipe !, nd_syscall.pipe ? {}
-probe syscall.pipe.return = dw_syscall.pipe.return !, nd_syscall.pipe.return ? {}
+probe syscall.pipe = tp_syscall.pipe !, dw_syscall.pipe !, nd_syscall.pipe ? {}
+probe syscall.pipe.return = tp_syscall.pipe.return !, dw_syscall.pipe.return !, nd_syscall.pipe.return ? {}
 
 # dw_pipe _____________________________________________________
 
@@ -242,11 +242,11 @@ probe __nd2_syscall.pipe = kprobe.function(@arch_syscall_prefix "sys_pipe")
 %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.pipe = __tp_syscall.pipe2 ?, __tp_syscall.pipe
 {
 }
-probe __tp_syscall.pipe2 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.pipe2 = tp_syscall("pipe2,~compat_pipe2") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_pipe2"), @const("__NR_compat_pipe2"))
@@ -274,7 +274,7 @@ probe __tp_syscall.pipe2 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_en
 %)
 }
 
-probe __tp_syscall.pipe = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.pipe = tp_syscall("pipe,~compat_pipe") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_pipe"), @const("__NR_compat_pipe"))
@@ -379,12 +379,12 @@ probe __nd2_syscall.pipe.return = kprobe.function(@arch_syscall_prefix "sys_pipe
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.pipe.return = __tp_syscall.pipe2.return ?,
                                __tp_syscall.pipe.return
 {
 }
-probe __tp_syscall.pipe2.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.pipe2.return = tp_syscall("pipe2,~compat_pipe2").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_pipe2"), @const("__NR_compat_pipe2"))
@@ -399,7 +399,7 @@ probe __tp_syscall.pipe2.return = kernel.tracepoint("sys_exit")!, kernel.trace("
 	}
 	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.pipe.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.pipe.return = tp_syscall("pipe,~compat_pipe").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_pipe"), @const("__NR_compat_pipe"))

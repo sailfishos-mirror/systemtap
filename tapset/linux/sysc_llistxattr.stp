@@ -36,8 +36,8 @@
 	  set_ulong_arg(3, size)
 %)
 
-probe syscall.llistxattr = dw_syscall.llistxattr !, nd_syscall.llistxattr ? {}
-probe syscall.llistxattr.return = dw_syscall.llistxattr.return !,
+probe syscall.llistxattr = tp_syscall.llistxattr !, dw_syscall.llistxattr !, nd_syscall.llistxattr ? {}
+probe syscall.llistxattr.return = tp_syscall.llistxattr.return !, dw_syscall.llistxattr.return !,
                                   nd_syscall.llistxattr.return ? {}
 
 # dw_llistxattr _____________________________________________________
@@ -82,8 +82,8 @@ probe nd2_syscall.llistxattr = kprobe.function(@arch_syscall_prefix "sys_llistxa
         %( @_IS_SREG_KERNEL %? @_SYSCALL_LLISTXATTR_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.llistxattr = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.llistxattr = tp_syscall("llistxattr,~compat_llistxattr") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_llistxattr"), @const("__NR_compat_llistxattr"))
@@ -111,8 +111,8 @@ probe nd2_syscall.llistxattr.return = kprobe.function(@arch_syscall_prefix "sys_
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.llistxattr.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.llistxattr.return = tp_syscall("llistxattr,~compat_llistxattr").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_llistxattr"), @const("__NR_compat_llistxattr"))

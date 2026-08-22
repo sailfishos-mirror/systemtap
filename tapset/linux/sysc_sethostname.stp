@@ -34,8 +34,8 @@
 	  set_int_arg(2, len)
 %)
 
-probe syscall.sethostname = dw_syscall.sethostname !, nd_syscall.sethostname ? {}
-probe syscall.sethostname.return = dw_syscall.sethostname.return !,
+probe syscall.sethostname = tp_syscall.sethostname !, dw_syscall.sethostname !, nd_syscall.sethostname ? {}
+probe syscall.sethostname.return = tp_syscall.sethostname.return !, dw_syscall.sethostname.return !,
                                    nd_syscall.sethostname.return ? {}
 
 # dw_sethostname _____________________________________________________
@@ -79,8 +79,8 @@ probe nd2_syscall.sethostname = kprobe.function(@arch_syscall_prefix "sys_sethos
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SETHOSTNAME_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.sethostname = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.sethostname = tp_syscall("sethostname,~compat_sethostname") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_sethostname"), @const("__NR_compat_sethostname"))
@@ -108,8 +108,8 @@ probe nd2_syscall.sethostname.return = kprobe.function(@arch_syscall_prefix "sys
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.sethostname.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.sethostname.return = tp_syscall("sethostname,~compat_sethostname").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_sethostname"), @const("__NR_compat_sethostname"))

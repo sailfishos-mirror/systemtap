@@ -39,8 +39,8 @@
 	  set_pointer_arg(4, old_rlim_uaddr)
 %)
 
-probe syscall.prlimit64 = dw_syscall.prlimit64 !, nd_syscall.prlimit64 ? {}
-probe syscall.prlimit64.return = dw_syscall.prlimit64.return !,
+probe syscall.prlimit64 = tp_syscall.prlimit64 !, dw_syscall.prlimit64 !, nd_syscall.prlimit64 ? {}
+probe syscall.prlimit64.return = tp_syscall.prlimit64.return !, dw_syscall.prlimit64.return !,
                                  nd_syscall.prlimit64.return ? {}
 
 # dw_prlimit64 _____________________________________________________
@@ -87,8 +87,8 @@ probe nd2_syscall.prlimit64 = kprobe.function(@arch_syscall_prefix "sys_prlimit6
         %( @_IS_SREG_KERNEL %? @_SYSCALL_PRLIMIT64_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.prlimit64 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.prlimit64 = tp_syscall("prlimit64,~compat_prlimit64") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_prlimit64"), @const("__NR_compat_prlimit64"))
@@ -116,8 +116,8 @@ probe nd2_syscall.prlimit64.return = kprobe.function(@arch_syscall_prefix "sys_p
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.prlimit64.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.prlimit64.return = tp_syscall("prlimit64,~compat_prlimit64").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_prlimit64"), @const("__NR_compat_prlimit64"))

@@ -43,8 +43,8 @@
 	  set_pointer_arg(5, timeout_addr)
 %)
 
-probe syscall.recvmmsg = dw_syscall.recvmmsg !, nd_syscall.recvmmsg ? {}
-probe syscall.recvmmsg.return = dw_syscall.recvmmsg.return !,
+probe syscall.recvmmsg = tp_syscall.recvmmsg !, dw_syscall.recvmmsg !, nd_syscall.recvmmsg ? {}
+probe syscall.recvmmsg.return = tp_syscall.recvmmsg.return !, dw_syscall.recvmmsg.return !,
                                 nd_syscall.recvmmsg.return ? {}
 
 # dw_recvmmsg _____________________________________________________
@@ -94,8 +94,8 @@ probe nd2_syscall.recvmmsg = kprobe.function(@arch_syscall_prefix "sys_recvmmsg"
         %( @_IS_SREG_KERNEL %? @_SYSCALL_RECVMMSG_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.recvmmsg = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.recvmmsg = tp_syscall("recvmmsg") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_recvmmsg"))
@@ -124,8 +124,8 @@ probe nd2_syscall.recvmmsg.return = kprobe.function(@arch_syscall_prefix "sys_re
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.recvmmsg.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.recvmmsg.return = tp_syscall("recvmmsg").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_recvmmsg"))
@@ -140,9 +140,9 @@ probe tp_syscall.recvmmsg.return = kernel.tracepoint("sys_exit")!, kernel.trace(
 #			   struct compat_timespec __user *timeout)
 #
 
-probe syscall.compat_recvmmsg = dw_syscall.compat_recvmmsg !,
+probe syscall.compat_recvmmsg = tp_syscall.compat_recvmmsg !, dw_syscall.compat_recvmmsg !,
                                  nd_syscall.compat_recvmmsg ? {}
-probe syscall.compat_recvmmsg.return = dw_syscall.compat_recvmmsg.return !,
+probe syscall.compat_recvmmsg.return = tp_syscall.compat_recvmmsg.return !, dw_syscall.compat_recvmmsg.return !,
                                        nd_syscall.compat_recvmmsg.return ? {}
 
 # dw_compat_recvmmsg _____________________________________________________
@@ -190,8 +190,8 @@ probe nd2_syscall.compat_recvmmsg = kprobe.function(@arch_syscall_prefix "compat
 	@_SYSCALL_RECVMMSG_ARGSTR
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_recvmmsg = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.compat_recvmmsg = tp_syscall("~compat_recvmmsg") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_recvmmsg"))
@@ -218,8 +218,8 @@ probe nd2_syscall.compat_recvmmsg.return = kprobe.function(@arch_syscall_prefix 
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_recvmmsg.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.compat_recvmmsg.return = tp_syscall("~compat_recvmmsg").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_recvmmsg"))

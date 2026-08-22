@@ -27,8 +27,8 @@
 	  set_int_arg(2, flags)
 %)
 
-probe syscall.membarrier = dw_syscall.membarrier !, nd_syscall.membarrier ? {}
-probe syscall.membarrier.return = dw_syscall.membarrier.return !,
+probe syscall.membarrier = tp_syscall.membarrier !, dw_syscall.membarrier !, nd_syscall.membarrier ? {}
+probe syscall.membarrier.return = tp_syscall.membarrier.return !, dw_syscall.membarrier.return !,
                                   nd_syscall.membarrier.return ? {}
 
 # dw_membarrier _____________________________________________________
@@ -72,8 +72,8 @@ probe nd2_syscall.membarrier = kprobe.function(@arch_syscall_prefix "sys_membarr
         %( @_IS_SREG_KERNEL %? @_SYSCALL_MEMBARRIER_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.membarrier = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.membarrier = tp_syscall("membarrier,~compat_membarrier") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_membarrier"), @const("__NR_compat_membarrier"))
@@ -101,8 +101,8 @@ probe nd2_syscall.membarrier.return = kprobe.function(@arch_syscall_prefix "sys_
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.membarrier.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.membarrier.return = tp_syscall("membarrier,~compat_membarrier").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_membarrier"), @const("__NR_compat_membarrier"))

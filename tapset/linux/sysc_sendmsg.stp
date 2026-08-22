@@ -49,8 +49,8 @@
 	flags_str = _msg_flags_str(flags)
 %)
 
-probe syscall.sendmsg = dw_syscall.sendmsg !, nd_syscall.sendmsg ? {}
-probe syscall.sendmsg.return = dw_syscall.sendmsg.return !,
+probe syscall.sendmsg = tp_syscall.sendmsg !, dw_syscall.sendmsg !, nd_syscall.sendmsg ? {}
+probe syscall.sendmsg.return = tp_syscall.sendmsg.return !, dw_syscall.sendmsg.return !,
                                nd_syscall.sendmsg.return ? {}
 
 # dw_sendmsg _____________________________________________________
@@ -165,7 +165,7 @@ probe __nd2_syscall.socketcall.sendmsg = kprobe.function(@arch_syscall_prefix "s
 	@_SYSCALL_SOCKETCALL_SENDMSG_REGARGS
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.sendmsg = __tp_syscall.sendmsg ?,
 	__tp_syscall.socketcall.sendmsg ?
 {
@@ -180,7 +180,7 @@ probe tp_syscall.sendmsg = __tp_syscall.sendmsg ?,
 	flags_str = _msg_flags_str(flags)
 	@_SYSCALL_SENDMSG_ARGSTR
 }
-probe __tp_syscall.sendmsg = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.sendmsg = tp_syscall("sendmsg") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_sendmsg"))
@@ -189,7 +189,7 @@ probe __tp_syscall.sendmsg = kernel.tracepoint("sys_enter")!, kernel.trace("sys_
 {
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SENDMSG_REGARGS_STORE %)
 }
-probe __tp_syscall.socketcall.sendmsg = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.socketcall.sendmsg = tp_syscall("socketcall") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_socketcall"))
@@ -245,7 +245,7 @@ probe __nd2_syscall.socketcall.sendmsg.return =
 	if (int_arg(1) != @const("SYS_SENDMSG")) next;
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.sendmsg.return = __tp_syscall.sendmsg.return ?,
 	__tp_syscall.socketcall.sendmsg.return ?
 {
@@ -259,11 +259,11 @@ probe tp_syscall.sendmsg.return = __tp_syscall.sendmsg.return ?,
 	@_SYSCALL_SENDMSG_NAME
 	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.sendmsg.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.sendmsg.return = tp_syscall("sendmsg").return !, kernel.trace("sys_exit")
 {
 	@__syscall_gate(@const("__NR_sendmsg"))
 }
-probe __tp_syscall.socketcall.sendmsg.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.socketcall.sendmsg.return = tp_syscall("socketcall").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_socketcall"))
@@ -284,9 +284,9 @@ probe __tp_syscall.socketcall.sendmsg.return = kernel.tracepoint("sys_exit")!, k
 # 'syscall.compat_sendmsg' or just merged with 'syscall.sendmsg'.
 #
 
-probe syscall.compat_sys_sendmsg = dw_syscall.compat_sys_sendmsg !,
+probe syscall.compat_sys_sendmsg = tp_syscall.compat_sys_sendmsg !, dw_syscall.compat_sys_sendmsg !,
                                    nd_syscall.compat_sys_sendmsg ? {}
-probe syscall.compat_sys_sendmsg.return = dw_syscall.compat_sys_sendmsg.return !,
+probe syscall.compat_sys_sendmsg.return = tp_syscall.compat_sys_sendmsg.return !, dw_syscall.compat_sys_sendmsg.return !,
                                           nd_syscall.compat_sys_sendmsg.return ? {}
 
 # dw_compat_sys_sendmsg _____________________________________________________
@@ -336,8 +336,8 @@ probe nd2_syscall.compat_sys_sendmsg =
 	@_SYSCALL_SENDMSG_ARGSTR
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_sys_sendmsg = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.compat_sys_sendmsg = tp_syscall("~compat_socketcall") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_socketcall"))
@@ -368,8 +368,8 @@ probe nd2_syscall.compat_sys_sendmsg.return =
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_sys_sendmsg.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.compat_sys_sendmsg.return = tp_syscall("~compat_socketcall").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_compat_socketcall"))

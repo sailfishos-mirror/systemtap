@@ -13,8 +13,8 @@
 	argstr = ""
 %)
 
-probe syscall.pause = dw_syscall.pause !, nd_syscall.pause ? {}
-probe syscall.pause.return = dw_syscall.pause.return !,
+probe syscall.pause = tp_syscall.pause !, dw_syscall.pause !, nd_syscall.pause ? {}
+probe syscall.pause.return = tp_syscall.pause.return !, dw_syscall.pause.return !,
                              nd_syscall.pause.return ? {}
 
 # dw_pause _____________________________________________________
@@ -54,8 +54,8 @@ probe nd2_syscall.pause = kprobe.function(@arch_syscall0_prefix "sys_pause") ?
 	@_SYSCALL_PAUSE_ARGSTR
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.pause = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter") ?
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.pause = tp_syscall("pause,~compat_pause") !, kernel.trace("sys_enter") ?
 {
 	@__syscall_compat_gate(@const("__NR_pause"), @const("__NR_compat_pause"))
 	@_SYSCALL_PAUSE_NAME
@@ -80,8 +80,8 @@ probe nd2_syscall.pause.return = kprobe.function(@arch_syscall0_prefix "sys_paus
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.pause.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.pause.return = tp_syscall("pause,~compat_pause").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_pause"), @const("__NR_compat_pause"))

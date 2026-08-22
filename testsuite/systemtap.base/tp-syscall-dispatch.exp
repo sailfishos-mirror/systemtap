@@ -1,0 +1,207 @@
+set test "tp-syscall-dispatch"
+
+# Translator: tp_syscall("read")+tp_syscall("write") must share one sys_enter
+# registration and emit a C switch on __NR_*, not two isolated next-gates.
+
+set script {probe tp_syscall("read") { printf("r\n") } probe tp_syscall("write") { printf("w\n") }}
+
+spawn stap -p2 -e $script
+set semerr 0
+expect {
+    -timeout 180
+    -re {semantic error} { incr semerr; exp_continue }
+    -re {^[^\r\n]*\r\n} { exp_continue }
+    timeout { fail "$test -p2 (timeout)"; return }
+    eof {}
+}
+catch {close}
+set wait_status [wait]
+set rc [lindex $wait_status 3]
+if { $semerr || $rc != 0 } {
+    fail "$test -p2 (rc=$rc semantic=$semerr)"
+    return
+}
+pass "$test -p2"
+
+# --compatible below 5.6: the new probe point is unrecognized (not a
+# "requires 5.6" error).  The tapset alias then uses kernel.trace.
+spawn stap --compatible=5.5 -p2 -e {probe tp_syscall("read") { }}
+set semerr55 0
+expect {
+    -timeout 120
+    -re {semantic error} { incr semerr55; exp_continue }
+    -re {^[^\r\n]*\r\n} { exp_continue }
+    timeout { fail "$test --compatible=5.5 (timeout)" }
+    eof {}
+}
+catch {close}
+set wait_status [wait]
+set rc55 [lindex $wait_status 3]
+if { $semerr55 && $rc55 != 0 } {
+    pass "$test --compatible=5.5 leaves tp_syscall(\"read\") unrecognized"
+} else {
+    fail "$test --compatible=5.5 should be a semantic error (rc=$rc55 semantic=$semerr55)"
+}
+
+spawn stap --compatible=5.5 -p2 -e {probe tp_syscall.read { }}
+set semerr_alias 0
+expect {
+    -timeout 180
+    -re {semantic error} { incr semerr_alias; exp_continue }
+    -re {^[^\r\n]*\r\n} { exp_continue }
+    timeout { fail "$test --compatible=5.5 alias (timeout)" }
+    eof {}
+}
+catch {close}
+set wait_status [wait]
+set rcalias [lindex $wait_status 3]
+if { $semerr_alias || $rcalias != 0 } {
+    fail "$test --compatible=5.5 tp_syscall.read fallback (rc=$rcalias semantic=$semerr_alias)"
+} else {
+    pass "$test --compatible=5.5 tp_syscall.read falls back to kernel.trace"
+}
+
+set errf [file join [pwd] tp-syscall-dispatch.err]
+if {[catch {exec stap -p3 -k -e $script > /dev/null 2> $errf} msg]} {
+    send_log "$msg\n"
+    # stap -p3 -k still writes the dir on success; treat only missing err as fail
+}
+set fh [open $errf r]
+set err [read $fh]
+close $fh
+send_log $err
+set dir ""
+if {![regexp {Keeping temporary directory "([^"]*)"} $err -> dir]} {
+    fail "$test -p3 (no tempdir, stap: $msg)"
+    return
+}
+
+set cfiles [glob -nocomplain $dir/*.c]
+set nswitch 0
+set nreg 0
+set nread 0
+set nwrite 0
+foreach f $cfiles {
+    set fh [open $f r]
+    set body [read $fh]
+    close $fh
+    incr nswitch [regexp -all {switch \(__stp_sc_nr\)} $body]
+    incr nreg [regexp -all {register_syscall_dispatch_} $body]
+    incr nread [regexp -all {case __NR_read} $body]
+    incr nwrite [regexp -all {case __NR_write} $body]
+}
+
+# One enter dispatcher (slot 0).  -p3 may leave aux + main copies of decls.
+if { $nswitch < 1 } {
+    fail "$test generated C missing switch (__stp_sc_nr) (n=$nswitch)"
+} else {
+    pass "$test generated C has syscall-nr dispatch"
+}
+if { $nread < 1 || $nwrite < 1 } {
+    fail "$test generated C missing case __NR_read/write (read=$nread write=$nwrite)"
+} else {
+    pass "$test generated C has case __NR_read and __NR_write"
+}
+
+# Unmarked "read" must not auto-add the compat table.
+set ncompatread 0
+foreach f $cfiles {
+    set fh [open $f r]
+    set body [read $fh]
+    close $fh
+    incr ncompatread [regexp -all {case __NR_compat_read} $body]
+}
+if { $ncompatread != 0 } {
+    fail "$test unmarked tp_syscall(\"read\") auto-added case __NR_compat_read (n=$ncompatread)"
+} else {
+    pass "$test unmarked tp_syscall(\"read\") is native-only"
+}
+
+# Explicit ~compat_read belongs on the compat-task switch.
+set f2 [file join [pwd] tp-syscall-dispatch-compat.stp]
+set fh [open $f2 w]
+puts $fh {probe tp_syscall("read,~compat_read") { printf("r\n") }}
+close $fh
+set errf2 [file join [pwd] tp-syscall-dispatch-compat.err]
+if {[catch {exec stap -p3 -k $f2 > /dev/null 2> $errf2} msg2]} {
+    send_log "$msg2\n"
+}
+set fh [open $errf2 r]
+set err2 [read $fh]
+close $fh
+send_log $err2
+set dir2 ""
+if {![regexp {Keeping temporary directory "([^"]*)"} $err2 -> dir2]} {
+    fail "$test tp_syscall(\"read,~compat_read\") -p3 (no tempdir, stap: $msg2)"
+} else {
+    set ncread 0
+    foreach f [glob -nocomplain $dir2/*.c] {
+        set fh [open $f r]
+        set body [read $fh]
+        close $fh
+        incr ncread [regexp -all {case __NR_compat_read} $body]
+    }
+    if { $ncread < 1 } {
+        fail "$test tp_syscall(\"read,~compat_read\") missing case __NR_compat_read (n=$ncread)"
+    } else {
+        pass "$test tp_syscall(\"read,~compat_read\") emits case __NR_compat_read"
+    }
+}
+catch {exec rm -rf $dir2 $errf2 $f2}
+
+# Explicit = alias: umount2=umount must guard duplicate cases.
+set f3 [file join [pwd] tp-syscall-dispatch-alias.stp]
+set fh [open $f3 w]
+puts $fh {probe tp_syscall("umount2=umount") { printf("a\n") }}
+puts $fh {probe tp_syscall("umount") { printf("b\n") }}
+close $fh
+set errf3 [file join [pwd] tp-syscall-dispatch-alias.err]
+if {[catch {exec stap -p3 -k $f3 > /dev/null 2> $errf3} msg3]} {
+    send_log "$msg3\n"
+}
+set fh [open $errf3 r]
+set err3 [read $fh]
+close $fh
+send_log $err3
+set dir3 ""
+if {![regexp {Keeping temporary directory "([^"]*)"} $err3 -> dir3]} {
+    fail "$test tp_syscall(\"umount2=umount\") -p3 (no tempdir, stap: $msg3)"
+} else {
+    set nalias 0
+    foreach f [glob -nocomplain $dir3/*.c] {
+        set fh [open $f r]
+        set body [read $fh]
+        close $fh
+        incr nalias [regexp -all {__NR_umount2 != __NR_umount|__NR_umount != __NR_umount2} $body]
+    }
+    if { $nalias < 1 } {
+        fail "$test tp_syscall(\"umount2=umount\") missing NR-alias uniqueness guard (n=$nalias)"
+    } else {
+        pass "$test tp_syscall(\"umount2=umount\") emits NR-alias uniqueness guard"
+    }
+}
+catch {exec rm -rf $dir3 $errf3 $f3}
+
+# Runtime (installcheck): one read should fire the dispatcher.
+if {![installtest_p]} {
+    untested "$test runtime"
+} else {
+    spawn stap -e {probe tp_syscall("read") { printf("hit\n"); exit() }} -c {cat /etc/hostname}
+    set hit 0
+    expect {
+	-timeout 60
+	-re {hit} { incr hit; exp_continue }
+	-re {semantic error} { exp_continue }
+	timeout { }
+	eof {}
+    }
+    catch {close}
+    set wait_status [wait]
+    if { $hit } {
+	pass "$test runtime cat hits tp_syscall(\"read\")"
+    } else {
+	fail "$test runtime cat hits tp_syscall(\"read\")"
+    }
+}
+
+catch {exec rm -rf $dir $errf}

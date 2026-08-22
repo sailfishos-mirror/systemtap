@@ -46,8 +46,8 @@
 	  set_int_arg(5, flags)
 %)
 
-probe syscall.linkat = dw_syscall.linkat !, nd_syscall.linkat ? {}
-probe syscall.linkat.return = dw_syscall.linkat.return !,
+probe syscall.linkat = tp_syscall.linkat !, dw_syscall.linkat !, nd_syscall.linkat ? {}
+probe syscall.linkat.return = tp_syscall.linkat.return !, dw_syscall.linkat.return !,
                               nd_syscall.linkat.return ? {}
 
 # dw_linkat _____________________________________________________
@@ -99,8 +99,8 @@ probe nd2_syscall.linkat = kprobe.function(@arch_syscall_prefix "sys_linkat") ?
         %( @_IS_SREG_KERNEL %? @_SYSCALL_LINKAT_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.linkat = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.linkat = tp_syscall("linkat,~compat_linkat") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_linkat"), @const("__NR_compat_linkat"))
@@ -129,8 +129,8 @@ probe nd2_syscall.linkat.return = kprobe.function(@arch_syscall_prefix "sys_link
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.linkat.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.linkat.return = tp_syscall("linkat,~compat_linkat").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_linkat"), @const("__NR_compat_linkat"))

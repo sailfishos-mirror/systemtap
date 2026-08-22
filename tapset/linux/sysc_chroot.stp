@@ -23,8 +23,8 @@
           set_user_string_arg(pointer_arg(1), path_unquoted)
 %)
 
-probe syscall.chroot = dw_syscall.chroot !, nd_syscall.chroot ? {}
-probe syscall.chroot.return = dw_syscall.chroot.return !, nd_syscall.chroot.return ? {}
+probe syscall.chroot = tp_syscall.chroot !, dw_syscall.chroot !, nd_syscall.chroot ? {}
+probe syscall.chroot.return = tp_syscall.chroot.return !, dw_syscall.chroot.return !, nd_syscall.chroot.return ? {}
 
 # dw_chroot _____________________________________________________
 
@@ -65,8 +65,8 @@ probe nd2_syscall.chroot = kprobe.function(@arch_syscall_prefix "sys_chroot") ?
         %( @_IS_SREG_KERNEL %? @_SYSCALL_CHROOT_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.chroot = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.chroot = tp_syscall("chroot,~compat_chroot") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_chroot"), @const("__NR_compat_chroot"))
@@ -94,8 +94,8 @@ probe nd2_syscall.chroot.return = kprobe.function(@arch_syscall_prefix "sys_chro
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.chroot.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.chroot.return = tp_syscall("chroot,~compat_chroot").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_chroot"), @const("__NR_compat_chroot"))

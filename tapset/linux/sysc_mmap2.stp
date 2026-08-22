@@ -38,8 +38,8 @@
 	  set_ulong_arg(6, pgoffset)
 %)
 
-probe syscall.mmap2 = dw_syscall.mmap2 !, nd_syscall.mmap2 ? {}
-probe syscall.mmap2.return = dw_syscall.mmap2.return !, nd_syscall.mmap2.return ? {}
+probe syscall.mmap2 = tp_syscall.mmap2 !, dw_syscall.mmap2 !, nd_syscall.mmap2 ? {}
+probe syscall.mmap2.return = tp_syscall.mmap2.return !, dw_syscall.mmap2.return !, nd_syscall.mmap2.return ? {}
 
 # dw_mmap2 _____________________________________________________
 
@@ -136,11 +136,11 @@ probe __nd2_syscall.mmap_pgoff = kprobe.function(@arch_syscall_prefix "sys_mmap_
         %( @_IS_SREG_KERNEL %? @_SYSCALL_MMAP2_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.mmap2 = __tp_syscall.mmap, __tp_syscall.mmap_pgoff
 {
 }
-probe __tp_syscall.mmap = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.mmap = tp_syscall("mmap") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_mmap"))
@@ -161,7 +161,7 @@ probe __tp_syscall.mmap = kernel.tracepoint("sys_enter")!, kernel.trace("sys_ent
 {
         %( @_IS_SREG_KERNEL %? @_SYSCALL_MMAP2_REGARGS_STORE %)
 }
-probe __tp_syscall.mmap_pgoff = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.mmap_pgoff = tp_syscall("mmap2,~compat_mmap2") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_mmap2"), @const("__NR_compat_mmap2"))
@@ -201,18 +201,18 @@ probe nd2_syscall.mmap2.return = kprobe.function(@arch_syscall_prefix "sys_mmap"
 	@SYSC_RETVALSTR2(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.mmap2.return = __tp_syscall.mmap.return, __tp_syscall.mmap_pgoff.return
 {
 }
-probe __tp_syscall.mmap.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.mmap.return = tp_syscall("mmap").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_mmap"))
 	@_SYSCALL_MMAP2_NAME
 	@SYSC_RETVALSTR2_TP
 }
-probe __tp_syscall.mmap_pgoff.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.mmap_pgoff.return = tp_syscall("mmap2,~compat_mmap2").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_mmap2"), @const("__NR_compat_mmap2"))

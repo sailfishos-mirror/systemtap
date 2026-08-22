@@ -76,8 +76,8 @@
 	addrlen_uaddr = user_uint32(&@uint_cast(__args)[5])
 %)
 
-probe syscall.recvfrom = dw_syscall.recvfrom !, nd_syscall.recvfrom ? {}
-probe syscall.recvfrom.return = dw_syscall.recvfrom.return !,
+probe syscall.recvfrom = tp_syscall.recvfrom !, dw_syscall.recvfrom !, nd_syscall.recvfrom ? {}
+probe syscall.recvfrom.return = tp_syscall.recvfrom.return !, dw_syscall.recvfrom.return !,
                                 nd_syscall.recvfrom.return ? {}
 
 # dw_recvfrom _____________________________________________________
@@ -201,7 +201,7 @@ probe __nd2_syscall.compat_socketcall.recvfrom =
 	@_SYSCALL_COMPAT_SOCKETCALL_RECVFROM_REGARGS
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.recvfrom = __tp_syscall.recvfrom ?,
 	__tp_syscall.socketcall.recvfrom ?
 {
@@ -209,7 +209,7 @@ probe tp_syscall.recvfrom = __tp_syscall.recvfrom ?,
 	flags_str = _msg_flags_str(flags)
 	@_SYSCALL_RECVFROM_ARGSTR
 }
-probe __tp_syscall.recvfrom = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.recvfrom = tp_syscall("recvfrom") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_recvfrom"))
@@ -219,7 +219,7 @@ probe __tp_syscall.recvfrom = kernel.tracepoint("sys_enter")!, kernel.trace("sys
         %( @_IS_SREG_KERNEL %? @_SYSCALL_RECVFROM_REGARGS_STORE %)
 }
 
-probe __tp_syscall.socketcall.recvfrom = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.socketcall.recvfrom = tp_syscall("socketcall,~compat_socketcall") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_socketcall"), @const("__NR_compat_socketcall"))
@@ -268,18 +268,18 @@ probe __nd2_syscall.socketcall.recvfrom.return =
 	if (int_arg(1) != @const("SYS_RECVFROM")) next;
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.recvfrom.return = __tp_syscall.recvfrom.return ?,
 	__tp_syscall.socketcall.recvfrom.return ?
 {
 	@_SYSCALL_RECVFROM_NAME
 	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.recvfrom.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.recvfrom.return = tp_syscall("recvfrom").return !, kernel.trace("sys_exit")
 {
 	@__syscall_gate(@const("__NR_recvfrom"))
 }
-probe __tp_syscall.socketcall.recvfrom.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.socketcall.recvfrom.return = tp_syscall("socketcall,~compat_socketcall").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_socketcall"), @const("__NR_compat_socketcall"))

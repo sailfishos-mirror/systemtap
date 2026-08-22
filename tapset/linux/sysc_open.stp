@@ -37,8 +37,8 @@
 	  set_uint_arg(3, mode)
 %)
 
-probe syscall.open = dw_syscall.open !, nd_syscall.open ? {}
-probe syscall.open.return = dw_syscall.open.return !, nd_syscall.open.return ? {}
+probe syscall.open = tp_syscall.open !, dw_syscall.open !, nd_syscall.open ? {}
+probe syscall.open.return = tp_syscall.open.return !, dw_syscall.open.return !, nd_syscall.open.return ? {}
 
 # dw_open _____________________________________________________
 #
@@ -144,8 +144,8 @@ probe nd2_syscall.open = kprobe.function(@arch_syscall_prefix "compat_sys_open")
         %( @_IS_SREG_KERNEL %? @_SYSCALL_OPEN_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because of it affects all syscalls */
-probe tp_syscall.open = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter dispatcher (tp_syscall("open")), else kernel.trace fallback. */
+probe tp_syscall.open = tp_syscall("open,~compat_open") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_open"), @const("__NR_compat_open"))
@@ -177,8 +177,8 @@ probe nd2_syscall.open.return = kprobe.function(@arch_syscall_prefix "compat_sys
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because of it affects all syscalls */
-probe tp_syscall.open.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_exit dispatcher (tp_syscall("open").return), else kernel.trace fallback. */
+probe tp_syscall.open.return = tp_syscall("open,~compat_open").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_open"), @const("__NR_compat_open"))

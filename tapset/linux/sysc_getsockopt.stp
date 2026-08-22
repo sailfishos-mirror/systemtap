@@ -64,8 +64,8 @@
 	optlen_uaddr = user_uint32(&@uint_cast(__args)[4])
 %)
 
-probe syscall.getsockopt = dw_syscall.getsockopt !, nd_syscall.getsockopt ? {}
-probe syscall.getsockopt.return = dw_syscall.getsockopt.return !,
+probe syscall.getsockopt = tp_syscall.getsockopt !, dw_syscall.getsockopt !, nd_syscall.getsockopt ? {}
+probe syscall.getsockopt.return = tp_syscall.getsockopt.return !, dw_syscall.getsockopt.return !,
                                   nd_syscall.getsockopt.return ? {}
 
 # dw_getsockopt _____________________________________________________
@@ -191,7 +191,7 @@ probe __nd2_syscall.compat_socketcall.getsockopt =
 	@_SYSCALL_COMPAT_SOCKETCALL_GETSOCKOPT_REGARGS
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.getsockopt = __tp_syscall.getsockopt ?,
 	__tp_syscall.socketcall.getsockopt ?
 {
@@ -200,7 +200,7 @@ probe tp_syscall.getsockopt = __tp_syscall.getsockopt ?,
 	optname_str = _sockopt_optname_str(optname)
 	@_SYSCALL_GETSOCKOPT_ARGSTR
 }
-probe __tp_syscall.getsockopt = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.getsockopt = tp_syscall("getsockopt") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_gate(@const("__NR_getsockopt"))
@@ -209,7 +209,7 @@ probe __tp_syscall.getsockopt = kernel.tracepoint("sys_enter")!, kernel.trace("s
 {
         @_SYSCALL_GETSOCKOPT_REGARGS_STORE
 }
-probe __tp_syscall.socketcall.getsockopt = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.socketcall.getsockopt = tp_syscall("socketcall,~compat_socketcall") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_socketcall"), @const("__NR_compat_socketcall"))
@@ -259,18 +259,18 @@ probe __nd2_syscall.socketcall.getsockopt.return =
 	if (int_arg(1) != @const("SYS_GETSOCKOPT")) next;
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.getsockopt.return = __tp_syscall.getsockopt.return ?,
 	__tp_syscall.socketcall.getsockopt.return ?
 {
 	@_SYSCALL_GETSOCKOPT_NAME
 	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.getsockopt.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.getsockopt.return = tp_syscall("getsockopt").return !, kernel.trace("sys_exit")
 {
 	@__syscall_gate(@const("__NR_getsockopt"))
 }
-probe __tp_syscall.socketcall.getsockopt.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.socketcall.getsockopt.return = tp_syscall("socketcall,~compat_socketcall").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_socketcall"), @const("__NR_compat_socketcall"))

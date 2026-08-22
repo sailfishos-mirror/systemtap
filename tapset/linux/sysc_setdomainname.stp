@@ -43,9 +43,9 @@
 	  set_int_arg(2, len)
 %)
 
-probe syscall.setdomainname = dw_syscall.setdomainname !,
+probe syscall.setdomainname = tp_syscall.setdomainname !, dw_syscall.setdomainname !,
                               nd_syscall.setdomainname ? {}
-probe syscall.setdomainname.return = dw_syscall.setdomainname.return !,
+probe syscall.setdomainname.return = tp_syscall.setdomainname.return !, dw_syscall.setdomainname.return !,
                                      nd_syscall.setdomainname.return ? {}
 
 # dw_setdomainname _____________________________________________________
@@ -92,8 +92,8 @@ probe nd2_syscall.setdomainname = kprobe.function(@arch_syscall_prefix "sys_setd
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SETDOMAINNAME_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.setdomainname = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.setdomainname = tp_syscall("setdomainname,~compat_setdomainname") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_setdomainname"), @const("__NR_compat_setdomainname"))
@@ -121,8 +121,8 @@ probe nd2_syscall.setdomainname.return = kprobe.function(@arch_syscall_prefix "s
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.setdomainname.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.setdomainname.return = tp_syscall("setdomainname,~compat_setdomainname").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_setdomainname"), @const("__NR_compat_setdomainname"))

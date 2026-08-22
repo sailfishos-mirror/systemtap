@@ -55,9 +55,9 @@
 	advice_str = _fadvice_advice_str(advice)
 %)
 
-probe syscall.compat_fadvise64 = dw_syscall.compat_fadvise64 !,
+probe syscall.compat_fadvise64 = tp_syscall.compat_fadvise64 !, dw_syscall.compat_fadvise64 !,
                                  nd_syscall.compat_fadvise64 ? {}
-probe syscall.compat_fadvise64.return = dw_syscall.compat_fadvise64.return !,
+probe syscall.compat_fadvise64.return = tp_syscall.compat_fadvise64.return !, dw_syscall.compat_fadvise64.return !,
                                         nd_syscall.compat_fadvise64.return ? {}
 
 # dw_compat_fadvise64 _____________________________________________________
@@ -100,8 +100,8 @@ probe nd1_syscall.compat_fadvise64 = kprobe.function("sys32_fadvise64") ?,
 	@_SYSCALL_COMPAT_FADVISE64_ARGSTR
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_fadvise64 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.compat_fadvise64 = tp_syscall("~fadvise64") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_fadvise64"))
@@ -121,8 +121,8 @@ probe nd1_syscall.compat_fadvise64.return =
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_fadvise64.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.compat_fadvise64.return = tp_syscall("~fadvise64").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_fadvise64"))
@@ -141,9 +141,9 @@ probe tp_syscall.compat_fadvise64.return = kernel.tracepoint("sys_exit")!, kerne
 #	int advice;
 #};
 
-probe syscall.compat_fadvise64_64 = dw_syscall.compat_fadvise64_64 !,
+probe syscall.compat_fadvise64_64 = tp_syscall.compat_fadvise64_64 !, dw_syscall.compat_fadvise64_64 !,
                                     nd_syscall.compat_fadvise64_64 ? {}
-probe syscall.compat_fadvise64_64.return = dw_syscall.compat_fadvise64_64.return !,
+probe syscall.compat_fadvise64_64.return = tp_syscall.compat_fadvise64_64.return !, dw_syscall.compat_fadvise64_64.return !,
                                            nd_syscall.compat_fadvise64_64.return ? {}
 
 # dw_compat_fadvise64_64 _____________________________________________________
@@ -181,8 +181,8 @@ probe nd1_syscall.compat_fadvise64_64 = kprobe.function("sys32_fadvise64_64") ?,
 	@_SYSCALL_COMPAT_FADVISE64_ARGSTR
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_fadvise64_64 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.compat_fadvise64_64 = tp_syscall("~fadvise64_64") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_fadvise64_64"))
@@ -202,8 +202,8 @@ probe nd1_syscall.compat_fadvise64_64.return =
 	@SYSC_RETVALSTR(returnval())
 }
  
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.compat_fadvise64_64.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.compat_fadvise64_64.return = tp_syscall("~fadvise64_64").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__compat_syscall_gate(@const("__NR_fadvise64_64"))

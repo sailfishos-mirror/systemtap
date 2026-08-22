@@ -14,8 +14,8 @@
 	argstr = ""
 %)
 
-probe syscall.getegid = dw_syscall.getegid !, nd_syscall.getegid ? {}
-probe syscall.getegid.return = dw_syscall.getegid.return !,
+probe syscall.getegid = tp_syscall.getegid !, dw_syscall.getegid !, nd_syscall.getegid ? {}
+probe syscall.getegid.return = tp_syscall.getegid.return !, dw_syscall.getegid.return !,
                                nd_syscall.getegid.return ? {}
 
 # dw_getegid _____________________________________________________
@@ -65,17 +65,17 @@ probe nd2_syscall.getegid = kprobe.function(@arch_syscall0_prefix "sys_getegid")
 	@_SYSCALL_GETEGID_ARGSTR
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.getegid = __tp_syscall.getegid, __tp_syscall.getegid16
 {
 	@_SYSCALL_GETEGID_NAME
 	@_SYSCALL_GETEGID_ARGSTR
 }
-probe __tp_syscall.getegid = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.getegid = tp_syscall("getegid,~compat_getegid32") !, kernel.trace("sys_enter")
 {
 	@__syscall_compat_gate(@const("__NR_getegid"), @const("__NR_compat_getegid32"))
 }
-probe __tp_syscall.getegid16 = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+probe __tp_syscall.getegid16 = tp_syscall("~compat_getegid") !, kernel.trace("sys_enter")
 {
 	@__compat_syscall_gate(@const("__NR_compat_getegid"))
 }
@@ -103,18 +103,18 @@ probe nd2_syscall.getegid.return =
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
 probe tp_syscall.getegid.return = __tp_syscall.getegid.return, __tp_syscall.getegid16.return
 {
 	@__set_syscall_pt_regs
 	@_SYSCALL_GETEGID_NAME
 	@SYSC_RETVALSTR_TP
 }
-probe __tp_syscall.getegid.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.getegid.return = tp_syscall("getegid,~compat_getegid32").return !, kernel.trace("sys_exit")
 {
 	@__syscall_compat_gate(@const("__NR_getegid"), @const("__NR_compat_getegid32"))
 }
-probe __tp_syscall.getegid16.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+probe __tp_syscall.getegid16.return = tp_syscall("~compat_getegid").return !, kernel.trace("sys_exit")
 {
 	@__compat_syscall_gate(@const("__NR_compat_getegid"))
 }

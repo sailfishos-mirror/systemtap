@@ -24,8 +24,8 @@
           set_pointer_arg(1, set)
 %)
 
-probe syscall.sigpending = dw_syscall.sigpending !, nd_syscall.sigpending ? {}
-probe syscall.sigpending.return = dw_syscall.sigpending.return !,
+probe syscall.sigpending = tp_syscall.sigpending !, dw_syscall.sigpending !, nd_syscall.sigpending ? {}
+probe syscall.sigpending.return = tp_syscall.sigpending.return !, dw_syscall.sigpending.return !,
                                   nd_syscall.sigpending.return ? {}
 
 # dw_sigpending _____________________________________________________
@@ -88,8 +88,8 @@ probe nd2_syscall.sigpending =
         %( @_IS_SREG_KERNEL %? @_SYSCALL_SIGPENDING_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.sigpending = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.sigpending = tp_syscall("sigpending,~compat_sigpending") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_sigpending"), @const("__NR_compat_sigpending"))
@@ -124,8 +124,8 @@ probe nd2_syscall.sigpending.return =
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.sigpending.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.sigpending.return = tp_syscall("sigpending,~compat_sigpending").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_sigpending"), @const("__NR_compat_sigpending"))

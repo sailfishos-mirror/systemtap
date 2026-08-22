@@ -35,8 +35,8 @@
 	  set_ulong_arg(3, count)
 %)
 
-probe syscall.write = dw_syscall.write !, nd_syscall.write ? {}
-probe syscall.write.return = dw_syscall.write.return !, nd_syscall.write.return ? {}
+probe syscall.write = tp_syscall.write !, dw_syscall.write !, nd_syscall.write ? {}
+probe syscall.write.return = tp_syscall.write.return !, dw_syscall.write.return !, nd_syscall.write.return ? {}
 
 # dw_write _____________________________________________________
 
@@ -116,8 +116,8 @@ probe nd2_syscall.write = kprobe.function(@arch_syscall_prefix "sys_write")
         %( @_IS_SREG_KERNEL %? @_SYSCALL_WRITE_REGARGS_STORE %)
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.write = kernel.tracepoint("sys_enter")!, kernel.trace("sys_enter")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.write = tp_syscall("write,~compat_write") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_write"), @const("__NR_compat_write"))
@@ -157,8 +157,8 @@ probe nd2_syscall.write.return = kprobe.function(@arch_syscall_prefix "sys_write
 	@SYSC_RETVALSTR(returnval())
 }
 
-/* kernel 3.5+, but undesirable because it affects all syscalls */
-probe tp_syscall.write.return = kernel.tracepoint("sys_exit")!, kernel.trace("sys_exit")
+/* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
+probe tp_syscall.write.return = tp_syscall("write,~compat_write").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@__syscall_compat_gate(@const("__NR_write"), @const("__NR_compat_write"))
