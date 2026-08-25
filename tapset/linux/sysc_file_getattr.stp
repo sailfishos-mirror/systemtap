@@ -119,7 +119,7 @@ probe nd2_syscall.file_getattr = kprobe.function(@arch_syscall_prefix "__do_sys_
 }
 
 /* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
-probe tp_syscall.file_getattr = tp_syscall("file_getattr") !, kernel.trace("sys_enter")
+probe tp_syscall.file_getattr = tp_syscall("file_getattr,~compat_file_getattr") !, kernel.trace("sys_enter")
 {
         # Old kernels not having this define __NR_file_getattr work too because in that case we
         # define __NR_file_getattr (__NR_syscall_max + 1) in runtime/linux/compat_unistd.h
@@ -149,7 +149,7 @@ probe nd1_syscall.file_getattr.return = kprobe.function("__do_sys_file_getattr")
 # }
 
 /* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
-probe tp_syscall.file_getattr.return = tp_syscall("file_getattr").return !, kernel.trace("sys_exit")
+probe tp_syscall.file_getattr.return = tp_syscall("file_getattr,~compat_file_getattr").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
 	@_SYSCALL_FILE_GETATTR_NAME

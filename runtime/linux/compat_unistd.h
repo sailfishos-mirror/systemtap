@@ -684,6 +684,15 @@
 #ifndef __NR_ia32_fgetxattr
 #define __NR_ia32_fgetxattr 231
 #endif
+// Generic syscall table (x86 32/64 share NRs from 424).  Alias ia32 to
+// the native token so old kernels whose dummy __NR_* is
+// (__NR_syscall_max+1) also elide the compat case.
+#ifndef __NR_ia32_file_getattr
+#define __NR_ia32_file_getattr __NR_file_getattr
+#endif
+#ifndef __NR_ia32_file_setattr
+#define __NR_ia32_file_setattr __NR_file_setattr
+#endif
 #ifndef __NR_ia32_finit_module
 #define __NR_ia32_finit_module 350
 #endif
@@ -922,6 +931,12 @@
 #endif
 #ifndef __NR_ia32_lsetxattr
 #define __NR_ia32_lsetxattr 227
+#endif
+#ifndef __NR_ia32_lsm_get_self_attr
+#define __NR_ia32_lsm_get_self_attr __NR_lsm_get_self_attr
+#endif
+#ifndef __NR_ia32_lsm_set_self_attr
+#define __NR_ia32_lsm_set_self_attr __NR_lsm_set_self_attr
 #endif
 #ifndef __NR_ia32_lstat
 #define __NR_ia32_lstat 107
@@ -1589,6 +1604,8 @@
 #define __NR_compat_fcntl64		__NR_ia32_fcntl64
 #define __NR_compat_fdatasync		__NR_ia32_fdatasync
 #define __NR_compat_fgetxattr		__NR_ia32_fgetxattr
+#define __NR_compat_file_getattr	__NR_ia32_file_getattr
+#define __NR_compat_file_setattr	__NR_ia32_file_setattr
 #define __NR_compat_finit_module	__NR_ia32_finit_module
 #define __NR_compat_flistxattr		__NR_ia32_flistxattr
 #define __NR_compat_flock		__NR_ia32_flock
@@ -1667,6 +1684,8 @@
 #define __NR_compat_lremovexattr	__NR_ia32_lremovexattr
 #define __NR_compat_lseek		__NR_ia32_lseek
 #define __NR_compat_lsetxattr		__NR_ia32_lsetxattr
+#define __NR_compat_lsm_get_self_attr	__NR_ia32_lsm_get_self_attr
+#define __NR_compat_lsm_set_self_attr	__NR_ia32_lsm_set_self_attr
 #define __NR_compat_lstat		__NR_ia32_lstat
 #define __NR_compat_lstat64		__NR_ia32_lstat64
 #define __NR_compat_madvise		__NR_ia32_madvise
@@ -1940,6 +1959,8 @@
 #define __NR_compat_fcntl64		__NR_fcntl64
 #define __NR_compat_fdatasync		__NR_fdatasync
 #define __NR_compat_fgetxattr		__NR_fgetxattr
+#define __NR_compat_file_getattr	__NR_file_getattr
+#define __NR_compat_file_setattr	__NR_file_setattr
 #define __NR_compat_finit_module	__NR_finit_module
 #define __NR_compat_flistxattr		__NR_flistxattr
 #define __NR_compat_flock		__NR_flock
@@ -2020,6 +2041,8 @@
 #define __NR_compat_lremovexattr	__NR_lremovexattr
 #define __NR_compat_lseek		__NR_lseek
 #define __NR_compat_lsetxattr		__NR_lsetxattr
+#define __NR_compat_lsm_get_self_attr	__NR_lsm_get_self_attr
+#define __NR_compat_lsm_set_self_attr	__NR_lsm_set_self_attr
 #define __NR_compat_lstat		__NR_lstat
 #define __NR_compat_lstat64		__NR_lstat64
 #define __NR_compat_madvise		__NR_madvise

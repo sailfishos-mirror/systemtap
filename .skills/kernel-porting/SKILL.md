@@ -5,8 +5,9 @@ description: >-
   kernel versions using STAPCONF autoconf probes, exportconf, and script-level
   fallbacks. Use when adapting to a new kernel, fixing buildok/semok failures
   from API or struct drift, adding runtime/linux/autoconf-*.c probes, replacing
-  KERNEL_VERSION checks, or debugging module compile errors against kernel
-  headers.
+  KERNEL_VERSION checks, debugging module compile errors against kernel
+  headers, or adding syscalls (compat_unistd.h __NR_* / __NR_ia32_* /
+  __NR_compat_* and tp_syscall("foo,~compat_foo")).
 ---
 
 # Kernel porting (SystemTap runtime)
@@ -133,6 +134,49 @@ Examples: `STAPCONF_FILES_LOOKUP_FD_RAW`, `STAPCONF_DO_SOCK_GETSOCKOPT`,
 - After changing translator, tapsets, runtime, or helper binaries used by
   installcheck, run `make install` so `$prefix` stays consistent. Do not
   `cp` isolated files into the install tree.
+
+### New syscalls (`compat_unistd.h` / `tp_syscall`)
+
+`runtime/linux/compat_unistd.h` is the syscall-number portability layer
+for generated dispatcher C, not a STAPCONF probe.  When the kernel adds
+a syscall, grow **all three** tables and the tapset together:
+
+1. Dummy `__NR_foo (__NR_syscall_max + 1)` at the top so old kernels
+   compile.  The dispatcher wraps each `case` in
+   `#if (__NR_foo != (__NR_syscall_max + 1))`.
+2. x86_64: `__NR_ia32_foo` from `unistd_32.h`.  For the **generic
+   table** (x86 32 and 64 share NRs from 424), alias
+   `__NR_ia32_foo` to `__NR_foo` rather than a copied integer — the
+   dummy native then elides the compat `case` on old kernels too.
+   Hardcoding the new number leaves the compat arm live for a value
+   that was never a syscall there.
+3. x86_64: `#define __NR_compat_foo __NR_ia32_foo`.
+4. ppc64 / s390x / aarch64: `#define __NR_compat_foo __NR_foo`
+   (32-on-64 often shares the native number).  Skipping this list
+   makes `~compat_foo` `#ifdef`-skip on those arches.
+5. Tapset: `tp_syscall("foo,~compat_foo")`, matching `memfd_secret`
+   / `faccessat2`.  Unmarked names are **native-only**; `~` selects
+   the compat-task switch (`_stp_is_compat_task()`).  There is no
+   automatic `compat_` / `ia32_` rewrite in the translator.
+
+Do **not** use `"foo,~foo"` when a `compat_` token exists.  Do **not**
+list `"foo,~foo,~compat_foo"` on one probe: both `~` tokens land in
+the same switch, and equal NRs become duplicate `case` labels (the
+uniqueness guard only coalesces explicit `=` aliases).  `~fadvise64`
+(native token on the compat switch) is the escape hatch when there
+is no `compat_` name.
+
+Generated C must `#include "syscall.h"` **before**
+`linux/compat_unistd.h`.  The reverse order defines dummy
+`__NR_open` etc., then kernel `unistd_*.h` redefines them; RHEL8
+kbuild `-Werror` fails.  Fedora often already had unistd, so it hid
+the bug.
+
+The old `kernel.trace("sys_enter")` fallback with
+`@__syscall_nr_gate` compared NR only and therefore fired for
+compat tasks when 32- and 64-bit shared a number.  The dispatcher
+does not; missing `__NR_compat_foo` is a silent 32-bit miss, not a
+compile error.
 
 ## Script / tapset side (when buildok is not "just C")
 

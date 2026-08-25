@@ -268,6 +268,44 @@ if {![regexp {Keeping temporary directory "([^"]*)"} $erre -> dire]} {
 }
 catch {exec rm -rf $dire $errfe $fentry}
 
+# Generic-table same NR: ~compat_file_getattr (compat_unistd aliases
+# __NR_compat_file_getattr to __NR_file_getattr / ia32).
+set f4 [file join [pwd] tp-syscall-dispatch-same-nr.stp]
+set fh [open $f4 w]
+puts $fh {probe tp_syscall("file_getattr,~compat_file_getattr") { printf("g\n") }}
+close $fh
+set errf4 [file join [pwd] tp-syscall-dispatch-same-nr.err]
+if {[catch {exec stap -p3 -k $f4 > /dev/null 2> $errf4} msg4]} {
+    send_log "$msg4\n"
+}
+set fh [open $errf4 r]
+set err4 [read $fh]
+close $fh
+send_log $err4
+set dir4 ""
+if {![regexp {Keeping temporary directory "([^"]*)"} $err4 -> dir4]} {
+    fail "$test tp_syscall(\"file_getattr,~compat_file_getattr\") -p3 (no tempdir, stap: $msg4)"
+} else {
+    set nfg 0
+    set ncfg 0
+    foreach f [glob -nocomplain $dir4/*.c] {
+	set fh [open $f r]
+	set body [read $fh]
+	close $fh
+	incr nfg [regexp -all {case __NR_file_getattr} $body]
+	incr ncfg [regexp -all {case __NR_compat_file_getattr} $body]
+    }
+    # Native switch plus compat switch (both elided if the sentinel is used).
+    if { $nfg < 1 } {
+	fail "$test tp_syscall(\"file_getattr,~compat_file_getattr\") missing case __NR_file_getattr (n=$nfg)"
+    } elseif { $ncfg < 1 } {
+	fail "$test tp_syscall(\"file_getattr,~compat_file_getattr\") missing case __NR_compat_file_getattr (n=$ncfg)"
+    } else {
+	pass "$test tp_syscall(\"file_getattr,~compat_file_getattr\") emits native and compat cases"
+    }
+}
+catch {exec rm -rf $dir4 $errf4 $f4}
+
 # Runtime (installcheck): one read should fire the dispatcher.
 if {![installtest_p]} {
     untested "$test runtime"
