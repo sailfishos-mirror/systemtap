@@ -13072,6 +13072,7 @@ struct tracepoint_var_expanding_visitor: public var_expanding_visitor
   void visit_target_symbol (target_symbol* e);
   void visit_target_symbol_arg (target_symbol* e);
   void visit_target_symbol_context (target_symbol* e);
+  void visit_entry_op (entry_op* e);
 };
 
 
@@ -13258,6 +13259,16 @@ tracepoint_var_expanding_visitor::visit_target_symbol_context (target_symbol* e)
   else
     assert(0); // shouldn't get here
 }
+
+void
+tracepoint_var_expanding_visitor::visit_entry_op (entry_op* e)
+{
+  // Leave @entry intact so the operand is not expanded as a sys_exit
+  // $arg.  tp_syscall("...").return rewrites it into a synthetic
+  // sys_enter sibling; other tracepoints still fail type resolution.
+  provide (e);
+}
+
 
 void
 tracepoint_var_expanding_visitor::visit_target_symbol (target_symbol* e)
@@ -16816,6 +16827,37 @@ struct syscall_dispatch_builder: public derived_probe_builder
   virtual string name() { return "syscall dispatch builder"; }
 };
 
+static const btf_tracepoint_meta *
+syscall_dispatch_btf_hook (systemtap_session& s, const string& want,
+                           probe_point *location)
+{
+  const vector<btf_tracepoint_meta>& catalog = get_btf_tracepoint_catalog(s);
+  for (size_t i = 0; i < catalog.size(); i++)
+    if (catalog[i].hook_name == want)
+      return &catalog[i];
+  throw SEMANTIC_ERROR (_F("tp_syscall() cannot find kernel.tracepoint(\"%s\") "
+                           "in vmlinux.h BTF catalog", want.c_str()),
+                        location->components[0]->tok);
+}
+
+// Rewrite @entry() on tp_syscall("...").return into the same mapped
+// save that kretprobes use, then a synthetic sys_enter sibling.
+struct syscall_dispatch_entry_expanding_visitor: public var_expanding_visitor
+{
+  block *add_block;
+  block *add_call_probe;
+  bool add_block_tid, add_call_probe_tid;
+  syscall_dispatch_entry_expanding_visitor(systemtap_session& sess):
+    var_expanding_visitor(sess), add_block(NULL), add_call_probe(NULL),
+    add_block_tid(false), add_call_probe_tid(false) {}
+  void visit_entry_op (entry_op* e)
+  {
+    provide (gen_mapped_saved_return (sess, e->operand, "entry",
+                                      add_block, add_block_tid,
+                                      add_call_probe, add_call_probe_tid));
+  }
+};
+
 vector<derived_probe*>
 syscall_dispatch_builder::build(systemtap_session& s,
                                 probe *base, probe_point *location,
@@ -16842,24 +16884,36 @@ syscall_dispatch_builder::build(systemtap_session& s,
 
   const bool is_return = has_null_param (parameters, TOK_RETURN);
   const string want = is_return ? "sys_exit" : "sys_enter";
+  const btf_tracepoint_meta *meta = syscall_dispatch_btf_hook (s, want, location);
 
-  const vector<btf_tracepoint_meta>& catalog = get_btf_tracepoint_catalog(s);
-  const btf_tracepoint_meta *meta = NULL;
-  for (size_t i = 0; i < catalog.size(); i++)
-    if (catalog[i].hook_name == want)
-      {
-        meta = &catalog[i];
-        break;
-      }
-  if (!meta)
-    throw SEMANTIC_ERROR (_F("tp_syscall() cannot find kernel.tracepoint(\"%s\") "
-                             "in vmlinux.h BTF catalog", want.c_str()),
-                          location->components[0]->tok);
-
-  finished_results.push_back (
+  syscall_dispatch_derived_probe *dp =
     new syscall_dispatch_derived_probe (s, *dw, meta->hook_name, meta->btf_name,
                                         meta->declare_trace_hook, syscall_name,
-                                        is_return, base, location));
+                                        is_return, base, location);
+
+  if (is_return)
+    {
+      syscall_dispatch_entry_expanding_visitor v (s);
+      var_expand_const_fold_loop (s, dp->body, v);
+      if (v.add_block)
+        dp->body = new block(v.add_block, dp->body);
+      if (v.add_call_probe)
+        {
+          const btf_tracepoint_meta *enter_meta
+            = syscall_dispatch_btf_hook (s, "sys_enter", location);
+          save_and_restore<statement*> tmp_body (&base->body, v.add_call_probe);
+          syscall_dispatch_derived_probe *entry =
+            new syscall_dispatch_derived_probe (s, *dw, enter_meta->hook_name,
+                                                enter_meta->btf_name,
+                                                enter_meta->declare_trace_hook,
+                                                syscall_name, false,
+                                                base, location);
+          entry->synthetic = true;
+          finished_results.push_back (entry);
+        }
+    }
+
+  finished_results.push_back (dp);
   return finished_results;
 }
 

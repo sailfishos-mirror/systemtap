@@ -182,9 +182,69 @@ if {![regexp {Keeping temporary directory "([^"]*)"} $err3 -> dir3]} {
 }
 catch {exec rm -rf $dir3 $errf3 $f3}
 
+# @entry() on .return: must not die as "only valid in .return probes".
+set fentry [file join [pwd] tp-syscall-dispatch-entry.stp]
+set fh [open $fentry w]
+puts $fh {probe tp_syscall("read").return { printf("%d\n", @entry(42)); }}
+close $fh
+spawn stap -p2 $fentry
+set semerr_entry 0
+expect {
+    -timeout 180
+    -re {semantic error} { incr semerr_entry; exp_continue }
+    -re {@entry is only valid} { incr semerr_entry; exp_continue }
+    -re {^[^\r\n]*\r\n} { exp_continue }
+    timeout { fail "$test @entry -p2 (timeout)" }
+    eof {}
+}
+catch {close}
+set wait_status [wait]
+set rcentry [lindex $wait_status 3]
+if { $semerr_entry || $rcentry != 0 } {
+    fail "$test @entry on tp_syscall(\"read\").return -p2 (rc=$rcentry semantic=$semerr_entry)"
+} else {
+    pass "$test @entry on tp_syscall(\"read\").return -p2"
+}
+
+set errfe [file join [pwd] tp-syscall-dispatch-entry.err]
+if {[catch {exec stap -p3 -k $fentry > /dev/null 2> $errfe} msge]} {
+    send_log "$msge\n"
+}
+set fh [open $errfe r]
+set erre [read $fh]
+close $fh
+send_log $erre
+set dire ""
+if {![regexp {Keeping temporary directory "([^"]*)"} $erre -> dire]} {
+    fail "$test @entry -p3 (no tempdir)"
+} else {
+    set nentry 0
+    set nreg_e 0
+    foreach f [glob -nocomplain $dire/*.c] {
+	set fh [open $f r]
+	set body [read $fh]
+	close $fh
+	incr nentry [regexp -all {__global_entry_tvar_} $body]
+	incr nreg_e [regexp -all {register_syscall_dispatch_} $body]
+    }
+    if { $nentry < 1 } {
+	fail "$test @entry generated C missing entry-value map (n=$nentry)"
+    } else {
+	pass "$test @entry generated C has entry-value map"
+    }
+    # Synthetic sys_enter plus the .return sys_exit.
+    if { $nreg_e < 2 } {
+	fail "$test @entry generated C missing enter+exit registrations (n=$nreg_e)"
+    } else {
+	pass "$test @entry generated C registers sys_enter and sys_exit"
+    }
+}
+catch {exec rm -rf $dire $errfe $fentry}
+
 # Runtime (installcheck): one read should fire the dispatcher.
 if {![installtest_p]} {
     untested "$test runtime"
+    untested "$test runtime @entry"
 } else {
     spawn stap -e {probe tp_syscall("read") { printf("hit\n"); exit() }} -c {cat /etc/hostname}
     set hit 0
@@ -201,6 +261,24 @@ if {![installtest_p]} {
 	pass "$test runtime cat hits tp_syscall(\"read\")"
     } else {
 	fail "$test runtime cat hits tp_syscall(\"read\")"
+    }
+
+    spawn stap -e {probe tp_syscall("read").return { printf("entry %d\n", @entry(42)); exit() }} -c {cat /etc/hostname}
+    set entryhit 0
+    expect {
+	-timeout 60
+	-re {entry 42} { incr entryhit; exp_continue }
+	-re {semantic error} { exp_continue }
+	-re {@entry is only valid} { exp_continue }
+	timeout { }
+	eof {}
+    }
+    catch {close}
+    set wait_status [wait]
+    if { $entryhit } {
+	pass "$test runtime @entry(42) on tp_syscall(\"read\").return"
+    } else {
+	fail "$test runtime @entry(42) on tp_syscall(\"read\").return"
     }
 }
 

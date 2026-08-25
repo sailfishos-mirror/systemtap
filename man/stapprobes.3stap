@@ -1565,6 +1565,13 @@ probes in one script share a single tracepoint registration instead of
 N isolated
 .BR next
 filters concatenated by probe combining.
+.B tp_syscall("name").return
+supports
+.BR @entry()
+the same way as kretprobes: a synthetic
+.B tp_syscall("name")
+sibling records the operand at
+.BR sys_enter .
 
 Tapset aliases such as
 .BR tp_syscall.read
