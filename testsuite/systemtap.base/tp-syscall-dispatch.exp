@@ -182,6 +182,33 @@ if {![regexp {Keeping temporary directory "([^"]*)"} $err3 -> dir3]} {
 }
 catch {exec rm -rf $dir3 $errf3 $f3}
 
+# Include order: syscall.h (real __NR_*) before compat_unistd.h sentinels.
+set saw_syscall_h 0
+set saw_compat_first 0
+foreach f $cfiles {
+    set fh [open $f r]
+    set body [read $fh]
+    close $fh
+    set i1 [string first {#include "syscall.h"} $body]
+    set i2 [string first {#include "linux/compat_unistd.h"} $body]
+    if {$i1 >= 0 && $i2 >= 0 && $i1 < $i2} {
+	incr saw_syscall_h
+    }
+    if {$i1 >= 0 && $i2 >= 0 && $i2 < $i1} {
+	incr saw_compat_first
+    }
+}
+if { $saw_syscall_h < 1 } {
+    fail "$test generated C includes syscall.h before compat_unistd.h"
+} else {
+    pass "$test generated C includes syscall.h before compat_unistd.h"
+}
+if { $saw_compat_first != 0 } {
+    fail "$test generated C still includes compat_unistd.h before syscall.h"
+} else {
+    pass "$test generated C does not include compat_unistd.h before syscall.h"
+}
+
 # @entry() on .return: must not die as "only valid in .return probes".
 set fentry [file join [pwd] tp-syscall-dispatch-entry.stp]
 set fh [open $fentry w]

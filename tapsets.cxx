@@ -15349,14 +15349,17 @@ emit_syscall_dispatcher (systemtap_session& s,
           break;
         }
 
+  // syscall.h / unistd_*.h first so real __NR_* exist; then
+  // compat_unistd.h fills only the missing ones with sentinels.
+  // The reverse order redefines __NR_open etc. (-Werror on RHEL8).
   translator_output *tpop = s.op_create_auxiliary ();
   tpop->newline () << "#include <linux/stp_tracepoint.h>" << endl;
-  tpop->newline () << "#include \"linux/compat_unistd.h\"" << endl;
   tpop->newline () << "#include \"syscall.h\"" << endl;
+  tpop->newline () << "#include \"linux/compat_unistd.h\"" << endl;
 
+  s.op->newline () << "#include \"syscall.h\"";
   s.op->newline () << "#include \"linux/compat_unistd.h\"";
   s.op->newline () << "#include \"compatdefs.h\"";
-  s.op->newline () << "#include \"syscall.h\"";
 
   map<syscall_dispatch_derived_probe*, string> run_fn;
   for (unsigned i = 0; i < dprobes.size (); ++i)
