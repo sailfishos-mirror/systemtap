@@ -233,7 +233,7 @@ BuildRequires: readline-devel
 BuildRequires: python3-devel
 BuildRequires: python3-setuptools
 BuildRequires: python3-pip
-BuildRequires: python3-wheel
+BuildRequires: (python3-wheel if python3-setuptools < 70.1)
 %endif
 
 %if %{with_httpd}
