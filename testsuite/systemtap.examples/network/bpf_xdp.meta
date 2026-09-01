@@ -1,0 +1,10 @@
+title: Count Incoming Packets Per Protocol via XDP
+name: bpf_xdp.stp
+keywords: network xdp bpf
+subsystem: network
+description: Decode the ethertype of incoming packets using an XDP program
+  attached to loopback, accumulate per-protocol packet and byte counts, print
+  the sorted table shortly after, while passing packets to the network stack.
+test_support: stap --runtime=bpf -p4 bpf_xdp.stp
+test_check: stap --runtime=bpf -p4 bpf_xdp.stp
+test_installcheck: stap --runtime=bpf bpf_xdp.stp -T 3

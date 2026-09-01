@@ -70,6 +70,7 @@ struct profile_derived_probe_group;
 struct tracepoint_derived_probe_group;
 struct syscall_dispatch_derived_probe_group;
 struct lsm_derived_probe_group;
+struct xdp_derived_probe_group;
 struct hrtimer_derived_probe_group;
 struct procfs_derived_probe_group;
 struct dynprobe_derived_probe_group;
@@ -420,6 +421,7 @@ public:
   tracepoint_derived_probe_group* tracepoint_derived_probes;
   syscall_dispatch_derived_probe_group* syscall_dispatch_derived_probes;
   lsm_derived_probe_group* lsm_derived_probes;
+  xdp_derived_probe_group* xdp_derived_probes;
   hrtimer_derived_probe_group* hrtimer_derived_probes;
   procfs_derived_probe_group* procfs_derived_probes;
   dynprobe_derived_probe_group* dynprobe_derived_probes;

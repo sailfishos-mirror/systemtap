@@ -1032,6 +1032,14 @@ keywords: network nfs
   # stap autofs4.stp -T 1
 
 
+network/bpf_xdp.stp - Count Incoming Packets Per Protocol via XDP
+keywords: network xdp bpf
+
+  Decode the ethertype of incoming packets using an XDP program
+
+  # stap --runtime=bpf bpf_xdp.stp -T 3
+
+
 network/connect_stat.stp - Show Process Ancestry for IP Connections
 keywords: network socket process
 

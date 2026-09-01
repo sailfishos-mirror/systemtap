@@ -906,6 +906,11 @@ AC_CHECK_DECLS([BPF_PROG_TYPE_LSM],
                [],
                [#include <linux/bpf.h>])
 
+AC_CHECK_DECLS([BPF_PROG_TYPE_XDP],
+               [AC_DEFINE([HAVE_BPF_PROG_TYPE_XDP], [1], [Define to 1 if you have BPF XDP support in bpf.h])],
+               [],
+               [#include <linux/bpf.h>])
+
 dnl Optional libbpf support for LSM hook BTF ID resolution
 AC_ARG_WITH([libbpf],
   AS_HELP_STRING([--without-libbpf],

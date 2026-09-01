@@ -38,6 +38,7 @@
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
+#include <net/if.h>
 #include <sys/mman.h>
 #include <sys/utsname.h>
 #include <sys/resource.h>
@@ -49,6 +50,8 @@
 extern "C" {
 #include <linux/bpf.h>
 #include <linux/perf_event.h>
+#include <linux/netlink.h>
+#include <linux/rtnetlink.h>
 /* Introduced in 4.1. */
 #ifndef PERF_EVENT_IOC_SET_BPF
 #define PERF_EVENT_IOC_SET_BPF _IOW('$', 8, __u32)
@@ -77,6 +80,14 @@ extern "C" {
 #endif
 #ifndef BPF_LINK_CREATE
 #define BPF_LINK_CREATE ((enum bpf_cmd)28)
+#endif
+/* XDP support introduced in kernel 4.8; attach enum value matches headers
+   listing CGROUP_INET_INGRESS first (same convention as BPF_LSM_MAC=27). */
+#ifndef BPF_PROG_TYPE_XDP
+#define BPF_PROG_TYPE_XDP ((enum bpf_prog_type)6)
+#endif
+#ifndef BPF_XDP
+#define BPF_XDP ((enum bpf_attach_type)37)
 #endif
 
 using namespace std;
@@ -285,6 +296,18 @@ struct lsm_data
   { }
 };
 
+struct xdp_data
+{
+  std::string ifaces;  // comma-separated interface names; empty = all up interfaces
+  int prog_fd;
+  std::vector<int> link_fds;     // BPF links keep attachments alive (kernel 5.9+)
+  std::vector<unsigned> rt_ifs;  // ifindexes attached via rtnetlink fallback
+
+  xdp_data(std::string ifs, int fd)
+    : ifaces(ifs), prog_fd(fd)
+  { }
+};
+
 static std::vector<procfsprobe_data> procfsprobes;
 static std::vector<kprobe_data> kprobes;
 static std::vector<timer_data> timers;
@@ -293,6 +316,7 @@ static std::vector<trace_data> tracepoint_probes;
 static std::vector<trace_data> raw_tracepoint_probes;
 static std::vector<uprobe_data> uprobes;
 static std::vector<lsm_data> lsm_probes;
+static std::vector<xdp_data> xdp_probes;
 
 // TODO: Move fatal() to bpfinterp.h and replace abort() calls in the interpreter.
 // TODO: Add warn() option.
@@ -542,6 +566,10 @@ prog_load(Elf_Data *data, const char *name)
 #if defined(HAVE_BPF_PROG_TYPE_LSM) && defined(HAVE_LIBBPF)
   else if (strncmp(name, "lsm", 3) == 0)
     prog_type = BPF_PROG_TYPE_LSM;
+#endif
+#ifdef HAVE_BPF_PROG_TYPE_XDP
+  else if (strncmp(name, "xdp", 3) == 0)
+    prog_type = BPF_PROG_TYPE_XDP;
 #endif
   else
     fatal("unhandled program type for section \"%s\"\n", name);
@@ -875,6 +903,25 @@ collect_lsm(const char *name, unsigned name_idx, unsigned fd_idx)
     fatal("probe %u section %u not loaded\n", name_idx, fd_idx);
 
   lsm_probes.push_back(lsm_data(lsm_hook, fd));
+}
+
+static void
+collect_xdp(const char *name, unsigned name_idx, unsigned fd_idx)
+{
+  char ifaces[512];
+
+  // Section names look like "xdp/ifname[,ifname...]"; a bare "xdp" section
+  // (empty list) means attach to every up interface.
+  const char *list = (strncmp(name, "xdp/", 4) == 0) ? name + 4 : name + 3;
+  int res = snprintf(ifaces, sizeof(ifaces), "%s", list);
+  if (res < 0 || res >= (int)sizeof(ifaces))
+    fatal("iface list too long in probe %u section %u\n", name_idx, fd_idx);
+
+  int fd = -1;
+  if (fd_idx >= prog_fds.size() || (fd = prog_fds[fd_idx]) < 0)
+    fatal("probe %u section %u not loaded\n", name_idx, fd_idx);
+
+  xdp_probes.push_back(xdp_data(ifaces, fd));
 }
 
 static void
@@ -1423,6 +1470,176 @@ unregister_timers(const size_t nprobes)
     close(timers[i].event_fd);
 }
 
+// Attach/detach an XDP program via rtnetlink (IFLA_XDP_FD). This is the
+// portable fallback for kernels that lack BPF_LINK_CREATE/BPF_XDP.
+static int
+xdp_rtnl_set(unsigned ifindex, int fd)
+{
+  char buf[256];
+  memset(buf, 0, sizeof(buf));
+
+  struct nlmsghdr *nlh = (struct nlmsghdr *)buf;
+  nlh->nlmsg_len = NLMSG_HDRLEN;
+  nlh->nlmsg_type = RTM_SETLINK;
+  nlh->nlmsg_flags = NLM_F_REQUEST;
+
+  struct ifinfomsg *ifi = (struct ifinfomsg *)NLMSG_DATA(nlh);
+  ifi->ifi_family = AF_UNSPEC;
+  ifi->ifi_index = (int)ifindex;
+  nlh->nlmsg_len = NLMSG_LENGTH(sizeof(*ifi));
+
+  // Nested IFLA_XDP { IFLA_XDP_FD } attributes.
+  struct rtattr *xds = (struct rtattr *)((char *)nlh
+                                         + NLMSG_ALIGN(nlh->nlmsg_len));
+  char *p = (char *)xds + RTA_ALIGN(sizeof(struct rtattr));
+  struct rtattr *rta = (struct rtattr *)p;
+  int fdval = fd;
+  rta->rta_type = IFLA_XDP_FD;
+  rta->rta_len = RTA_LENGTH(sizeof(fdval));
+  memcpy(RTA_DATA(rta), &fdval, sizeof(fdval));
+  p += RTA_ALIGN(RTA_LENGTH(sizeof(fdval)));
+  xds->rta_type = IFLA_XDP;
+  xds->rta_len = (unsigned short)(p - (char *)xds);
+  nlh->nlmsg_len += RTA_ALIGN(xds->rta_len);
+
+  struct sockaddr_nl sa;
+  memset(&sa, 0, sizeof(sa));
+  sa.nl_family = AF_NETLINK;
+
+  int sock = socket(AF_NETLINK, SOCK_RAW | SOCK_CLOEXEC, NETLINK_ROUTE);
+  if (sock < 0)
+    return -errno;
+
+  if (sendto(sock, buf, nlh->nlmsg_len, MSG_DONTWAIT,
+             (struct sockaddr *)&sa, sizeof(sa)) < 0)
+    {
+      int err = errno;
+      close(sock);
+      return -err;
+    }
+
+  // Drain the ack; an NLMSG_ERROR carries the real status.
+  char ack[256];
+  ssize_t n = recv(sock, ack, sizeof(ack), MSG_DONTWAIT);
+  close(sock);
+  if (n <= 0)
+    return 0;
+
+  struct nlmsghdr *ah = (struct nlmsghdr *)ack;
+  if (ah->nlmsg_type == NLMSG_ERROR)
+    return ((struct nlmsgerr *)NLMSG_DATA(ah))->error;
+  return 0;
+}
+
+static void
+unregister_xdp_probes(const size_t nprobes)
+{
+  for (size_t i = 0; i < nprobes; ++i)
+    {
+      xdp_data &x = xdp_probes[i];
+      for (size_t j = 0; j < x.link_fds.size(); ++j)
+        if (x.link_fds[j] >= 0)
+          close(x.link_fds[j]);
+      x.link_fds.clear();
+      for (size_t j = 0; j < x.rt_ifs.size(); ++j)
+        xdp_rtnl_set(x.rt_ifs[j], -1);
+      x.rt_ifs.clear();
+    }
+}
+
+static void
+register_xdp_probes()
+{
+  size_t nprobes = xdp_probes.size();
+  if (nprobes == 0)
+    return;
+
+#ifndef HAVE_BPF_PROG_TYPE_XDP
+  fprintf(stderr, "XDP probes unsupported on this kernel\n");
+  exit(1);
+#else
+  std::string failed_ifaces;
+
+  for (size_t i = 0; i < nprobes; ++i)
+    {
+      xdp_data &x = xdp_probes[i];
+
+      // Resolve the target interfaces: named list, or enumerate them all.
+      std::vector<std::string> names;
+      std::istringstream ifs(x.ifaces);
+      std::string name;
+      while (std::getline(ifs, name, ','))
+        if (!name.empty())
+          names.push_back(name);
+      if (names.empty())
+        {
+          struct if_nameindex *all = if_nameindex();
+          if (all == NULL)
+            fatal("error enumerating interfaces for XDP probe %zu: %s\n",
+                  i + 1, strerror(errno));
+          for (struct if_nameindex *ni = all; ni->if_index != 0 || ni->if_name != NULL; ni++)
+            names.push_back(ni->if_name);
+          if_freenameindex(all);
+        }
+
+      size_t attached = 0;
+      for (size_t j = 0; j < names.size(); ++j)
+        {
+          unsigned ifindex = if_nametoindex(names[j].c_str());
+          if (ifindex == 0)
+            {
+              fprintf(stderr, "Warning: XDP interface '%s' not found (%s)\n",
+                      names[j].c_str(), strerror(errno));
+              if (!failed_ifaces.empty())
+                failed_ifaces += ",";
+              failed_ifaces += names[j];
+              continue;
+            }
+
+          // Preferred: bounded BPF link (kernel 5.9+).
+          union bpf_attr attr;
+          memset(&attr, 0, sizeof(attr));
+          attr.link_create.prog_fd = x.prog_fd;
+          attr.link_create.attach_type = BPF_XDP;
+          attr.link_create.target_ifindex = ifindex;
+          int fd = syscall(__NR_bpf, BPF_LINK_CREATE, &attr, sizeof(attr));
+          if (fd >= 0)
+            {
+              x.link_fds.push_back(fd);
+              attached++;
+              continue;
+            }
+
+          // Older kernels: set the fd via rtnetlink instead.
+          if (xdp_rtnl_set(ifindex, x.prog_fd) == 0)
+            {
+              x.rt_ifs.push_back(ifindex);
+              attached++;
+              continue;
+            }
+
+          fprintf(stderr, "Error attaching XDP probe to '%s': %s\n",
+                  names[j].c_str(), strerror(errno));
+          if (!failed_ifaces.empty())
+            failed_ifaces += ",";
+          failed_ifaces += names[j];
+        }
+
+      if (attached == 0 && !names.empty())
+        goto fail;
+    }
+
+  if (!failed_ifaces.empty())
+    fprintf(stderr, "Warning: some interfaces missing for XDP probes (%s)\n",
+            failed_ifaces.c_str());
+  return;
+
+ fail:
+  unregister_xdp_probes(nprobes);
+  exit(1);
+#endif
+}
+
 static void
 register_timers()
 {
@@ -1935,6 +2152,8 @@ load_bpf_file(const char *module)
       collect_raw_tracepoint(sh_name[i], i, i);
     if (strncmp(sh_name[i], "lsm", 3) == 0)
       collect_lsm(sh_name[i], i, i);
+    if (strncmp(sh_name[i], "xdp", 3) == 0)
+      collect_xdp(sh_name[i], i, i);
     if (strncmp(sh_name[i], "perf", 4) == 0)
       collect_perf(sh_name[i], i, i);
     if (strncmp(sh_name[i], "timer", 5) == 0)
@@ -2445,6 +2664,7 @@ main(int argc, char **argv)
   register_tracepoints();
   register_raw_tracepoints();
   register_lsm_probes();
+  register_xdp_probes();
   register_perf();
 
   // Run the begin probes.
@@ -2503,6 +2723,7 @@ main(int argc, char **argv)
   unregister_tracepoints(tracepoint_probes.size());
   unregister_raw_tracepoints(raw_tracepoint_probes.size());
   unregister_lsm_probes(lsm_probes.size());
+  unregister_xdp_probes(xdp_probes.size());
 
   // Clean procfs-like probe files.
   procfs_cleanup();

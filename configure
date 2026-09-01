@@ -10537,8 +10537,8 @@ fi
 if test "${enable_glibcxx_debug}" = "yes" -a "${with_dyninst}" != "no"
 then :
 
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: --enable-glibcxx-debug forces --without-dyninst (ABI incompatibility with pre-compiled Dyninst libraries)" >&5
-printf "%s\n" "$as_me: --enable-glibcxx-debug forces --without-dyninst (ABI incompatibility with pre-compiled Dyninst libraries)" >&6;}
+  { printf '%s\n' "$as_me:${as_lineno-$LINENO}: --enable-glibcxx-debug forces --without-dyninst (ABI incompatibility with pre-compiled Dyninst libraries)" >&5
+printf '%s\n' "$as_me: --enable-glibcxx-debug forces --without-dyninst (ABI incompatibility with pre-compiled Dyninst libraries)" >&6;}
   with_dyninst=no
 
 fi
@@ -14324,6 +14324,24 @@ if test $ac_have_decl = 1
 then :
 
 printf '%s\n' "#define HAVE_BPF_PROG_TYPE_LSM 1" >>confdefs.h
+
+fi
+
+
+ac_fn_check_decl "$LINENO" "BPF_PROG_TYPE_XDP" "ac_cv_have_decl_BPF_PROG_TYPE_XDP" "#include <linux/bpf.h>
+" "$ac_c_undeclared_builtin_options$ac_c_future_darwin_options" "CFLAGS"
+if test "x$ac_cv_have_decl_BPF_PROG_TYPE_XDP" = xyes
+then :
+  ac_have_decl=1
+else case e in #(
+  e) ac_have_decl=0 ;;
+esac
+fi
+printf '%s\n' "#define HAVE_DECL_BPF_PROG_TYPE_XDP $ac_have_decl" >>confdefs.h
+if test $ac_have_decl = 1
+then :
+
+printf '%s\n' "#define HAVE_BPF_PROG_TYPE_XDP 1" >>confdefs.h
 
 fi
 

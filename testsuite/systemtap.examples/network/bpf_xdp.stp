@@ -1,0 +1,26 @@
+#!/usr/bin/env stap
+
+# bpf_xdp.stp - a tiny XDP packet decoder.
+#
+# Decodes the ethertype of each incoming frame, counts packets per
+# protocol, and lets traffic through with XDP_PASS.
+# Example run:  stap --runtime=bpf bpf_xdp.stp -T 5
+
+global seen, total
+
+probe xdp /* every interface */ {
+  # Decode the ethernet header from the raw xdp_md context.
+  eth = @cast($ctx, "xdp_md", "kernel")->data
+  proto = @cast(eth, "ethhdr", "kernel")->h_proto
+  # Ethertype is big-endian on the wire; normalize for map indexing.
+  proto = ((proto & 0xff) << 8) | (proto >> 8 & 0xff)
+  seen[proto]++
+  total++
+
+  # Counting demo only: always forward the frame to the network stack.
+  $return = XDP_PASS
+}
+
+probe timer.ms(1500) {
+  printf("%d total: ipv4 %d arp %d ipv6 %d\n", total, seen[2048], seen[2054], seen[34525])
+}

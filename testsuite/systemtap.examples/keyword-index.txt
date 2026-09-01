@@ -436,6 +436,14 @@ keywords: memory bpf
   # stap mmwriteback.stp -T 1
 
 
+network/bpf_xdp.stp - Count Incoming Packets Per Protocol via XDP
+keywords: network xdp bpf
+
+  Decode the ethertype of incoming packets using an XDP program
+
+  # stap --runtime=bpf bpf_xdp.stp -T 3
+
+
 network/sk_stream_wait_memory.stp - Track Start and Stop of Processes Due to Network Buffer Space
 keywords: network tcp process bpf
 
@@ -2008,6 +2016,14 @@ keywords: network nfs
   filesystems.
 
   # stap autofs4.stp -T 1
+
+
+network/bpf_xdp.stp - Count Incoming Packets Per Protocol via XDP
+keywords: network xdp bpf
+
+  Decode the ethertype of incoming packets using an XDP program
+
+  # stap --runtime=bpf bpf_xdp.stp -T 3
 
 
 network/connect_stat.stp - Show Process Ancestry for IP Connections
@@ -4560,5 +4576,15 @@ keywords: memory watchpoint
   breakpoint hardware.
 
   # stap --all-modules hw_watch_sym.stp vm_dirty_ratio -T 5
+
+
+= XDP =
+
+network/bpf_xdp.stp - Count Incoming Packets Per Protocol via XDP
+keywords: network xdp bpf
+
+  Decode the ethertype of incoming packets using an XDP program
+
+  # stap --runtime=bpf bpf_xdp.stp -T 3
 
 

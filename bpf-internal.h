@@ -365,6 +365,10 @@ struct program
 {
   enum bpf_target target;
 
+  // XDP-type programs cannot call bpf_probe_read & friends; loads from
+  // ctx-derived pointers have to be direct loads instead.
+  bool xdp_mode;
+
   std::vector<block *> blocks;	// All blocks in the program
   block *new_block();
 

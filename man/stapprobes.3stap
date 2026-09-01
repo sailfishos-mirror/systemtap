@@ -178,6 +178,7 @@ kernel.trace	process.statement.absolute
 kernel.tracepoint
 tp_syscall
 kernel.lsm
+kernel.xdp
 	process.begin, .end
 	netfilter
 	java
@@ -1699,6 +1700,66 @@ Memory mapping:
 See
 .I tapset/bpf/lsm.stp
 for a complete list of available hooks and their typed pointer variables.
+
+.SS XDP PACKET-PROCESSING PROBES
+
+These probe points attach eXpress Data Path (XDP) programs to network
+interfaces, so a script can inspect each incoming packet very early and
+pass, drop, or bounce it. Requires
+.BR CONFIG_BPF_SYSCALL=y
+and an interface whose driver supports XDP.
+
+XDP probes look like
+.BR kernel.xdp("eth0")
+or the shorter bare form
+.BR xdp("eth0") .
+Several interfaces may be listed, separated by commas:
+.BR xdp("eth0,eth1") .
+With no argument, the bare form attaches to every interface that is up.
+
+The probe context provides
+.BR $ctx ,
+a pointer to
+.BR struct\ xdp_md
+(access its fields with
+.BR @cast()
+in guru mode), and
+.BR $return ,
+the packet verdict written back to the driver. A script sets the verdict by
+assigning to
+.BR $return :
+.BR XDP_PASS
+passes the packet (the default),
+.BR XDP_DROP
+drops it,
+.BR XDP_TX
+bounces it back out the receiving port, and
+.BR XDP_REDIRECT
+hands it to a redirect map. These helper functions and their numeric
+counterparts (2, 1, 3, 4) are defined in
+.IR tapset/bpf/xdp.stp .
+
+Example uses:
+.PP
+.nf
+# Count incoming packets per ethernet protocol on one NIC
+global count, total
+probe xdp("eth0") {
+  eth = @cast($ctx, "xdp_md", "kernel")->data
+  proto = @cast(eth, "ethhdr", "kernel")->h_proto
+  proto = ((proto & 0xff) << 8) | (proto >> 8 & 0xff)
+  count[proto]++
+  total++
+  $return = XDP_PASS
+}
+
+# Report a few known protocols and quit
+probe timer.ms(5000) {
+  printf("%d total: ipv4 %d arp %d\\n", total, count[2048], count[2054])
+  exit()
+}
+.fi
+.PP
 
 .SS KERNEL MARKERS (OBSOLETE)
 

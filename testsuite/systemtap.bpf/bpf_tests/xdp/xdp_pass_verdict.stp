@@ -1,0 +1,26 @@
+#!/usr/bin/env stap
+
+# Verdict assignment test: explicitly pass packets through $return,
+# counting them.
+
+global rx = 0
+
+probe kernel.xdp("lo")
+{
+    rx++
+    $return = XDP_PASS
+}
+
+probe begin
+{
+    println("BEGIN")
+}
+
+probe timer.s(3)
+{
+    if (rx > 0)
+        println("END PASS")
+    else
+        println("END FAIL")
+    exit()
+}

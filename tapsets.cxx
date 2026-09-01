@@ -560,6 +560,7 @@ static const string TOK_TRACE("trace");
 static const string TOK_TRACEPOINT("tracepoint");
 static const string TOK_TP_SYSCALL("tp_syscall");
 static const string TOK_LSM("lsm");
+static const string TOK_XDP("xdp");
 static const string TOK_LABEL("label");
 static const string TOK_LIBRARY("library");
 static const string TOK_PLT("plt");
@@ -13060,6 +13061,33 @@ struct lsm_derived_probe_group: public generic_dpg<lsm_derived_probe>
 };
 
 
+struct xdp_derived_probe: public derived_probe
+{
+  xdp_derived_probe (systemtap_session& s,
+                     const string& iface_list,
+                     probe* base_probe, probe_point* location);
+
+  systemtap_session& sess;
+  string iface_list;
+
+  void getargs (std::list<std::string> &arg_set) const;
+  void join_group (systemtap_session& s);
+  void print_dupe_stamp(ostream& o);
+};
+
+
+struct xdp_derived_probe_group: public generic_dpg<xdp_derived_probe>
+{
+  friend bool sort_for_bpf(systemtap_session& s,
+                           xdp_derived_probe_group *x,
+                           sort_for_bpf_probe_arg_vector &v);
+
+  void emit_module_decls (systemtap_session& s);
+  void emit_module_init (systemtap_session& s);
+  void emit_module_exit (systemtap_session& s);
+};
+
+
 struct tracepoint_var_expanding_visitor: public var_expanding_visitor
 {
   tracepoint_var_expanding_visitor(dwflpp& dw,
@@ -14014,6 +14042,168 @@ lsm_derived_probe::getargs(std::list<std::string> &arg_set) const
   arg_set.push_back("$ctx:long");
   // LSM probes can set $return to control hook decision (0=allow, -errno=deny)
   arg_set.push_back("$return:long");
+}
+
+
+struct xdp_var_expanding_visitor: public var_expanding_visitor
+{
+  xdp_var_expanding_visitor(systemtap_session& s):
+    var_expanding_visitor (s) {}
+
+  void visit_target_symbol (target_symbol* e);
+};
+
+
+void
+xdp_var_expanding_visitor::visit_target_symbol (target_symbol* e)
+{
+  string argname = e->sym_name();
+
+  // Handle $ctx and $return - all other target symbols pass through to parent
+  if (argname == "ctx")
+    {
+      if (!e->components.empty())
+        throw SEMANTIC_ERROR(_("cannot dereference $ctx directly; use @cast($ctx, \"xdp_md\", \"kernel\") instead"), e->tok);
+
+      if (e->addressof)
+        throw SEMANTIC_ERROR(_("cannot take address of $ctx"), e->tok);
+
+      // Replace $ctx with reference to __xdp_arg_ctx
+      symbol* sym = new symbol;
+      sym->tok = e->tok;
+      sym->name = "__xdp_arg_ctx";
+      sym->type = pe_long;
+
+      provide (sym);
+    }
+  else if (argname == "return")
+    {
+      if (!e->components.empty())
+        throw SEMANTIC_ERROR(_("cannot dereference $return"), e->tok);
+
+      if (e->addressof)
+        throw SEMANTIC_ERROR(_("cannot take address of $return"), e->tok);
+
+      // Replace $return with reference to __xdp_return
+      symbol* sym = new symbol;
+      sym->tok = e->tok;
+      sym->name = "__xdp_return";
+      sym->type = pe_long;
+
+      provide (sym);
+    }
+  else
+    {
+      // Pass through to parent for other variables
+      provide (e);
+    }
+}
+
+
+xdp_derived_probe::xdp_derived_probe (systemtap_session& s,
+                                      const string& iface_list,
+                                      probe* base, probe_point* loc):
+  derived_probe (base, loc, true /* .components soon rewritten */), sess (s),
+  iface_list (iface_list)
+{
+  // create synthetic probe point name
+  vector<probe_point::component*> comps;
+  comps.push_back (new probe_point::component (TOK_KERNEL));
+  comps.push_back (new probe_point::component (TOK_XDP,
+                                               new literal_string(iface_list)));
+  this->sole_location()->components = comps;
+
+  // XDP probes are BPF-only
+  if (s.runtime_mode != systemtap_session::bpf_runtime)
+    throw SEMANTIC_ERROR (_("XDP probes require --runtime=bpf"), this->tok);
+
+  // For BPF runtime, create $ctx as a context variable
+  // $ctx is the raw pointer to struct xdp_md (offset 0 from context)
+  bpf_context_vardecl* v = new bpf_context_vardecl;
+  v->name = "__xdp_arg_ctx";
+  v->tok = this->tok;
+  v->set_arity(0, this->tok);
+  v->type = pe_long;
+  v->synthetic = true;
+  v->size = 8;  // pointer size
+  v->offset = 0;  // raw pointer, no offset
+  v->is_signed = false;
+
+  this->locals.push_back(v);
+
+  // Add $return as a writable XDP verdict variable
+  // Initialize to XDP_PASS (2) so packets pass unless a rule sets a verdict
+  bpf_context_vardecl* ret = new bpf_context_vardecl;
+  ret->name = "__xdp_return";
+  ret->tok = this->tok;
+  ret->set_arity(0, this->tok);
+  ret->type = pe_long;
+  ret->synthetic = true;
+  ret->size = 8;
+  ret->offset = 0;
+  ret->is_signed = true;
+
+  this->locals.push_back(ret);
+
+  // Expand $ctx and $return in the probe body
+  xdp_var_expanding_visitor xv (s);
+  var_expand_const_fold_loop (s, this->body, xv);
+}
+
+
+void
+xdp_derived_probe::join_group (systemtap_session& s)
+{
+  if (! s.xdp_derived_probes)
+    s.xdp_derived_probes = new xdp_derived_probe_group ();
+  s.xdp_derived_probes->enroll (this);
+  this->group = s.xdp_derived_probes;
+}
+
+
+void
+xdp_derived_probe::print_dupe_stamp(ostream& o)
+{
+  o << "xdp_" << iface_list << endl;
+}
+
+
+void
+xdp_derived_probe::getargs(std::list<std::string> &arg_set) const
+{
+  // XDP probes expose $ctx as the raw xdp_md pointer
+  // Tapset code can use @cast($ctx, "xdp_md", "kernel") to access fields
+  arg_set.push_back("$ctx:long");
+  // XDP probes can set $return to the packet verdict
+  // (0=aborted, 1=drop, 2=pass, 3=tx, 4=redirect)
+  arg_set.push_back("$return:long");
+}
+
+
+void
+xdp_derived_probe_group::emit_module_decls (systemtap_session& s)
+{
+  // XDP probes are BPF-only, no kernel module code needed
+  if (s.runtime_mode != systemtap_session::bpf_runtime)
+    return;
+}
+
+
+void
+xdp_derived_probe_group::emit_module_init (systemtap_session &s)
+{
+  // XDP probes are BPF-only, no kernel module code needed
+  if (s.runtime_mode != systemtap_session::bpf_runtime)
+    return;
+}
+
+
+void
+xdp_derived_probe_group::emit_module_exit (systemtap_session& s)
+{
+  // XDP probes are BPF-only, no kernel module code needed
+  if (s.runtime_mode != systemtap_session::bpf_runtime)
+    return;
 }
 
 
@@ -16706,6 +16896,27 @@ sort_for_bpf(systemtap_session& s __attribute__ ((unused)),
   return true;
 }
 
+bool
+sort_for_bpf(systemtap_session& s __attribute__ ((unused)),
+             xdp_derived_probe_group *x,
+             sort_for_bpf_probe_arg_vector &v)
+{
+  if (!x)
+    return false;
+
+  for (auto i = x->probes.begin(); i != x->probes.end(); ++i)
+    {
+      xdp_derived_probe *p = *i;
+      // Section names the target interfaces: "xdp/ifname[,ifname...]";
+      // empty iface list means attach to all interfaces.
+      string name = "xdp/" + p->iface_list;
+      v.push_back(std::pair<derived_probe *, std::string>
+                  (p, name));
+    }
+
+  return true;
+}
+
 struct lsm_builder: public derived_probe_builder
 {
   lsm_builder() {}
@@ -16784,6 +16995,35 @@ lsm_builder::build(systemtap_session& s,
     }
 
   finished_results.push_back(new lsm_derived_probe(s, hook_name, base, location));
+  return finished_results;
+}
+
+struct xdp_builder: public derived_probe_builder
+{
+  xdp_builder() {}
+
+  virtual vector<derived_probe*> build(systemtap_session& s,
+                     probe* base, probe_point* location,
+                     literal_map_t const& parameters);
+
+  virtual string name() { return "xdp builder"; }
+};
+
+vector<derived_probe*>
+xdp_builder::build(systemtap_session& s,
+                   probe* base, probe_point* location,
+                   literal_map_t const& parameters)
+{
+  vector<derived_probe*> finished_results;
+
+  // Optional string parameter names the interface(s) to attach to:
+  //   probe xdp("eth0") or kernel.xdp("eth0,eth1") { ... }
+  // Without a parameter, attach to every interface that is up.
+  interned_string iface_list;
+  get_param(parameters, TOK_XDP, iface_list);
+
+  finished_results.push_back(new xdp_derived_probe(s, iface_list.to_string(),
+                                                   base, location));
   return finished_results;
 }
 
@@ -16975,6 +17215,22 @@ register_standard_tapsets(systemtap_session & s)
   s.pattern_root->bind(TOK_KERNEL)->bind_str(TOK_LSM)
     ->bind_privilege(pr_privileged)
     ->bind(new lsm_builder());
+#endif
+
+  // XDP packet-processing probes (BPF runtime only)
+#ifdef HAVE_BPF_PROG_TYPE_XDP
+  s.pattern_root->bind(TOK_KERNEL)->bind_str(TOK_XDP)
+    ->bind_privilege(pr_privileged)
+    ->bind(new xdp_builder());
+  s.pattern_root->bind(TOK_KERNEL)->bind(TOK_XDP)
+    ->bind_privilege(pr_privileged)
+    ->bind(new xdp_builder());
+  s.pattern_root->bind_str(TOK_XDP)
+    ->bind_privilege(pr_privileged)
+    ->bind(new xdp_builder());
+  s.pattern_root->bind(TOK_XDP)
+    ->bind_privilege(pr_privileged)
+    ->bind(new xdp_builder());
 #endif
 
   // Kprobe based probe

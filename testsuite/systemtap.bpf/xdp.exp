@@ -1,0 +1,97 @@
+# xdp.exp - Tests for XDP packet-processing probes in the BPF runtime
+
+set testdir "$srcdir/$subdir/bpf_tests/xdp"
+
+# Check if BPF runtime is available
+if {![bpf_p]} {
+    untested "xdp.exp - BPF runtime not available"
+    return
+}
+
+# Check if XDP BPF support is available (kernel headers with
+# BPF_PROG_TYPE_XDP; the loader attaches via rtnetlink on older kernels)
+proc xdp_available_p {} {
+    # Use -u to bypass elision of empty probes
+    set cmd "stap -u -g --runtime=bpf -p2 -e {probe xdp(\"lo\") { }}"
+    if {[catch {eval exec $cmd} output]} {
+        return 0
+    }
+    return 1
+}
+
+if {![xdp_available_p]} {
+    untested "xdp.exp - XDP support not available (requires CONFIG_BPF_SYSCALL=y)"
+    return
+}
+
+# Common runner: spawn a counting script, wait for BEGIN then END PASS/FAIL
+proc run_xdp_script { test script } {
+    global testdir
+    spawn stap -g --runtime=bpf -v $script \
+        -c {ping -c1 localhost >/dev/null; sleep 4}
+    set done 0
+    expect {
+        -timeout 30
+        -re {BEGIN} {
+            expect {
+                -timeout 30
+                -re {END PASS} { pass $test; set done 1 }
+                -re {END FAIL} { fail "$test - no packets observed"; set done 1 }
+                timeout { fail "$test - timeout waiting for timer" }
+                eof { }
+            }
+        }
+        timeout { fail "$test - timeout waiting for BEGIN" }
+        eof { fail "$test - unexpected EOF" }
+    }
+    catch {close}; catch {wait}
+}
+
+# Test 1: attach to loopback, default-verdict pass-through, count packets
+run_xdp_script xdp_basic "$testdir/xdp_basic.stp"
+
+# Test 2: explicit $return = XDP_PASS verdict still counts packets
+run_xdp_script xdp_pass_verdict "$testdir/xdp_pass_verdict.stp"
+
+# Test 3: multi-interface list compiles with section "xdp/ifaces"
+set test "xdp_multi_iface"
+spawn stap -g --runtime=bpf -p2 \
+    -e {probe kernel.xdp("eth0,eth1") { $return = XDP_PASS }}
+set ok 0
+expect {
+    -timeout 15
+    -re {kernel\.xdp\("eth0,eth1"\)} {
+        pass "$test"
+        set ok 1
+    }
+    timeout {
+        fail "$test - timeout"
+    }
+    eof {
+        if {!$ok} {
+            fail "$test - multi-iface list rejected"
+        }
+    }
+}
+catch {close}; catch {wait}
+
+# Test 4: non-BPF runtimes reject XDP probes
+set test "xdp_requires_bpf"
+spawn stap -g -p2 -e {probe xdp("lo") { }}
+set ok 0
+expect {
+    -timeout 15
+    -re {require.*--runtime=bpf} {
+        pass "$test"
+        set ok 1
+    }
+    timeout {
+        fail "$test - timeout"
+    }
+    eof {
+        if {!$ok} {
+            fail "$test - non-BPF runtimes should reject XDP probes"
+        }
+    }
+}
+catch {close}; catch {wait}

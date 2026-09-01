@@ -1,0 +1,49 @@
+// XDP (eXpress Data Path) packet-processing probes for BPF runtime
+// Copyright (C) 2026 Red Hat Inc.
+
+/**
+ * Kernel Requirements for XDP probes:
+ *   - Linux kernel 4.8 or later with CONFIG_BPF_SYSCALL=y
+ *   - An interface that supports XDP (most drivers do)
+ *   - Available in BPF runtime only (--runtime=bpf)
+ *
+ * Attaching:
+ *   - probe xdp("eth0") attaches to one interface
+ *   - probe xdp("eth0,eth1") attaches to several interfaces
+ *   - bare probe xdp attaches to every interface that is up
+ *
+ * Return value semantics ($return = XDP verdict):
+ *   - Return XDP_PASS to forward the packet (default when unset)
+ *   - Return XDP_DROP to drop it, XDP_TX to bounce the packet
+ *     back out the receiving port, or XDP_REDIRECT for redirect maps
+ *   - Returning non-zero verdicts requires guru mode (-g)
+ *
+ * Context variable access:
+ *   - All XDP probes provide $ctx as a pointer to struct xdp_md
+ *   - Use @cast($ctx, "xdp_md", "kernel") to reach data/data_end pointers
+ *   - Requires guru mode (-g) for @cast usage
+ *
+ * Example:
+ *   probe xdp("eth0") {
+ *     if (arp_frame())
+ *       $return = XDP_PASS
+ *     else
+ *       $return = XDP_DROP
+ *   }
+ *
+ * Note: Interface names are host-specific, so unlike other tapsets there
+ * are no fixed aliases here; use the function form kernel.xdp("name") or
+ * the bare form xdp("name") directly.
+ */
+
+/**
+ * XDP packet-processing verdicts, usable directly in $return assignments:
+ *   $return = XDP_PASS
+ * The numeric counterparts are 0 through 4 as listed above.
+ */
+
+global XDP_ABORTED = 0
+global XDP_DROP = 1
+global XDP_PASS = 2
+global XDP_TX = 3
+global XDP_REDIRECT = 4

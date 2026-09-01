@@ -1,0 +1,25 @@
+#!/usr/bin/env stap
+
+# Default verdict test: a bare xdp probe passes packets by default
+# (no $return assignment), while counting them.
+
+global rx = 0
+
+probe xdp("lo")
+{
+    rx++
+}
+
+probe begin
+{
+    println("BEGIN")
+}
+
+probe timer.s(3)
+{
+    if (rx > 0)
+        println("END PASS")
+    else
+        println("END FAIL")
+    exit()
+}

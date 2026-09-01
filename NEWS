@@ -54,6 +54,13 @@
     if (filename =~ "forbidden") $return = -13 }'  # deny with EACCES
   Requires kernel 5.7+, CONFIG_BPF_LSM=y. (PR#34126)
 
+- NEW: XDP packet-processing probes for the BPF runtime.  Attach to network
+  interfaces to inspect incoming packets and return a pass/drop/tx verdict:
+  probe xdp("eth0") { $return = XDP_PASS }.  Multiple interfaces may be listed
+  comma-separated; the bare probe xdp attaches to all interfaces that are up.
+  $ctx is a pointer to struct xdp_md; $return defaults to XDP_PASS.
+  Requires kernel 4.8+ and CONFIG_BPF_SYSCALL=y.
+
 - NEW: BTF-based tracepoint probes kernel.tracepoint("name") and
   module("mod").tracepoint("name").  These discover tracepoints from
   btf_trace_* callback typedefs in the kernel build tree's vmlinux.h

@@ -28,6 +28,9 @@
 /* Define to 1 if you have the necessary declarations in bpf.h */
 #undef HAVE_BPF_PROG_TYPE_RAW_TRACEPOINT
 
+/* Define to 1 if you have BPF XDP support in bpf.h */
+#undef HAVE_BPF_PROG_TYPE_XDP
+
 /* Define to 1 if you have the Mac OS X function CFLocaleCopyCurrent in the
    CoreFoundation framework. */
 #undef HAVE_CFLOCALECOPYCURRENT
@@ -57,6 +60,10 @@
 /* Define to 1 if you have the declaration of 'BPF_PROG_TYPE_RAW_TRACEPOINT',
    and to 0 if you don't. */
 #undef HAVE_DECL_BPF_PROG_TYPE_RAW_TRACEPOINT
+
+/* Define to 1 if you have the declaration of 'BPF_PROG_TYPE_XDP', and to 0 if
+   you don't. */
+#undef HAVE_DECL_BPF_PROG_TYPE_XDP
 
 /* Define to 1 if Dyninst is enabled */
 #undef HAVE_DYNINST
