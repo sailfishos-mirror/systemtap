@@ -15,9 +15,9 @@ foreach runtime [get_runtime_list] {
     set user [exec whoami]
     expect {
 	-timeout 30
-	-re "($user|sys_open|DONE)\r" {
+	-re "($user|do_exit|DONE)\r" {
 	    switch $expect_out(1,string) {
-		sys_open {incr open}
+		do_exit {incr open}
 		DONE     {incr done}
 		default  {incr saw_user}
 	    }

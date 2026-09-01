@@ -1,6 +1,6 @@
-probe kernel.function("do_sys_open") {
+probe kernel.function("do_faccessat") {
   printf("->%s\n",($filename$))
-} 
+}
 
 probe timer.ms(2000) {
   exit()
