@@ -7,7 +7,7 @@ set stpfile "$srcdir/$subdir/$test.stp"
 
 set ok 0
 set notok 0
-spawn $stap_path $stpfile
+spawn $stap_path $stpfile -c /bin/true
 expect {
     -timeout 180
     -re {->} { incr ok; exp_continue }
