@@ -59,7 +59,7 @@
 <li><a href="#virtualization/kvm_service_time.stp">virtualization/kvm_service_time.stp - Time Statistics on KVM Exit Reasons</a></li>
 </ul>
 
-<h2>All 200 Examples</h2>
+<h2>All 201 Examples</h2>
 <ul>
 <li><a name="apps/gmalloc_watch.stp"></a><a href="#apps/gmalloc_watch.stp">&para;</a> <a href="apps/gmalloc_watch.stp">apps/gmalloc_watch.stp</a> - Tracing glib2 memory allocations<br>
 keywords: <a href="keyword-index.html#TRACE">TRACE</a> <br>
@@ -336,6 +336,10 @@ keywords: <a href="keyword-index.html#NETWORK">NETWORK</a> <a href="keyword-inde
 </li><li><a name="network/bpf_xdp.stp"></a><a href="#network/bpf_xdp.stp">&para;</a> <a href="network/bpf_xdp.stp">network/bpf_xdp.stp</a> - Count Incoming Packets Per Protocol via XDP<br>
 keywords: <a href="keyword-index.html#NETWORK">NETWORK</a> <a href="keyword-index.html#XDP">XDP</a> <a href="keyword-index.html#BPF">BPF</a> <br>
 <p>Decode the ethertype of incoming packets using an XDP program</p><p><font size="-2"><pre># stap --runtime=bpf bpf_xdp.stp -T 3</pre></font></p>
+</li><li><a name="network/bpf_xdp_guru.stp"></a><a href="#network/bpf_xdp_guru.stp">&para;</a> <a href="network/bpf_xdp_guru.stp">network/bpf_xdp_guru.stp</a> - Bump IPv6 Hop Limits for Proxy Health Checks<br>
+keywords: <a href="keyword-index.html#NETWORK">NETWORK</a> <a href="keyword-index.html#XDP">XDP</a> <a href="keyword-index.html#BPF">BPF</a> <br>
+<p>Count incoming IPv6 frames via an XDP program and rewrite the hop</p><p><font size="-2"><pre># stap --runtime=bpf -g bpf_xdp_guru.stp -c &quot;ping -6 -t 1 -c 10 localhost \
+&gt;/dev/null&quot; -T 3</pre></font></p>
 </li><li><a name="network/connect_stat.stp"></a><a href="#network/connect_stat.stp">&para;</a> <a href="network/connect_stat.stp">network/connect_stat.stp</a> - Show Process Ancestry for IP Connections<br>
 keywords: <a href="keyword-index.html#NETWORK">NETWORK</a> <a href="keyword-index.html#SOCKET">SOCKET</a> <a href="keyword-index.html#PROCESS">PROCESS</a> <br>
 <p>The connect_stat.stp script prints a task&#39;s entire ancestry (parent process name/uid/gid) whenever it attempts an outgoing socket connection to a given IP address.</p><p><font size="-2"><pre># stap connect_stat.stp 127.0.0.1 -T 1</pre></font></p>

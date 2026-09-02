@@ -1,0 +1,35 @@
+#!/usr/bin/env stap
+
+# bpf_xdp_guru.stp - bump IPv6 hop limits for proxied health checks.
+#
+# A tiny guru-mode XDP packet rewrite demo.  Health-check probes from
+# container-proxy sidecars often arrive with IPv6 hop_limit 1; this
+# handler finds them and bumps the limit so the reply can traverse one
+# more hop.  Requires -g for the store; reads work without it.
+# Example run: stap --runtime=bpf -g bpf_xdp_guru.stp -c "ping -6 -t 1 localhost"
+
+global bumped, total
+
+probe xdp {
+  eth = @cast($ctx, "xdp_md", "kernel")->data
+  proto = @cast(eth, "ethhdr", "kernel")->h_proto
+  proto = ((proto & 0xff) << 8) | (proto >> 8 & 0xff)
+
+  if (proto == 34525) {           # IPv6
+    ip6 = eth + 14                # ethhdr is fixed-size
+    hl = @cast(ip6, "ipv6hdr", "kernel")->hop_limit
+    if (hl == 1) {
+      @cast(ip6, "ipv6hdr", "kernel")->hop_limit = 63
+      bumped++
+    }
+  }
+  total++
+
+  # Forwarding-only policy: never drop on the way through.
+  $return = XDP_PASS
+}
+
+probe timer.ms(1500) {
+  printf("%d packets seen, %d hop-limit bumps\n", total, bumped)
+  exit()
+}

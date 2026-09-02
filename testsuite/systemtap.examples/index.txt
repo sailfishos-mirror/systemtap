@@ -1040,6 +1040,15 @@ keywords: network xdp bpf
   # stap --runtime=bpf bpf_xdp.stp -T 3
 
 
+network/bpf_xdp_guru.stp - Bump IPv6 Hop Limits for Proxy Health Checks
+keywords: network xdp bpf
+
+  Count incoming IPv6 frames via an XDP program and rewrite the hop
+
+  # stap --runtime=bpf -g bpf_xdp_guru.stp -c "ping -6 -t 1 -c 10 localhost \
+  >/dev/null" -T 3
+
+
 network/connect_stat.stp - Show Process Ancestry for IP Connections
 keywords: network socket process
 

@@ -1,0 +1,10 @@
+title: Bump IPv6 Hop Limits for Proxy Health Checks
+name: bpf_xdp_guru.stp
+keywords: network xdp bpf
+subsystem: network
+description: Count incoming IPv6 frames via an XDP program and rewrite the hop
+  limit of hop-limit-1 packets so proxied container health checks can get a
+  reply. Requires -g for the packet store; decoding and counting work without.
+test_support: stap --runtime=bpf -g -p4 bpf_xdp_guru.stp
+test_check: stap --runtime=bpf -g -p4 bpf_xdp_guru.stp
+test_installcheck: stap --runtime=bpf -g bpf_xdp_guru.stp -c "ping -6 -t 1 -c 10 localhost >/dev/null" -T 3
