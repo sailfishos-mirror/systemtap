@@ -33,7 +33,7 @@ probe dw_syscall.gettid.return = kernel.function("sys_gettid").return
 probe nd_syscall.gettid = nd1_syscall.gettid!, nd2_syscall.gettid!, tp_syscall.gettid
   { }
 
-probe nd1_syscall.gettid = kprobe.function("sys_gettid")
+probe nd1_syscall.gettid = kprobe.function("sys_gettid") ?
 {
 	@_SYSCALL_GETTID_NAME
 	@_SYSCALL_GETTID_ARGSTR
@@ -57,7 +57,7 @@ probe tp_syscall.gettid = tp_syscall("gettid,~compat_gettid") !, kernel.trace("s
 probe nd_syscall.gettid.return = nd1_syscall.gettid.return!, nd2_syscall.gettid.return!, tp_syscall.gettid.return
   { }
   
-probe nd1_syscall.gettid.return = kprobe.function("sys_gettid").return
+probe nd1_syscall.gettid.return = kprobe.function("sys_gettid").return ?
 {
 	@_SYSCALL_GETTID_NAME
 	@SYSC_RETVALSTR(returnval())

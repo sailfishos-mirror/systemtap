@@ -120,7 +120,7 @@ probe nd1_syscall.sigprocmask.return = __nd1_syscall.sigprocmask.return ?,
 	@_SYSCALL_SIGPROCMASK_NAME
 	@SYSC_RETVALSTR(returnval())
 }
-probe __nd1_syscall.sigprocmask.return =
+probe __nd1_syscall.sigprocmask.return = 
 	kprobe.function("sys_sigprocmask").return ?
 {
 	@__syscall_gate(@const("__NR_sigprocmask"))

@@ -209,7 +209,7 @@ probe tp_syscall.compat_execveat = tp_syscall("~compat_execveat") !, kernel.trac
 probe nd_syscall.compat_execveat.return = nd1_syscall.compat_execveat.return!, nd2_syscall.compat_execveat.return!, tp_syscall.compat_execveat.return
   { }
   
-probe nd1_syscall.compat_execveat.return =
+probe nd1_syscall.compat_execveat.return = 
 	kprobe.function("compat_sys_execveat").return ?
 {
 	@_SYSCALL_EXECVEAT_NAME

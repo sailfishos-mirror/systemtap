@@ -214,7 +214,7 @@ probe tp_syscall.rt_sigprocmask = tp_syscall("rt_sigprocmask,~compat_rt_sigprocm
 probe nd_syscall.rt_sigprocmask.return = nd1_syscall.rt_sigprocmask.return!, nd2_syscall.rt_sigprocmask.return!, tp_syscall.rt_sigprocmask.return
   { }
   
-probe nd1_syscall.rt_sigprocmask.return =
+probe nd1_syscall.rt_sigprocmask.return = 
 	kprobe.function("sys_rt_sigprocmask").return ?
 {
 %( arch != "x86_64" || kernel_v < "3.4" || CONFIG_COMPAT != "y" %?

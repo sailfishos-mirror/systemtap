@@ -103,7 +103,7 @@ probe tp_syscall.sched_getattr = tp_syscall("sched_getattr,~compat_sched_getattr
 probe nd_syscall.sched_getattr.return = nd1_syscall.sched_getattr.return!, nd2_syscall.sched_getattr.return!, tp_syscall.sched_getattr.return
   { }
   
-probe nd1_syscall.sched_getattr.return =
+probe nd1_syscall.sched_getattr.return = 
 	kprobe.function("sys_sched_getattr").return ?
 {
 	@_SYSCALL_SCHED_GETATTR_NAME

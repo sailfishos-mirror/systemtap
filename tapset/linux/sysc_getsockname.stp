@@ -118,14 +118,14 @@ probe __nd1_syscall.getsockname = kprobe.function("sys_getsockname") ?
 	asmlinkage()
 	@_SYSCALL_GETSOCKNAME_REGARGS
 }
-probe __nd1_syscall.socketcall.getsockname =
+probe __nd1_syscall.socketcall.getsockname = 
 	kprobe.function("sys_socketcall").call ?
 {
 	asmlinkage()
 	if (int_arg(1) != @const("SYS_GETSOCKNAME")) next;
 	@_SYSCALL_SOCKETCALL_GETSOCKNAME_REGARGS
 }
-probe __nd1_syscall.compat_socketcall.getsockname =
+probe __nd1_syscall.compat_socketcall.getsockname = 
 	kprobe.function("compat_sys_socketcall").call ?
 {
 	asmlinkage()
@@ -196,19 +196,19 @@ probe __tp_syscall.socketcall.getsockname = tp_syscall("socketcall,~compat_socke
 probe nd_syscall.getsockname.return = nd1_syscall.getsockname.return!, nd2_syscall.getsockname.return!, tp_syscall.getsockname.return
   { }
 
-probe nd1_syscall.getsockname.return =
+probe nd1_syscall.getsockname.return = 
 	__nd1_syscall.getsockname.return ?,
 	__nd1_syscall.socketcall.getsockname.return ?
 {
 	@_SYSCALL_GETSOCKNAME_NAME
 	@SYSC_RETVALSTR(returnval())
 }
-probe __nd1_syscall.getsockname.return =
+probe __nd1_syscall.getsockname.return = 
 	kprobe.function("sys_getsockname").return ?
 {
 	@__syscall_gate(@const("__NR_getsockname"))
 }
-probe __nd1_syscall.socketcall.getsockname.return =
+probe __nd1_syscall.socketcall.getsockname.return = 
 	kprobe.function("sys_socketcall").return ?,
 	kprobe.function("compat_sys_socketcall").return ?
 {

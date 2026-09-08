@@ -117,14 +117,14 @@ probe __nd1_syscall.getpeername = kprobe.function("sys_getpeername") ?
 	asmlinkage()
 	@_SYSCALL_GETPEERNAME_REGARGS
 }
-probe __nd1_syscall.socketcall.getpeername =
+probe __nd1_syscall.socketcall.getpeername = 
 	kprobe.function("sys_socketcall").call ?
 {
 	asmlinkage()
 	if (int_arg(1) != @const("SYS_GETPEERNAME")) next;
 	@_SYSCALL_SOCKETCALL_GETPEERNAME_REGARGS
 }
-probe __nd1_syscall.compat_socketcall.getpeername =
+probe __nd1_syscall.compat_socketcall.getpeername = 
 	kprobe.function("compat_sys_socketcall").call ?
 {
 	asmlinkage()
@@ -195,19 +195,19 @@ probe __tp_syscall.socketcall.getpeername = tp_syscall("socketcall,~compat_socke
 probe nd_syscall.getpeername.return = nd1_syscall.getpeername.return!, nd2_syscall.getpeername.return!, tp_syscall.getpeername.return
   { }
 
-probe nd1_syscall.getpeername.return =
+probe nd1_syscall.getpeername.return = 
 	__nd1_syscall.getpeername.return ?,
 	__nd1_syscall.socketcall.getpeername.return ?
 {
 	@_SYSCALL_GETPEERNAME_NAME
 	@SYSC_RETVALSTR(returnval())
 }
-probe __nd1_syscall.getpeername.return =
+probe __nd1_syscall.getpeername.return = 
 	kprobe.function("sys_getpeername").return ?
 {
 	@__syscall_gate(@const("__NR_getpeername"))
 }
-probe __nd1_syscall.socketcall.getpeername.return =
+probe __nd1_syscall.socketcall.getpeername.return = 
 	kprobe.function("sys_socketcall").return ?,
 	kprobe.function("compat_sys_socketcall").return ?
 {

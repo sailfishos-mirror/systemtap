@@ -88,7 +88,7 @@ probe __syscall.mq_timedsend.return = kernel.function("sys_mq_timedsend").return
 probe nd_syscall.mq_timedsend = nd1_syscall.mq_timedsend!, nd2_syscall.mq_timedsend!, tp_syscall.mq_timedsend
   { }
 
-probe nd1_syscall.mq_timedsend =
+probe nd1_syscall.mq_timedsend = 
         __nd1_syscall.mq_timedsend ?,
         __nd1_syscall.compat_mq_timedsend ?
 {
@@ -97,12 +97,12 @@ probe nd1_syscall.mq_timedsend =
 	@_SYSCALL_MQ_TIMEDSEND_REGARGS
 	@_SYSCALL_MQ_TIMEDSEND_ARGSTR
 }
-probe __nd1_syscall.compat_mq_timedsend = kprobe.function("compat_sys_mq_timedsend")
+probe __nd1_syscall.compat_mq_timedsend = kprobe.function("compat_sys_mq_timedsend") ?
 {
 	asmlinkage()
 	msg_len = uint_arg(3)
 }
-probe __nd1_syscall.mq_timedsend = kprobe.function("sys_mq_timedsend")
+probe __nd1_syscall.mq_timedsend = kprobe.function("sys_mq_timedsend") ?
 {
 	asmlinkage()
         @__syscall_gate(@const("__NR_mq_timedsend"))
@@ -186,14 +186,14 @@ probe __tp_syscall.mq_timedsend = tp_syscall("mq_timedsend") !, kernel.trace("sy
 probe nd_syscall.mq_timedsend.return = nd1_syscall.mq_timedsend.return!, nd2_syscall.mq_timedsend.return!, tp_syscall.mq_timedsend.return
   { }
   
-probe nd1_syscall.mq_timedsend.return =
+probe nd1_syscall.mq_timedsend.return = 
         __nd1_syscall.mq_timedsend.return ?,
         kprobe.function("compat_sys_mq_timedsend").return ?
 {
 	@_SYSCALL_MQ_TIMEDSEND_NAME
 	@SYSC_RETVALSTR(returnval())
 }
-probe __nd1_syscall.mq_timedsend.return = kprobe.function("sys_mq_timedsend").return
+probe __nd1_syscall.mq_timedsend.return = kprobe.function("sys_mq_timedsend").return ?
 {
         @__syscall_gate(@const("__NR_mq_timedsend"))
 }

@@ -204,7 +204,7 @@ probe tp_syscall.compat_recvmmsg = tp_syscall("~compat_recvmmsg") !, kernel.trac
 probe nd_syscall.compat_recvmmsg.return = nd1_syscall.compat_recvmmsg.return!, nd2_syscall.compat_recvmmsg.return!, tp_syscall.compat_recvmmsg.return
   { }
   
-probe nd1_syscall.compat_recvmmsg.return =
+probe nd1_syscall.compat_recvmmsg.return = 
 	kprobe.function("compat_sys_recvmmsg").return ?
 {
 	@_SYSCALL_RECVMMSG_NAME

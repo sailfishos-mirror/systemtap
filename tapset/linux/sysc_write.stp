@@ -84,7 +84,7 @@ probe __syscall.write.return = kernel.function("sys_write").return
 probe nd_syscall.write = nd1_syscall.write!, nd2_syscall.write!, tp_syscall.write
   { }
 
-probe nd1_syscall.write =
+probe nd1_syscall.write = 
 %( arch == "s390" %?
 	__nd1_syscall.write, kprobe.function("sys32_write") ?,
 	kprobe.function("compat_sys_s390_write") ?
@@ -97,7 +97,7 @@ probe nd1_syscall.write =
 	@_SYSCALL_WRITE_REGARGS
 	@_SYSCALL_WRITE_ARGSTR
 }
-probe __nd1_syscall.write = kprobe.function("sys_write")
+probe __nd1_syscall.write = kprobe.function("sys_write") ?
 {
 %( arch == "s390" %?
 	@__syscall_gate(@const("__NR_write"))
@@ -132,7 +132,7 @@ probe tp_syscall.write = tp_syscall("write,~compat_write") !, kernel.trace("sys_
 probe nd_syscall.write.return = nd1_syscall.write.return!, nd2_syscall.write.return!, tp_syscall.write.return
   { }
 
-probe nd1_syscall.write.return =
+probe nd1_syscall.write.return = 
 %( arch == "s390" %?
 	__nd1_syscall.write.return, kprobe.function("sys32_write").return ?,
 	kprobe.function("compat_sys_s390_write").return ?
@@ -143,7 +143,7 @@ probe nd1_syscall.write.return =
 	@_SYSCALL_WRITE_NAME
 	@SYSC_RETVALSTR(returnval())
 }
-probe __nd1_syscall.write.return = kprobe.function("sys_write").return
+probe __nd1_syscall.write.return = kprobe.function("sys_write").return ?
 {
 %( arch == "s390" %?
 	@__syscall_gate(@const("__NR_write"))

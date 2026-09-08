@@ -37,7 +37,7 @@ probe nd1_syscall.epoll_create = __nd1_syscall.epoll_create1 !,
                                  __nd1_syscall.epoll_create ?
 {
 }
-probe __nd1_syscall.epoll_create1 = kprobe.function("sys_epoll_create1")
+probe __nd1_syscall.epoll_create1 = kprobe.function("sys_epoll_create1") ?
 {
  	asmlinkage()
 	size = 0;
@@ -50,7 +50,7 @@ probe __nd1_syscall.epoll_create1 = kprobe.function("sys_epoll_create1")
 		argstr = _epoll_create1_flag_str(flags);
 	}
 }
-probe __nd1_syscall.epoll_create = kprobe.function("sys_epoll_create")
+probe __nd1_syscall.epoll_create = kprobe.function("sys_epoll_create") ?
 {
 	name = "epoll_create"
 	asmlinkage()
@@ -146,13 +146,13 @@ probe nd1_syscall.epoll_create.return = __nd1_syscall.epoll_create1.return !,
                                         __nd1_syscall.epoll_create.return ?
 {
 }
-probe __nd1_syscall.epoll_create1.return = kprobe.function("sys_epoll_create1").return
+probe __nd1_syscall.epoll_create1.return = kprobe.function("sys_epoll_create1").return ?
 {
 	flags = @entry(__asmlinkage_int_arg(1))
 	name = (flags == 0) ? "epoll_create" : "epoll_create1";
 	@SYSC_RETVALSTR(returnval())
 }
-probe __nd1_syscall.epoll_create.return = kprobe.function("sys_epoll_create").return
+probe __nd1_syscall.epoll_create.return = kprobe.function("sys_epoll_create").return ?
 {
 	flags = 0
 	name = "epoll_create"

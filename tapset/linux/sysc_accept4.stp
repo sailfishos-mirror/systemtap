@@ -125,7 +125,7 @@ probe nd1_syscall.accept4 = __nd1_syscall.accept4 ?,
 	flags_str = _sock_flags_str(flags)
 	@_SYSCALL_ACCEPT4_ARGSTR
 }
-probe __nd1_syscall.accept4 = kprobe.function("sys_accept4").call
+probe __nd1_syscall.accept4 = kprobe.function("sys_accept4").call ?
 {
 	asmlinkage()
 	// On all tested platforms, there wasn't a different syscall
@@ -139,7 +139,7 @@ probe __nd1_syscall.socketcall.accept4 = kprobe.function("sys_socketcall").call 
 	if (int_arg(1) != @const("SYS_ACCEPT4")) next;
 	@_SYSCALL_SOCKETCALL_ACCEPT4_REGARGS
 }
-probe __nd1_syscall.compat_socketcall.accept4 =
+probe __nd1_syscall.compat_socketcall.accept4 = 
 	kprobe.function("compat_sys_socketcall").call ?
 {
 	asmlinkage()
@@ -221,7 +221,7 @@ probe __nd1_syscall.accept4.return = kprobe.function("sys_accept4").return ?
 {
 	@__syscall_nr_gate(@const("__NR_accept4"))
 }
-probe __nd1_syscall.socketcall.accept4.return =
+probe __nd1_syscall.socketcall.accept4.return = 
 	kprobe.function("sys_socketcall").return ?,
 	kprobe.function("compat_sys_socketcall").return ?
 {

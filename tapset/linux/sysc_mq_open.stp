@@ -115,7 +115,7 @@ probe __syscall.mq_open.return = kernel.function("sys_mq_open").return !,
 probe nd_syscall.mq_open = nd1_syscall.mq_open!, nd2_syscall.mq_open!, tp_syscall.mq_open
   { }
 
-probe nd1_syscall.mq_open = __nd1_syscall.mq_open,
+probe nd1_syscall.mq_open = __nd1_syscall.mq_open ?,
                             __nd1_syscall.compat_mq_open ?
 {
 	asmlinkage()
@@ -125,7 +125,7 @@ probe nd1_syscall.mq_open = __nd1_syscall.mq_open,
 }
 # nd1 is asmlinkage (individual args).  Arch pt_regs wrappers belong
 # on nd2 (__set_syscall_pt_regs); do not bind them here with asmlinkage().
-probe __nd1_syscall.mq_open = kprobe.function("sys_mq_open")
+probe __nd1_syscall.mq_open = kprobe.function("sys_mq_open") ?
 {
 	asmlinkage()
         @__syscall_gate(@const("__NR_mq_open"))
@@ -135,7 +135,7 @@ probe __nd1_syscall.mq_open = kprobe.function("sys_mq_open")
         mode = (uint_arg(3) & 0xffff)
 %)
 }
-probe __nd1_syscall.compat_mq_open = kprobe.function("compat_sys_mq_open")
+probe __nd1_syscall.compat_mq_open = kprobe.function("compat_sys_mq_open") ?
 {
 	asmlinkage()
 	mode = (uint_arg(3) & 0xffff)
@@ -197,14 +197,14 @@ probe __tp_syscall.compat_mq_open = tp_syscall("~compat_mq_open") !, kernel.trac
 probe nd_syscall.mq_open.return = nd1_syscall.mq_open.return!, nd2_syscall.mq_open.return!, tp_syscall.mq_open.return
   { }
   
-probe nd1_syscall.mq_open.return =
+probe nd1_syscall.mq_open.return = 
         __nd1_syscall.mq_open.return ?,
         kprobe.function("compat_sys_mq_open").return ?
 {
 	@_SYSCALL_MQ_OPEN_NAME
 	@SYSC_RETVALSTR(returnval())
 }
-probe __nd1_syscall.mq_open.return = kprobe.function("sys_mq_open").return
+probe __nd1_syscall.mq_open.return = kprobe.function("sys_mq_open").return ?
 {
         @__syscall_gate(@const("__NR_mq_open"))
 }

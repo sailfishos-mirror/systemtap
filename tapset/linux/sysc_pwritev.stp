@@ -109,13 +109,13 @@ probe nd1_syscall.pwritev = __nd1_syscall.pwritev ?,
 {
 	@_SYSCALL_PWRITEV_NAME
 }
-probe __nd1_syscall.pwritev = kprobe.function("sys_pwritev").call
+probe __nd1_syscall.pwritev = kprobe.function("sys_pwritev").call ?
 {
 	asmlinkage()
 	@_SYSCALL_PWRITEV_REGARGS
 	@_SYSCALL_PWRITEV_ARGSTR
 }
-probe __nd1_syscall.compat_pwritev = kprobe.function("compat_sys_pwritev").call
+probe __nd1_syscall.compat_pwritev = kprobe.function("compat_sys_pwritev").call ?
 {
 	asmlinkage()
 	@_SYSCALL_COMPAT_PWRITEV_REGARGS
@@ -177,7 +177,7 @@ probe __tp_syscall.compat_pwritev = tp_syscall("~compat_pwritev") !, kernel.trac
 probe nd_syscall.pwritev.return = nd1_syscall.pwritev.return!, nd2_syscall.pwritev.return!, tp_syscall.pwritev.return
   { }
   
-probe nd1_syscall.pwritev.return =
+probe nd1_syscall.pwritev.return = 
 	kprobe.function("sys_pwritev").return ?,
 	kprobe.function("compat_sys_pwritev").return ?
 {

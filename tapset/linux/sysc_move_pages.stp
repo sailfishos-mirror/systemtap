@@ -101,7 +101,7 @@ probe nd1_syscall.move_pages = __nd1_syscall.move_pages ?,
 	@_SYSCALL_MOVE_PAGES_REGARGS
 	@_SYSCALL_MOVE_PAGES_ARGSTR
 }
-probe __nd1_syscall.move_pages = kprobe.function("sys_move_pages")
+probe __nd1_syscall.move_pages = kprobe.function("sys_move_pages") ?
 {
 	@__syscall_gate(@const("__NR_move_pages"))
 }
@@ -142,7 +142,7 @@ probe nd1_syscall.move_pages.return = __nd1_syscall.move_pages.return ?,
 	@_SYSCALL_MOVE_PAGES_NAME
 	@SYSC_RETVALSTR(returnval())
 }
-probe __nd1_syscall.move_pages.return = kprobe.function("sys_move_pages").return
+probe __nd1_syscall.move_pages.return = kprobe.function("sys_move_pages").return ?
 {
 	@__syscall_gate(@const("__NR_move_pages"))
 }

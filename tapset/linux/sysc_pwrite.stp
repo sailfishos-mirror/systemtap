@@ -194,7 +194,7 @@ probe dw_syscall.pwrite32.return =
 probe nd_syscall.pwrite32 = nd1_syscall.pwrite32!, nd2_syscall.pwrite32!, tp_syscall.pwrite32
   { }
 
-probe nd1_syscall.pwrite32 =
+probe nd1_syscall.pwrite32 = 
 %( arch == "s390" %?
 	kprobe.function("compat_sys_s390_pwrite64") ?,
 %)
@@ -254,7 +254,7 @@ probe tp_syscall.pwrite32 = tp_syscall("~compat_pwrite64") !, kernel.trace("sys_
 probe nd_syscall.pwrite32.return = nd1_syscall.pwrite32.return!, nd2_syscall.pwrite32.return!, tp_syscall.pwrite32.return
   { }
   
-probe nd1_syscall.pwrite32.return =
+probe nd1_syscall.pwrite32.return = 
 %( arch == "s390" %?
 	kprobe.function("compat_sys_s390_pwrite64").return ?,
 %)

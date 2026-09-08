@@ -72,7 +72,7 @@ probe dw_syscall.sigaltstack.return = kernel.function("sys_sigaltstack").return,
 probe nd_syscall.sigaltstack = nd1_syscall.sigaltstack!, nd2_syscall.sigaltstack!, tp_syscall.sigaltstack
   { }
 
-probe nd1_syscall.sigaltstack = kprobe.function("sys_sigaltstack"),
+probe nd1_syscall.sigaltstack = kprobe.function("sys_sigaltstack") ?,
 	kprobe.function("compat_sys_sigaltstack") ?
 {
 	@_SYSCALL_SIGALTSTACK_NAME
@@ -110,7 +110,7 @@ probe tp_syscall.sigaltstack = tp_syscall("sigaltstack,~compat_sigaltstack") !, 
 probe nd_syscall.sigaltstack.return = nd1_syscall.sigaltstack.return!, nd2_syscall.sigaltstack.return!, tp_syscall.sigaltstack.return
   { }
 
-probe nd1_syscall.sigaltstack.return = kprobe.function("sys_sigaltstack").return,
+probe nd1_syscall.sigaltstack.return = kprobe.function("sys_sigaltstack").return ?,
 	kprobe.function("compat_sys_sigaltstack").return ?
 {
 	@_SYSCALL_SIGALTSTACK_NAME

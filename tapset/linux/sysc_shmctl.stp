@@ -269,14 +269,14 @@ probe tp_syscall.compat_sys_shmctl = tp_syscall("~compat_ipc") !, kernel.trace("
 probe nd_syscall.compat_sys_shmctl.return = nd1_syscall.compat_sys_shmctl.return!, nd2_syscall.compat_sys_shmctl.return!, tp_syscall.compat_sys_shmctl.return
   { }
   
-probe nd1_syscall.compat_sys_shmctl.return =
+probe nd1_syscall.compat_sys_shmctl.return = 
 	kprobe.function("compat_sys_shmctl").return ?,
 	__nd1_syscall.compat_ipc.shmctl.return ?
 {
 	@_SYSCALL_SHMCTL_NAME
 	@SYSC_RETVALSTR(returnval())
 }
-probe __nd1_syscall.compat_ipc.shmctl.return =
+probe __nd1_syscall.compat_ipc.shmctl.return = 
 	kprobe.function("compat_sys_ipc").return ?,
 	kprobe.function("sys32_ipc").return ?
 {

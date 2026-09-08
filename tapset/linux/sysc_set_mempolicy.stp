@@ -126,7 +126,7 @@ probe nd1_syscall.set_mempolicy.return = __nd1_syscall.set_mempolicy.return ?,
 	@_SYSCALL_SET_MEMPOLICY_NAME
 	@SYSC_RETVALSTR(returnval())
 }
-probe __nd1_syscall.set_mempolicy.return =
+probe __nd1_syscall.set_mempolicy.return = 
 	kprobe.function("sys_set_mempolicy").return ?
 {
 %( arch == "powerpc" %?

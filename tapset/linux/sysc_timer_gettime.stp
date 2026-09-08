@@ -67,13 +67,13 @@ probe __syscall.timer_gettime.return = kernel.function("sys_timer_gettime").retu
 probe nd_syscall.timer_gettime = nd1_syscall.timer_gettime!, nd2_syscall.timer_gettime!, tp_syscall.timer_gettime
   { }
 
-probe nd1_syscall.timer_gettime = __nd1_syscall.timer_gettime,
+probe nd1_syscall.timer_gettime = __nd1_syscall.timer_gettime ?,
 	__nd1_syscall.compat_timer_gettime ?
 {
 	@_SYSCALL_TIMER_GETTIME_NAME
 }
 
-probe __nd1_syscall.timer_gettime = kprobe.function("sys_timer_gettime")
+probe __nd1_syscall.timer_gettime = kprobe.function("sys_timer_gettime") ?
 {
 	@__syscall_gate(@const("__NR_timer_gettime"))
 	asmlinkage()
@@ -130,14 +130,14 @@ probe tp_syscall.timer_gettime = tp_syscall("timer_gettime,~compat_timer_gettime
 probe nd_syscall.timer_gettime.return = nd1_syscall.timer_gettime.return!, nd2_syscall.timer_gettime.return!, tp_syscall.timer_gettime.return
   { }
 
-probe nd1_syscall.timer_gettime.return =
-	__nd1_syscall.timer_gettime.return,
+probe nd1_syscall.timer_gettime.return = 
+	__nd1_syscall.timer_gettime.return ?,
 	kprobe.function("compat_sys_timer_gettime").return ?
 {
 	@_SYSCALL_TIMER_GETTIME_NAME
 	@SYSC_RETVALSTR(returnval())
 }
-probe __nd1_syscall.timer_gettime.return = kprobe.function("sys_timer_gettime").return
+probe __nd1_syscall.timer_gettime.return = kprobe.function("sys_timer_gettime").return ?
 {
 	@__syscall_gate(@const("__NR_timer_gettime"))
 }

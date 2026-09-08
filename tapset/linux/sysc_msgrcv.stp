@@ -328,19 +328,19 @@ probe tp_syscall.compat_sys_msgrcv = tp_syscall("~compat_ipc") !, kernel.trace("
 probe nd_syscall.compat_sys_msgrcv.return = nd1_syscall.compat_sys_msgrcv.return!, nd2_syscall.compat_sys_msgrcv.return!, tp_syscall.compat_sys_msgrcv.return
   { }
   
-probe nd1_syscall.compat_sys_msgrcv.return =
+probe nd1_syscall.compat_sys_msgrcv.return = 
 	__nd1_syscall.compat_sys_msgrcv.return ?,
 	__nd1_syscall.compat_ipc.msgrcv.return ?
 {
 	@_SYSCALL_MSGRCV_NAME
 	@SYSC_RETVALSTR(returnval())
 }
-probe __nd1_syscall.compat_sys_msgrcv.return =
+probe __nd1_syscall.compat_sys_msgrcv.return = 
 	kprobe.function("compat_sys_msgrcv").return ?
 {
 	@__compat_syscall_gate_negative(@const("__NR_compat_ipc"))
 }
-probe __nd1_syscall.compat_ipc.msgrcv.return =
+probe __nd1_syscall.compat_ipc.msgrcv.return = 
 	kprobe.function("compat_sys_ipc").return ?,
 	kprobe.function("sys32_ipc").return ?
 {

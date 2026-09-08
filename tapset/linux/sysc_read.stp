@@ -79,7 +79,7 @@ probe __syscall.read.return = kernel.function("sys_read").return
 probe nd_syscall.read = nd1_syscall.read!, nd2_syscall.read!, tp_syscall.read
   { }
 
-probe nd1_syscall.read =  
+probe nd1_syscall.read = 
 %( arch == "s390" %?
 	__nd1_syscall.read, kprobe.function("sys32_read") ?,
 	kprobe.function("compat_sys_s390_read") ?
@@ -93,7 +93,7 @@ probe nd1_syscall.read =
 	@_SYSCALL_READ_ARGSTR
 }
   
-probe __nd1_syscall.read = kprobe.function("sys_read")
+probe __nd1_syscall.read = kprobe.function("sys_read") ?
 {
 %( arch == "s390" %?
 	@__syscall_gate(@const("__NR_read"))
@@ -128,7 +128,7 @@ probe tp_syscall.read = tp_syscall("read,~compat_read") !, kernel.trace("sys_ent
 probe nd_syscall.read.return = nd1_syscall.read.return!, nd2_syscall.read.return!, tp_syscall.read.return
   { }
   
-probe nd1_syscall.read.return =
+probe nd1_syscall.read.return = 
 %( arch == "s390" %?
 	__nd1_syscall.read.return, kprobe.function("sys32_read").return ?,
 	kprobe.function("compat_sys_s390_read").return ?
@@ -139,7 +139,7 @@ probe nd1_syscall.read.return =
 	@_SYSCALL_READ_NAME
 	@SYSC_RETVALSTR(returnval())
 }
-probe __nd1_syscall.read.return = kprobe.function("sys_read").return
+probe __nd1_syscall.read.return = kprobe.function("sys_read").return ?
 {
 %( arch == "s390" %?
 	@__syscall_gate(@const("__NR_read"))

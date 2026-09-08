@@ -63,7 +63,7 @@ probe __syscall.clock_gettime.return =
 probe nd_syscall.clock_gettime = nd1_syscall.clock_gettime!, nd2_syscall.clock_gettime!, tp_syscall.clock_gettime
   { }
 
-probe nd1_syscall.clock_gettime = __nd1_syscall.clock_gettime,
+probe nd1_syscall.clock_gettime = __nd1_syscall.clock_gettime ?,
 	kprobe.function("compat_sys_clock_gettime") ?
 {
 	@_SYSCALL_CLOCK_GETTIME_NAME
@@ -71,7 +71,7 @@ probe nd1_syscall.clock_gettime = __nd1_syscall.clock_gettime,
 	@_SYSCALL_CLOCK_GETTIME_REGARGS
 	@_SYSCALL_CLOCK_GETTIME_ARGSTR
 }
-probe __nd1_syscall.clock_gettime = kprobe.function("sys_clock_gettime").call
+probe __nd1_syscall.clock_gettime = kprobe.function("sys_clock_gettime").call ?
 {
 	@__syscall_gate(@const("__NR_clock_gettime"))
 }
@@ -105,14 +105,14 @@ probe tp_syscall.clock_gettime = tp_syscall("clock_gettime,~compat_clock_gettime
 probe nd_syscall.clock_gettime.return = nd1_syscall.clock_gettime.return!, nd2_syscall.clock_gettime.return!, tp_syscall.clock_gettime.return
   { }
 
-probe nd1_syscall.clock_gettime.return = __nd1_syscall.clock_gettime.return,
+probe nd1_syscall.clock_gettime.return = __nd1_syscall.clock_gettime.return ?,
 	kprobe.function("compat_sys_clock_gettime").return ?
 {
 	@_SYSCALL_CLOCK_GETTIME_NAME
 	@SYSC_RETVALSTR(returnval())
 }
-probe __nd1_syscall.clock_gettime.return =
-	kprobe.function("sys_clock_gettime").return
+probe __nd1_syscall.clock_gettime.return = 
+	kprobe.function("sys_clock_gettime").return ?
 {
 	@__syscall_gate(@const("__NR_clock_gettime"))
 }

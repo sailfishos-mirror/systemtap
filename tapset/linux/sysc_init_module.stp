@@ -95,7 +95,7 @@ probe tp_syscall.init_module = tp_syscall("init_module,~compat_init_module") !, 
 probe nd_syscall.init_module.return = nd1_syscall.init_module.return!, nd2_syscall.init_module.return!, tp_syscall.init_module.return
   { }
   
-probe nd1_syscall.init_module.return =
+probe nd1_syscall.init_module.return = 
 	kprobe.function("sys_init_module").return ?
 {
 	@_SYSCALL_INIT_MODULE_NAME

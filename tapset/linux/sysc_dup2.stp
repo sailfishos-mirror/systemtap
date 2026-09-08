@@ -59,7 +59,7 @@ probe dw_syscall.dup2.return = kernel.function("sys_dup2").return
 probe nd_syscall.dup2 = nd1_syscall.dup2!, nd2_syscall.dup2!, tp_syscall.dup2
   { }
 
-probe nd1_syscall.dup2 = kprobe.function("sys_dup2")
+probe nd1_syscall.dup2 = kprobe.function("sys_dup2") ?
 {
 	@_SYSCALL_DUP2_NAME
 	asmlinkage()
@@ -95,7 +95,7 @@ probe tp_syscall.dup2 = tp_syscall("dup2,~compat_dup2") !, kernel.trace("sys_ent
 probe nd_syscall.dup2.return = nd1_syscall.dup2.return!, nd2_syscall.dup2.return!, tp_syscall.dup2.return
   { }
   
-probe nd1_syscall.dup2.return = kprobe.function("sys_dup2").return
+probe nd1_syscall.dup2.return = kprobe.function("sys_dup2").return ?
 {
 	@_SYSCALL_DUP2_NAME
 	@SYSC_RETVALSTR(returnval())

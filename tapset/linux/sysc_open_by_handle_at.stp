@@ -109,7 +109,7 @@ probe tp_syscall.open_by_handle_at = tp_syscall("open_by_handle_at,~compat_open_
 probe nd_syscall.open_by_handle_at.return = nd1_syscall.open_by_handle_at.return!, nd2_syscall.open_by_handle_at.return!, tp_syscall.open_by_handle_at.return
   { }
   
-probe nd1_syscall.open_by_handle_at.return =
+probe nd1_syscall.open_by_handle_at.return = 
 	kprobe.function("sys_open_by_handle_at").return ?,
 	kprobe.function("compat_sys_open_by_handle_at").return ?
 {

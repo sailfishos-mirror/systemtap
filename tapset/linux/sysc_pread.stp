@@ -92,7 +92,7 @@ probe __syscall.pread.return = kernel.function("sys_pread64").return
 probe nd_syscall.pread = nd1_syscall.pread!, nd2_syscall.pread!, tp_syscall.pread
   { }
 
-probe nd1_syscall.pread =
+probe nd1_syscall.pread = 
 %( arch == "s390" %?
 	__nd1_syscall.compat_pread ?,
 %)
@@ -103,7 +103,7 @@ probe nd1_syscall.pread =
 	@_SYSCALL_PREAD_REGARGS
 	@_SYSCALL_PREAD_ARGSTR
 }
-probe __nd1_syscall.pread = kprobe.function("sys_pread64")
+probe __nd1_syscall.pread = kprobe.function("sys_pread64") ?
 {
 	asmlinkage()
 %( arch == "s390" %?
@@ -193,7 +193,7 @@ probe __tp_syscall.compat_pread = tp_syscall("~compat_pread64") !, kernel.trace(
 probe nd_syscall.pread.return = nd1_syscall.pread.return!, nd2_syscall.pread.return!, tp_syscall.pread.return
   { }
   
-probe nd1_syscall.pread.return =
+probe nd1_syscall.pread.return = 
 %( arch == "s390" %?
 	kprobe.function("sys32_pread64").return ?,
 	kprobe.function("compat_sys_s390_pread64").return ?,
@@ -203,7 +203,7 @@ probe nd1_syscall.pread.return =
 	@_SYSCALL_PREAD_NAME
 	@SYSC_RETVALSTR(returnval())
 }
-probe __nd1_syscall.pread.return = kprobe.function("sys_pread64").return
+probe __nd1_syscall.pread.return = kprobe.function("sys_pread64").return ?
 {
 %( arch == "s390" %?
 	@__syscall_gate(@const("__NR_pread64"))

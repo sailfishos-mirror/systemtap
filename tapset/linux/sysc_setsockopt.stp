@@ -146,14 +146,14 @@ probe __nd1_syscall.setsockopt = kprobe.function("sys_setsockopt") ?
 	@__syscall_gate(@const("__NR_setsockopt"))
 	@_SYSCALL_SETSOCKOPT_REGARGS
 }
-probe __nd1_syscall.socketcall.setsockopt =
+probe __nd1_syscall.socketcall.setsockopt = 
 	kprobe.function("sys_socketcall").call ?
 {
 	asmlinkage()
 	if (int_arg(1) != @const("SYS_SETSOCKOPT")) next;
 	@_SYSCALL_SOCKETCALL_SETSOCKOPT_REGARGS
 }
-probe __nd1_syscall.compat_socketcall.setsockopt =
+probe __nd1_syscall.compat_socketcall.setsockopt = 
 	kprobe.function("compat_sys_socketcall").call ?
 {
 	asmlinkage()
@@ -233,12 +233,12 @@ probe nd1_syscall.setsockopt.return = __nd1_syscall.setsockopt.return ?,
 	@_SYSCALL_SETSOCKOPT_NAME
 	@SYSC_RETVALSTR(returnval())
 }
-probe __nd1_syscall.setsockopt.return =
+probe __nd1_syscall.setsockopt.return = 
 	kprobe.function("sys_setsockopt").return ?
 {
 	@__syscall_gate(@const("__NR_setsockopt"))
 }
-probe __nd1_syscall.socketcall.setsockopt.return =
+probe __nd1_syscall.socketcall.setsockopt.return = 
 	kprobe.function("sys_socketcall").return ?,
 	kprobe.function("compat_sys_socketcall").return ?
 {

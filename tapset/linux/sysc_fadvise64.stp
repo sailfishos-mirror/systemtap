@@ -302,7 +302,7 @@ probe tp_syscall.fadvise64_64 = tp_syscall("fadvise64_64") !, kernel.trace("sys_
 probe nd_syscall.fadvise64_64.return = nd1_syscall.fadvise64_64.return!, tp_syscall.fadvise64_64.return
   { }
   
-probe nd1_syscall.fadvise64_64.return =
+probe nd1_syscall.fadvise64_64.return = 
 	kprobe.function("sys_fadvise64_64").return ?
 {
 	@__syscall_gate_compat_simple

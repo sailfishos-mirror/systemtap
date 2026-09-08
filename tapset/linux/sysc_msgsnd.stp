@@ -277,19 +277,19 @@ probe tp_syscall.compat_sys_msgsnd = tp_syscall("~compat_ipc") !, kernel.trace("
 probe nd_syscall.compat_sys_msgsnd.return = nd1_syscall.compat_sys_msgsnd.return!, nd2_syscall.compat_sys_msgsnd.return!, tp_syscall.compat_sys_msgsnd.return
   { }
 
-probe nd1_syscall.compat_sys_msgsnd.return =
+probe nd1_syscall.compat_sys_msgsnd.return = 
 	__nd1_syscall.compat_sys_msgsnd.return ?,
 	__nd1_syscall.compat_ipc.msgsnd.return ?
 {
 	@_SYSCALL_MSGSND_NAME
 	@SYSC_RETVALSTR(returnval())
 }
-probe __nd1_syscall.compat_sys_msgsnd.return =
+probe __nd1_syscall.compat_sys_msgsnd.return = 
 	kprobe.function("compat_sys_msgsnd").return ?
 {
 	@__compat_syscall_gate_negative(@const("__NR_compat_ipc"))
 }
-probe __nd1_syscall.compat_ipc.msgsnd.return =
+probe __nd1_syscall.compat_ipc.msgsnd.return = 
 	kprobe.function("compat_sys_ipc").return ?,
 	kprobe.function("sys32_ipc").return ?
 {

@@ -85,7 +85,7 @@ probe tp_syscall.userfaultfd = tp_syscall("userfaultfd,~compat_userfaultfd") !, 
 probe nd_syscall.userfaultfd.return = nd1_syscall.userfaultfd.return!, nd2_syscall.userfaultfd.return!, tp_syscall.userfaultfd.return
   { }
 
-probe nd1_syscall.userfaultfd.return =
+probe nd1_syscall.userfaultfd.return = 
 	kprobe.function("sys_userfaultfd").return ?
 {
 	@_SYSCALL_USERFAULTFD_NAME

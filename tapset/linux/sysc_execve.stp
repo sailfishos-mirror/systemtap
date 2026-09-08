@@ -92,7 +92,7 @@ probe dw_syscall.compat_execve.return =
 probe nd_syscall.execve = nd1_syscall.execve!, nd2_syscall.execve!, tp_syscall.execve
   { }
 
-probe nd1_syscall.execve = kprobe.function("sys_execve")
+probe nd1_syscall.execve = kprobe.function("sys_execve") ?
 {
 	@_SYSCALL_EXECVE_NAME
 	asmlinkage()
@@ -122,7 +122,7 @@ probe tp_syscall.execve = tp_syscall("execve") !, kernel.trace("sys_enter")
 probe nd_syscall.execve.return = nd1_syscall.execve.return!, nd2_syscall.execve.return!, tp_syscall.execve.return
   { }
   
-probe nd1_syscall.execve.return = kprobe.function("sys_execve").return
+probe nd1_syscall.execve.return = kprobe.function("sys_execve").return ?
 {
 	@_SYSCALL_EXECVE_NAME
 	@SYSC_RETVALSTR(returnval())
@@ -185,7 +185,7 @@ probe tp_syscall.compat_execve = tp_syscall("~compat_execve") !, kernel.trace("s
 probe nd_syscall.compat_execve.return = nd1_syscall.compat_execve.return!, nd2_syscall.compat_execve.return!, tp_syscall.compat_execve.return
   { }
   
-probe nd1_syscall.compat_execve.return =
+probe nd1_syscall.compat_execve.return = 
 	kprobe.function("compat_sys_execve").return ?
 {
 	@_SYSCALL_EXECVE_NAME

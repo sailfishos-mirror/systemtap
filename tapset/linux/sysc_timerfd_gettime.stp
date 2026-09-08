@@ -73,7 +73,7 @@ probe nd1_syscall.timerfd_gettime = __nd1_syscall.timerfd_gettime ?,
 	@_SYSCALL_TIMERFD_GETTIME_REGARGS
 	@_SYSCALL_TIMERFD_GETTIME_ARGSTR
 }
-probe __nd1_syscall.timerfd_gettime =
+probe __nd1_syscall.timerfd_gettime = 
 	kprobe.function("sys_timerfd_gettime").call ?
 {
 	@__syscall_gate_compat_simple
@@ -115,7 +115,7 @@ probe nd1_syscall.timerfd_gettime.return = __nd1_syscall.timerfd_gettime.return 
 	@_SYSCALL_TIMERFD_GETTIME_NAME
 	@SYSC_RETVALSTR(returnval())
 }
-probe __nd1_syscall.timerfd_gettime.return =
+probe __nd1_syscall.timerfd_gettime.return = 
 	kprobe.function("sys_timerfd_gettime").return ?
 {
 	@__syscall_gate_compat_simple

@@ -34,7 +34,7 @@ probe dw_syscall.sync.return = kernel.function("sys_sync").return
 probe nd_syscall.sync = nd1_syscall.sync!, nd2_syscall.sync!, tp_syscall.sync
   { }
 
-probe nd1_syscall.sync = kprobe.function("sys_sync")
+probe nd1_syscall.sync = kprobe.function("sys_sync") ?
 {
 	@_SYSCALL_SYNC_NAME
 	@_SYSCALL_SYNC_ARGSTR
@@ -58,7 +58,7 @@ probe tp_syscall.sync = tp_syscall("sync,~compat_sync") !, kernel.trace("sys_ent
 probe nd_syscall.sync.return = nd1_syscall.sync.return!, nd2_syscall.sync.return!, tp_syscall.sync.return
   { }
 
-probe nd1_syscall.sync.return = kprobe.function("sys_sync").return
+probe nd1_syscall.sync.return = kprobe.function("sys_sync").return ?
 {
 	@_SYSCALL_SYNC_NAME
 	@SYSC_RETVALSTR(returnval())

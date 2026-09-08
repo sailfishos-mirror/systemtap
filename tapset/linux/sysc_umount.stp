@@ -85,11 +85,11 @@ probe __syscall.umount.return = kernel.function("sys_umount").return
 probe nd_syscall.umount = nd1_syscall.umount!, nd2_syscall.umount!, tp_syscall.umount
   { }
 
-probe nd1_syscall.umount = __nd1_syscall.umount, __nd1_syscall.oldumount ?
+probe nd1_syscall.umount = __nd1_syscall.umount ?, __nd1_syscall.oldumount ?
 {
 	@_SYSCALL_UMOUNT_NAME
 }
-probe __nd1_syscall.umount = kprobe.function("sys_umount")
+probe __nd1_syscall.umount = kprobe.function("sys_umount") ?
 {
 	@__syscall_compat_gate(@const("__NR_umount2"), @const("__NR_compat_umount2"))
 	asmlinkage()
@@ -156,13 +156,13 @@ probe __tp_syscall.oldumount = tp_syscall("umount,~compat_umount") !, kernel.tra
 probe nd_syscall.umount.return = nd1_syscall.umount.return!, nd2_syscall.umount.return!, tp_syscall.umount.return
   { }
   
-probe nd1_syscall.umount.return = __nd1_syscall.umount.return,
+probe nd1_syscall.umount.return = __nd1_syscall.umount.return ?,
 				 kprobe.function("sys_oldumount").return ?
 {
 	@_SYSCALL_UMOUNT_NAME
 	@SYSC_RETVALSTR(returnval())
 }
-probe __nd1_syscall.umount.return = kprobe.function("sys_umount").return
+probe __nd1_syscall.umount.return = kprobe.function("sys_umount").return ?
 {
 	@__syscall_compat_gate(@const("__NR_umount2"), @const("__NR_compat_umount2"))
 }

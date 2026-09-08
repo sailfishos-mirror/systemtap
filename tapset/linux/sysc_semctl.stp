@@ -263,19 +263,19 @@ probe tp_syscall.compat_sys_semctl = kernel.tracepoint("sys_exit")!, kernel.trac
 probe nd_syscall.compat_sys_semctl.return = nd1_syscall.compat_sys_semctl.return!, nd2_syscall.compat_sys_semctl.return!, tp_syscall.compat_sys_semctl.return
   { }
   
-probe nd1_syscall.compat_sys_semctl.return =
+probe nd1_syscall.compat_sys_semctl.return = 
 	__nd1_syscall.compat_semctl.return ?,
 	__nd1_syscall.compat_ipc.semctl.return ?
 {
 	@_SYSCALL_SEMCTL_NAME
 	@SYSC_RETVALSTR(returnval())
 }
-probe __nd1_syscall.compat_semctl.return =
+probe __nd1_syscall.compat_semctl.return = 
 	kprobe.function("compat_sys_semctl").return ?
 {
 	@__compat_syscall_gate_negative(@const("__NR_compat_ipc"))
 }
-probe __nd1_syscall.compat_ipc.semctl.return =
+probe __nd1_syscall.compat_ipc.semctl.return = 
 	kprobe.function("compat_sys_ipc").return ?,
 	kprobe.function("sys32_ipc").return ?
 {

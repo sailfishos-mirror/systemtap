@@ -196,7 +196,7 @@ probe tp_syscall.sync_file_range = tp_syscall("sync_file_range,~compat_sync_file
 probe nd_syscall.sync_file_range.return = nd1_syscall.sync_file_range.return!, nd2_syscall.sync_file_range.return!, tp_syscall.sync_file_range.return
   { }
 
-probe nd1_syscall.sync_file_range.return =
+probe nd1_syscall.sync_file_range.return = 
 	kprobe.function("sys_sync_file_range").return ?
 {
 	@_SYSCALL_SYNC_FILE_RANGE_NAME

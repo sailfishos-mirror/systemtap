@@ -142,14 +142,14 @@ probe __nd1_syscall.sendmmsg = kprobe.function("sys_sendmmsg").call ?
 	asmlinkage()
 	@_SYSCALL_SENDMMSG_REGARGS
 }
-probe __nd1_syscall.compat_socketcall.sendmmsg =
+probe __nd1_syscall.compat_socketcall.sendmmsg = 
 	kprobe.function("compat_sys_socketcall").call ?
 {
 	asmlinkage()
 	if (int_arg(1) != @const("SYS_SENDMMSG")) next;
 	@_SYSCALL_COMPAT_SOCKETCALL_SENDMMSG_REGARGS
 }
-probe __nd1_syscall.compat_sendmmsg =
+probe __nd1_syscall.compat_sendmmsg = 
 	kprobe.function("compat_sys_sendmmsg").call ?
 {
 	@__compat_syscall_gate(@const("__NR_compat_sendmmsg"))
@@ -241,12 +241,12 @@ probe __nd1_syscall.sendmmsg.return = kprobe.function("sys_sendmmsg").return ?
 	# check is that we're not in a compat task.
 	@__syscall_gate_compat_simple
 }
-probe __nd1_syscall.compat_socketcall.sendmmsg.return =
+probe __nd1_syscall.compat_socketcall.sendmmsg.return = 
 	kprobe.function("compat_sys_socketcall").return ?
 {
 	if (@entry(__asmlinkage_int_arg(1)) != @const("SYS_SENDMMSG")) next;
 }
-probe __nd1_syscall.compat_sendmmsg.return =
+probe __nd1_syscall.compat_sendmmsg.return = 
 	kprobe.function("compat_sys_sendmmsg").return ?
 {
 	@__compat_syscall_gate(@const("__NR_compat_sendmmsg"))

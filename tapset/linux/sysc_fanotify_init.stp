@@ -92,7 +92,7 @@ probe tp_syscall.fanotify_init = tp_syscall("fanotify_init,~compat_fanotify_init
 probe nd_syscall.fanotify_init.return = nd1_syscall.fanotify_init.return!, nd2_syscall.fanotify_init.return!, tp_syscall.fanotify_init.return
   { }
   
-probe nd1_syscall.fanotify_init.return =
+probe nd1_syscall.fanotify_init.return = 
 	kprobe.function("sys_fanotify_init").return ?
 {
 	@_SYSCALL_FANOTIFY_INIT_NAME

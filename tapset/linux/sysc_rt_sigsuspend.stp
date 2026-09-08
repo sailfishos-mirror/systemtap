@@ -99,7 +99,7 @@ probe tp_syscall.rt_sigsuspend = tp_syscall("rt_sigsuspend,~compat_rt_sigsuspend
 probe nd_syscall.rt_sigsuspend.return = nd1_syscall.rt_sigsuspend.return!, nd2_syscall.rt_sigsuspend.return!, tp_syscall.rt_sigsuspend.return
   { }
   
-probe nd1_syscall.rt_sigsuspend.return =
+probe nd1_syscall.rt_sigsuspend.return = 
 	kprobe.function("sys_rt_sigsuspend").return ?,
 	kprobe.function("ia64_rt_sigsuspend").return ?,
 	kprobe.function("compat_sys_rt_sigsuspend").return ?

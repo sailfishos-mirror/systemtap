@@ -61,7 +61,7 @@ probe dw_syscall.exit = kernel.function("sys_exit").call
 probe nd_syscall.exit = nd1_syscall.exit!, nd2_syscall.exit!, tp_syscall.exit
   { }
 
-probe nd1_syscall.exit = kprobe.function("sys_exit").call
+probe nd1_syscall.exit = kprobe.function("sys_exit").call ?
 {
 	@_SYSCALL_EXIT_NAME
 	asmlinkage()

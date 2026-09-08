@@ -107,7 +107,7 @@ probe tp_syscall.kexec_file_load = tp_syscall("kexec_file_load,~compat_kexec_fil
 probe nd_syscall.kexec_file_load.return = nd1_syscall.kexec_file_load.return!, nd2_syscall.kexec_file_load.return!, tp_syscall.kexec_file_load.return
   { }
   
-probe nd1_syscall.kexec_file_load.return =
+probe nd1_syscall.kexec_file_load.return = 
 	kprobe.function("sys_kexec_file_load").return ?
 {
 	@_SYSCALL_KEXEC_FILE_LOAD_NAME

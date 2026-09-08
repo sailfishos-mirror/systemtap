@@ -85,7 +85,7 @@ probe nd1_syscall.migrate_pages = __nd1_syscall.migrate_pages ?,
 	@_SYSCALL_MIGRATE_PAGES_REGARGS
 	@_SYSCALL_MIGRATE_PAGES_ARGSTR
 }
-probe __nd1_syscall.migrate_pages = kprobe.function("sys_migrate_pages")
+probe __nd1_syscall.migrate_pages = kprobe.function("sys_migrate_pages") ?
 {
 %( arch == "powerpc" %?
 	@__syscall_gate_compat_simple
@@ -126,7 +126,7 @@ probe nd1_syscall.migrate_pages.return = __nd1_syscall.migrate_pages.return ?,
 	@_SYSCALL_MIGRATE_PAGES_NAME
 	@SYSC_RETVALSTR(returnval())
 }
-probe __nd1_syscall.migrate_pages.return = kprobe.function("sys_migrate_pages").return
+probe __nd1_syscall.migrate_pages.return = kprobe.function("sys_migrate_pages").return ?
 {
 %( arch == "powerpc" %?
 	@__syscall_gate_compat_simple

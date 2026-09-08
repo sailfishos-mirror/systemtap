@@ -139,7 +139,7 @@ probe nd_syscall.pipe = nd1_syscall.pipe!, nd2_syscall.pipe!, tp_syscall.pipe
   { }
 
 probe nd1_syscall.pipe = __nd1_syscall.pipe2 ?, __nd1_syscall.ia64_pipe ?,
-	__nd1_syscall.pipe
+	__nd1_syscall.pipe ?
 {
 }
 probe __nd1_syscall.pipe2 = kprobe.function("sys_pipe2") ?
@@ -170,7 +170,7 @@ probe __nd1_syscall.ia64_pipe = kprobe.function("sys_ia64_pipe").call ?
 	pipe1 = 0;
 	argstr = "[0, 0]";
 }
-probe __nd1_syscall.pipe = kprobe.function("sys_pipe")
+probe __nd1_syscall.pipe = kprobe.function("sys_pipe") ?
 {
 	name = "pipe"
 	flags = 0
@@ -304,7 +304,7 @@ probe nd_syscall.pipe.return = nd1_syscall.pipe.return!, nd2_syscall.pipe.return
   
 probe nd1_syscall.pipe.return = __nd1_syscall.pipe2.return ?,
 			        __nd1_syscall.ia64_pipe.return ?,
-                                __nd1_syscall.pipe.return
+                                __nd1_syscall.pipe.return ?
 {
 }
 probe __nd1_syscall.pipe2.return = kprobe.function("sys_pipe2").return ?
@@ -330,7 +330,7 @@ probe __nd1_syscall.ia64_pipe.return = kprobe.function("sys_ia64_pipe").return ?
         @SYSC_RETVALSTR(returnval())
         if (pipe0 >= 0) { retstr = "0" }
 }
-probe __nd1_syscall.pipe.return = kprobe.function("sys_pipe").return
+probe __nd1_syscall.pipe.return = kprobe.function("sys_pipe").return ?
 {
 	name = "pipe"
 	fildes_uaddr = @entry(%( arch != "powerpc" %? __asmlinkage_int_arg(1)

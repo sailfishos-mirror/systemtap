@@ -193,7 +193,7 @@ probe tp_syscall.compat_futex = tp_syscall("~compat_futex") !, kernel.trace("sys
 probe nd_syscall.compat_futex.return = nd1_syscall.compat_futex.return!, nd2_syscall.compat_futex.return!, tp_syscall.compat_futex.return
   { }
   
-probe nd1_syscall.compat_futex.return =
+probe nd1_syscall.compat_futex.return = 
 	kprobe.function("compat_sys_futex").return ?
 {
 	@_SYSCALL_FUTEX_NAME

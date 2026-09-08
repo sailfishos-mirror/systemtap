@@ -33,7 +33,7 @@ probe dw_syscall.getppid.return = kernel.function("sys_getppid").return
 probe nd_syscall.getppid = nd1_syscall.getppid!, nd2_syscall.getppid!, tp_syscall.getppid
   { }
 
-probe nd1_syscall.getppid = kprobe.function("sys_getppid")
+probe nd1_syscall.getppid = kprobe.function("sys_getppid") ?
 {
 	@_SYSCALL_GETPPID_NAME
 	@_SYSCALL_GETPPID_ARGSTR
@@ -57,7 +57,7 @@ probe tp_syscall.getppid = tp_syscall("getppid,~compat_getppid") !, kernel.trace
 probe nd_syscall.getppid.return = nd1_syscall.getppid.return!, nd2_syscall.getppid.return!, tp_syscall.getppid.return
   { }
   
-probe nd1_syscall.getppid.return = kprobe.function("sys_getppid").return
+probe nd1_syscall.getppid.return = kprobe.function("sys_getppid").return ?
 {
 	@_SYSCALL_GETPPID_NAME
 	@SYSC_RETVALSTR(returnval())

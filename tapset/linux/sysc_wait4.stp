@@ -99,14 +99,14 @@ probe __syscall.compat_wait4.return =
 probe nd_syscall.wait4 = nd1_syscall.wait4!, nd2_syscall.wait4!, tp_syscall.wait4
   { }
 
-probe nd1_syscall.wait4 = __nd1_syscall.wait4, __nd1_syscall.compat_wait4 ?
+probe nd1_syscall.wait4 = __nd1_syscall.wait4 ?, __nd1_syscall.compat_wait4 ?
 {
 	@_SYSCALL_WAIT4_NAME
 	asmlinkage()
 	@_SYSCALL_WAIT4_REGARGS
 	@_SYSCALL_WAIT4_ARGSTR
 }
-probe __nd1_syscall.wait4 = kprobe.function("sys_wait4")
+probe __nd1_syscall.wait4 = kprobe.function("sys_wait4") ?
 {
 	@__syscall_gate(@const("__NR_wait4"))
 }
@@ -142,7 +142,7 @@ probe tp_syscall.wait4 = tp_syscall("wait4,~compat_wait4") !, kernel.trace("sys_
 probe nd_syscall.wait4.return = nd1_syscall.wait4.return!, nd2_syscall.wait4.return!, tp_syscall.wait4.return
   { }
 
-probe nd1_syscall.wait4.return = __nd1_syscall.wait4.return,
+probe nd1_syscall.wait4.return = __nd1_syscall.wait4.return ?,
 	__nd1_syscall.compat_wait4.return ?
 {
 	@_SYSCALL_WAIT4_NAME
@@ -158,11 +158,11 @@ probe nd1_syscall.wait4.return = __nd1_syscall.wait4.return,
 
 	@SYSC_RETVALSTR(returnval())
 }
-probe __nd1_syscall.wait4.return = kprobe.function("sys_wait4").return
+probe __nd1_syscall.wait4.return = kprobe.function("sys_wait4").return ?
 {
 	@__syscall_gate(@const("__NR_wait4"))
 }
-probe __nd1_syscall.compat_wait4.return =
+probe __nd1_syscall.compat_wait4.return = 
 	kprobe.function("compat_sys_wait4").return ?
 {
 	@__compat_syscall_gate(@const("__NR_compat_wait4"))

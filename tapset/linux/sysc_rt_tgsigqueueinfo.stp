@@ -79,7 +79,7 @@ probe dw_syscall.rt_tgsigqueueinfo.return =
 probe nd_syscall.rt_tgsigqueueinfo = nd1_syscall.rt_tgsigqueueinfo!, nd2_syscall.rt_tgsigqueueinfo!, tp_syscall.rt_tgsigqueueinfo
   { }
 
-probe nd1_syscall.rt_tgsigqueueinfo =
+probe nd1_syscall.rt_tgsigqueueinfo = 
 	kprobe.function("sys_rt_tgsigqueueinfo") ?,
 	kprobe.function("compat_sys_rt_tgsigqueueinfo") ?
 {
@@ -119,7 +119,7 @@ probe tp_syscall.rt_tgsigqueueinfo = tp_syscall("rt_tgsigqueueinfo,~compat_rt_tg
 probe nd_syscall.rt_tgsigqueueinfo.return = nd1_syscall.rt_tgsigqueueinfo.return!, nd2_syscall.rt_tgsigqueueinfo.return!, tp_syscall.rt_tgsigqueueinfo.return
   { }
   
-probe nd1_syscall.rt_tgsigqueueinfo.return =
+probe nd1_syscall.rt_tgsigqueueinfo.return = 
 	kprobe.function("sys_rt_tgsigqueueinfo").return ?,
 	kprobe.function("compat_sys_rt_tgsigqueueinfo").return ?
 {

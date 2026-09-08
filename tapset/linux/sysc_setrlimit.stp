@@ -79,7 +79,7 @@ probe nd1_syscall.setrlimit = __nd1_syscall.setrlimit ?,
 	@_SYSCALL_SETRLIMIT_REGARGS
 	@_SYSCALL_SETRLIMIT_ARGSTR
 }
-probe __nd1_syscall.setrlimit = kprobe.function("sys_setrlimit")
+probe __nd1_syscall.setrlimit = kprobe.function("sys_setrlimit") ?
 {
 	@__syscall_gate(@const("__NR_setrlimit"))
 }
@@ -120,7 +120,7 @@ probe nd1_syscall.setrlimit.return = __nd1_syscall.setrlimit.return ?,
 	@_SYSCALL_SETRLIMIT_NAME
 	@SYSC_RETVALSTR(returnval())
 }
-probe __nd1_syscall.setrlimit.return = kprobe.function("sys_setrlimit").return
+probe __nd1_syscall.setrlimit.return = kprobe.function("sys_setrlimit").return ?
 {
 	@__syscall_gate(@const("__NR_setrlimit"))
 }

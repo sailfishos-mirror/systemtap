@@ -97,7 +97,7 @@ probe tp_syscall.sched_setattr = tp_syscall("sched_setattr,~compat_sched_setattr
 probe nd_syscall.sched_setattr.return = nd1_syscall.sched_setattr.return!, nd2_syscall.sched_setattr.return!, tp_syscall.sched_setattr.return
   { }
   
-probe nd1_syscall.sched_setattr.return =
+probe nd1_syscall.sched_setattr.return = 
 	kprobe.function("sys_sched_setattr").return ?
 {
 	@_SYSCALL_SCHED_SETATTR_NAME

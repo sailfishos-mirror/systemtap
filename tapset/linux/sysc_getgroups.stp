@@ -112,7 +112,7 @@ probe __tp_syscall.getgroups32 = tp_syscall("getgroups32,~compat_getgroups32") !
 probe nd_syscall.getgroups.return = nd1_syscall.getgroups.return!, nd2_syscall.getgroups.return!, tp_syscall.getgroups.return
   { }
   
-probe nd1_syscall.getgroups.return =
+probe nd1_syscall.getgroups.return = 
 	kprobe.function("sys_getgroups16").return ?,
 	kprobe.function("sys32_getgroups16").return ?,
 %( arch == "s390" %?

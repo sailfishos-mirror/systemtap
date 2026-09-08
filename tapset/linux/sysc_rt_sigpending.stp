@@ -118,14 +118,14 @@ probe tp_syscall.rt_sigpending = tp_syscall("rt_sigpending,~compat_rt_sigpending
 probe nd_syscall.rt_sigpending.return = nd1_syscall.rt_sigpending.return!, nd2_syscall.rt_sigpending.return!, tp_syscall.rt_sigpending.return
   { }
   
-probe nd1_syscall.rt_sigpending.return =
+probe nd1_syscall.rt_sigpending.return = 
 	__nd1_syscall.rt_sigpending.return ?,
 	__nd1_syscall.compat_rt_sigpending.return ?
 {
 	@_SYSCALL_RT_SIGPENDING_NAME
 	@SYSC_RETVALSTR(returnval())
 }
-probe __nd1_syscall.rt_sigpending.return =
+probe __nd1_syscall.rt_sigpending.return = 
 	kprobe.function("sys_rt_sigpending").return ?
 {
 	@__syscall_gate(@const("__NR_rt_sigpending"))

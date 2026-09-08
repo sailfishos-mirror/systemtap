@@ -171,7 +171,7 @@ probe __nd1_syscall.fanotify_mark = kprobe.function("sys_fanotify_mark") ?
 	asmlinkage()
 	@_SYSCALL_FANOTIFY_MARK_REGARGS
 }
-probe __nd1_syscall.compat_fanotify_mark =
+probe __nd1_syscall.compat_fanotify_mark = 
 	kprobe.function("compat_sys_fanotify_mark") ?
 {
 	asmlinkage()
@@ -238,7 +238,7 @@ probe __tp_syscall.compat_fanotify_mark = tp_syscall("~compat_fanotify_mark") !,
 probe nd_syscall.fanotify_mark.return = nd1_syscall.fanotify_mark.return!, nd2_syscall.fanotify_mark.return!, tp_syscall.fanotify_mark.return
   { }
 
-probe nd1_syscall.fanotify_mark.return =
+probe nd1_syscall.fanotify_mark.return = 
 	kprobe.function("sys_fanotify_mark").return ?,
 	kprobe.function("compat_sys_fanotify_mark").return ?
 {

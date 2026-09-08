@@ -109,7 +109,7 @@ probe nd1_syscall.mbind = __nd1_syscall.mbind ?,
 	@_SYSCALL_MBIND_REGARGS
 	@_SYSCALL_MBIND_ARGSTR
 }
-probe __nd1_syscall.mbind = kprobe.function("sys_mbind")
+probe __nd1_syscall.mbind = kprobe.function("sys_mbind") ?
 {
 %( arch == "powerpc" %?
 	@__syscall_gate_compat_simple
@@ -150,7 +150,7 @@ probe nd1_syscall.mbind.return = __nd1_syscall.mbind.return ?,
 	@_SYSCALL_MBIND_NAME
 	@SYSC_RETVALSTR(returnval())
 }
-probe __nd1_syscall.mbind.return = kprobe.function("sys_mbind").return
+probe __nd1_syscall.mbind.return = kprobe.function("sys_mbind").return ?
 {
 %( arch == "powerpc" %?
 	@__syscall_gate_compat_simple

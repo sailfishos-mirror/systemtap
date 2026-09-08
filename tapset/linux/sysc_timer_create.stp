@@ -75,12 +75,12 @@ probe __syscall.timer_create.return = kernel.function("sys_timer_create").return
 probe nd_syscall.timer_create = nd1_syscall.timer_create!, nd2_syscall.timer_create!, tp_syscall.timer_create
   { }
 
-probe nd1_syscall.timer_create = __nd1_syscall.timer_create,
+probe nd1_syscall.timer_create = __nd1_syscall.timer_create ?,
                                  __nd1_syscall.compat_timer_create ?
 {
 	@_SYSCALL_TIMER_CREATE_NAME
 }
-probe __nd1_syscall.timer_create = kprobe.function("sys_timer_create")
+probe __nd1_syscall.timer_create = kprobe.function("sys_timer_create") ?
 {
 	@__syscall_gate(@const("__NR_timer_create"))
 	asmlinkage()
@@ -137,14 +137,14 @@ probe tp_syscall.timer_create = tp_syscall("timer_create,~compat_timer_create") 
 probe nd_syscall.timer_create.return = nd1_syscall.timer_create.return!, nd2_syscall.timer_create.return!, tp_syscall.timer_create.return
   { }
 
-probe nd1_syscall.timer_create.return =
-	__nd1_syscall.timer_create.return,
+probe nd1_syscall.timer_create.return = 
+	__nd1_syscall.timer_create.return ?,
 	kprobe.function("compat_sys_timer_create").return ?
 {
 	@_SYSCALL_TIMER_CREATE_NAME
 	@SYSC_RETVALSTR(returnval())
 }
-probe __nd1_syscall.timer_create.return = kprobe.function("sys_timer_create").return
+probe __nd1_syscall.timer_create.return = kprobe.function("sys_timer_create").return ?
 {
 	@__syscall_gate(@const("__NR_timer_create"))
 }

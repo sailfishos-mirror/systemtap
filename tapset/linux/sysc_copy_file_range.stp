@@ -73,7 +73,7 @@ probe dw_syscall.copy_file_range.return =
 probe nd_syscall.copy_file_range = nd1_syscall.copy_file_range!, nd2_syscall.copy_file_range!, tp_syscall.copy_file_range
   { }
 
-probe nd1_syscall.copy_file_range =
+probe nd1_syscall.copy_file_range = 
 	kprobe.function("sys_copy_file_range").call ?
 {
 	@_SYSCALL_COPY_FILE_RANGE_NAME
@@ -109,7 +109,7 @@ probe tp_syscall.copy_file_range = tp_syscall("copy_file_range,~compat_copy_file
 probe nd_syscall.copy_file_range.return = nd1_syscall.copy_file_range.return!, nd2_syscall.copy_file_range.return!, tp_syscall.copy_file_range.return
   { }
   
-probe nd1_syscall.copy_file_range.return =
+probe nd1_syscall.copy_file_range.return = 
 	kprobe.function("sys_copy_file_range").return ?
 {
 	@_SYSCALL_COPY_FILE_RANGE_NAME

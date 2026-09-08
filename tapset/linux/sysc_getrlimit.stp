@@ -74,7 +74,7 @@ probe nd1_syscall.getrlimit = __nd1_syscall.getrlimit ?,
 	@_SYSCALL_GETRLIMIT_REGARGS
 	@_SYSCALL_GETRLIMIT_ARGSTR
 }
-probe __nd1_syscall.getrlimit = kprobe.function("sys_getrlimit")
+probe __nd1_syscall.getrlimit = kprobe.function("sys_getrlimit") ?
 {
 	@__syscall_gate_compat_simple
 }
@@ -123,7 +123,7 @@ probe nd1_syscall.getrlimit.return = __nd1_syscall.getrlimit.return ?,
 	@_SYSCALL_GETRLIMIT_NAME
 	@SYSC_RETVALSTR(returnval())
 }
-probe __nd1_syscall.getrlimit.return = kprobe.function("sys_getrlimit").return
+probe __nd1_syscall.getrlimit.return = kprobe.function("sys_getrlimit").return ?
 {
 	@__syscall_gate_compat_simple
 }

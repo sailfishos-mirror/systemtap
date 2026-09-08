@@ -81,7 +81,7 @@ probe nd1_syscall.get_robust_list = __nd1_syscall.get_robust_list ?,
 	@_SYSCALL_GET_ROBUST_LIST_ARGSTR
 
 }
-probe __nd1_syscall.get_robust_list = kprobe.function("sys_get_robust_list")
+probe __nd1_syscall.get_robust_list = kprobe.function("sys_get_robust_list") ?
 {
 	@__syscall_gate_compat_simple
 }
@@ -122,7 +122,7 @@ probe nd1_syscall.get_robust_list.return = __nd1_syscall.get_robust_list.return 
 	@_SYSCALL_GET_ROBUST_LIST_NAME
 	@SYSC_RETVALSTR(returnval())
 }
-probe __nd1_syscall.get_robust_list.return = kprobe.function("sys_get_robust_list").return
+probe __nd1_syscall.get_robust_list.return = kprobe.function("sys_get_robust_list").return ?
 {
 	@__syscall_gate_compat_simple
 }

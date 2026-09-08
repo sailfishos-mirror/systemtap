@@ -88,7 +88,7 @@ probe nd1_syscall.kexec_load = __nd1_syscall.kexec_load ?,
 	@_SYSCALL_KEXEC_LOAD_REGARGS
 	@_SYSCALL_KEXEC_LOAD_ARGSTR
 }
-probe __nd1_syscall.kexec_load = kprobe.function("sys_kexec_load")
+probe __nd1_syscall.kexec_load = kprobe.function("sys_kexec_load") ?
 {
 	@__syscall_gate_compat_simple
 }
@@ -128,7 +128,7 @@ probe nd1_syscall.kexec_load.return = __nd1_syscall.kexec_load.return ?,
 	@_SYSCALL_KEXEC_LOAD_NAME
 	@SYSC_RETVALSTR(returnval())
 }
-probe __nd1_syscall.kexec_load.return = kprobe.function("sys_kexec_load").return
+probe __nd1_syscall.kexec_load.return = kprobe.function("sys_kexec_load").return ?
 {
 	@__syscall_gate_compat_simple
 }

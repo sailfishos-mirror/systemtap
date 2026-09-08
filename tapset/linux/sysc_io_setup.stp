@@ -69,7 +69,7 @@ probe __syscall.io_setup.return = kernel.function("sys_io_setup").return
 probe nd_syscall.io_setup = nd1_syscall.io_setup!, nd2_syscall.io_setup!, tp_syscall.io_setup
   { }
 
-probe nd1_syscall.io_setup = __nd1_syscall.io_setup,
+probe nd1_syscall.io_setup = __nd1_syscall.io_setup ?,
 	kprobe.function("compat_sys_io_setup") ?
 {
 	asmlinkage()
@@ -111,7 +111,7 @@ probe tp_syscall.io_setup = tp_syscall("io_setup,~compat_io_setup") !, kernel.tr
 probe nd_syscall.io_setup.return = nd1_syscall.io_setup.return!, nd2_syscall.io_setup.return!, tp_syscall.io_setup.return
   { }
   
-probe nd1_syscall.io_setup.return = __nd1_syscall.io_setup.return,
+probe nd1_syscall.io_setup.return = __nd1_syscall.io_setup.return ?,
 	kprobe.function("compat_sys_io_setup").return ?
 {
 	@_SYSCALL_IO_SETUP_NAME

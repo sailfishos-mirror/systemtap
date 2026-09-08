@@ -99,7 +99,7 @@ probe tp_syscall.statfs64 = tp_syscall("statfs64,~compat_statfs64") !, kernel.tr
 probe nd_syscall.statfs64.return = nd1_syscall.statfs64.return!, nd2_syscall.statfs64.return!, tp_syscall.statfs64.return
   { }
 
-probe nd1_syscall.statfs64.return =
+probe nd1_syscall.statfs64.return = 
 	kprobe.function("sys_statfs64").return ?,
 	kprobe.function("compat_sys_statfs64").return ?
 {

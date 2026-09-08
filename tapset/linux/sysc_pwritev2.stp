@@ -124,14 +124,14 @@ probe nd1_syscall.pwritev2 = __nd1_syscall.pwritev2 ?,
 {
 	@_SYSCALL_PWRITEV2_NAME
 }
-probe __nd1_syscall.pwritev2 = kprobe.function("sys_pwritev2").call
+probe __nd1_syscall.pwritev2 = kprobe.function("sys_pwritev2").call ?
 {
 	asmlinkage()
 	@_SYSCALL_PWRITEV2_REGARGS
 	@_SYSCALL_PWRITEV2_ARGSTR
 }
-probe __nd1_syscall.compat_pwritev2 =
-	kprobe.function("compat_sys_pwritev2").call
+probe __nd1_syscall.compat_pwritev2 = 
+	kprobe.function("compat_sys_pwritev2").call ?
 {
 	asmlinkage()
 	@_SYSCALL_COMPAT_PWRITEV2_REGARGS

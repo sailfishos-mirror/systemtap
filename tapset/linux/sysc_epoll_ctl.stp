@@ -126,7 +126,7 @@ probe tp_syscall.epoll_ctl = tp_syscall("epoll_ctl,~compat_epoll_ctl") !, kernel
 probe nd_syscall.epoll_ctl.return = nd1_syscall.epoll_ctl.return!, nd2_syscall.epoll_ctl.return!, tp_syscall.epoll_ctl.return
   { }
   
-probe nd1_syscall.epoll_ctl.return =
+probe nd1_syscall.epoll_ctl.return = 
 	kprobe.function("compat_sys_epoll_ctl").return ?,
 	__nd1_syscall.epoll_ctl.return ?
 {

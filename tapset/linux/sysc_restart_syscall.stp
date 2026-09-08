@@ -37,7 +37,7 @@ probe dw_syscall.restart_syscall.return = kernel.function("sys_restart_syscall")
 probe nd_syscall.restart_syscall = nd1_syscall.restart_syscall!, nd2_syscall.restart_syscall!, tp_syscall.restart_syscall
   { }
 
-probe nd1_syscall.restart_syscall = kprobe.function("sys_restart_syscall")
+probe nd1_syscall.restart_syscall = kprobe.function("sys_restart_syscall") ?
 {
 	@_SYSCALL_RESTART_SYSCALL_NAME
 	@_SYSCALL_RESTART_SYSCALL_ARGSTR
@@ -61,7 +61,7 @@ probe tp_syscall.restart_syscall = tp_syscall("restart_syscall,~compat_restart_s
 probe nd_syscall.restart_syscall.return = nd1_syscall.restart_syscall.return!, nd2_syscall.restart_syscall.return!, tp_syscall.restart_syscall.return
   { }
   
-probe nd1_syscall.restart_syscall.return = kprobe.function("sys_restart_syscall").return
+probe nd1_syscall.restart_syscall.return = kprobe.function("sys_restart_syscall").return ?
 {
 	@_SYSCALL_RESTART_SYSCALL_NAME
 	@SYSC_RETVALSTR(returnval())

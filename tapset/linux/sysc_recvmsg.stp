@@ -207,7 +207,7 @@ probe __nd1_syscall.recvmsg.return = kprobe.function("sys_recvmsg").return ?
 {
 	@__syscall_gate(@const("__NR_recvmsg"))
 }
-probe __nd1_syscall.socketcall.recvmsg.return =
+probe __nd1_syscall.socketcall.recvmsg.return = 
 	kprobe.function("sys_socketcall").return ?
 {
 	if (@entry(__asmlinkage_int_arg(1)) != @const("SYS_RECVMSG")) next;
@@ -294,7 +294,7 @@ probe dw_syscall.compat_sys_recvmsg.return =
 probe nd_syscall.compat_sys_recvmsg = nd1_syscall.compat_sys_recvmsg!, nd2_syscall.compat_sys_recvmsg!, tp_syscall.compat_sys_recvmsg
   { }
 
-probe nd1_syscall.compat_sys_recvmsg =
+probe nd1_syscall.compat_sys_recvmsg = 
 	kprobe.function("compat_sys_socketcall").call ?
 {
 	asmlinkage()
@@ -329,7 +329,7 @@ probe tp_syscall.compat_sys_recvmsg = tp_syscall("~compat_socketcall") !, kernel
 probe nd_syscall.compat_sys_recvmsg.return = nd1_syscall.compat_sys_recvmsg.return!, nd2_syscall.compat_sys_recvmsg.return!, tp_syscall.compat_sys_recvmsg.return
   { }
 
-probe nd1_syscall.compat_sys_recvmsg.return =
+probe nd1_syscall.compat_sys_recvmsg.return = 
 	kprobe.function("compat_sys_socketcall").return ?
 {
 	if (@entry(__asmlinkage_int_arg(1)) != @const("SYS_RECVMSG")) next;

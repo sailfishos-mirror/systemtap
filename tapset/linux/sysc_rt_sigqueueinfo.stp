@@ -80,7 +80,7 @@ probe __syscall.rt_sigqueueinfo.return =
 probe nd_syscall.rt_sigqueueinfo = nd1_syscall.rt_sigqueueinfo!, nd2_syscall.rt_sigqueueinfo!, tp_syscall.rt_sigqueueinfo
   { }
 
-probe nd1_syscall.rt_sigqueueinfo =
+probe nd1_syscall.rt_sigqueueinfo = 
 	__nd1_syscall.rt_sigqueueinfo ?,
 	kprobe.function("sys32_rt_sigqueueinfo") ?,
 	kprobe.function("compat_sys_rt_sigqueueinfo") ?
@@ -90,7 +90,7 @@ probe nd1_syscall.rt_sigqueueinfo =
 	@_SYSCALL_RT_SIGQUEUEINFO_REGARGS
 	@_SYSCALL_RT_SIGQUEUEINFO_ARGSTR
 }
-probe __nd1_syscall.rt_sigqueueinfo = kprobe.function("sys_rt_sigqueueinfo")
+probe __nd1_syscall.rt_sigqueueinfo = kprobe.function("sys_rt_sigqueueinfo") ?
 {
 	@__syscall_gate(@const("__NR_rt_sigqueueinfo"))
 }
@@ -125,7 +125,7 @@ probe tp_syscall.rt_sigqueueinfo = tp_syscall("rt_sigqueueinfo,~compat_rt_sigque
 probe nd_syscall.rt_sigqueueinfo.return = nd1_syscall.rt_sigqueueinfo.return!, nd2_syscall.rt_sigqueueinfo.return!, tp_syscall.rt_sigqueueinfo.return
   { }
   
-probe nd1_syscall.rt_sigqueueinfo.return =
+probe nd1_syscall.rt_sigqueueinfo.return = 
 	__nd1_syscall.rt_sigqueueinfo.return ?,
 	kprobe.function("sys32_rt_sigqueueinfo").return ?,
 	kprobe.function("compat_sys_rt_sigqueueinfo").return ?
@@ -133,8 +133,8 @@ probe nd1_syscall.rt_sigqueueinfo.return =
 	@_SYSCALL_RT_SIGQUEUEINFO_NAME
 	@SYSC_RETVALSTR(returnval())
 }
-probe __nd1_syscall.rt_sigqueueinfo.return =
-	kprobe.function("sys_rt_sigqueueinfo").return
+probe __nd1_syscall.rt_sigqueueinfo.return = 
+	kprobe.function("sys_rt_sigqueueinfo").return ?
 {
 	@__syscall_gate(@const("__NR_rt_sigqueueinfo"))
 }

@@ -127,7 +127,7 @@ probe nd1_syscall.accept = __nd1_syscall.accept ?,
 	@_SYSCALL_ACCEPT_ARGSTR
 %)
 }
-probe __nd1_syscall.accept = kprobe.function("sys_accept").call
+probe __nd1_syscall.accept = kprobe.function("sys_accept").call ?
 {
 	asmlinkage()
 	@__syscall_gate(@const("__NR_accept"))
@@ -139,7 +139,7 @@ probe __nd1_syscall.socketcall.accept = kprobe.function("sys_socketcall").call ?
 	if (int_arg(1) != @const("SYS_ACCEPT")) next;
 	@_SYSCALL_SOCKETCALL_ACCEPT_REGARGS
 }
-probe __nd1_syscall.compat_socketcall.accept =
+probe __nd1_syscall.compat_socketcall.accept = 
 	kprobe.function("compat_sys_socketcall").call ?
 {
 	asmlinkage()
@@ -238,7 +238,7 @@ probe __nd1_syscall.accept.return = kprobe.function("sys_accept").return ?
 {
 	@__syscall_gate(@const("__NR_accept"))
 }
-probe __nd1_syscall.socketcall.accept.return =
+probe __nd1_syscall.socketcall.accept.return = 
 	kprobe.function("sys_socketcall").return ?,
 	kprobe.function("compat_sys_socketcall").return ?
 {

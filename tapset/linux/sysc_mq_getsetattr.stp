@@ -72,7 +72,7 @@ probe __syscall.mq_getsetattr.return = kernel.function("sys_mq_getsetattr").retu
 probe nd_syscall.mq_getsetattr = nd1_syscall.mq_getsetattr!, nd2_syscall.mq_getsetattr!, tp_syscall.mq_getsetattr
   { }
 
-probe nd1_syscall.mq_getsetattr =
+probe nd1_syscall.mq_getsetattr = 
         __nd1_syscall.mq_getsetattr ?,
         kprobe.function("compat_sys_mq_getsetattr") ?
 {
@@ -81,7 +81,7 @@ probe nd1_syscall.mq_getsetattr =
 	@_SYSCALL_MQ_GETSETATTR_REGARGS
 	@_SYSCALL_MQ_GETSETATTR_ARGSTR
 }
-probe __nd1_syscall.mq_getsetattr = kprobe.function("sys_mq_getsetattr")
+probe __nd1_syscall.mq_getsetattr = kprobe.function("sys_mq_getsetattr") ?
 {
         @__syscall_gate(@const("__NR_mq_getsetattr"))
 }
@@ -116,14 +116,14 @@ probe tp_syscall.mq_getsetattr = tp_syscall("mq_getsetattr,~compat_mq_getsetattr
 probe nd_syscall.mq_getsetattr.return = nd1_syscall.mq_getsetattr.return!, nd2_syscall.mq_getsetattr.return!, tp_syscall.mq_getsetattr.return
   { }
   
-probe nd1_syscall.mq_getsetattr.return =
+probe nd1_syscall.mq_getsetattr.return = 
         __nd1_syscall.mq_getsetattr.return ?,
         kprobe.function("compat_sys_mq_getsetattr").return ?
 {
 	@_SYSCALL_MQ_GETSETATTR_NAME
 	@SYSC_RETVALSTR(returnval())
 }
-probe __nd1_syscall.mq_getsetattr.return = kprobe.function("sys_mq_getsetattr").return
+probe __nd1_syscall.mq_getsetattr.return = kprobe.function("sys_mq_getsetattr").return ?
 {
         @__syscall_gate(@const("__NR_mq_getsetattr"))
 }

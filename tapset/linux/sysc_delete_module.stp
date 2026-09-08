@@ -89,7 +89,7 @@ probe tp_syscall.delete_module = tp_syscall("delete_module,~compat_delete_module
 probe nd_syscall.delete_module.return = nd1_syscall.delete_module.return!, nd2_syscall.delete_module.return!, tp_syscall.delete_module.return
   { }
   
-probe nd1_syscall.delete_module.return =
+probe nd1_syscall.delete_module.return = 
 	kprobe.function("sys_delete_module").return ?
 {
 	@_SYSCALL_DELETE_MODULE_NAME

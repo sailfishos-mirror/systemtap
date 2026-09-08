@@ -67,7 +67,7 @@ probe __syscall.ioctl.return = kernel.function("sys_ioctl").return
 probe nd_syscall.ioctl = nd1_syscall.ioctl!, nd2_syscall.ioctl!, tp_syscall.ioctl
   { }
 
-probe nd1_syscall.ioctl = __nd1_syscall.ioctl,
+probe nd1_syscall.ioctl = __nd1_syscall.ioctl ?,
 	kprobe.function("compat_sys_ioctl") ?
 {
 	asmlinkage()
@@ -75,7 +75,7 @@ probe nd1_syscall.ioctl = __nd1_syscall.ioctl,
 	@_SYSCALL_IOCTL_REGARGS
 	@_SYSCALL_IOCTL_ARGSTR
 }
-probe __nd1_syscall.ioctl = kprobe.function("sys_ioctl")
+probe __nd1_syscall.ioctl = kprobe.function("sys_ioctl") ?
 {
 	@__syscall_gate(@const("__NR_ioctl"))
 }
@@ -109,14 +109,14 @@ probe tp_syscall.ioctl = tp_syscall("ioctl,~compat_ioctl") !, kernel.trace("sys_
 probe nd_syscall.ioctl.return = nd1_syscall.ioctl.return!, nd2_syscall.ioctl.return!, tp_syscall.ioctl.return
   { }
   
-probe nd1_syscall.ioctl.return =
-	__nd1_syscall.ioctl.return,
+probe nd1_syscall.ioctl.return = 
+	__nd1_syscall.ioctl.return ?,
 	kprobe.function("compat_sys_ioctl").return ?
 {
 	@_SYSCALL_IOCTL_NAME
 	@SYSC_RETVALSTR(returnval())
 }
-probe __nd1_syscall.ioctl.return = kprobe.function("sys_ioctl").return
+probe __nd1_syscall.ioctl.return = kprobe.function("sys_ioctl").return ?
 {
 	@__syscall_gate(@const("__NR_ioctl"))
 }

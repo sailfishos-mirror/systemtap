@@ -111,13 +111,13 @@ probe nd1_syscall.preadv = __nd1_syscall.preadv ?, __nd1_syscall.compat_preadv ?
 {
 	@_SYSCALL_PREADV_NAME
 }
-probe __nd1_syscall.preadv = kprobe.function("sys_preadv")
+probe __nd1_syscall.preadv = kprobe.function("sys_preadv") ?
 {
 	asmlinkage()
 	@_SYSCALL_PREADV_REGARGS
 	@_SYSCALL_PREADV_ARGSTR
 }
-probe __nd1_syscall.compat_preadv = kprobe.function("compat_sys_preadv")
+probe __nd1_syscall.compat_preadv = kprobe.function("compat_sys_preadv") ?
 {
 	@_SYSCALL_COMPAT_PREADV_REGARGS
 	@_SYSCALL_PREADV_ARGSTR

@@ -112,7 +112,7 @@ probe __nd1_syscall.socketcall.listen = kprobe.function("sys_socketcall").call ?
 	if (int_arg(1) != @const("SYS_LISTEN")) next;
 	@_SYSCALL_SOCKETCALL_LISTEN_REGARGS
 }
-probe __nd1_syscall.compat_socketcall.listen =
+probe __nd1_syscall.compat_socketcall.listen = 
 	kprobe.function("compat_sys_socketcall").call ?
 {
 	asmlinkage()
@@ -192,7 +192,7 @@ probe __nd1_syscall.listen.return = kprobe.function("sys_listen").return ?
 {
 	@__syscall_gate(@const("__NR_listen"))
 }
-probe __nd1_syscall.socketcall.listen.return =
+probe __nd1_syscall.socketcall.listen.return = 
 	kprobe.function("sys_socketcall").return ?,
 	kprobe.function("compat_sys_socketcall").return ?
 {

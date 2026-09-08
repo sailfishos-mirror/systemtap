@@ -66,7 +66,7 @@ probe __syscall.getrusage.return = kernel.function("sys_getrusage").return
 probe nd_syscall.getrusage = nd1_syscall.getrusage!, nd2_syscall.getrusage!, tp_syscall.getrusage
   { }
 
-probe nd1_syscall.getrusage = __nd1_syscall.getrusage,
+probe nd1_syscall.getrusage = __nd1_syscall.getrusage ?,
 	kprobe.function("compat_sys_getrusage").call ?
 {
 	@_SYSCALL_GETRUSAGE_NAME
@@ -74,7 +74,7 @@ probe nd1_syscall.getrusage = __nd1_syscall.getrusage,
 	@_SYSCALL_GETRUSAGE_REGARGS
 	@_SYSCALL_GETRUSAGE_ARGSTR
 }
-probe __nd1_syscall.getrusage = kprobe.function("sys_getrusage").call
+probe __nd1_syscall.getrusage = kprobe.function("sys_getrusage").call ?
 {
 	@__syscall_gate(@const("__NR_getrusage"))
 }
@@ -108,13 +108,13 @@ probe tp_syscall.getrusage = tp_syscall("getrusage,~compat_getrusage") !, kernel
 probe nd_syscall.getrusage.return = nd1_syscall.getrusage.return!, nd2_syscall.getrusage.return!, tp_syscall.getrusage.return
   { }
   
-probe nd1_syscall.getrusage.return = __nd1_syscall.getrusage.return,
+probe nd1_syscall.getrusage.return = __nd1_syscall.getrusage.return ?,
 	kprobe.function("compat_sys_getrusage").return ?
 {
 	@_SYSCALL_GETRUSAGE_NAME
 	@SYSC_RETVALSTR(returnval())
 }
-probe __nd1_syscall.getrusage.return = kprobe.function("sys_getrusage").return
+probe __nd1_syscall.getrusage.return = kprobe.function("sys_getrusage").return ?
 {
 	@__syscall_gate(@const("__NR_getrusage"))
 }

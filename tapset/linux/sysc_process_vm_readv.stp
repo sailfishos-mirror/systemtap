@@ -125,7 +125,7 @@ probe tp_syscall.process_vm_readv = tp_syscall("process_vm_readv,~compat_process
 probe nd_syscall.process_vm_readv.return = nd1_syscall.process_vm_readv.return!, nd2_syscall.process_vm_readv.return!, tp_syscall.process_vm_readv.return
   { }
   
-probe nd1_syscall.process_vm_readv.return =
+probe nd1_syscall.process_vm_readv.return = 
 	kprobe.function("sys_process_vm_readv").return ?,
 	kprobe.function("compat_sys_process_vm_readv").return ?
 {

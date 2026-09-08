@@ -122,7 +122,7 @@ probe __nd1_syscall.socketcall.bind = kprobe.function("sys_socketcall").call ?
 	if (int_arg(1) != @const("SYS_BIND")) next;
 	@_SYSCALL_SOCKETCALL_BIND_REGARGS
 }
-probe __nd1_syscall.compat_socketcall.bind =
+probe __nd1_syscall.compat_socketcall.bind = 
 	kprobe.function("compat_sys_socketcall").call ?
 {
 	asmlinkage()
@@ -204,7 +204,7 @@ probe __nd1_syscall.bind.return = kprobe.function("sys_bind").return ?
 {
 	@__syscall_gate(@const("__NR_bind"))
 }
-probe __nd1_syscall.socketcall.bind.return =
+probe __nd1_syscall.socketcall.bind.return = 
 	kprobe.function("sys_socketcall").return ?,
 	kprobe.function("compat_sys_socketcall").return ?
 {

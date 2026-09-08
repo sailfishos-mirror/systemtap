@@ -115,7 +115,7 @@ probe tp_syscall.rt_sigaction = tp_syscall("rt_sigaction") !, kernel.trace("sys_
 probe nd_syscall.rt_sigaction.return = nd1_syscall.rt_sigaction.return!, nd2_syscall.rt_sigaction.return!, tp_syscall.rt_sigaction.return
   { }
   
-probe nd1_syscall.rt_sigaction.return =
+probe nd1_syscall.rt_sigaction.return = 
 	kprobe.function("sys_rt_sigaction").return ?
 {
 	@_SYSCALL_RT_SIGACTION_NAME
@@ -218,7 +218,7 @@ probe tp_syscall.rt_sigaction32 = tp_syscall("~compat_rt_sigaction") !, kernel.t
 probe nd_syscall.rt_sigaction32.return = nd1_syscall.rt_sigaction32.return!, nd2_syscall.rt_sigaction32.return!, tp_syscall.rt_sigaction32.return
   { }
   
-probe nd1_syscall.rt_sigaction32.return =
+probe nd1_syscall.rt_sigaction32.return = 
 	kprobe.function("sys32_rt_sigaction").return ?,
 	kprobe.function("compat_sys_rt_sigaction").return ?
 {

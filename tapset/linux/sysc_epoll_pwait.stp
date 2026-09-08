@@ -118,7 +118,7 @@ probe tp_syscall.epoll_pwait = tp_syscall("epoll_pwait,~compat_epoll_pwait") !, 
 probe nd_syscall.epoll_pwait.return = nd1_syscall.epoll_pwait.return!, nd2_syscall.epoll_pwait.return!, tp_syscall.epoll_pwait.return
   { }
   
-probe nd1_syscall.epoll_pwait.return =
+probe nd1_syscall.epoll_pwait.return = 
 	kprobe.function("compat_sys_epoll_pwait").return ?,
 	kprobe.function("sys_epoll_pwait").return ?
 {

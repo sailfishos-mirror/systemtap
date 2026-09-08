@@ -137,7 +137,7 @@ probe tp_syscall.epoll_wait = tp_syscall("epoll_wait,~compat_epoll_wait") !, ker
 probe nd_syscall.epoll_wait.return = nd1_syscall.epoll_wait.return!, nd2_syscall.epoll_wait.return!, tp_syscall.epoll_wait.return
   { }
   
-probe nd1_syscall.epoll_wait.return =
+probe nd1_syscall.epoll_wait.return = 
 	kprobe.function("compat_sys_epoll_wait").return ?,
 	__nd1_syscall.epoll_wait.return ?
 {
@@ -148,7 +148,7 @@ probe nd1_syscall.epoll_wait.return =
 	@_SYSCALL_EPOLL_WAIT_NAME
 	@SYSC_RETVALSTR(returnval())
 }
-probe __nd1_syscall.epoll_wait.return =
+probe __nd1_syscall.epoll_wait.return = 
 	kprobe.function("sys_epoll_wait").return ?
 {
 %( arch == "s390" && kernel_v >= "3.15" %?

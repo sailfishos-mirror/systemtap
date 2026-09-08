@@ -126,13 +126,13 @@ probe nd1_syscall.preadv2 = __nd1_syscall.preadv2 ?,
 {
 	@_SYSCALL_PREADV2_NAME
 }
-probe __nd1_syscall.preadv2 = kprobe.function("sys_preadv2")
+probe __nd1_syscall.preadv2 = kprobe.function("sys_preadv2") ?
 {
 	asmlinkage()
 	@_SYSCALL_PREADV2_REGARGS
 	@_SYSCALL_PREADV2_ARGSTR
 }
-probe __nd1_syscall.compat_preadv2 = kprobe.function("compat_sys_preadv2")
+probe __nd1_syscall.compat_preadv2 = kprobe.function("compat_sys_preadv2") ?
 {
 	asmlinkage()
 	@_SYSCALL_COMPAT_PREADV2_REGARGS

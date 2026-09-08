@@ -76,7 +76,7 @@ probe __dw_syscall.fcntl.return = kernel.function("sys_fcntl64").return ?,
 probe nd_syscall.fcntl = nd1_syscall.fcntl!, nd2_syscall.fcntl!, tp_syscall.fcntl
   { }
 
-probe nd1_syscall.fcntl = __nd1_syscall.fcntl,
+probe nd1_syscall.fcntl = __nd1_syscall.fcntl ?,
                          kprobe.function("compat_sys_fcntl") ?,
                          kprobe.function("compat_sys_fcntl64") ?
 {
@@ -127,7 +127,7 @@ probe __tp_syscall.fcntl64 = tp_syscall("fcntl64,~compat_fcntl64") !, kernel.tra
 probe nd_syscall.fcntl.return = nd1_syscall.fcntl.return!, nd2_syscall.fcntl.return!, tp_syscall.fcntl.return
   { }
 
-probe nd1_syscall.fcntl.return = __nd1_syscall.fcntl.return,
+probe nd1_syscall.fcntl.return = __nd1_syscall.fcntl.return ?,
                                 kprobe.function("compat_sys_fcntl").return ?,
                                 kprobe.function("compat_sys_fcntl64").return ?
 {

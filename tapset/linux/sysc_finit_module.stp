@@ -95,7 +95,7 @@ probe tp_syscall.finit_module = tp_syscall("finit_module,~compat_finit_module") 
 probe nd_syscall.finit_module.return = nd1_syscall.finit_module.return!, nd2_syscall.finit_module.return!, tp_syscall.finit_module.return
   { }
   
-probe nd1_syscall.finit_module.return =
+probe nd1_syscall.finit_module.return = 
 	kprobe.function("sys_finit_module").return ?
 {
 	@_SYSCALL_FINIT_MODULE_NAME

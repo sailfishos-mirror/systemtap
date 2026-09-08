@@ -81,12 +81,12 @@ probe __syscall.compat_clock_settime.return =
 probe nd_syscall.clock_settime = nd1_syscall.clock_settime!, nd2_syscall.clock_settime!, tp_syscall.clock_settime
   { }
 
-probe nd1_syscall.clock_settime = __nd1_syscall.clock_settime,
+probe nd1_syscall.clock_settime = __nd1_syscall.clock_settime ?,
 	__nd1_syscall.compat_clock_settime ?
 {
 	@_SYSCALL_CLOCK_SETTIME_NAME
 }
-probe __nd1_syscall.clock_settime = kprobe.function("sys_clock_settime").call
+probe __nd1_syscall.clock_settime = kprobe.function("sys_clock_settime").call ?
 {
 	@__syscall_gate(@const("__NR_clock_settime"))
 	asmlinkage()
@@ -94,7 +94,7 @@ probe __nd1_syscall.clock_settime = kprobe.function("sys_clock_settime").call
 	tp_uaddr_str = _struct_timespec_u(tp_uaddr, 1)
 	@_SYSCALL_CLOCK_SETTIME_ARGSTR
 }
-probe __nd1_syscall.compat_clock_settime =
+probe __nd1_syscall.compat_clock_settime = 
 	kprobe.function("compat_sys_clock_settime").call ?
 {
 	asmlinkage()
@@ -151,18 +151,18 @@ probe tp_syscall.clock_settime = tp_syscall("clock_settime,~compat_clock_settime
 probe nd_syscall.clock_settime.return = nd1_syscall.clock_settime.return!, nd2_syscall.clock_settime.return!, tp_syscall.clock_settime.return
   { }
 
-probe nd1_syscall.clock_settime.return = __nd1_syscall.clock_settime.return,
+probe nd1_syscall.clock_settime.return = __nd1_syscall.clock_settime.return ?,
 	__nd1_syscall.compat_clock_settime.return ?
 {
  	@_SYSCALL_CLOCK_SETTIME_NAME
 }
-probe __nd1_syscall.clock_settime.return =
-	kprobe.function("sys_clock_settime").return
+probe __nd1_syscall.clock_settime.return = 
+	kprobe.function("sys_clock_settime").return ?
 {
 	@__syscall_gate(@const("__NR_clock_settime"))
 	@SYSC_RETVALSTR(returnval())
 }
-probe __nd1_syscall.compat_clock_settime.return =
+probe __nd1_syscall.compat_clock_settime.return = 
 	kprobe.function("compat_sys_clock_settime").return ?
 {
 	@SYSC_RETVALSTR(returnval())

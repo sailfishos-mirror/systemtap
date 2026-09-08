@@ -70,7 +70,7 @@ probe __syscall.io_submit.return = kernel.function("sys_io_submit").return
 probe nd_syscall.io_submit = nd1_syscall.io_submit!, nd2_syscall.io_submit!, tp_syscall.io_submit
   { }
 
-probe nd1_syscall.io_submit = __nd1_syscall.io_submit,
+probe nd1_syscall.io_submit = __nd1_syscall.io_submit ?,
 	kprobe.function("compat_sys_io_submit") ?
 {
 	@_SYSCALL_IO_SUBMIT_NAME
@@ -112,7 +112,7 @@ probe tp_syscall.io_submit = tp_syscall("io_submit,~compat_io_submit") !, kernel
 probe nd_syscall.io_submit.return = nd1_syscall.io_submit.return!, nd2_syscall.io_submit.return!, tp_syscall.io_submit.return
   { }
 
-probe nd1_syscall.io_submit.return = __nd1_syscall.io_submit.return,
+probe nd1_syscall.io_submit.return = __nd1_syscall.io_submit.return ?,
 	kprobe.function("compat_sys_io_submit").return ?
 {
 	@_SYSCALL_IO_SUBMIT_NAME

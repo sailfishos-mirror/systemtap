@@ -116,7 +116,7 @@ probe __nd1_syscall.socketcall.shutdown = kprobe.function("sys_socketcall").call
 	if (int_arg(1) != @const("SYS_SHUTDOWN")) next;
 	@_SYSCALL_SOCKETCALL_SHUTDOWN_REGARGS
 }
-probe __nd1_syscall.compat_socketcall.shutdown =
+probe __nd1_syscall.compat_socketcall.shutdown = 
 	kprobe.function("compat_sys_socketcall").call ?
 {
 	asmlinkage()
@@ -198,7 +198,7 @@ probe __nd1_syscall.shutdown.return = kprobe.function("sys_shutdown").return ?
 {
 	@__syscall_gate(@const("__NR_shutdown"))
 }
-probe __nd1_syscall.socketcall.shutdown.return =
+probe __nd1_syscall.socketcall.shutdown.return = 
 	kprobe.function("sys_socketcall").return ?,
 	kprobe.function("compat_sys_socketcall").return ?
 {

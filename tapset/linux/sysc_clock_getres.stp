@@ -76,7 +76,7 @@ probe nd1_syscall.clock_getres = kprobe.function("compat_clock_getres") ?,
 	@_SYSCALL_CLOCK_GETRES_REGARGS
 	@_SYSCALL_CLOCK_GETRES_ARGSTR
 }
-probe __nd1_syscall.clock_getres = kprobe.function("sys_clock_getres")
+probe __nd1_syscall.clock_getres = kprobe.function("sys_clock_getres") ?
 {
 	@__syscall_gate(@const("__NR_clock_getres"))
 }
@@ -110,7 +110,7 @@ probe tp_syscall.clock_getres = tp_syscall("clock_getres,~compat_clock_getres") 
 probe nd_syscall.clock_getres.return = nd1_syscall.clock_getres.return!, nd2_syscall.clock_getres.return!, tp_syscall.clock_getres.return
   { }
 
-probe nd1_syscall.clock_getres.return =
+probe nd1_syscall.clock_getres.return = 
 	kprobe.function("compat_clock_getres").return ?,
 	kprobe.function("compat_sys_clock_getres").return ?,
 	__nd1_syscall.clock_getres.return ?
@@ -118,8 +118,8 @@ probe nd1_syscall.clock_getres.return =
 	@_SYSCALL_CLOCK_GETRES_NAME
 	@SYSC_RETVALSTR(returnval())
 }
-probe __nd1_syscall.clock_getres.return =
-	kprobe.function("sys_clock_getres").return
+probe __nd1_syscall.clock_getres.return = 
+	kprobe.function("sys_clock_getres").return ?
 {
 	@__syscall_gate(@const("__NR_clock_getres"))
 }

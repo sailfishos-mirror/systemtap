@@ -144,7 +144,7 @@ probe tp_syscall.sigsuspend = tp_syscall("sigsuspend,~compat_sigsuspend") !, ker
 probe nd_syscall.sigsuspend.return = nd1_syscall.sigsuspend.return!, nd2_syscall.sigsuspend.return!, tp_syscall.sigsuspend.return
   { }
 
-probe nd1_syscall.sigsuspend.return =
+probe nd1_syscall.sigsuspend.return = 
 	__nd1_syscall.sigsuspend.return ?,
 	kprobe.function("sys32_sigsuspend").return ?,
 	kprobe.function("compat_sys_sigsuspend").return ?
@@ -152,7 +152,7 @@ probe nd1_syscall.sigsuspend.return =
 	@_SYSCALL_SIGSUSPEND_NAME
 	@SYSC_RETVALSTR(returnval())
 }
-probe __nd1_syscall.sigsuspend.return =
+probe __nd1_syscall.sigsuspend.return = 
 	kprobe.function("sys_sigsuspend").return ?
 {
 	@_SYSCALL_GATE

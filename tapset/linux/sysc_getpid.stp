@@ -32,7 +32,7 @@ probe dw_syscall.getpid.return = kernel.function("sys_getpid").return
 probe nd_syscall.getpid = nd1_syscall.getpid!, nd2_syscall.getpid!, tp_syscall.getpid
   { }
 
-probe nd1_syscall.getpid = kprobe.function("sys_getpid")
+probe nd1_syscall.getpid = kprobe.function("sys_getpid") ?
 {
 	@_SYSCALL_GETPID_NAME
 	@_SYSCALL_GETPID_ARGSTR
@@ -56,7 +56,7 @@ probe tp_syscall.getpid = tp_syscall("getpid,~compat_getpid") !, kernel.trace("s
 probe nd_syscall.getpid.return = nd1_syscall.getpid.return!, nd2_syscall.getpid.return!, tp_syscall.getpid.return
   { }
   
-probe nd1_syscall.getpid.return = kprobe.function("sys_getpid").return
+probe nd1_syscall.getpid.return = kprobe.function("sys_getpid").return ?
 {
 	@_SYSCALL_GETPID_NAME
 	@SYSC_RETVALSTR(returnval())

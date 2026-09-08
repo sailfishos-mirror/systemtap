@@ -93,7 +93,7 @@ probe tp_syscall.timerfd_create = tp_syscall("timerfd_create,~compat_timerfd_cre
 probe nd_syscall.timerfd_create.return = nd1_syscall.timerfd_create.return!, nd2_syscall.timerfd_create.return!, tp_syscall.timerfd_create.return
   { }
 
-probe nd1_syscall.timerfd_create.return =
+probe nd1_syscall.timerfd_create.return = 
 	kprobe.function("sys_timerfd_create").return ?
 {
 	@_SYSCALL_TIMERFD_CREATE_NAME

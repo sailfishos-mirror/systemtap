@@ -87,7 +87,7 @@ probe dw_syscall.process_vm_writev.return =
 probe nd_syscall.process_vm_writev = nd1_syscall.process_vm_writev!, nd2_syscall.process_vm_writev!, tp_syscall.process_vm_writev
   { }
 
-probe nd1_syscall.process_vm_writev =
+probe nd1_syscall.process_vm_writev = 
 	kprobe.function("sys_process_vm_writev") ?,
 	kprobe.function("compat_sys_process_vm_writev") ?
 {
@@ -127,7 +127,7 @@ probe tp_syscall.process_vm_writev = tp_syscall("process_vm_writev,~compat_proce
 probe nd_syscall.process_vm_writev.return = nd1_syscall.process_vm_writev.return!, nd2_syscall.process_vm_writev.return!, tp_syscall.process_vm_writev.return
   { }
   
-probe nd1_syscall.process_vm_writev.return =
+probe nd1_syscall.process_vm_writev.return = 
 	kprobe.function("sys_process_vm_writev").return ?,
 	kprobe.function("compat_sys_process_vm_writev").return ?
 {

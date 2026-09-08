@@ -108,7 +108,7 @@ probe tp_syscall.perf_event_open = tp_syscall("perf_event_open,~compat_perf_even
 probe nd_syscall.perf_event_open.return = nd1_syscall.perf_event_open.return!, nd2_syscall.perf_event_open.return!, tp_syscall.perf_event_open.return
   { }
   
-probe nd1_syscall.perf_event_open.return =
+probe nd1_syscall.perf_event_open.return = 
 	kprobe.function("sys_perf_event_open").return ?
 {
 	@_SYSCALL_PERF_EVENT_OPEN_NAME

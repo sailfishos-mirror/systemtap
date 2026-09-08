@@ -155,14 +155,14 @@ probe __nd1_syscall.recvfrom = kprobe.function("sys_recvfrom").call ?
 	asmlinkage()
 	@_SYSCALL_RECVFROM_REGARGS
 }
-probe __nd1_syscall.socketcall.recvfrom =
+probe __nd1_syscall.socketcall.recvfrom = 
 	kprobe.function("sys_socketcall").call ?
 {
 	asmlinkage()
 	if (int_arg(1) != @const("SYS_RECVFROM")) next
 	@_SYSCALL_SOCKETCALL_RECVFROM_REGARGS
 }
-probe __nd1_syscall.compat_socketcall.recvfrom =
+probe __nd1_syscall.compat_socketcall.recvfrom = 
 	kprobe.function("compat_sys_socketcall").call ?
 {
 	asmlinkage()
@@ -245,7 +245,7 @@ probe __nd1_syscall.recvfrom.return = kprobe.function("sys_recvfrom").return ?
 {
 	@__syscall_gate(@const("__NR_recvfrom"))
 }
-probe __nd1_syscall.socketcall.return =
+probe __nd1_syscall.socketcall.return = 
 	kprobe.function("sys_socketcall").return ?,
 	kprobe.function("compat_sys_socketcall").return ?
 {

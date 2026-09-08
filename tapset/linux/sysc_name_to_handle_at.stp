@@ -77,7 +77,7 @@ probe dw_syscall.name_to_handle_at.return =
 probe nd_syscall.name_to_handle_at = nd1_syscall.name_to_handle_at!, nd2_syscall.name_to_handle_at!, tp_syscall.name_to_handle_at
   { }
 
-probe nd1_syscall.name_to_handle_at =
+probe nd1_syscall.name_to_handle_at = 
 	kprobe.function("sys_name_to_handle_at").call ?
 {
 	@_SYSCALL_NAME_TO_HANDLE_AT_NAME
@@ -116,7 +116,7 @@ probe tp_syscall.name_to_handle_at = tp_syscall("name_to_handle_at,~compat_name_
 probe nd_syscall.name_to_handle_at.return = nd1_syscall.name_to_handle_at.return!, nd2_syscall.name_to_handle_at.return!, tp_syscall.name_to_handle_at.return
   { }
   
-probe nd1_syscall.name_to_handle_at.return =
+probe nd1_syscall.name_to_handle_at.return = 
 	kprobe.function("sys_name_to_handle_at").return ?
 {
 	@_SYSCALL_NAME_TO_HANDLE_AT_NAME

@@ -81,7 +81,7 @@ probe nd1_syscall.clock_adjtime = __nd1_syscall.clock_adjtime ?,
 {
 	@_SYSCALL_CLOCK_ADJTIME_NAME
 }
-probe __nd1_syscall.clock_adjtime = kprobe.function("sys_clock_adjtime").call
+probe __nd1_syscall.clock_adjtime = kprobe.function("sys_clock_adjtime").call ?
 {
 	@__syscall_gate_compat_simple
 	asmlinkage()
@@ -89,7 +89,7 @@ probe __nd1_syscall.clock_adjtime = kprobe.function("sys_clock_adjtime").call
 	tx_uaddr_str = _struct_timex_u(tx_uaddr)
 	@_SYSCALL_CLOCK_ADJTIME_ARGSTR
 }
-probe __nd1_syscall.compat_clock_adjtime =
+probe __nd1_syscall.compat_clock_adjtime = 
 	kprobe.function("compat_sys_clock_adjtime").call ?
 {
 	asmlinkage()
@@ -152,8 +152,8 @@ probe nd1_syscall.clock_adjtime.return = __nd1_syscall.clock_adjtime.return ?,
 	@_SYSCALL_CLOCK_ADJTIME_NAME
 	@SYSC_RETVALSTR(returnval())
 }
-probe __nd1_syscall.clock_adjtime.return =
-	kprobe.function("sys_clock_adjtime").return
+probe __nd1_syscall.clock_adjtime.return = 
+	kprobe.function("sys_clock_adjtime").return ?
 {
 	@__syscall_gate_compat_simple
 }

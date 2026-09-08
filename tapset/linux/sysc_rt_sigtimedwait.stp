@@ -95,13 +95,13 @@ probe nd1_syscall.rt_sigtimedwait = __nd1_syscall.rt_sigtimedwait ?,
 	@_SYSCALL_RT_SIGTIMEDWAIT_REGARGS
 	@_SYSCALL_RT_SIGTIMEDWAIT_ARGSTR
 }
-probe __nd1_syscall.rt_sigtimedwait = kprobe.function("sys_rt_sigtimedwait")
+probe __nd1_syscall.rt_sigtimedwait = kprobe.function("sys_rt_sigtimedwait") ?
 {
 	asmlinkage()
 	sigsetsize = ulong_arg(4)
 }
-probe __nd1_syscall.compat_rt_sigtimedwait =
-	kprobe.function("compat_sys_rt_sigtimedwait")
+probe __nd1_syscall.compat_rt_sigtimedwait = 
+	kprobe.function("compat_sys_rt_sigtimedwait") ?
 {
 	asmlinkage()
 	sigsetsize = u32_arg(4)
@@ -181,7 +181,7 @@ probe __tp_syscall.compat_rt_sigtimedwait = tp_syscall("~compat_rt_sigtimedwait"
 probe nd_syscall.rt_sigtimedwait.return = nd1_syscall.rt_sigtimedwait.return!, nd2_syscall.rt_sigtimedwait.return!, tp_syscall.rt_sigtimedwait.return
   { }
   
-probe nd1_syscall.rt_sigtimedwait.return =
+probe nd1_syscall.rt_sigtimedwait.return = 
 	kprobe.function("compat_sys_rt_sigtimedwait").return ?,
 	kprobe.function("sys_rt_sigtimedwait").return ?
 {

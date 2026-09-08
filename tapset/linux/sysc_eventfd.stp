@@ -50,7 +50,7 @@ probe nd_syscall.eventfd = nd1_syscall.eventfd!, nd2_syscall.eventfd!, tp_syscal
 probe nd1_syscall.eventfd = __nd1_syscall.eventfd2 ?, __nd1_syscall.eventfd ?
 {
 }
-probe __nd1_syscall.eventfd2 = kprobe.function("sys_eventfd2")
+probe __nd1_syscall.eventfd2 = kprobe.function("sys_eventfd2") ?
 {
 	@__syscall_compat_gate(@const("__NR_eventfd2"), @const("__NR_compat_eventfd2"))
 	name = "eventfd2"
@@ -60,7 +60,7 @@ probe __nd1_syscall.eventfd2 = kprobe.function("sys_eventfd2")
 	flags_str = _eventfd2_flag_str(flags)
 	argstr = sprintf("%u, %s", count, flags_str)
 }
-probe __nd1_syscall.eventfd = kprobe.function("sys_eventfd")
+probe __nd1_syscall.eventfd = kprobe.function("sys_eventfd") ?
 {
 	name = "eventfd"
 	asmlinkage()
@@ -156,12 +156,12 @@ probe nd1_syscall.eventfd.return = __nd1_syscall.eventfd2.return ?,
 {
 	@SYSC_RETVALSTR(returnval())
 }
-probe __nd1_syscall.eventfd2.return = kprobe.function("sys_eventfd2").return
+probe __nd1_syscall.eventfd2.return = kprobe.function("sys_eventfd2").return ?
 {
 	@__syscall_compat_gate(@const("__NR_eventfd2"), @const("__NR_compat_eventfd2"))
 	name = "eventfd2"
 }
-probe __nd1_syscall.eventfd.return = kprobe.function("sys_eventfd").return
+probe __nd1_syscall.eventfd.return = kprobe.function("sys_eventfd").return ?
 {
 	name = "eventfd"
 }
