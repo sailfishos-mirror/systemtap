@@ -113,7 +113,7 @@ foreach_state_add(const foreach_info &fi, foreach_state &s,
   // extract col_str, col_long from colp
   std::string col_str;
   bool use_str_col = false;
-  int64_t col_long;
+  int64_t col_long = 0; // preinit: gcc11 -Wmaybe-uninitialized can't track use_str_col
   //bool use_long_col = false;
   if (scalar_long)
     {
