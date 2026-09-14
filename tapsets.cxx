@@ -13757,7 +13757,14 @@ btf_add_args_from_subroutine_type(tracepoint_derived_probe *probe,
       probe->args.emplace_back(probe->tracepoint_name, &param);
       tracepoint_arg& ta = probe->args.back();
       ta.name = "arg" + lex_cast(argno);
-      if (!dwarf_type_decl(&ta.type_die, "__tracepoint_arg_" + ta.name, ta.c_decl))
+      // NB: the tracepoint_arg ctor's resolve_pointer_type() zeroes
+      // type_die for void*-like parameters (e.g. const void *ptr of
+      // btf_trace_kmalloc).  The classic path tolerates this via
+      // null_die() checks, and so must we: reconstruct the decl from
+      // the already-resolved c_type instead of the poisoned DIE.
+      if (null_die(&ta.type_die))
+        ta.c_decl = ta.c_type + " __tracepoint_arg_" + ta.name;
+      else if (!dwarf_type_decl(&ta.type_die, "__tracepoint_arg_" + ta.name, ta.c_decl))
         throw SEMANTIC_ERROR(_F("cannot get declaration of $%s for tracepoint '%s'",
                                   ta.name.c_str(), probe->tracepoint_name.c_str()),
                              probe->tok);
@@ -16630,6 +16637,26 @@ focus_typequery_module(systemtap_session& s, dwflpp& dw, dwflpp_focus& focus,
   return fd.focused;
 }
 
+// Refine the parse-time _tp hint from btf_tracepoint_meta_from_name():
+// DECLARE_TRACE() raw hooks register under the un-suffixed name and
+// have no trace_event_raw_* struct, so their _tp is stripped for
+// probing (e.g. sched_util_est_cfs_tp).  A genuine TRACE_EVENT()
+// whose name merely ends in _tp (e.g. bpf_trigger_tp) has a
+// trace_event_raw_<name> struct and keeps its full name.
+static void
+refine_btf_tracepoint_name (dwflpp& dw, string& hook_name,
+                            bool& declare_trace_hook)
+{
+  if (!declare_trace_hook)
+    return;
+  // NB: hook_name arrives _tp-stripped; the full event name re-appends it.
+  if (dw.declaration_resolve_other_cus("struct trace_event_raw_" + hook_name + "_tp") != NULL)
+    {
+      declare_trace_hook = false;
+      hook_name += "_tp";
+    }
+}
+
 struct btf_tracepoint_builder: public derived_probe_builder
 {
   dwflpp *dw;
@@ -16716,16 +16743,20 @@ btf_tracepoint_builder::build(systemtap_session& s,
     {
       const btf_tracepoint_meta& meta = catalog[i];
 
-      if (!dw->function_name_matches_pattern(meta.hook_name, tracepoint))
+      string hook_name = meta.hook_name;
+      bool declare_trace_hook = meta.declare_trace_hook;
+      refine_btf_tracepoint_name(*dw, hook_name, declare_trace_hook);
+
+      if (!dw->function_name_matches_pattern(hook_name, tracepoint))
         continue;
 
-      if (!probed_names.insert(meta.hook_name).second)
+      if (!probed_names.insert(hook_name).second)
         continue;
 
       try
         {
           derived_probe *dp = new tracepoint_derived_probe(
-            s, *dw, meta.hook_name, meta.btf_name, meta.declare_trace_hook,
+            s, *dw, hook_name, meta.btf_name, declare_trace_hook,
             base, location);
           finished_results.push_back(dp);
         }
@@ -16841,17 +16872,21 @@ module_btf_tracepoint_builder::build(systemtap_session& s,
     {
       const btf_tracepoint_meta& meta = catalog[i];
 
-      if (!dw->function_name_matches_pattern(meta.hook_name, tracepoint))
+      string hook_name = meta.hook_name;
+      bool declare_trace_hook = meta.declare_trace_hook;
+      refine_btf_tracepoint_name(*dw, hook_name, declare_trace_hook);
+
+      if (!dw->function_name_matches_pattern(hook_name, tracepoint))
         continue;
 
-      if (!probed_names.insert(meta.hook_name).second)
+      if (!probed_names.insert(hook_name).second)
         continue;
 
       try
         {
           derived_probe *dp = new tracepoint_derived_probe(
-            s, *dw, module_name, meta.hook_name, meta.btf_name,
-            meta.declare_trace_hook, base, location);
+            s, *dw, module_name, hook_name, meta.btf_name,
+            declare_trace_hook, base, location);
           finished_results.push_back(dp);
         }
       catch (const semantic_error& e)

@@ -25,8 +25,9 @@ btf_tracepoint_meta_from_name (const string& btf_name, btf_tracepoint_meta& out)
     return false;
 
   string suffix = btf_name.substr(prefix.size());
-  if (startswith(suffix, "bpf_")) // btf_bpf_* helpers, not tracepoints
-    return false;
+  // NB: btf_bpf_* bpf-helper typedefs are already excluded by the
+  // prefix check above; btf_trace_bpf_* are genuine tracepoints
+  // (bpf:bpf_trace_printk, xdp:bpf_xdp_link_attach_failed, ...).
 
   out.btf_name = btf_name;
   out.declare_trace_hook = endswith(suffix, "_tp");
