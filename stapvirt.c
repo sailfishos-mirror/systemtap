@@ -661,8 +661,8 @@ hotplugPort(int attach, virDomainPtr dom,
         goto cleanup_buf;
     }
 
-    int rc = attach ? virDomainAttachDevice(dom, (const char *) buf->content)
-                    : virDomainDetachDevice(dom, (const char *) buf->content);
+    int rc = attach ? virDomainAttachDevice(dom, (const char *) xmlBufferContent(buf))
+                    : virDomainDetachDevice(dom, (const char *) xmlBufferContent(buf));
     if (rc != 0) {
         err("Couldn't %s the device\n", attach ? "attach" : "detach");
         ret = -1;
