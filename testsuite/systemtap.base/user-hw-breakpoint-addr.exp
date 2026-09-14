@@ -146,7 +146,7 @@ if {$res ne ""} {
             set cmd "stap --ldd --runtime=$runtime -c ./a.out './${test}_4.stp'"
             set exit_code [run_cmd_2way_as_root $cmd out stderr]
             set out_pat "\\A~~~
- 0x\[0-9a-f\]+ : execve\\+0x\[0-9a-f\]/0x\[0-9a-f\]+ \\\[\[^\\n\\\]\]+/libc-\[^\\\]\\n\]+\\\]
+ 0x\[0-9a-f\]+ : execve\\+0x\[0-9a-f\]+/0x\[0-9a-f\]+ \\\[\[^\\n\\\]\]+/libc\[^\\\]\\n\]*\\\]
 ~~~
  0x\[0-9a-f\]+ : main\\+0x\[0-9a-f\]+/0x\[0-9a-f\]+ at \[^\\n\]+\\w\\.c:4 \\\[\[^\\\[\\n\]+\\\]"
             like "${test_name}: stdout" $out $out_pat "-lineanchor"
