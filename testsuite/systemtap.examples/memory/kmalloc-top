@@ -68,7 +68,10 @@ print STDERR "Press Ctrl-C to stop.\n";
 $script="
 global kmalloc_stack
 
-probe kernel.function(\"__kmalloc\") { kmalloc_stack[backtrace()]++ }
+# NB: kernel.function(\"__kmalloc\") has no DWARF symbol on kernels
+# using the noprof/token-based slab APIs (linux 7.2+); the vm.kmalloc
+# alias falls back to the kmem:kmalloc tracepoint there.
+probe vm.kmalloc { kmalloc_stack[backtrace()]++ }
 
 probe timer.ms(100), end
 {
