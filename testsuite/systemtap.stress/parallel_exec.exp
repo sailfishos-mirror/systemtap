@@ -1,4 +1,5 @@
 set test "parallel execute"
+if {! [installtest_p]} { untested "$test"; return }
 
 set process_num 10
 
@@ -58,11 +59,12 @@ foreach id $spawn_ids {
 	catch {close -i $id}; catch {wait -i $id}
 }
 
-# If we got all the output, 'num' (output lines by 1 process) *
-# 'process_num' (number of processes) should equal 'num_sum' (output
-# lines by all processes)
-if {$num * $process_num != $num_sum} {
-	fail "$test - ($num * $process_num) != $num_sum"
+# If no output is lost, 'num_sum' (output lines by all processes)
+# should be at least 'num' (output lines by 1 process) * 'process_num'
+# (number of processes).  Under concurrent load a child can legitimately
+# perform a few extra syscalls, so allow extra lines but not missing ones.
+if {$num_sum < $num * $process_num} {
+	fail "$test - $num_sum < ($num * $process_num)"
 } else {
 	pass $test
 }
