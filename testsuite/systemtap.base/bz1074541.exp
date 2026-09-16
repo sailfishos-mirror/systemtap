@@ -1,4 +1,5 @@
 set test "./bz1074541"
+if {![installtest_p]} { untested "$test"; return }
 
 for {set x 0} {$x<20} {incr x} {
         verbose -log "Attempt no. ${x} to crash the kernel..."

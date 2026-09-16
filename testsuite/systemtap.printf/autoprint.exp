@@ -1,4 +1,5 @@
 set test "autoprint.exp"
+if {![installtest_p]} { untested "$test"; return }
 set script_1 {probe process.function("main") { a=$argv; b=$argc; exit() } global a, b}
 set script_2 {stap -e "probe begin { exit() }"}
 

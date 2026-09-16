@@ -86,7 +86,6 @@ if {$tracepoints_list_full} {
     untested "$test verbose listing tracepoints (smoke)"
 }
 
-
 # Now gather stap's classic (header-based) tracepoint list.
 set stap_tracepoints {}
 spawn stap -l {kernel.trace("*")}

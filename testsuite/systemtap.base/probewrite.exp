@@ -1,5 +1,6 @@
 # Test the @probewrite predicate.
 set test "probewrite"
+if {![installtest_p]} { untested "$test"; return }
 
 set ok 0
 

@@ -1,4 +1,5 @@
 set test "uprobe_nd_params"
+if {![installtest_p]} { untested "$test"; return }
 
 if {! [uprobes_p]} {
     untested "$test (no uprobes support)"

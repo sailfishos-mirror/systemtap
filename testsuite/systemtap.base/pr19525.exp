@@ -1,4 +1,5 @@
 set test "pr19525"
+if {![installtest_p]} { untested "$test"; return }
 
 # This tests that stap doesn't stall per PR19525
 # Note that `stap -o` would break the reproducer

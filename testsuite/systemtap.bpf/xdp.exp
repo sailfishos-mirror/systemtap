@@ -2,6 +2,8 @@
 
 set testdir "$srcdir/$subdir/bpf_tests/xdp"
 
+if {![installtest_p]} { untested "xdp.exp"; return }
+
 # Check if BPF runtime is available
 if {![bpf_p]} {
     untested "xdp.exp - BPF runtime not available"

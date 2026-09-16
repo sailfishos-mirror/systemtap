@@ -1,5 +1,6 @@
 
 set test "dumpalot"
+if {![installtest_p]} { untested "$test"; return }
 
 proc string_occurrences {needleString haystackString} {
     # https://stackoverflow.com/a/34803141/661150

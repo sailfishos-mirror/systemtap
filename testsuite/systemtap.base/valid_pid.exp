@@ -1,3 +1,5 @@
+if {![installtest_p]} { untested "valid_pid"; return }
+
 set test_scripts {
 "probe process(\$1).syscall{exit();}"
 "probe process(\$1).begin{exit();}"

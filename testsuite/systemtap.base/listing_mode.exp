@@ -824,7 +824,6 @@ stap_list {kernel.trace("sched_switch")} \
 stap_list {kernel.trace("s*")} \
    {re:kernel.trace\("[^:]*:s[a-zA-Z0-9_]*"\)} {-1}
 
-
 testing_probe {kprobe.function(string)}
 
 stap_list {kprobe.function("vfs_read")}
@@ -1220,7 +1219,6 @@ if {$exepath != ""} {
 
       stap_list_cmd "process.plt" \
          "re:process\\\(\"$exefullpath\"\\\)\\\.plt\\\(\"\[^\"\]+\"\\\)" {-1}
-
 
       testing_probe {process.plt.return}
 
