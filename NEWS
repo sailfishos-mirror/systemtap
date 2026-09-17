@@ -1,4 +1,4 @@
-* What's new in version 5.6, PRERELEASE
+* What's new in version 5.6, 2026-09-17
 
 - New --semantic-keep-going option (pass-2 make -k): continue elaborating
   after semantic errors, dump a tab-separated SEMANTIC_ERROR catalog on
