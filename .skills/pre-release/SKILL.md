@@ -58,13 +58,32 @@ Review diffs; commit when appropriate.
 ### 2. PRERELEASE markers
 
 ```bash
-git grep -Oemacs PRERELEASE
-# or: git grep PRERELEASE
+git grep PRERELEASE
 ```
 
-Review hits so you know where version/prerelease wording lives (`NEWS`,
-docs, etc.). **Do not remove `PRERELEASE` markers** — they stay in the tree
-to help subsequent releases.
+Each `PRERELEASE` marker flags a spot that must be bumped to the new
+release during this chore. Review every hit and update its value; **keep
+the marker comments themselves** in place to help subsequent releases.
+
+Map of hits → required bump:
+
+- `NEWS` — the `What's new in version X.Y` header line.
+- `doc/SystemTap_Beginners_Guide/en-US/Book_Info.xml` — `<edition>` and
+  `<productnumber>`.
+- `session.cxx` — two spots: the copyright banner year **and**, in
+  `kernel_version_range()`, the upper-bound kernel version. Bump the upper
+  bound to the highest kernel actually exercised for this tip (see §9
+  Bunsen `uname-r` values). This one is easy to forget — do it explicitly.
+- `staprun/common.c`, `stapdyn/stapdyn.cxx`, `stapbpf/stapbpf.cxx` — the
+  copyright-banner year in the `-V` output (the `%s` version comes from
+  `configure`, no edit needed there).
+- `doc/SystemTap_Tapset_Reference/tapsets.tmpl` and `dummy-tapsets.xml` —
+  copyright `<year>` range end-year.
+- `systemtap.spec` — the `Version:` field near the top, and the newest
+  `%changelog` entry (date + version) near the bottom.
+
+Only the source tree is shipped, so editing these files is enough — no
+need to rebuild/reinstall just to refresh `stap --version` output.
 
 ### 3. Copyright years in messages
 
