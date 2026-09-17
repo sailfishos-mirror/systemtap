@@ -144,7 +144,7 @@ elif [ "$MODE" = '--build' ]; then
         --tag="${options[--image]}:${options[--tag]}" \
         "$NOTEBOOK_DIR/.."
 elif [ "$MODE" = '--publish' ]; then
-    podman login $REPO
+    podman login "${options[--repo]}"
     podman push "${options[--image]}" "${options[--repo]}/${options[--image]}:${options[--tag]}"
 elif [ "$MODE" = '--remove' ]; then
     podman image rm "${options[--repo]}/${options[--image]}:${options[--tag]}"
