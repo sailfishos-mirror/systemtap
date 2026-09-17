@@ -2,12 +2,12 @@
 .\"     Title: probe::nfs.aop.write_begin
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: May 2026
+.\"      Date: September 2026
 .\"    Manual: Network File Storage Tapsets
-.\"    Source: SystemTap Tapset Reference
+.\"    Source: SystemTap Tapset Reference Version 5.6
 .\"  Language: English
 .\"
-.TH "PROBE::NFS\&.AOP\&.W" "3stap" "May 2026" "SystemTap Tapset Reference" "Network File Storage Tapsets"
+.TH "PROBE::NFS\&.AOP\&.W" "3stap" "September 2026" "SystemTap Tapset Reference Ver" "Network File Storage Tapsets"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -32,13 +32,13 @@ probe::nfs.aop.write_begin \- NFS client begin to write data
 .SH "SYNOPSIS"
 .sp
 .nf
-nfs\&.aop\&.write_begin 
+probe nfs\&.aop\&.write_begin {}
 .fi
 .SH "VALUES"
 .PP
-\fIoffset\fR
+\fIpage_index\fR
 .RS 4
-start address of this write operation
+offset within mapping, can used a page identifier and position identifier in the page frame
 .RE
 .PP
 \fIino\fR
@@ -51,9 +51,9 @@ inode number
 write bytes
 .RE
 .PP
-\fIpage_index\fR
+\fI__page\fR
 .RS 4
-offset within mapping, can used a page identifier and position identifier in the page frame
+the address of page
 .RE
 .PP
 \fIto\fR
@@ -61,9 +61,9 @@ offset within mapping, can used a page identifier and position identifier in the
 end address of this write operation
 .RE
 .PP
-\fI__page\fR
+\fIoffset\fR
 .RS 4
-the address of page
+start address of this write operation
 .RE
 .PP
 \fIdev\fR

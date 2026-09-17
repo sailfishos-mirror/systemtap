@@ -2,12 +2,12 @@
 .\"     Title: probe::kprocess.exit
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: May 2026
+.\"      Date: September 2026
 .\"    Manual: Kernel Process Tapset
-.\"    Source: SystemTap Tapset Reference
+.\"    Source: SystemTap Tapset Reference Version 5.6
 .\"  Language: English
 .\"
-.TH "PROBE::KPROCESS\&.EX" "3stap" "May 2026" "SystemTap Tapset Reference" "Kernel Process Tapset"
+.TH "PROBE::KPROCESS\&.EX" "3stap" "September 2026" "SystemTap Tapset Reference Ver" "Kernel Process Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -32,7 +32,7 @@ probe::kprocess.exit \- Exit from process
 .SH "SYNOPSIS"
 .sp
 .nf
-kprocess\&.exit 
+probe kprocess\&.exit {}
 .fi
 .SH "VALUES"
 .PP

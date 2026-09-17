@@ -2,12 +2,12 @@
 .\"     Title: probe::nfs.fop.mmap
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: May 2026
+.\"      Date: September 2026
 .\"    Manual: Network File Storage Tapsets
-.\"    Source: SystemTap Tapset Reference
+.\"    Source: SystemTap Tapset Reference Version 5.6
 .\"  Language: English
 .\"
-.TH "PROBE::NFS\&.FOP\&.M" "3stap" "May 2026" "SystemTap Tapset Reference" "Network File Storage Tapsets"
+.TH "PROBE::NFS\&.FOP\&.M" "3stap" "September 2026" "SystemTap Tapset Reference Ver" "Network File Storage Tapsets"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -32,48 +32,13 @@ probe::nfs.fop.mmap \- NFS client mmap operation
 .SH "SYNOPSIS"
 .sp
 .nf
-nfs\&.fop\&.mmap 
+probe nfs\&.fop\&.mmap {}
 .fi
 .SH "VALUES"
-.PP
-\fIdev\fR
-.RS 4
-device identifier
-.RE
-.PP
-\fIparent_name\fR
-.RS 4
-parent dir name
-.RE
-.PP
-\fIfile_name\fR
-.RS 4
-file name
-.RE
 .PP
 \fIcache_valid\fR
 .RS 4
 cache related bit mask flag
-.RE
-.PP
-\fIvm_end\fR
-.RS 4
-the first byte after end address within vm_mm
-.RE
-.PP
-\fIcache_time\fR
-.RS 4
-when we started read\-caching this inode
-.RE
-.PP
-\fIino\fR
-.RS 4
-inode number
-.RE
-.PP
-\fIvm_flag\fR
-.RS 4
-vm flags
 .RE
 .PP
 \fIbuf\fR
@@ -81,9 +46,44 @@ vm flags
 the address of buf in user space
 .RE
 .PP
+\fIparent_name\fR
+.RS 4
+parent dir name
+.RE
+.PP
+\fIdev\fR
+.RS 4
+device identifier
+.RE
+.PP
+\fIvm_end\fR
+.RS 4
+the first byte after end address within vm_mm
+.RE
+.PP
+\fIvm_flag\fR
+.RS 4
+vm flags
+.RE
+.PP
+\fIcache_time\fR
+.RS 4
+when we started read\-caching this inode
+.RE
+.PP
+\fIfile_name\fR
+.RS 4
+file name
+.RE
+.PP
 \fIattrtimeo\fR
 .RS 4
 how long the cached information is assumed to be valid\&. We need to revalidate the cached attrs for this inode if jiffies \- read_cache_jiffies > attrtimeo\&.
+.RE
+.PP
+\fIino\fR
+.RS 4
+inode number
 .RE
 .PP
 \fIvm_start\fR

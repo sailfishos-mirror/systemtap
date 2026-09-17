@@ -2,12 +2,12 @@
 .\"     Title: probe::signal.do_action
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: May 2026
+.\"      Date: September 2026
 .\"    Manual: Signal Tapset
-.\"    Source: SystemTap Tapset Reference
+.\"    Source: SystemTap Tapset Reference Version 5.6
 .\"  Language: English
 .\"
-.TH "PROBE::SIGNAL\&.DO_A" "3stap" "May 2026" "SystemTap Tapset Reference" "Signal Tapset"
+.TH "PROBE::SIGNAL\&.DO_A" "3stap" "September 2026" "SystemTap Tapset Reference Ver" "Signal Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -32,18 +32,28 @@ probe::signal.do_action \- Examining or changing a signal action
 .SH "SYNOPSIS"
 .sp
 .nf
-signal\&.do_action 
+probe signal\&.do_action {}
 .fi
 .SH "VALUES"
 .PP
-\fIsigact_addr\fR
+\fIsig\fR
 .RS 4
-The address of the new sigaction struct associated with the signal
+The signal to be examined/changed
 .RE
 .PP
 \fIoldsigact_addr\fR
 .RS 4
 The address of the old sigaction struct associated with the signal
+.RE
+.PP
+\fIsa_mask\fR
+.RS 4
+The new mask of the signal
+.RE
+.PP
+\fIsa_handler\fR
+.RS 4
+The new handler of the signal
 .RE
 .PP
 \fIsig_name\fR
@@ -56,19 +66,9 @@ A string representation of the signal
 Name of the probe point
 .RE
 .PP
-\fIsig\fR
+\fIsigact_addr\fR
 .RS 4
-The signal to be examined/changed
-.RE
-.PP
-\fIsa_mask\fR
-.RS 4
-The new mask of the signal
-.RE
-.PP
-\fIsa_handler\fR
-.RS 4
-The new handler of the signal
+The address of the new sigaction struct associated with the signal
 .RE
 .SH SEE ALSO\n 
 .IR tapset::signal (3stap)

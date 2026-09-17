@@ -2,12 +2,12 @@
 .\"     Title: probe::netdev.unregister
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: May 2026
+.\"      Date: September 2026
 .\"    Manual: Networking Tapset
-.\"    Source: SystemTap Tapset Reference
+.\"    Source: SystemTap Tapset Reference Version 5.6
 .\"  Language: English
 .\"
-.TH "PROBE::NETDEV\&.UNRE" "3stap" "May 2026" "SystemTap Tapset Reference" "Networking Tapset"
+.TH "PROBE::NETDEV\&.UNRE" "3stap" "September 2026" "SystemTap Tapset Reference Ver" "Networking Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -32,7 +32,7 @@ probe::netdev.unregister \- Called when the device is being unregistered
 .SH "SYNOPSIS"
 .sp
 .nf
-netdev\&.unregister 
+probe netdev\&.unregister {}
 .fi
 .SH "VALUES"
 .PP

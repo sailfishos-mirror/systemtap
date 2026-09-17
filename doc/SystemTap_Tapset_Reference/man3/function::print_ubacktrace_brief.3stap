@@ -2,12 +2,12 @@
 .\"     Title: function::print_ubacktrace_brief
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: May 2026
+.\"      Date: September 2026
 .\"    Manual: Context Functions
-.\"    Source: SystemTap Tapset Reference
+.\"    Source: SystemTap Tapset Reference Version 5.6
 .\"  Language: English
 .\"
-.TH "FUNCTION::PRINT_UBAC" "3stap" "May 2026" "SystemTap Tapset Reference" "Context Functions"
+.TH "FUNCTION::PRINT_UBAC" "3stap" "September 2026" "SystemTap Tapset Reference Ver" "Context Functions"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------

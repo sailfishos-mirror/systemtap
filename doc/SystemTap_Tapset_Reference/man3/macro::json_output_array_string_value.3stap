@@ -2,12 +2,12 @@
 .\"     Title: macro::json_output_array_string_value
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: May 2026
+.\"      Date: September 2026
 .\"    Manual: JSON Tapset
-.\"    Source: SystemTap Tapset Reference
+.\"    Source: SystemTap Tapset Reference Version 5.6
 .\"  Language: English
 .\"
-.TH "MACRO::JSON_OUTPUT_A" "3stap" "May 2026" "SystemTap Tapset Reference" "JSON Tapset"
+.TH "MACRO::JSON_OUTPUT_A" "3stap" "September 2026" "SystemTap Tapset Reference Ver" "JSON Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------

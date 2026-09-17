@@ -2,12 +2,12 @@
 .\"     Title: probe::netfilter.ip.post_routing
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: May 2026
+.\"      Date: September 2026
 .\"    Manual: Networking Tapset
-.\"    Source: SystemTap Tapset Reference
+.\"    Source: SystemTap Tapset Reference Version 5.6
 .\"  Language: English
 .\"
-.TH "PROBE::NETFILTER\&.I" "3stap" "May 2026" "SystemTap Tapset Reference" "Networking Tapset"
+.TH "PROBE::NETFILTER\&.I" "3stap" "September 2026" "SystemTap Tapset Reference Ver" "Networking Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -32,23 +32,18 @@ probe::netfilter.ip.post_routing \- Called immediately before an outgoing IP pac
 .SH "SYNOPSIS"
 .sp
 .nf
-netfilter\&.ip\&.post_routing 
+probe netfilter\&.ip\&.post_routing {}
 .fi
 .SH "VALUES"
 .PP
-\fIrst\fR
+\fIsyn\fR
 .RS 4
-TCP RST flag (if protocol is TCP; ipv4 only)
+TCP SYN flag (if protocol is TCP; ipv4 only)
 .RE
 .PP
-\fIdport\fR
+\fIiphdr\fR
 .RS 4
-TCP or UDP destination port (ipv4 only)
-.RE
-.PP
-\fIdata_str\fR
-.RS 4
-A string representing the packet buffer contents
+Address of IP header
 .RE
 .PP
 \fIipproto_udp\fR
@@ -56,32 +51,14 @@ A string representing the packet buffer contents
 Constant used to signify that the packet protocol is UDP
 .RE
 .PP
-\fInf_queue\fR
-.RS 4
-Constant used to signify a \*(Aqqueue\*(Aq verdict
-.RE
-.PP
 \fIdaddr\fR
 .RS 4
 A string representing the destination IP address
 .RE
 .PP
-\fInf_accept\fR
+\fInf_queue\fR
 .RS 4
-Constant used to signify an \*(Aqaccept\*(Aq verdict
-.RE
-.PP
-\fInf_stop\fR
-.RS 4
-Constant used to signify a \*(Aqstop\*(Aq verdict
-.RE
-.PP
-\fIpf\fR
-.RS 4
-Protocol family \-\- either
-\(lqipv4\(rq
-or
-\(lqipv6\(rq
+Constant used to signify a \*(Aqqueue\*(Aq verdict
 .RE
 .PP
 \fInf_drop\fR
@@ -89,19 +66,24 @@ or
 Constant used to signify a \*(Aqdrop\*(Aq verdict
 .RE
 .PP
-\fIfamily\fR
-.RS 4
-IP address family
-.RE
-.PP
 \fIipproto_tcp\fR
 .RS 4
 Constant used to signify that the packet protocol is TCP
 .RE
 .PP
-\fIdata_hex\fR
+\fIdata_str\fR
 .RS 4
-A hexadecimal string representing the packet buffer contents
+A string representing the packet buffer contents
+.RE
+.PP
+\fInf_stolen\fR
+.RS 4
+Constant used to signify a \*(Aqstolen\*(Aq verdict
+.RE
+.PP
+\fIurg\fR
+.RS 4
+TCP URG flag (if protocol is TCP; ipv4 only)
 .RE
 .PP
 \fIoutdev_name\fR
@@ -109,19 +91,24 @@ A hexadecimal string representing the packet buffer contents
 Name of network device packet will be routed to (if known)
 .RE
 .PP
-\fIsaddr\fR
+\fIdata_hex\fR
 .RS 4
-A string representing the source IP address
+A hexadecimal string representing the packet buffer contents
 .RE
 .PP
-\fIprotocol\fR
+\fIlength\fR
 .RS 4
-Packet protocol from driver (ipv4 only)
+The length of the packet buffer contents, in bytes
 .RE
 .PP
-\fIack\fR
+\fIdport\fR
 .RS 4
-TCP ACK flag (if protocol is TCP; ipv4 only)
+TCP or UDP destination port (ipv4 only)
+.RE
+.PP
+\fIrst\fR
+.RS 4
+TCP RST flag (if protocol is TCP; ipv4 only)
 .RE
 .PP
 \fIfin\fR
@@ -134,19 +121,24 @@ TCP FIN flag (if protocol is TCP; ipv4 only)
 Name of network device packet was received on (if known)
 .RE
 .PP
-\fIurg\fR
+\fIfamily\fR
 .RS 4
-TCP URG flag (if protocol is TCP; ipv4 only)
+IP address family
 .RE
 .PP
-\fIoutdev\fR
+\fIprotocol\fR
 .RS 4
-Address of net_device representing output device, 0 if unknown
+Packet protocol from driver (ipv4 only)
 .RE
 .PP
-\fIlength\fR
+\fInf_stop\fR
 .RS 4
-The length of the packet buffer contents, in bytes
+Constant used to signify a \*(Aqstop\*(Aq verdict
+.RE
+.PP
+\fInf_accept\fR
+.RS 4
+Constant used to signify an \*(Aqaccept\*(Aq verdict
 .RE
 .PP
 \fInf_repeat\fR
@@ -154,19 +146,9 @@ The length of the packet buffer contents, in bytes
 Constant used to signify a \*(Aqrepeat\*(Aq verdict
 .RE
 .PP
-\fIindev\fR
+\fIack\fR
 .RS 4
-Address of net_device representing input device, 0 if unknown
-.RE
-.PP
-\fInf_stolen\fR
-.RS 4
-Constant used to signify a \*(Aqstolen\*(Aq verdict
-.RE
-.PP
-\fIiphdr\fR
-.RS 4
-Address of IP header
+TCP ACK flag (if protocol is TCP; ipv4 only)
 .RE
 .PP
 \fIpsh\fR
@@ -174,9 +156,27 @@ Address of IP header
 TCP PSH flag (if protocol is TCP; ipv4 only)
 .RE
 .PP
-\fIsyn\fR
+\fIoutdev\fR
 .RS 4
-TCP SYN flag (if protocol is TCP; ipv4 only)
+Address of net_device representing output device, 0 if unknown
+.RE
+.PP
+\fIsaddr\fR
+.RS 4
+A string representing the source IP address
+.RE
+.PP
+\fIpf\fR
+.RS 4
+Protocol family \-\- either
+\(lqipv4\(rq
+or
+\(lqipv6\(rq
+.RE
+.PP
+\fIindev\fR
+.RS 4
+Address of net_device representing input device, 0 if unknown
 .RE
 .PP
 \fIsport\fR

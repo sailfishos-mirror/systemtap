@@ -2,12 +2,12 @@
 .\"     Title: probe::vm.brk
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: May 2026
+.\"      Date: September 2026
 .\"    Manual: Memory Tapset
-.\"    Source: SystemTap Tapset Reference
+.\"    Source: SystemTap Tapset Reference Version 5.6
 .\"  Language: English
 .\"
-.TH "PROBE::VM\&.BRK" "3stap" "May 2026" "SystemTap Tapset Reference" "Memory Tapset"
+.TH "PROBE::VM\&.BRK" "3stap" "September 2026" "SystemTap Tapset Reference Ver" "Memory Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -32,7 +32,7 @@ probe::vm.brk \- Fires when a brk is requested (i\&.e\&. the heap will be resize
 .SH "SYNOPSIS"
 .sp
 .nf
-vm\&.brk 
+probe vm\&.brk {}
 .fi
 .SH "VALUES"
 .PP
@@ -41,14 +41,14 @@ vm\&.brk
 the requested address
 .RE
 .PP
-\fIname\fR
-.RS 4
-name of the probe point
-.RE
-.PP
 \fIlength\fR
 .RS 4
 the length of the memory segment
+.RE
+.PP
+\fIname\fR
+.RS 4
+name of the probe point
 .RE
 .SH "CONTEXT"
 .PP

@@ -2,12 +2,12 @@
 .\"     Title: probe::tcpmib.CurrEstab
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: May 2026
+.\"      Date: September 2026
 .\"    Manual: SNMP Information Tapset
-.\"    Source: SystemTap Tapset Reference
+.\"    Source: SystemTap Tapset Reference Version 5.6
 .\"  Language: English
 .\"
-.TH "PROBE::TCPMIB\&.CURR" "3stap" "May 2026" "SystemTap Tapset Reference" "SNMP Information Tapset"
+.TH "PROBE::TCPMIB\&.CURR" "3stap" "September 2026" "SystemTap Tapset Reference Ver" "SNMP Information Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -32,7 +32,7 @@ probe::tcpmib.CurrEstab \- Update the count of open sockets
 .SH "SYNOPSIS"
 .sp
 .nf
-tcpmib\&.CurrEstab 
+probe tcpmib\&.CurrEstab {}
 .fi
 .SH "VALUES"
 .PP

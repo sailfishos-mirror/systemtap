@@ -2,12 +2,12 @@
 .\"     Title: probe::kprocess.create
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: May 2026
+.\"      Date: September 2026
 .\"    Manual: Kernel Process Tapset
-.\"    Source: SystemTap Tapset Reference
+.\"    Source: SystemTap Tapset Reference Version 5.6
 .\"  Language: English
 .\"
-.TH "PROBE::KPROCESS\&.CR" "3stap" "May 2026" "SystemTap Tapset Reference" "Kernel Process Tapset"
+.TH "PROBE::KPROCESS\&.CR" "3stap" "September 2026" "SystemTap Tapset Reference Ver" "Kernel Process Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -32,18 +32,18 @@ probe::kprocess.create \- Fires whenever a new process or thread is successfully
 .SH "SYNOPSIS"
 .sp
 .nf
-kprocess\&.create 
+probe kprocess\&.create {}
 .fi
 .SH "VALUES"
-.PP
-\fInew_tid\fR
-.RS 4
-The TID of the newly created task
-.RE
 .PP
 \fInew_pid\fR
 .RS 4
 The PID of the newly created process
+.RE
+.PP
+\fInew_tid\fR
+.RS 4
+The TID of the newly created task
 .RE
 .SH "CONTEXT"
 .PP

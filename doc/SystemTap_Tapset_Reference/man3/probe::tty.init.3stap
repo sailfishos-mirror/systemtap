@@ -2,12 +2,12 @@
 .\"     Title: probe::tty.init
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: May 2026
+.\"      Date: September 2026
 .\"    Manual: TTY Tapset
-.\"    Source: SystemTap Tapset Reference
+.\"    Source: SystemTap Tapset Reference Version 5.6
 .\"  Language: English
 .\"
-.TH "PROBE::TTY\&.INIT" "3stap" "May 2026" "SystemTap Tapset Reference" "TTY Tapset"
+.TH "PROBE::TTY\&.INIT" "3stap" "September 2026" "SystemTap Tapset Reference Ver" "TTY Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -32,13 +32,13 @@ probe::tty.init \- Called when a tty is being initalized
 .SH "SYNOPSIS"
 .sp
 .nf
-tty\&.init 
+probe tty\&.init {}
 .fi
 .SH "VALUES"
 .PP
-\fImodule\fR
+\fIname\fR
 .RS 4
-the module name
+the driver \&.dev_name name
 .RE
 .PP
 \fIdriver_name\fR
@@ -46,9 +46,9 @@ the module name
 the driver name
 .RE
 .PP
-\fIname\fR
+\fImodule\fR
 .RS 4
-the driver \&.dev_name name
+the module name
 .RE
 .SH SEE ALSO\n 
 .IR tapset::tty (3stap)

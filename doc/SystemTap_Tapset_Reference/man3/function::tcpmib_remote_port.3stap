@@ -2,12 +2,12 @@
 .\"     Title: function::tcpmib_remote_port
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: May 2026
+.\"      Date: September 2026
 .\"    Manual: SNMP Information Tapset
-.\"    Source: SystemTap Tapset Reference
+.\"    Source: SystemTap Tapset Reference Version 5.6
 .\"  Language: English
 .\"
-.TH "FUNCTION::TCPMIB_REM" "3stap" "May 2026" "SystemTap Tapset Reference" "SNMP Information Tapset"
+.TH "FUNCTION::TCPMIB_REM" "3stap" "September 2026" "SystemTap Tapset Reference Ver" "SNMP Information Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------

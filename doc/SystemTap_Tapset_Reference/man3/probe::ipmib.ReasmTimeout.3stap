@@ -2,12 +2,12 @@
 .\"     Title: probe::ipmib.ReasmTimeout
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: May 2026
+.\"      Date: September 2026
 .\"    Manual: SNMP Information Tapset
-.\"    Source: SystemTap Tapset Reference
+.\"    Source: SystemTap Tapset Reference Version 5.6
 .\"  Language: English
 .\"
-.TH "PROBE::IPMIB\&.REASM" "3stap" "May 2026" "SystemTap Tapset Reference" "SNMP Information Tapset"
+.TH "PROBE::IPMIB\&.REASM" "3stap" "September 2026" "SystemTap Tapset Reference Ver" "SNMP Information Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -32,7 +32,7 @@ probe::ipmib.ReasmTimeout \- Count Reassembly Timeouts
 .SH "SYNOPSIS"
 .sp
 .nf
-ipmib\&.ReasmTimeout 
+probe ipmib\&.ReasmTimeout {}
 .fi
 .SH "VALUES"
 .PP

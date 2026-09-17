@@ -2,12 +2,12 @@
 .\"     Title: probe::ioblock_trace.bounce
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: May 2026
+.\"      Date: September 2026
 .\"    Manual: IO Scheduler and block IO Tapset
-.\"    Source: SystemTap Tapset Reference
+.\"    Source: SystemTap Tapset Reference Version 5.6
 .\"  Language: English
 .\"
-.TH "PROBE::IOBLOCK_TRACE" "3stap" "May 2026" "SystemTap Tapset Reference" "IO Scheduler and block IO Taps"
+.TH "PROBE::IOBLOCK_TRACE" "3stap" "September 2026" "SystemTap Tapset Reference Ver" "IO Scheduler and block IO Taps"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -32,13 +32,23 @@ probe::ioblock_trace.bounce \- Fires whenever a buffer bounce is needed for at l
 .SH "SYNOPSIS"
 .sp
 .nf
-ioblock_trace\&.bounce 
+probe ioblock_trace\&.bounce {}
 .fi
 .SH "VALUES"
 .PP
-\fIbdev\fR
+\fIq\fR
 .RS 4
-target block device
+request queue on which this bio was queued\&.
+.RE
+.PP
+\fIsize\fR
+.RS 4
+total size in bytes
+.RE
+.PP
+\fIp_start_sect\fR
+.RS 4
+points to the start sector of the partition structure of the device
 .RE
 .PP
 \fIino\fR
@@ -46,9 +56,9 @@ target block device
 i\-node number of the mapped file
 .RE
 .PP
-\fIvcnt\fR
+\fIbytes_done\fR
 .RS 4
-bio vector count which represents number of array element (page, offset, length) which makes up this I/O request
+number of bytes transferred
 .RE
 .PP
 \fIname\fR
@@ -56,24 +66,9 @@ bio vector count which represents number of array element (page, offset, length)
 name of the probe point
 .RE
 .PP
-\fIopf\fR
+\fIvcnt\fR
 .RS 4
-operations and flags
-.RE
-.PP
-\fIsector\fR
-.RS 4
-beginning sector for the entire bio
-.RE
-.PP
-\fIdevname\fR
-.RS 4
-device for which a buffer bounce was needed\&.
-.RE
-.PP
-\fIq\fR
-.RS 4
-request queue on which this bio was queued\&.
+bio vector count which represents number of array element (page, offset, length) which makes up this I/O request
 .RE
 .PP
 \fIbdev_contains\fR
@@ -81,9 +76,9 @@ request queue on which this bio was queued\&.
 points to the device object which contains the partition (when bio structure represents a partition)
 .RE
 .PP
-\fIflags\fR
+\fIdevname\fR
 .RS 4
-see below BIO_UPTODATE 0 ok after I/O completion BIO_RW_BLOCK 1 RW_AHEAD set, and read/write would block BIO_EOF 2 out\-out\-bounds error BIO_SEG_VALID 3 nr_hw_seg valid BIO_CLONED 4 doesn\*(Aqt own data BIO_BOUNCED 5 bio is a bounce bio BIO_USER_MAPPED 6 contains user pages BIO_EOPNOTSUPP 7 not supported
+device for which a buffer bounce was needed\&.
 .RE
 .PP
 \fIidx\fR
@@ -93,9 +88,9 @@ offset into the bio vector array
 \- number of segments in this bio after physical address coalescing is performed\&.
 .RE
 .PP
-\fIbytes_done\fR
+\fIsector\fR
 .RS 4
-number of bytes transferred
+beginning sector for the entire bio
 .RE
 .PP
 \fIrw\fR
@@ -103,14 +98,19 @@ number of bytes transferred
 binary trace for read/write request
 .RE
 .PP
-\fIp_start_sect\fR
+\fIflags\fR
 .RS 4
-points to the start sector of the partition structure of the device
+see below BIO_UPTODATE 0 ok after I/O completion BIO_RW_BLOCK 1 RW_AHEAD set, and read/write would block BIO_EOF 2 out\-out\-bounds error BIO_SEG_VALID 3 nr_hw_seg valid BIO_CLONED 4 doesn\*(Aqt own data BIO_BOUNCED 5 bio is a bounce bio BIO_USER_MAPPED 6 contains user pages BIO_EOPNOTSUPP 7 not supported
 .RE
 .PP
-\fIsize\fR
+\fIbdev\fR
 .RS 4
-total size in bytes
+target block device
+.RE
+.PP
+\fIopf\fR
+.RS 4
+operations and flags
 .RE
 .SH "CONTEXT"
 .PP

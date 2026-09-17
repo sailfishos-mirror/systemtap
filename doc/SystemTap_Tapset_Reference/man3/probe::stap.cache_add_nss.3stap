@@ -2,12 +2,12 @@
 .\"     Title: probe::stap.cache_add_nss
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: May 2026
+.\"      Date: September 2026
 .\"    Manual: SystemTap Translator Tapset
-.\"    Source: SystemTap Tapset Reference
+.\"    Source: SystemTap Tapset Reference Version 5.6
 .\"  Language: English
 .\"
-.TH "PROBE::STAP\&.CACHE_" "3stap" "May 2026" "SystemTap Tapset Reference" "SystemTap Translator Tapset"
+.TH "PROBE::STAP\&.CACHE_" "3stap" "September 2026" "SystemTap Tapset Reference Ver" "SystemTap Translator Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -32,7 +32,7 @@ probe::stap.cache_add_nss \- Add NSS (Network Security Services) information to 
 .SH "SYNOPSIS"
 .sp
 .nf
-stap\&.cache_add_nss 
+probe stap\&.cache_add_nss {}
 .fi
 .SH "VALUES"
 .PP

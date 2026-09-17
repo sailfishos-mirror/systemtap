@@ -2,12 +2,12 @@
 .\"     Title: probe::netdev.receive
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: May 2026
+.\"      Date: September 2026
 .\"    Manual: Networking Tapset
-.\"    Source: SystemTap Tapset Reference
+.\"    Source: SystemTap Tapset Reference Version 5.6
 .\"  Language: English
 .\"
-.TH "PROBE::NETDEV\&.RECE" "3stap" "May 2026" "SystemTap Tapset Reference" "Networking Tapset"
+.TH "PROBE::NETDEV\&.RECE" "3stap" "September 2026" "SystemTap Tapset Reference Ver" "Networking Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -32,9 +32,14 @@ probe::netdev.receive \- Data received from network device\&.
 .SH "SYNOPSIS"
 .sp
 .nf
-netdev\&.receive 
+probe netdev\&.receive {}
 .fi
 .SH "VALUES"
+.PP
+\fIprotocol\fR
+.RS 4
+Protocol of received packet\&.
+.RE
 .PP
 \fIdev_name\fR
 .RS 4
@@ -44,11 +49,6 @@ The name of the device\&. e\&.g: eth0, ath1\&.
 \fIlength\fR
 .RS 4
 The length of the receiving buffer\&.
-.RE
-.PP
-\fIprotocol\fR
-.RS 4
-Protocol of received packet\&.
 .RE
 .SH SEE ALSO\n 
 .IR tapset::networking (3stap)

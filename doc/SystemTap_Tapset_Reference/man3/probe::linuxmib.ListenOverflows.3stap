@@ -2,12 +2,12 @@
 .\"     Title: probe::linuxmib.ListenOverflows
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: May 2026
+.\"      Date: September 2026
 .\"    Manual: SNMP Information Tapset
-.\"    Source: SystemTap Tapset Reference
+.\"    Source: SystemTap Tapset Reference Version 5.6
 .\"  Language: English
 .\"
-.TH "PROBE::LINUXMIB\&.LI" "3stap" "May 2026" "SystemTap Tapset Reference" "SNMP Information Tapset"
+.TH "PROBE::LINUXMIB\&.LI" "3stap" "September 2026" "SystemTap Tapset Reference Ver" "SNMP Information Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -32,7 +32,7 @@ probe::linuxmib.ListenOverflows \- Count of times a listen queue overflowed
 .SH "SYNOPSIS"
 .sp
 .nf
-linuxmib\&.ListenOverflows 
+probe linuxmib\&.ListenOverflows {}
 .fi
 .SH "VALUES"
 .PP

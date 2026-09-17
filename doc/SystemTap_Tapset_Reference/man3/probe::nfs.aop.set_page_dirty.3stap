@@ -2,12 +2,12 @@
 .\"     Title: probe::nfs.aop.set_page_dirty
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: May 2026
+.\"      Date: September 2026
 .\"    Manual: Network File Storage Tapsets
-.\"    Source: SystemTap Tapset Reference
+.\"    Source: SystemTap Tapset Reference Version 5.6
 .\"  Language: English
 .\"
-.TH "PROBE::NFS\&.AOP\&.S" "3stap" "May 2026" "SystemTap Tapset Reference" "Network File Storage Tapsets"
+.TH "PROBE::NFS\&.AOP\&.S" "3stap" "September 2026" "SystemTap Tapset Reference Ver" "Network File Storage Tapsets"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -32,21 +32,21 @@ probe::nfs.aop.set_page_dirty \- NFS client marking page as dirty
 .SH "SYNOPSIS"
 .sp
 .nf
-nfs\&.aop\&.set_page_dirty 
+probe nfs\&.aop\&.set_page_dirty {}
 .fi
 .SH "VALUES"
-.PP
-\fIpage_flag\fR
-.RS 4
-page flags
-.RE
 .PP
 \fI__page\fR
 .RS 4
 the address of page
 .RE
+.PP
+\fIpage_flag\fR
+.RS 4
+page flags
+.RE
 .SH "DESCRIPTION"
 .PP
-This probe attaches to the generic __set_page_dirty_nobuffers function\&. Thus, this probe is going to fire on many other file systems in addition to the NFS client\&.
+This probe attaches to folio_mark_dirty (or legacy page\-dirty helpers)\&. Thus, this probe is going to fire on many other file systems in addition to the NFS client\&.
 .SH SEE ALSO\n 
 .IR tapset::nfs (3stap)

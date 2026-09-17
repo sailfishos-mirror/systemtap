@@ -2,12 +2,12 @@
 .\"     Title: probe::netdev.get_stats
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: May 2026
+.\"      Date: September 2026
 .\"    Manual: Networking Tapset
-.\"    Source: SystemTap Tapset Reference
+.\"    Source: SystemTap Tapset Reference Version 5.6
 .\"  Language: English
 .\"
-.TH "PROBE::NETDEV\&.GET_" "3stap" "May 2026" "SystemTap Tapset Reference" "Networking Tapset"
+.TH "PROBE::NETDEV\&.GET_" "3stap" "September 2026" "SystemTap Tapset Reference Ver" "Networking Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -32,7 +32,7 @@ probe::netdev.get_stats \- Called when someone asks the device statistics
 .SH "SYNOPSIS"
 .sp
 .nf
-netdev\&.get_stats 
+probe netdev\&.get_stats {}
 .fi
 .SH "VALUES"
 .PP

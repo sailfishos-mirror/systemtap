@@ -2,12 +2,12 @@
 .\"     Title: probe::stap.system
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: May 2026
+.\"      Date: September 2026
 .\"    Manual: SystemTap Translator Tapset
-.\"    Source: SystemTap Tapset Reference
+.\"    Source: SystemTap Tapset Reference Version 5.6
 .\"  Language: English
 .\"
-.TH "PROBE::STAP\&.SYSTEM" "3stap" "May 2026" "SystemTap Tapset Reference" "SystemTap Translator Tapset"
+.TH "PROBE::STAP\&.SYSTEM" "3stap" "September 2026" "SystemTap Tapset Reference Ver" "SystemTap Translator Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -32,7 +32,7 @@ probe::stap.system \- Starting a command from stap
 .SH "SYNOPSIS"
 .sp
 .nf
-stap\&.system 
+probe stap\&.system {}
 .fi
 .SH "VALUES"
 .PP

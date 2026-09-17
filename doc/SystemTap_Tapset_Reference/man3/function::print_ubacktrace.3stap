@@ -2,12 +2,12 @@
 .\"     Title: function::print_ubacktrace
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: May 2026
+.\"      Date: September 2026
 .\"    Manual: Context Functions
-.\"    Source: SystemTap Tapset Reference
+.\"    Source: SystemTap Tapset Reference Version 5.6
 .\"  Language: English
 .\"
-.TH "FUNCTION::PRINT_UBAC" "3stap" "May 2026" "SystemTap Tapset Reference" "Context Functions"
+.TH "FUNCTION::PRINT_UBAC" "3stap" "September 2026" "SystemTap Tapset Reference Ver" "Context Functions"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -69,5 +69,4 @@ Equivalent to
 To get (full) backtraces for user space applications and shared shared libraries not mentioned in the current script run stap with \-d /path/to/exe\-or\-so and/or add \-\-ldd to load all needed unwind data\&.
 .SH SEE ALSO\n 
 .IR tapset::ucontext-unwind (3stap)
-.SH SEE ALSO\n 
 .IR tapset::ucontext-unwind (3stap)

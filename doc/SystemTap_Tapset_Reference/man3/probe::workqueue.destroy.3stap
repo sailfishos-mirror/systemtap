@@ -2,12 +2,12 @@
 .\"     Title: probe::workqueue.destroy
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: May 2026
+.\"      Date: September 2026
 .\"    Manual: Interrupt Request (IRQ) Tapset
-.\"    Source: SystemTap Tapset Reference
+.\"    Source: SystemTap Tapset Reference Version 5.6
 .\"  Language: English
 .\"
-.TH "PROBE::WORKQUEUE\&.D" "3stap" "May 2026" "SystemTap Tapset Reference" "Interrupt Request (IRQ) Tapset"
+.TH "PROBE::WORKQUEUE\&.D" "3stap" "September 2026" "SystemTap Tapset Reference Ver" "Interrupt Request (IRQ) Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -32,7 +32,7 @@ probe::workqueue.destroy \- Destroying workqueue
 .SH "SYNOPSIS"
 .sp
 .nf
-workqueue\&.destroy 
+probe workqueue\&.destroy {}
 .fi
 .SH "VALUES"
 .PP

@@ -2,12 +2,12 @@
 .\"     Title: probe::tcpmib.OutSegs
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: May 2026
+.\"      Date: September 2026
 .\"    Manual: SNMP Information Tapset
-.\"    Source: SystemTap Tapset Reference
+.\"    Source: SystemTap Tapset Reference Version 5.6
 .\"  Language: English
 .\"
-.TH "PROBE::TCPMIB\&.OUTS" "3stap" "May 2026" "SystemTap Tapset Reference" "SNMP Information Tapset"
+.TH "PROBE::TCPMIB\&.OUTS" "3stap" "September 2026" "SystemTap Tapset Reference Ver" "SNMP Information Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -32,7 +32,7 @@ probe::tcpmib.OutSegs \- Count the sending of a TCP segment
 .SH "SYNOPSIS"
 .sp
 .nf
-tcpmib\&.OutSegs 
+probe tcpmib\&.OutSegs {}
 .fi
 .SH "VALUES"
 .PP

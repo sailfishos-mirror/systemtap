@@ -2,12 +2,12 @@
 .\"     Title: probe::linuxmib.ListenDrops
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: May 2026
+.\"      Date: September 2026
 .\"    Manual: SNMP Information Tapset
-.\"    Source: SystemTap Tapset Reference
+.\"    Source: SystemTap Tapset Reference Version 5.6
 .\"  Language: English
 .\"
-.TH "PROBE::LINUXMIB\&.LI" "3stap" "May 2026" "SystemTap Tapset Reference" "SNMP Information Tapset"
+.TH "PROBE::LINUXMIB\&.LI" "3stap" "September 2026" "SystemTap Tapset Reference Ver" "SNMP Information Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -32,18 +32,18 @@ probe::linuxmib.ListenDrops \- Count of times conn request that were dropped
 .SH "SYNOPSIS"
 .sp
 .nf
-linuxmib\&.ListenDrops 
+probe linuxmib\&.ListenDrops {}
 .fi
 .SH "VALUES"
-.PP
-\fIop\fR
-.RS 4
-Value to be added to the counter (default value of 1)
-.RE
 .PP
 \fIsk\fR
 .RS 4
 Pointer to the struct sock being acted on
+.RE
+.PP
+\fIop\fR
+.RS 4
+Value to be added to the counter (default value of 1)
 .RE
 .SH "DESCRIPTION"
 .PP

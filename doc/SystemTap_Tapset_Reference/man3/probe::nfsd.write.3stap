@@ -2,12 +2,12 @@
 .\"     Title: probe::nfsd.write
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: May 2026
+.\"      Date: September 2026
 .\"    Manual: Network File Storage Tapsets
-.\"    Source: SystemTap Tapset Reference
+.\"    Source: SystemTap Tapset Reference Version 5.6
 .\"  Language: English
 .\"
-.TH "PROBE::NFSD\&.WRITE" "3stap" "May 2026" "SystemTap Tapset Reference" "Network File Storage Tapsets"
+.TH "PROBE::NFSD\&.WRITE" "3stap" "September 2026" "SystemTap Tapset Reference Ver" "Network File Storage Tapsets"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -32,7 +32,7 @@ probe::nfsd.write \- NFS server writing data to a file for client
 .SH "SYNOPSIS"
 .sp
 .nf
-nfsd\&.write 
+probe nfsd\&.write {}
 .fi
 .SH "VALUES"
 .PP
@@ -41,24 +41,14 @@ nfsd\&.write
 struct kvec, includes buf address in kernel address and length of each buffer
 .RE
 .PP
-\fIvlen\fR
-.RS 4
-read blocks
-.RE
-.PP
 \fIclient_ip\fR
 .RS 4
 the ip address of client
 .RE
 .PP
-\fIsize\fR
+\fIcount\fR
 .RS 4
 read bytes
-.RE
-.PP
-\fIoffset\fR
-.RS 4
-the offset of file
 .RE
 .PP
 \fIfile\fR
@@ -66,12 +56,22 @@ the offset of file
 argument file, indicates if the file has been opened\&.
 .RE
 .PP
+\fIoffset\fR
+.RS 4
+the offset of file
+.RE
+.PP
 \fIfh\fR
 .RS 4
 file handle (the first part is the length of the file handle)
 .RE
 .PP
-\fIcount\fR
+\fIvlen\fR
+.RS 4
+read blocks
+.RE
+.PP
+\fIsize\fR
 .RS 4
 read bytes
 .RE

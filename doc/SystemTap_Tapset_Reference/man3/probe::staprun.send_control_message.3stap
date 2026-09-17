@@ -2,12 +2,12 @@
 .\"     Title: probe::staprun.send_control_message
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: May 2026
+.\"      Date: September 2026
 .\"    Manual: SystemTap Translator Tapset
-.\"    Source: SystemTap Tapset Reference
+.\"    Source: SystemTap Tapset Reference Version 5.6
 .\"  Language: English
 .\"
-.TH "PROBE::STAPRUN\&.SEN" "3stap" "May 2026" "SystemTap Tapset Reference" "SystemTap Translator Tapset"
+.TH "PROBE::STAPRUN\&.SEN" "3stap" "September 2026" "SystemTap Tapset Reference Ver" "SystemTap Translator Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -32,18 +32,18 @@ probe::staprun.send_control_message \- Sending a control message
 .SH "SYNOPSIS"
 .sp
 .nf
-staprun\&.send_control_message 
+probe staprun\&.send_control_message {}
 .fi
 .SH "VALUES"
-.PP
-\fIlen\fR
-.RS 4
-the length (in bytes) of the data blob
-.RE
 .PP
 \fIdata\fR
 .RS 4
 a ptr to a binary blob of data sent as the control message
+.RE
+.PP
+\fIlen\fR
+.RS 4
+the length (in bytes) of the data blob
 .RE
 .PP
 \fItype\fR

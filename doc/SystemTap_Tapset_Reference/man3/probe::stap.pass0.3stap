@@ -2,12 +2,12 @@
 .\"     Title: probe::stap.pass0
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: May 2026
+.\"      Date: September 2026
 .\"    Manual: SystemTap Translator Tapset
-.\"    Source: SystemTap Tapset Reference
+.\"    Source: SystemTap Tapset Reference Version 5.6
 .\"  Language: English
 .\"
-.TH "PROBE::STAP\&.PASS0" "3stap" "May 2026" "SystemTap Tapset Reference" "SystemTap Translator Tapset"
+.TH "PROBE::STAP\&.PASS0" "3stap" "September 2026" "SystemTap Tapset Reference Ver" "SystemTap Translator Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -32,7 +32,7 @@ probe::stap.pass0 \- Starting stap pass0 (parsing command line arguments)
 .SH "SYNOPSIS"
 .sp
 .nf
-stap\&.pass0 
+probe stap\&.pass0 {}
 .fi
 .SH "VALUES"
 .PP

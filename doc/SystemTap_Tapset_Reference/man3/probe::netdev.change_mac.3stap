@@ -2,12 +2,12 @@
 .\"     Title: probe::netdev.change_mac
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: May 2026
+.\"      Date: September 2026
 .\"    Manual: Networking Tapset
-.\"    Source: SystemTap Tapset Reference
+.\"    Source: SystemTap Tapset Reference Version 5.6
 .\"  Language: English
 .\"
-.TH "PROBE::NETDEV\&.CHAN" "3stap" "May 2026" "SystemTap Tapset Reference" "Networking Tapset"
+.TH "PROBE::NETDEV\&.CHAN" "3stap" "September 2026" "SystemTap Tapset Reference Ver" "Networking Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -32,13 +32,13 @@ probe::netdev.change_mac \- Called when the netdev_name has the MAC changed
 .SH "SYNOPSIS"
 .sp
 .nf
-netdev\&.change_mac 
+probe netdev\&.change_mac {}
 .fi
 .SH "VALUES"
 .PP
-\fImac_len\fR
+\fIold_mac\fR
 .RS 4
-The MAC length
+The current MAC address
 .RE
 .PP
 \fIdev_name\fR
@@ -51,9 +51,9 @@ The device that will have the MAC changed
 The new MAC address
 .RE
 .PP
-\fIold_mac\fR
+\fImac_len\fR
 .RS 4
-The current MAC address
+The MAC length
 .RE
 .SH SEE ALSO\n 
 .IR tapset::networking (3stap)

@@ -2,12 +2,12 @@
 .\"     Title: probe::sunrpc.sched.release_task
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: May 2026
+.\"      Date: September 2026
 .\"    Manual: Networking Tapset
-.\"    Source: SystemTap Tapset Reference
+.\"    Source: SystemTap Tapset Reference Version 5.6
 .\"  Language: English
 .\"
-.TH "PROBE::SUNRPC\&.SCHE" "3stap" "May 2026" "SystemTap Tapset Reference" "Networking Tapset"
+.TH "PROBE::SUNRPC\&.SCHE" "3stap" "September 2026" "SystemTap Tapset Reference Ver" "Networking Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -32,23 +32,13 @@ probe::sunrpc.sched.release_task \- Release all resources associated with a task
 .SH "SYNOPSIS"
 .sp
 .nf
-sunrpc\&.sched\&.release_task 
+probe sunrpc\&.sched\&.release_task {}
 .fi
 .SH "VALUES"
 .PP
 \fIxid\fR
 .RS 4
 the transmission id in the RPC call
-.RE
-.PP
-\fIvers\fR
-.RS 4
-the program version in the RPC call
-.RE
-.PP
-\fIprog\fR
-.RS 4
-the program number in the RPC call
 .RE
 .PP
 \fIprot\fR
@@ -59,6 +49,16 @@ the IP protocol in the RPC call
 \fItk_flags\fR
 .RS 4
 the flags of the task
+.RE
+.PP
+\fIprog\fR
+.RS 4
+the program number in the RPC call
+.RE
+.PP
+\fIvers\fR
+.RS 4
+the program version in the RPC call
 .RE
 .SH "DESCRIPTION"
 .PP

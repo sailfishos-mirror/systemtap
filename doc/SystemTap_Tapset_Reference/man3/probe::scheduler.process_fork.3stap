@@ -2,12 +2,12 @@
 .\"     Title: probe::scheduler.process_fork
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: May 2026
+.\"      Date: September 2026
 .\"    Manual: Scheduler Tapset
-.\"    Source: SystemTap Tapset Reference
+.\"    Source: SystemTap Tapset Reference Version 5.6
 .\"  Language: English
 .\"
-.TH "PROBE::SCHEDULER\&.P" "3stap" "May 2026" "SystemTap Tapset Reference" "Scheduler Tapset"
+.TH "PROBE::SCHEDULER\&.P" "3stap" "September 2026" "SystemTap Tapset Reference Ver" "Scheduler Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -32,18 +32,18 @@ probe::scheduler.process_fork \- Process forked
 .SH "SYNOPSIS"
 .sp
 .nf
-scheduler\&.process_fork 
+probe scheduler\&.process_fork {}
 .fi
 .SH "VALUES"
-.PP
-\fIparent_pid\fR
-.RS 4
-PID of the parent process
-.RE
 .PP
 \fIchild_pid\fR
 .RS 4
 PID of the child process
+.RE
+.PP
+\fIparent_pid\fR
+.RS 4
+PID of the parent process
 .RE
 .PP
 \fIname\fR

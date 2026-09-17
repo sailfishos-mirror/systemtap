@@ -2,12 +2,12 @@
 .\"     Title: probe::scheduler.process_wait
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: May 2026
+.\"      Date: September 2026
 .\"    Manual: Scheduler Tapset
-.\"    Source: SystemTap Tapset Reference
+.\"    Source: SystemTap Tapset Reference Version 5.6
 .\"  Language: English
 .\"
-.TH "PROBE::SCHEDULER\&.P" "3stap" "May 2026" "SystemTap Tapset Reference" "Scheduler Tapset"
+.TH "PROBE::SCHEDULER\&.P" "3stap" "September 2026" "SystemTap Tapset Reference Ver" "Scheduler Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -32,18 +32,18 @@ probe::scheduler.process_wait \- Scheduler starting to wait on a process
 .SH "SYNOPSIS"
 .sp
 .nf
-scheduler\&.process_wait 
+probe scheduler\&.process_wait {}
 .fi
 .SH "VALUES"
-.PP
-\fIpid\fR
-.RS 4
-PID of the process scheduler is waiting on
-.RE
 .PP
 \fIname\fR
 .RS 4
 name of the probe point
+.RE
+.PP
+\fIpid\fR
+.RS 4
+PID of the process scheduler is waiting on
 .RE
 .SH SEE ALSO\n 
 .IR tapset::scheduler (3stap)

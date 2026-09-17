@@ -2,12 +2,12 @@
 .\"     Title: probe::signal.flush
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: May 2026
+.\"      Date: September 2026
 .\"    Manual: Signal Tapset
-.\"    Source: SystemTap Tapset Reference
+.\"    Source: SystemTap Tapset Reference Version 5.6
 .\"  Language: English
 .\"
-.TH "PROBE::SIGNAL\&.FLUS" "3stap" "May 2026" "SystemTap Tapset Reference" "Signal Tapset"
+.TH "PROBE::SIGNAL\&.FLUS" "3stap" "September 2026" "SystemTap Tapset Reference Ver" "Signal Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -32,18 +32,18 @@ probe::signal.flush \- Flushing all pending signals for a task
 .SH "SYNOPSIS"
 .sp
 .nf
-signal\&.flush 
+probe signal\&.flush {}
 .fi
 .SH "VALUES"
-.PP
-\fItask\fR
-.RS 4
-The task handler of the process performing the flush
-.RE
 .PP
 \fIname\fR
 .RS 4
 Name of the probe point
+.RE
+.PP
+\fItask\fR
+.RS 4
+The task handler of the process performing the flush
 .RE
 .PP
 \fIpid_name\fR

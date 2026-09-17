@@ -2,12 +2,12 @@
 .\"     Title: probe::tty.poll
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: May 2026
+.\"      Date: September 2026
 .\"    Manual: TTY Tapset
-.\"    Source: SystemTap Tapset Reference
+.\"    Source: SystemTap Tapset Reference Version 5.6
 .\"  Language: English
 .\"
-.TH "PROBE::TTY\&.POLL" "3stap" "May 2026" "SystemTap Tapset Reference" "TTY Tapset"
+.TH "PROBE::TTY\&.POLL" "3stap" "September 2026" "SystemTap Tapset Reference Ver" "TTY Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -32,18 +32,18 @@ probe::tty.poll \- Called when a tty device is being polled
 .SH "SYNOPSIS"
 .sp
 .nf
-tty\&.poll 
+probe tty\&.poll {}
 .fi
 .SH "VALUES"
-.PP
-\fIwait_key\fR
-.RS 4
-the wait queue key
-.RE
 .PP
 \fIfile_name\fR
 .RS 4
 the tty file name
+.RE
+.PP
+\fIwait_key\fR
+.RS 4
+the wait queue key
 .RE
 .SH SEE ALSO\n 
 .IR tapset::tty (3stap)

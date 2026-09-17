@@ -2,12 +2,12 @@
 .\"     Title: probe::vm.mmap
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: May 2026
+.\"      Date: September 2026
 .\"    Manual: Memory Tapset
-.\"    Source: SystemTap Tapset Reference
+.\"    Source: SystemTap Tapset Reference Version 5.6
 .\"  Language: English
 .\"
-.TH "PROBE::VM\&.MMAP" "3stap" "May 2026" "SystemTap Tapset Reference" "Memory Tapset"
+.TH "PROBE::VM\&.MMAP" "3stap" "September 2026" "SystemTap Tapset Reference Ver" "Memory Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -32,13 +32,13 @@ probe::vm.mmap \- Fires when an mmap is requested
 .SH "SYNOPSIS"
 .sp
 .nf
-vm\&.mmap 
+probe vm\&.mmap {}
 .fi
 .SH "VALUES"
 .PP
-\fIaddress\fR
+\fIlength\fR
 .RS 4
-the requested address
+the length of the memory segment
 .RE
 .PP
 \fIname\fR
@@ -46,9 +46,9 @@ the requested address
 name of the probe point
 .RE
 .PP
-\fIlength\fR
+\fIaddress\fR
 .RS 4
-the length of the memory segment
+the requested address
 .RE
 .SH "CONTEXT"
 .PP

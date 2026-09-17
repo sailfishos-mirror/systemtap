@@ -2,12 +2,12 @@
 .\"     Title: probe::ipmib.ReasmReqds
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: May 2026
+.\"      Date: September 2026
 .\"    Manual: SNMP Information Tapset
-.\"    Source: SystemTap Tapset Reference
+.\"    Source: SystemTap Tapset Reference Version 5.6
 .\"  Language: English
 .\"
-.TH "PROBE::IPMIB\&.REASM" "3stap" "May 2026" "SystemTap Tapset Reference" "SNMP Information Tapset"
+.TH "PROBE::IPMIB\&.REASM" "3stap" "September 2026" "SystemTap Tapset Reference Ver" "SNMP Information Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -32,18 +32,18 @@ probe::ipmib.ReasmReqds \- Count number of packet fragments reassembly requests
 .SH "SYNOPSIS"
 .sp
 .nf
-ipmib\&.ReasmReqds 
+probe ipmib\&.ReasmReqds {}
 .fi
 .SH "VALUES"
-.PP
-\fIskb\fR
-.RS 4
-pointer to the struct sk_buff being acted on
-.RE
 .PP
 \fIop\fR
 .RS 4
 value to be added to the counter (default value of 1)
+.RE
+.PP
+\fIskb\fR
+.RS 4
+pointer to the struct sk_buff being acted on
 .RE
 .SH "DESCRIPTION"
 .PP

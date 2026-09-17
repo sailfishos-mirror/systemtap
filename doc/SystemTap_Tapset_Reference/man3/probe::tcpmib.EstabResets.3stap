@@ -2,12 +2,12 @@
 .\"     Title: probe::tcpmib.EstabResets
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: May 2026
+.\"      Date: September 2026
 .\"    Manual: SNMP Information Tapset
-.\"    Source: SystemTap Tapset Reference
+.\"    Source: SystemTap Tapset Reference Version 5.6
 .\"  Language: English
 .\"
-.TH "PROBE::TCPMIB\&.ESTA" "3stap" "May 2026" "SystemTap Tapset Reference" "SNMP Information Tapset"
+.TH "PROBE::TCPMIB\&.ESTA" "3stap" "September 2026" "SystemTap Tapset Reference Ver" "SNMP Information Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -32,7 +32,7 @@ probe::tcpmib.EstabResets \- Count the reset of a socket
 .SH "SYNOPSIS"
 .sp
 .nf
-tcpmib\&.EstabResets 
+probe tcpmib\&.EstabResets {}
 .fi
 .SH "VALUES"
 .PP

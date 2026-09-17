@@ -2,12 +2,12 @@
 .\"     Title: probe::socket.sendmsg
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: May 2026
+.\"      Date: September 2026
 .\"    Manual: Socket Tapset
-.\"    Source: SystemTap Tapset Reference
+.\"    Source: SystemTap Tapset Reference Version 5.6
 .\"  Language: English
 .\"
-.TH "PROBE::SOCKET\&.SEND" "3stap" "May 2026" "SystemTap Tapset Reference" "Socket Tapset"
+.TH "PROBE::SOCKET\&.SEND" "3stap" "September 2026" "SystemTap Tapset Reference Ver" "Socket Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -32,7 +32,7 @@ probe::socket.sendmsg \- Message is currently being sent on a socket\&.
 .SH "SYNOPSIS"
 .sp
 .nf
-socket\&.sendmsg 
+probe socket\&.sendmsg {}
 .fi
 .SH "VALUES"
 .PP
@@ -41,24 +41,9 @@ socket\&.sendmsg
 Protocol value
 .RE
 .PP
-\fIflags\fR
-.RS 4
-Socket flags value
-.RE
-.PP
 \fIstate\fR
 .RS 4
 Socket state value
-.RE
-.PP
-\fIfamily\fR
-.RS 4
-Protocol family value
-.RE
-.PP
-\fIsize\fR
-.RS 4
-Message size in bytes
 .RE
 .PP
 \fItype\fR
@@ -69,6 +54,21 @@ Socket type value
 \fIname\fR
 .RS 4
 Name of this probe
+.RE
+.PP
+\fIflags\fR
+.RS 4
+Socket flags value
+.RE
+.PP
+\fIsize\fR
+.RS 4
+Message size in bytes
+.RE
+.PP
+\fIfamily\fR
+.RS 4
+Protocol family value
 .RE
 .SH "CONTEXT"
 .PP

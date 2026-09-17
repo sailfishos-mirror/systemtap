@@ -92,8 +92,8 @@
   a new standalone stap-onboot command for embedding scripts into initramfs.
 
 - Python probing updated: the tapset is split into per-minor-version
-  files (3.9, 3.12, 3.14, 3.15) to simplify porting.  Probing works
-  with Python 3.9 through 3.15.
+   files (3.9, 3.12, 3.13, 3.14, 3.15) to simplify porting.  Probing works
+   with Python 3.9 through 3.15.
 
 - REMOVED python 2 probing support (python2 tapset and python2.*
   probes).  Use python3.module(...) probes with python3 -m HelperSDT.
@@ -121,6 +121,19 @@
 
 - Clang build compatibility tweaks for building SystemTap itself.
   (PR#34283)
+
+- Pass-2 elaboration now derives DWARF probe points concurrently
+  within each stapfile and shares per-CU/function caches, markedly
+  speeding up scripts with wildcard or syscall.* probe globs.  Thread
+  count is capped by $STAP_NTHREADS.  (PR#34432)
+
+- DWARF DW_OP_entry_value location expressions are now honored, so
+  $parms/$vars pretty-printing and @entry() access work for arguments
+  and locals whose location is only described at function entry.
+
+- Kernel build IDs are now extracted from compressed/non-ELF
+  vmlinuz on aarch64 and s390x, so debuginfod-backed kernel probes
+  resolve correctly there.  (PR#34488)
 
 * What's new in version 5.5, 2026-05-01
 

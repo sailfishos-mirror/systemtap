@@ -2,12 +2,12 @@
 .\"     Title: probe::tty.unregister
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: May 2026
+.\"      Date: September 2026
 .\"    Manual: TTY Tapset
-.\"    Source: SystemTap Tapset Reference
+.\"    Source: SystemTap Tapset Reference Version 5.6
 .\"  Language: English
 .\"
-.TH "PROBE::TTY\&.UNREGIS" "3stap" "May 2026" "SystemTap Tapset Reference" "TTY Tapset"
+.TH "PROBE::TTY\&.UNREGIS" "3stap" "September 2026" "SystemTap Tapset Reference Ver" "TTY Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -32,7 +32,7 @@ probe::tty.unregister \- Called when a tty device is being unregistered
 .SH "SYNOPSIS"
 .sp
 .nf
-tty\&.unregister 
+probe tty\&.unregister {}
 .fi
 .SH "VALUES"
 .PP
@@ -41,9 +41,9 @@ tty\&.unregister
 the driver \&.dev_name name
 .RE
 .PP
-\fIindex\fR
+\fIdriver_name\fR
 .RS 4
-the tty index requested
+the driver name
 .RE
 .PP
 \fImodule\fR
@@ -51,9 +51,9 @@ the tty index requested
 the module name
 .RE
 .PP
-\fIdriver_name\fR
+\fIindex\fR
 .RS 4
-the driver name
+the tty index requested
 .RE
 .SH SEE ALSO\n 
 .IR tapset::tty (3stap)

@@ -2,12 +2,12 @@
 .\"     Title: probe::stapio.receive_control_message
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: May 2026
+.\"      Date: September 2026
 .\"    Manual: SystemTap Translator Tapset
-.\"    Source: SystemTap Tapset Reference
+.\"    Source: SystemTap Tapset Reference Version 5.6
 .\"  Language: English
 .\"
-.TH "PROBE::STAPIO\&.RECE" "3stap" "May 2026" "SystemTap Tapset Reference" "SystemTap Translator Tapset"
+.TH "PROBE::STAPIO\&.RECE" "3stap" "September 2026" "SystemTap Tapset Reference Ver" "SystemTap Translator Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -32,7 +32,7 @@ probe::stapio.receive_control_message \- Received a control message
 .SH "SYNOPSIS"
 .sp
 .nf
-stapio\&.receive_control_message 
+probe stapio\&.receive_control_message {}
 .fi
 .SH "VALUES"
 .PP

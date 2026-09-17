@@ -2,12 +2,12 @@
 .\"     Title: probe::signal.handle
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: May 2026
+.\"      Date: September 2026
 .\"    Manual: Signal Tapset
-.\"    Source: SystemTap Tapset Reference
+.\"    Source: SystemTap Tapset Reference Version 5.6
 .\"  Language: English
 .\"
-.TH "PROBE::SIGNAL\&.HAND" "3stap" "May 2026" "SystemTap Tapset Reference" "Signal Tapset"
+.TH "PROBE::SIGNAL\&.HAND" "3stap" "September 2026" "SystemTap Tapset Reference Ver" "Signal Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -32,13 +32,13 @@ probe::signal.handle \- Signal handler being invoked
 .SH "SYNOPSIS"
 .sp
 .nf
-signal\&.handle 
+probe signal\&.handle {}
 .fi
 .SH "VALUES"
 .PP
-\fIsig_name\fR
+\fIregs\fR
 .RS 4
-A string representation of the signal
+The address of the kernel\-mode stack area (deprecated in SystemTap 2\&.1)
 .RE
 .PP
 \fIsig\fR
@@ -46,14 +46,19 @@ A string representation of the signal
 The signal number that invoked the signal handler
 .RE
 .PP
+\fIsig_code\fR
+.RS 4
+The si_code value of the siginfo signal
+.RE
+.PP
 \fIsig_mode\fR
 .RS 4
 Indicates whether the signal was a user\-mode or kernel\-mode signal
 .RE
 .PP
-\fIsinfo\fR
+\fIsig_name\fR
 .RS 4
-The address of the siginfo table
+A string representation of the signal
 .RE
 .PP
 \fIname\fR
@@ -61,24 +66,19 @@ The address of the siginfo table
 Name of the probe point
 .RE
 .PP
-\fIka_addr\fR
-.RS 4
-The address of the k_sigaction table associated with the signal
-.RE
-.PP
-\fIsig_code\fR
-.RS 4
-The si_code value of the siginfo signal
-.RE
-.PP
 \fIoldset_addr\fR
 .RS 4
 The address of the bitmask array of blocked signals (deprecated in SystemTap 2\&.1)
 .RE
 .PP
-\fIregs\fR
+\fIsinfo\fR
 .RS 4
-The address of the kernel\-mode stack area (deprecated in SystemTap 2\&.1)
+The address of the siginfo table
+.RE
+.PP
+\fIka_addr\fR
+.RS 4
+The address of the k_sigaction table associated with the signal
 .RE
 .SH SEE ALSO\n 
 .IR tapset::signal (3stap)

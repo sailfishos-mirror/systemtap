@@ -2,12 +2,12 @@
 .\"     Title: probe::nfsd.commit
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: May 2026
+.\"      Date: September 2026
 .\"    Manual: Network File Storage Tapsets
-.\"    Source: SystemTap Tapset Reference
+.\"    Source: SystemTap Tapset Reference Version 5.6
 .\"  Language: English
 .\"
-.TH "PROBE::NFSD\&.COMMIT" "3stap" "May 2026" "SystemTap Tapset Reference" "Network File Storage Tapsets"
+.TH "PROBE::NFSD\&.COMMIT" "3stap" "September 2026" "SystemTap Tapset Reference Ver" "Network File Storage Tapsets"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -32,18 +32,23 @@ probe::nfsd.commit \- NFS server committing all pending writes to stable storage
 .SH "SYNOPSIS"
 .sp
 .nf
-nfsd\&.commit 
+probe nfsd\&.commit {}
 .fi
 .SH "VALUES"
+.PP
+\fIfh\fR
+.RS 4
+file handle (the first part is the length of the file handle)
+.RE
 .PP
 \fIoffset\fR
 .RS 4
 the offset of file
 .RE
 .PP
-\fIfh\fR
+\fIclient_ip\fR
 .RS 4
-file handle (the first part is the length of the file handle)
+the ip address of client
 .RE
 .PP
 \fIcount\fR
@@ -54,11 +59,6 @@ read bytes
 \fIflag\fR
 .RS 4
 indicates whether this execution is a sync operation
-.RE
-.PP
-\fIclient_ip\fR
-.RS 4
-the ip address of client
 .RE
 .PP
 \fIsize\fR

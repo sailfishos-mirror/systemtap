@@ -2,12 +2,12 @@
 .\"     Title: probe::syscall_any.return
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: May 2026
+.\"      Date: September 2026
 .\"    Manual: Syscall Any Tapset
-.\"    Source: SystemTap Tapset Reference
+.\"    Source: SystemTap Tapset Reference Version 5.6
 .\"  Language: English
 .\"
-.TH "PROBE::SYSCALL_ANY\&" "3stap" "May 2026" "SystemTap Tapset Reference" "Syscall Any Tapset"
+.TH "PROBE::SYSCALL_ANY\&" "3stap" "September 2026" "SystemTap Tapset Reference Ver" "Syscall Any Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -32,7 +32,7 @@ probe::syscall_any.return \- Record exit from a syscall
 .SH "SYNOPSIS"
 .sp
 .nf
-syscall_any\&.return 
+probe syscall_any\&.return {}
 .fi
 .SH "VALUES"
 .PP
@@ -55,8 +55,6 @@ name of the syscall
 The process performing the syscall
 .SH "DESCRIPTION"
 .PP
-The syscall_any\&.return probe point is designed to be a low overhead that monitors all the syscalls returns via a kernel tracepoint\&. Because of the breadth of syscalls it monitors it provides no information about the syscall arguments, argstr string representation of those arguments, or a string interpretation of the return value (retval)\&.
-.PP
-This requires kernel 3\&.5+ and newer which have the kernel\&.trace(\(lqsys_exit\(rq) probe point\&.
+Prefers kernel\&.tracepoint(\(lqsys_exit\(rq) when vmlinux\&.h BTF tracepoints are available; falls back to kernel\&.trace(\(lqsys_exit\(rq) (kernel 3\&.5+)\&.
 .SH SEE ALSO\n 
 .IR tapset::syscall_any (3stap)

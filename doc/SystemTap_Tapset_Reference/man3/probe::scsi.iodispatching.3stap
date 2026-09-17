@@ -2,12 +2,12 @@
 .\"     Title: probe::scsi.iodispatching
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: May 2026
+.\"      Date: September 2026
 .\"    Manual: SCSI Tapset
-.\"    Source: SystemTap Tapset Reference
+.\"    Source: SystemTap Tapset Reference Version 5.6
 .\"  Language: English
 .\"
-.TH "PROBE::SCSI\&.IODISP" "3stap" "May 2026" "SystemTap Tapset Reference" "SCSI Tapset"
+.TH "PROBE::SCSI\&.IODISP" "3stap" "September 2026" "SystemTap Tapset Reference Ver" "SCSI Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -32,13 +32,13 @@ probe::scsi.iodispatching \- SCSI mid\-layer dispatched low\-level SCSI command
 .SH "SYNOPSIS"
 .sp
 .nf
-scsi\&.iodispatching 
+probe scsi\&.iodispatching {}
 .fi
 .SH "VALUES"
 .PP
-\fIrequest_buffer\fR
+\fIdevice_state\fR
 .RS 4
-The request buffer address
+The current state of the device
 .RE
 .PP
 \fIlun\fR
@@ -46,29 +46,9 @@ The request buffer address
 The lun number
 .RE
 .PP
-\fIdev_id\fR
+\fIdevice_state_str\fR
 .RS 4
-The scsi device id
-.RE
-.PP
-\fIdata_direction_str\fR
-.RS 4
-Data direction, as a string
-.RE
-.PP
-\fIreq_addr\fR
-.RS 4
-The current struct request pointer, as a number
-.RE
-.PP
-\fIhost_no\fR
-.RS 4
-The host number
-.RE
-.PP
-\fIrequest_bufflen\fR
-.RS 4
-The request buffer length
+The current state of the device, as a string
 .RE
 .PP
 \fIchannel\fR
@@ -76,19 +56,39 @@ The request buffer length
 The channel number
 .RE
 .PP
-\fIdevice_state\fR
+\fIdev_id\fR
 .RS 4
-The current state of the device
+The scsi device id
 .RE
 .PP
-\fIdevice_state_str\fR
+\fIhost_no\fR
 .RS 4
-The current state of the device, as a string
+The host number
 .RE
 .PP
 \fIdata_direction\fR
 .RS 4
 The data_direction specifies whether this command is from/to the device 0 (DMA_BIDIRECTIONAL), 1 (DMA_TO_DEVICE), 2 (DMA_FROM_DEVICE), 3 (DMA_NONE)
+.RE
+.PP
+\fIreq_addr\fR
+.RS 4
+The current struct request pointer, as a number
+.RE
+.PP
+\fIrequest_buffer\fR
+.RS 4
+The request buffer address
+.RE
+.PP
+\fIrequest_bufflen\fR
+.RS 4
+The request buffer length
+.RE
+.PP
+\fIdata_direction_str\fR
+.RS 4
+Data direction, as a string
 .RE
 .SH SEE ALSO\n 
 .IR tapset::scsi (3stap)

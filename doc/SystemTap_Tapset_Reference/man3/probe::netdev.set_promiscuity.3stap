@@ -2,12 +2,12 @@
 .\"     Title: probe::netdev.set_promiscuity
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: May 2026
+.\"      Date: September 2026
 .\"    Manual: Networking Tapset
-.\"    Source: SystemTap Tapset Reference
+.\"    Source: SystemTap Tapset Reference Version 5.6
 .\"  Language: English
 .\"
-.TH "PROBE::NETDEV\&.SET_" "3stap" "May 2026" "SystemTap Tapset Reference" "Networking Tapset"
+.TH "PROBE::NETDEV\&.SET_" "3stap" "September 2026" "SystemTap Tapset Reference Ver" "Networking Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -32,13 +32,13 @@ probe::netdev.set_promiscuity \- Called when the device enters/leaves promiscuit
 .SH "SYNOPSIS"
 .sp
 .nf
-netdev\&.set_promiscuity 
+probe netdev\&.set_promiscuity {}
 .fi
 .SH "VALUES"
 .PP
-\fIdisable\fR
+\fIenable\fR
 .RS 4
-If the device is leaving promiscuity mode
+If the device is entering promiscuity mode
 .RE
 .PP
 \fIinc\fR
@@ -46,9 +46,9 @@ If the device is leaving promiscuity mode
 Count the number of promiscuity openers
 .RE
 .PP
-\fIenable\fR
+\fIdisable\fR
 .RS 4
-If the device is entering promiscuity mode
+If the device is leaving promiscuity mode
 .RE
 .PP
 \fIdev_name\fR

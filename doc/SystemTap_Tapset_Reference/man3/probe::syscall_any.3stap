@@ -2,12 +2,12 @@
 .\"     Title: probe::syscall_any
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: May 2026
+.\"      Date: September 2026
 .\"    Manual: Syscall Any Tapset
-.\"    Source: SystemTap Tapset Reference
+.\"    Source: SystemTap Tapset Reference Version 5.6
 .\"  Language: English
 .\"
-.TH "PROBE::SYSCALL_ANY" "3stap" "May 2026" "SystemTap Tapset Reference" "Syscall Any Tapset"
+.TH "PROBE::SYSCALL_ANY" "3stap" "September 2026" "SystemTap Tapset Reference Ver" "Syscall Any Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -32,26 +32,24 @@ probe::syscall_any \- Record entry into a syscall
 .SH "SYNOPSIS"
 .sp
 .nf
-syscall_any 
+probe syscall_any {}
 .fi
 .SH "VALUES"
-.PP
-\fIsyscall_nr\fR
-.RS 4
-number of the syscall
-.RE
 .PP
 \fIname\fR
 .RS 4
 name of the syscall
+.RE
+.PP
+\fIsyscall_nr\fR
+.RS 4
+number of the syscall
 .RE
 .SH "CONTEXT"
 .PP
 The process performing the syscall
 .SH "DESCRIPTION"
 .PP
-The syscall_any probe point is designed to be a low overhead that monitors all the syscalls entered via a kernel tracepoint\&. Because of the breadth of syscalls it monitors it provides no information about the syscall arguments or argstr string representation of those arguments\&.
-.PP
-This requires kernel 3\&.5+ and newer which have the kernel\&.trace(\(lqsys_enter\(rq) probe point\&.
+Prefers kernel\&.tracepoint(\(lqsys_enter\(rq) when vmlinux\&.h BTF tracepoints are available; falls back to kernel\&.trace(\(lqsys_enter\(rq) (kernel 3\&.5+)\&.
 .SH SEE ALSO\n 
 .IR tapset::syscall_any (3stap)

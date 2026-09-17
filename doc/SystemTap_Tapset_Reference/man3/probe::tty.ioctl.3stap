@@ -2,12 +2,12 @@
 .\"     Title: probe::tty.ioctl
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: May 2026
+.\"      Date: September 2026
 .\"    Manual: TTY Tapset
-.\"    Source: SystemTap Tapset Reference
+.\"    Source: SystemTap Tapset Reference Version 5.6
 .\"  Language: English
 .\"
-.TH "PROBE::TTY\&.IOCTL" "3stap" "May 2026" "SystemTap Tapset Reference" "TTY Tapset"
+.TH "PROBE::TTY\&.IOCTL" "3stap" "September 2026" "SystemTap Tapset Reference Ver" "TTY Tapset"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -32,18 +32,18 @@ probe::tty.ioctl \- called when a ioctl is request to the tty
 .SH "SYNOPSIS"
 .sp
 .nf
-tty\&.ioctl 
+probe tty\&.ioctl {}
 .fi
 .SH "VALUES"
-.PP
-\fIarg\fR
-.RS 4
-the ioctl argument
-.RE
 .PP
 \fIname\fR
 .RS 4
 the file name
+.RE
+.PP
+\fIarg\fR
+.RS 4
+the ioctl argument
 .RE
 .PP
 \fIcmd\fR

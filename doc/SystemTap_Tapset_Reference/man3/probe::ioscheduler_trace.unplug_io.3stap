@@ -2,12 +2,12 @@
 .\"     Title: probe::ioscheduler_trace.unplug_io
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: May 2026
+.\"      Date: September 2026
 .\"    Manual: IO Scheduler and block IO Tapset
-.\"    Source: SystemTap Tapset Reference
+.\"    Source: SystemTap Tapset Reference Version 5.6
 .\"  Language: English
 .\"
-.TH "PROBE::IOSCHEDULER_T" "3stap" "May 2026" "SystemTap Tapset Reference" "IO Scheduler and block IO Taps"
+.TH "PROBE::IOSCHEDULER_T" "3stap" "September 2026" "SystemTap Tapset Reference Ver" "IO Scheduler and block IO Taps"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -32,7 +32,7 @@ probe::ioscheduler_trace.unplug_io \- Fires when a request queue is unplugged;
 .SH "SYNOPSIS"
 .sp
 .nf
-ioscheduler_trace\&.unplug_io 
+probe ioscheduler_trace\&.unplug_io {}
 .fi
 .SH "VALUES"
 .PP
