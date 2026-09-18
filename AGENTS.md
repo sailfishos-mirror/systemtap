@@ -269,6 +269,8 @@ stap --dyninst script.stp   # Userspace only, can run non-privileged
 When writing Git commit messages, wrap the text to approximately 70
 characters per line to conform with standard Git formatting practices.
 
+Agents should credit themselves with a git commit --suffix.
+
 ## Kernel Compatibility Portability
 
 For porting the runtime/tapsets across kernel versions (STAPCONF

@@ -172,6 +172,12 @@ static void _stp_exit(void);
 
 /* unprivileged user support */
 
+/* Kernel commit 15c1f17979 ("cred: delete task_euid()") dropped the
+ * task_euid() helper; recreate it from the still-present task_cred_xxx(). */
+#if !defined(task_euid) && defined(task_cred_xxx)
+#define task_euid(task)		(task_cred_xxx((task), euid))
+#endif
+
 #ifdef STAPCONF_TASK_UID
 #define STP_CURRENT_EUID (current->euid)
 #else
