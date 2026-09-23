@@ -140,9 +140,17 @@ $(TAPSET_PYTHON3_STP): $(srcdir)/$(TAPSET_PYTHON3_CANDIDATE)
 	mkdir -p tapset # create build-tree tapset/ dir if needed
 	cp $< $@
 
+# The libpython path baked into python3.stpm is resolved at run time on the
+# machine being probed, so it has to be the installed location.  configure
+# gets PYTHON3_LIBPYTHON from sysconfig, whose LIBDIR points at the python
+# build/staging area; when cross compiling that is a build host directory
+# which does not exist on the target.  Keep only the library soname from
+# sysconfig and anchor it at the $(libdir) we are installing against.
+PYTHON3_LIBPYTHON_INSTALLED = $(libdir)/$(notdir $(PYTHON3_LIBPYTHON))
+
 $(TAPSET_PYTHON3_STPM):
 	mkdir -p tapset # create build-tree tapset/ dir if needed
-	@echo '@define stap_python3_libpython %("$(PYTHON3_LIBPYTHON)" %)' > $@
+	@echo '@define stap_python3_libpython %("$(PYTHON3_LIBPYTHON_INSTALLED)" %)' > $@
 
 install: all
 	$(MAKE) $(AM_MAKEFLAGS) install-recursive
