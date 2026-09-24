@@ -44,7 +44,10 @@ endif
 # the option, so probe for it rather than assume.
 #
 # PEP 610 direct_url.json records the file:// URL of the wheel in the build
-# tree, which is likewise meaningless once installed, so drop it.
+# tree, which is likewise meaningless once installed, so drop it.  Drop its
+# line from RECORD too: that line holds a hash of the file, and so of the
+# build directory, which would keep RECORD varying between builds and would
+# describe a file that is not installed.
 PIP_NO_COMPILE = $(shell $(PYTHON3) -m pip install --help 2>&1 | grep -q -- --no-compile && echo --no-compile)
 
 install-exec-local:
@@ -54,6 +57,7 @@ if HAVE_PYTHON3_PROBES
 		 --no-deps --no-index --no-build-isolation $(PIP_NO_COMPILE) \
 		 --ignore-installed --verbose
 	rm -f $(DESTDIR)$(prefix)/lib*/python*/site-packages/*.dist-info/direct_url.json
+	sed -i '/direct_url\.json,/d' $(DESTDIR)$(prefix)/lib*/python*/site-packages/*.dist-info/RECORD
 endif
 
 clean-local:
