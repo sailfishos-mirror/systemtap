@@ -828,7 +828,7 @@ done
 # setuptools may install classic egg-info or PEP 376 dist-info; package whichever exists
 : > helpersdt-metadata.files
 find %{buildroot}%{python3_sitearch} -mindepth 1 -maxdepth 1 \
-  \( -name 'HelperSDT-*.egg-info' -o -name 'helpersdt-*.dist-info' \) \
+  \( -iname 'HelperSDT-*.egg-info' -o -iname 'helpersdt-*.dist-info' \) \
   -printf '%%p\n' | sed "s|^%{buildroot}||" >> helpersdt-metadata.files
 %endif
 
