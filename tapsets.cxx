@@ -10592,6 +10592,14 @@ dwarf_builder::build(systemtap_session & sess,
       // For kernel.statement(NUM).absolute probe points, we bypass
       // all the debuginfo stuff: We just wire up a
       // dwarf_derived_probe right here and now.
+      //
+      // Bind a minimal kernel focus around that construction: the probe
+      // ctor expands target variables, whose diagnostics name the
+      // focused module, and foc() requires a binder.  No
+      // iterate_over_modules() runs on this path, so nothing else would
+      // leave a focus behind.
+      q.focus.module_name = TOK_KERNEL;
+      dwflpp_focus_binder bind_focus (q.focus);
       dwarf_derived_probe* p =
         new dwarf_derived_probe ("", "", 0, "kernel", "",
                                  q.statement_num_val, q.statement_num_val,
