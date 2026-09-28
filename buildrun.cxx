@@ -373,7 +373,9 @@ compile_pass (systemtap_session& s)
     << "$(CFLAGS) -DKBUILD_BASENAME=\\\"" << s.module_name << "\\\" "
     << "-DKBUILD_MODNAME=\\\"" << s.module_name << "\\\" "
     << "-Wmissing-prototypes "  // GCC14 prep, PR31288
-    << "-Werror" << " -S -o /dev/null -xc " << endl;
+    << "-Werror"
+    << " -Wno-error=unused-value" // kernel fortify-string.h comma expressions
+    << " -S -o /dev/null -xc " << endl;
   o << "stap_check_build = $(shell " << superverbose << " if $(CHECK_BUILD) $(1) "
     << redirecterrors << " ; then echo \"$(2)\"; else echo \"$(3)\"; fi)" << endl;
 
@@ -724,6 +726,11 @@ compile_pass (systemtap_session& s)
 
   // Assumes linux 2.6 kbuild
   o << extra_cflags << " += -Wno-unused " << "-Werror" << endl;
+
+  // The kernel's fortify-string.h expands memset()/memcpy() calls into
+  // comma expressions whose left-hand check call gcc 14+ flags with
+  // -Wunused-value.  Keep that informational instead of failing the build.
+  o << extra_cflags << " += -Wno-error=unused-value" << endl;
   #if CHECK_POINTER_ARITH_PR5947
   o << extra_cflags << " += -Wpointer-arith" << endl;
   #endif
