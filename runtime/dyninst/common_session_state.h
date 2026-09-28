@@ -170,6 +170,30 @@ static inline struct _stp_transport_session_data *stp_transport_data(void)
 #endif
 
 
+/* Runs the script's STAP_MODULE_INIT_HOOK / STAP_MODULE_EXIT_HOOK, if any.
+ * These live here because this header is included after the embedded-C
+ * blocks that define the hook names; see runtime.h for the callers. */
+static int stp_dyninst_run_init_hook(void)
+{
+#ifdef STAP_MODULE_INIT_HOOK
+	int rc = STAP_MODULE_INIT_HOOK();
+
+	if (rc != 0)
+		_stp_error ("Failed to run STAP_MODULE_INIT_HOOK (%d)\n", rc);
+	return rc;
+#else
+	return 0;
+#endif
+}
+
+static void stp_dyninst_run_exit_hook(void)
+{
+#ifdef STAP_MODULE_EXIT_HOOK
+	STAP_MODULE_EXIT_HOOK();
+#endif
+}
+
+
 static int stp_session_init(void)
 {
 	size_t i;

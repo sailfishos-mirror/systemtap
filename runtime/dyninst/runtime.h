@@ -149,6 +149,11 @@ static int _stp_sched_getcpu(void)
 static inline struct _stp_transport_session_data *stp_transport_data(void);
 static inline struct _stp_session_attributes *stp_session_attributes(void);
 
+/* Defined in common_session_state.h, which the translator includes after
+ * the embedded-C blocks that define STAP_MODULE_{INIT,EXIT}_HOOK. */
+static int stp_dyninst_run_init_hook(void);
+static void stp_dyninst_run_exit_hook(void);
+
 /*
  * By definition, we can only debug our own processes with dyninst, so
  * assert_is_myproc() will never assert.
@@ -352,6 +357,8 @@ int stp_dyninst_shm_connect(const char* name)
 
 int stp_dyninst_session_init(void)
 {
+    int rc;
+
     /* We don't have a chance to indicate errors in the ctor, so do it here. */
     if (stp_dyninst_ctor_rc != 0) {
 	return stp_dyninst_ctor_rc;
@@ -362,7 +369,14 @@ int stp_dyninst_session_init(void)
     if (_stp_shm_base == NULL)
 	return -ENOMEM;
 
-    return systemtap_module_init();
+    /* Run the optional module init hook first, like the kernel-module
+     * transport does.  A failing hook keeps the session from starting. */
+    rc = stp_dyninst_run_init_hook();
+    if (rc != 0)
+	return rc;
+
+    rc = systemtap_module_init();
+    return rc;
 }
 
 /* This is called during systemtap_module_init, after globals/etc are set up,
@@ -384,6 +398,7 @@ static int stp_dyninst_session_init_finished(void)
 void stp_dyninst_session_exit(void)
 {
     systemtap_module_exit();
+    stp_dyninst_run_exit_hook();
 }
 
 static int _stp_exit_status = 0;

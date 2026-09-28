@@ -41,5 +41,12 @@
 #define _stp_kzalloc_node_gfp(size, node, gfp_mask) calloc((size), 1)
 
 
+/* vmalloc-area equivalents, mirroring linux/alloc.c so embedded-C that
+   uses them builds under both runtimes.  */
+#define _stp_vzalloc(size) calloc((size), 1)
+#define _stp_vzalloc_node(size, node) calloc((size), 1)
+#define _stp_vfree(addr) free(addr)
+
+
 #endif /* _STAPDYN_ALLOC_C_ */
 
