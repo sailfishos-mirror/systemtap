@@ -26,7 +26,7 @@ if BUILD_HTMLDOCS
 	    -e "s|@RELEASEINFO@|Version $(PACKAGE_VERSION)|g" \
 	    -e "s|@BUILDDATE@|$$build_date|g" \
 	    $(abs_srcdir)/tapsets.tmpl > tapsets.tmpl.new
-	SRCTREE=$(SRCTREE) $(DOCPROC) doc tapsets.tmpl.new > tapsets.xml.new
+	PERL_HASH_SEED=42 PERL_PERTURB_KEYS=0 SRCTREE=$(SRCTREE) $(DOCPROC) doc tapsets.tmpl.new > tapsets.xml.new
 	$(preferred_python) $(srcdir)/overload.py tapsets.xml.new > tapsets.xml.new1
 	xsltproc $(srcdir)/sort-tapsets.xslt tapsets.xml.new1 > tapsets.xml.new2
 	rm tapsets.xml.new tapsets.xml.new1 tapsets.tmpl.new

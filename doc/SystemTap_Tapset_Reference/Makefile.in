@@ -627,7 +627,7 @@ uninstall-am:
 @BUILD_HTMLDOCS_TRUE@@BUILD_REFDOCS_TRUE@	    -e "s|@RELEASEINFO@|Version $(PACKAGE_VERSION)|g" \
 @BUILD_HTMLDOCS_TRUE@@BUILD_REFDOCS_TRUE@	    -e "s|@BUILDDATE@|$$build_date|g" \
 @BUILD_HTMLDOCS_TRUE@@BUILD_REFDOCS_TRUE@	    $(abs_srcdir)/tapsets.tmpl > tapsets.tmpl.new
-@BUILD_HTMLDOCS_TRUE@@BUILD_REFDOCS_TRUE@	SRCTREE=$(SRCTREE) $(DOCPROC) doc tapsets.tmpl.new > tapsets.xml.new
+@BUILD_HTMLDOCS_TRUE@@BUILD_REFDOCS_TRUE@	PERL_HASH_SEED=42 PERL_PERTURB_KEYS=0 SRCTREE=$(SRCTREE) $(DOCPROC) doc tapsets.tmpl.new > tapsets.xml.new
 @BUILD_HTMLDOCS_TRUE@@BUILD_REFDOCS_TRUE@	$(preferred_python) $(srcdir)/overload.py tapsets.xml.new > tapsets.xml.new1
 @BUILD_HTMLDOCS_TRUE@@BUILD_REFDOCS_TRUE@	xsltproc $(srcdir)/sort-tapsets.xslt tapsets.xml.new1 > tapsets.xml.new2
 @BUILD_HTMLDOCS_TRUE@@BUILD_REFDOCS_TRUE@	rm tapsets.xml.new tapsets.xml.new1 tapsets.tmpl.new
