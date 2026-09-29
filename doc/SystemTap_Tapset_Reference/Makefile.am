@@ -21,7 +21,11 @@ endif
 all: stamp-htmldocs
 tapsets.xml: docproc $(shell find $(SRCTREE)/tapset -name '*.stp')
 if BUILD_HTMLDOCS
-	build_date=`date +%Y-%m-%d`; \
+	if test -n "$$SOURCE_DATE_EPOCH"; then \
+		build_date=$$(date -u -d "@$$SOURCE_DATE_EPOCH" +%Y-%m-%d) || exit $$?; \
+	else \
+		build_date=$$(date +%Y-%m-%d) || exit $$?; \
+	fi; \
 	sed -e '/^!Syscalls/{r $(abs_srcdir)/syscalls.xmlpart' -e 'd}' \
 	    -e "s|@RELEASEINFO@|Version $(PACKAGE_VERSION)|g" \
 	    -e "s|@BUILDDATE@|$$build_date|g" \

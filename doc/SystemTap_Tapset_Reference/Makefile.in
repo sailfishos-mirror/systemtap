@@ -622,7 +622,11 @@ uninstall-am:
 
 @BUILD_REFDOCS_TRUE@all: stamp-htmldocs
 @BUILD_REFDOCS_TRUE@tapsets.xml: docproc $(shell find $(SRCTREE)/tapset -name '*.stp')
-@BUILD_HTMLDOCS_TRUE@@BUILD_REFDOCS_TRUE@	build_date=`date +%Y-%m-%d`; \
+@BUILD_HTMLDOCS_TRUE@@BUILD_REFDOCS_TRUE@	if test -n "$$SOURCE_DATE_EPOCH"; then \
+@BUILD_HTMLDOCS_TRUE@@BUILD_REFDOCS_TRUE@		build_date=$$(date -u -d "@$$SOURCE_DATE_EPOCH" +%Y-%m-%d) || exit $$?; \
+@BUILD_HTMLDOCS_TRUE@@BUILD_REFDOCS_TRUE@	else \
+@BUILD_HTMLDOCS_TRUE@@BUILD_REFDOCS_TRUE@		build_date=$$(date +%Y-%m-%d) || exit $$?; \
+@BUILD_HTMLDOCS_TRUE@@BUILD_REFDOCS_TRUE@	fi; \
 @BUILD_HTMLDOCS_TRUE@@BUILD_REFDOCS_TRUE@	sed -e '/^!Syscalls/{r $(abs_srcdir)/syscalls.xmlpart' -e 'd}' \
 @BUILD_HTMLDOCS_TRUE@@BUILD_REFDOCS_TRUE@	    -e "s|@RELEASEINFO@|Version $(PACKAGE_VERSION)|g" \
 @BUILD_HTMLDOCS_TRUE@@BUILD_REFDOCS_TRUE@	    -e "s|@BUILDDATE@|$$build_date|g" \
