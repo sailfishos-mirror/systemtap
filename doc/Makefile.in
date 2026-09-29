@@ -645,12 +645,12 @@ uninstall-am: uninstall-local
 
 .tex.dvi:
 	pwd=`pwd`; cd $(srcdir); \
-	latex -output-directory=$$pwd $<; \
+	TZ=UTC latex -output-directory=$$pwd $<; \
 	touch $*.glo; \
 	makeindex $*.glo -s nomencl.ist -o $*.gls; \
-	latex -output-directory=$$pwd $<; \
-	latex -output-directory=$$pwd $<; \
-	latex -output-directory=$$pwd $<
+	TZ=UTC latex -output-directory=$$pwd $<; \
+	TZ=UTC latex -output-directory=$$pwd $<; \
+	TZ=UTC latex -output-directory=$$pwd $<
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
