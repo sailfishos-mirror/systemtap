@@ -62,6 +62,23 @@
     %)
 %)
 
+# A compat task may reach the same helper through the ordinary syscall
+# number or through its *_time64 one, so both are accepted here.
+@define __syscall_compat_gate2(syscall_nr, compat_syscall_nr, compat_time64_nr)
+%(
+    %( CONFIG_COMPAT == "y" %?
+	try { __nr = _stp_syscall_nr() } catch { next }
+	if (@__compat_task) {
+		if ((__nr != @compat_syscall_nr) && (__nr != @compat_time64_nr))
+			next
+	}
+	else if (__nr != @syscall_nr)
+		next
+    %:
+	try { if (_stp_syscall_nr() != @syscall_nr) next } catch { next }
+    %)
+%)
+
 @define __compat_syscall_gate(compat_syscall_nr)
 %(
 	@__syscall_gate_noncompat_simple
@@ -70,6 +87,15 @@
 	if (@__compat_task) {
 		if (__nr != @compat_syscall_nr) next
 	}
+    %)
+%)
+
+@define __compat_syscall_gate2(compat_syscall_nr1, compat_syscall_nr2)
+%(
+	@__syscall_gate_noncompat_simple
+    %( CONFIG_COMPAT == "y" %?
+	try { __nr = _stp_syscall_nr() } catch { next }
+	if ((__nr != @compat_syscall_nr1) && (__nr != @compat_syscall_nr2)) next
     %)
 %)
 

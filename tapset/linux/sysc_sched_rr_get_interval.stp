@@ -98,10 +98,10 @@ probe nd2_syscall.sched_rr_get_interval =
 }
 
 /* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
-probe tp_syscall.sched_rr_get_interval = tp_syscall("sched_rr_get_interval,~compat_sched_rr_get_interval") !, kernel.trace("sys_enter")
+probe tp_syscall.sched_rr_get_interval = tp_syscall("sched_rr_get_interval,~compat_sched_rr_get_interval,~compat_sched_rr_get_interval_time64") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
-	@__syscall_compat_gate(@const("__NR_sched_rr_get_interval"), @const("__NR_compat_sched_rr_get_interval"))
+	@__syscall_compat_gate2(@const("__NR_sched_rr_get_interval"), @const("__NR_compat_sched_rr_get_interval"), @const("__NR_compat_sched_rr_get_interval_time64"))
 	@_SYSCALL_SCHED_RR_GET_INTERVAL_NAME
 	@_SYSCALL_SCHED_RR_GET_INTERVAL_REGARGS
 	@_SYSCALL_SCHED_RR_GET_INTERVAL_ARGSTR
@@ -137,10 +137,10 @@ probe nd2_syscall.sched_rr_get_interval.return =
 }
  
 /* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
-probe tp_syscall.sched_rr_get_interval.return = tp_syscall("sched_rr_get_interval,~compat_sched_rr_get_interval").return !, kernel.trace("sys_exit")
+probe tp_syscall.sched_rr_get_interval.return = tp_syscall("sched_rr_get_interval,~compat_sched_rr_get_interval,~compat_sched_rr_get_interval_time64").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
-	@__syscall_compat_gate(@const("__NR_sched_rr_get_interval"), @const("__NR_compat_sched_rr_get_interval"))
+	@__syscall_compat_gate2(@const("__NR_sched_rr_get_interval"), @const("__NR_compat_sched_rr_get_interval"), @const("__NR_compat_sched_rr_get_interval_time64"))
 	@_SYSCALL_SCHED_RR_GET_INTERVAL_NAME
 	@SYSC_RETVALSTR_TP
 }

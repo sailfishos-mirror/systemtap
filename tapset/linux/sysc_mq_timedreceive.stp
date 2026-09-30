@@ -155,10 +155,10 @@ probe tp_syscall.mq_timedreceive =
 	@_SYSCALL_MQ_TIMEDRECEIVE_REGARGS
 	@_SYSCALL_MQ_TIMEDRECEIVE_ARGSTR
 }
-probe __tp_syscall.compat_mq_timedreceive = tp_syscall("~compat_mq_timedreceive") !, kernel.trace("sys_enter")
+probe __tp_syscall.compat_mq_timedreceive = tp_syscall("~compat_mq_timedreceive,~compat_mq_timedreceive_time64") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
-	@__compat_syscall_gate(@const("__NR_compat_mq_timedreceive"))
+	@__compat_syscall_gate2(@const("__NR_compat_mq_timedreceive"), @const("__NR_compat_mq_timedreceive_time64"))
 	msg_len = uint_arg(3)
 },
 {
@@ -207,10 +207,10 @@ probe nd2_syscall.mq_timedreceive.return =
 }
  
 /* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
-probe tp_syscall.mq_timedreceive.return = tp_syscall("mq_timedreceive,~compat_mq_timedreceive").return !, kernel.trace("sys_exit")
+probe tp_syscall.mq_timedreceive.return = tp_syscall("mq_timedreceive,~compat_mq_timedreceive,~compat_mq_timedreceive_time64").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
-	@__syscall_compat_gate(@const("__NR_mq_timedreceive"), @const("__NR_compat_mq_timedreceive"))
+	@__syscall_compat_gate2(@const("__NR_mq_timedreceive"), @const("__NR_compat_mq_timedreceive"), @const("__NR_compat_mq_timedreceive_time64"))
 	@_SYSCALL_MQ_TIMEDRECEIVE_NAME
 	@SYSC_RETVALSTR_TP
 }

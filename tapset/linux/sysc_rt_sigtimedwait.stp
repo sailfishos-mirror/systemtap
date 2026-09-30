@@ -27,7 +27,13 @@
 	if (@__compat_task) {
 		uthese_str = _stp_compat_sigset_u(uthese_uaddr)
 		uinfo_str = _stp_compat_siginfo_u(uinfo_uaddr)
-		uts_str = _struct_compat_timespec_u(uts_uaddr, 1)
+		%( CONFIG_COMPAT_32BIT_TIME == "y" %?
+			uts_str = _struct_compat_timespec_u(uts_uaddr, 1)
+			try { if (_stp_syscall_nr() == @const("__NR_compat_rt_sigtimedwait_time64")) uts_str = _struct_timespec_u(uts_uaddr, 1) } catch { }
+		%:
+			uts_str = _struct_timespec_u(uts_uaddr, 1)
+		%)
+
 	} else {
 		uthese_str = _stp_sigset_u(uthese_uaddr)
 		uinfo_str = _stp_siginfo_u(uinfo_uaddr)
@@ -66,7 +72,13 @@ probe dw_syscall.rt_sigtimedwait =
 	if (@__compat_task) {
 		uthese_str = _stp_compat_sigset_u(uthese_uaddr)
 		uinfo_str = _stp_compat_siginfo_u(uinfo_uaddr)
-		uts_str = _struct_compat_timespec_u(uts_uaddr, 1)
+		%( CONFIG_COMPAT_32BIT_TIME == "y" %?
+			uts_str = _struct_compat_timespec_u(uts_uaddr, 1)
+			try { if (_stp_syscall_nr() == @const("__NR_compat_rt_sigtimedwait_time64")) uts_str = _struct_timespec_u(uts_uaddr, 1) } catch { }
+		%:
+			uts_str = _struct_timespec_u(uts_uaddr, 1)
+		%)
+
 	} else {
 		uthese_str = _stp_sigset_u(uthese_uaddr)
 		uinfo_str = _stp_siginfo_u(uinfo_uaddr)
@@ -164,10 +176,10 @@ probe __tp_syscall.rt_sigtimedwait = tp_syscall("rt_sigtimedwait") !, kernel.tra
 	  set_ulong_arg(4, sigsetsize)
 %)
 }
-probe __tp_syscall.compat_rt_sigtimedwait = tp_syscall("~compat_rt_sigtimedwait") !, kernel.trace("sys_enter")
+probe __tp_syscall.compat_rt_sigtimedwait = tp_syscall("~compat_rt_sigtimedwait,~compat_rt_sigtimedwait_time64") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
-	@__compat_syscall_gate(@const("__NR_compat_rt_sigtimedwait"))
+	@__compat_syscall_gate2(@const("__NR_compat_rt_sigtimedwait"), @const("__NR_compat_rt_sigtimedwait_time64"))
 	sigsetsize = u32_arg(4)
 },
 {
@@ -199,10 +211,10 @@ probe nd2_syscall.rt_sigtimedwait.return =
 }
  
 /* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
-probe tp_syscall.rt_sigtimedwait.return = tp_syscall("rt_sigtimedwait,~compat_rt_sigtimedwait").return !, kernel.trace("sys_exit")
+probe tp_syscall.rt_sigtimedwait.return = tp_syscall("rt_sigtimedwait,~compat_rt_sigtimedwait,~compat_rt_sigtimedwait_time64").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
-	@__syscall_compat_gate(@const("__NR_rt_sigtimedwait"), @const("__NR_compat_rt_sigtimedwait"))
+	@__syscall_compat_gate2(@const("__NR_rt_sigtimedwait"), @const("__NR_compat_rt_sigtimedwait"), @const("__NR_compat_rt_sigtimedwait_time64"))
 	@_SYSCALL_RT_SIGTIMEDWAIT_NAME
 	@SYSC_RETVALSTR_TP
 }

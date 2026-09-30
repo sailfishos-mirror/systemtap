@@ -56,7 +56,13 @@ probe __syscall.compat_clock_settime =
 	clk_id = __int32($which_clock)
 	clk_id_str = _get_wc_str(__int32($which_clock))
 	tp_uaddr = $tp
-	tp_uaddr_str = _struct_compat_timespec_u(tp_uaddr, 1)
+	%( CONFIG_COMPAT_32BIT_TIME == "y" %?
+		tp_uaddr_str = _struct_compat_timespec_u(tp_uaddr, 1)
+		try { if (_stp_syscall_nr() == @const("__NR_compat_clock_settime64")) tp_uaddr_str = _struct_timespec_u(tp_uaddr, 1) } catch { }
+	%:
+		tp_uaddr_str = _struct_timespec_u(tp_uaddr, 1)
+	%)
+
 	@_SYSCALL_CLOCK_SETTIME_ARGSTR
 }
 probe dw_syscall.clock_settime.return = __syscall.clock_settime.return,
@@ -99,7 +105,13 @@ probe __nd1_syscall.compat_clock_settime =
 {
 	asmlinkage()
 	@_SYSCALL_CLOCK_SETTIME_REGARGS
-	tp_uaddr_str = _struct_compat_timespec_u(tp_uaddr, 1)
+	%( CONFIG_COMPAT_32BIT_TIME == "y" %?
+		tp_uaddr_str = _struct_compat_timespec_u(tp_uaddr, 1)
+		try { if (_stp_syscall_nr() == @const("__NR_compat_clock_settime64")) tp_uaddr_str = _struct_timespec_u(tp_uaddr, 1) } catch { }
+	%:
+		tp_uaddr_str = _struct_timespec_u(tp_uaddr, 1)
+	%)
+
 	@_SYSCALL_CLOCK_SETTIME_ARGSTR
 }
 
@@ -124,7 +136,13 @@ probe __nd2_syscall.compat_clock_settime =
 {
 	__set_syscall_pt_regs(pointer_arg(1))
 	@_SYSCALL_CLOCK_SETTIME_REGARGS
-	tp_uaddr_str = _struct_compat_timespec_u(tp_uaddr, 1)
+	%( CONFIG_COMPAT_32BIT_TIME == "y" %?
+		tp_uaddr_str = _struct_compat_timespec_u(tp_uaddr, 1)
+		try { if (_stp_syscall_nr() == @const("__NR_compat_clock_settime64")) tp_uaddr_str = _struct_timespec_u(tp_uaddr, 1) } catch { }
+	%:
+		tp_uaddr_str = _struct_timespec_u(tp_uaddr, 1)
+	%)
+
 	@_SYSCALL_CLOCK_SETTIME_ARGSTR
 },
 {
@@ -132,15 +150,20 @@ probe __nd2_syscall.compat_clock_settime =
 }
 
 /* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
-probe tp_syscall.clock_settime = tp_syscall("clock_settime,~compat_clock_settime") !, kernel.trace("sys_enter")
+probe tp_syscall.clock_settime = tp_syscall("clock_settime,~compat_clock_settime,~compat_clock_settime64") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
-	@__syscall_compat_gate(@const("__NR_clock_settime"), @const("__NR_compat_clock_settime"))
+	@__syscall_compat_gate2(@const("__NR_clock_settime"), @const("__NR_compat_clock_settime"), @const("__NR_compat_clock_settime64"))
 	@_SYSCALL_CLOCK_SETTIME_NAME
 	@_SYSCALL_CLOCK_SETTIME_REGARGS
-	if (@__compat_task)
-		tp_uaddr_str = _struct_compat_timespec_u(tp_uaddr, 1)
-	else
+	if (@__compat_task) {
+		%( CONFIG_COMPAT_32BIT_TIME == "y" %?
+			tp_uaddr_str = _struct_compat_timespec_u(tp_uaddr, 1)
+			try { if (_stp_syscall_nr() == @const("__NR_compat_clock_settime64")) tp_uaddr_str = _struct_timespec_u(tp_uaddr, 1) } catch { }
+		%:
+			tp_uaddr_str = _struct_timespec_u(tp_uaddr, 1)
+		%)
+	} else
 		tp_uaddr_str = _struct_timespec_u(tp_uaddr, 1)
 	@_SYSCALL_CLOCK_SETTIME_ARGSTR
 },
@@ -177,10 +200,10 @@ probe nd2_syscall.clock_settime.return = kprobe.function(@arch_syscall_prefix "s
 }
 
 /* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
-probe tp_syscall.clock_settime.return = tp_syscall("clock_settime,~compat_clock_settime").return !, kernel.trace("sys_exit")
+probe tp_syscall.clock_settime.return = tp_syscall("clock_settime,~compat_clock_settime,~compat_clock_settime64").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
-	@__syscall_compat_gate(@const("__NR_clock_settime"), @const("__NR_compat_clock_settime"))
+	@__syscall_compat_gate2(@const("__NR_clock_settime"), @const("__NR_compat_clock_settime"), @const("__NR_compat_clock_settime64"))
 	@_SYSCALL_CLOCK_SETTIME_NAME
 	@SYSC_RETVALSTR_TP
 }

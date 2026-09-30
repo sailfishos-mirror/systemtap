@@ -127,10 +127,10 @@ probe __nd2_syscall.compat_clock_adjtime =
 }
 
 /* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
-probe tp_syscall.clock_adjtime = tp_syscall("clock_adjtime,~compat_clock_adjtime") !, kernel.trace("sys_enter")
+probe tp_syscall.clock_adjtime = tp_syscall("clock_adjtime,~compat_clock_adjtime,~compat_clock_adjtime64") !, kernel.trace("sys_enter")
 {
 	@__set_syscall_pt_regs
-	@__syscall_compat_gate(@const("__NR_clock_adjtime"), @const("__NR_compat_clock_adjtime"))
+	@__syscall_compat_gate2(@const("__NR_clock_adjtime"), @const("__NR_compat_clock_adjtime"), @const("__NR_compat_clock_adjtime64"))
 	@_SYSCALL_CLOCK_ADJTIME_NAME
 	@_SYSCALL_CLOCK_ADJTIME_REGARGS
 	if (@__compat_task)
@@ -167,10 +167,10 @@ probe nd2_syscall.clock_adjtime.return = kprobe.function(@arch_syscall_prefix "s
 }
 
 /* BTF sys_enter/sys_exit dispatcher, else kernel.trace fallback. */
-probe tp_syscall.clock_adjtime.return = tp_syscall("clock_adjtime,~compat_clock_adjtime").return !, kernel.trace("sys_exit")
+probe tp_syscall.clock_adjtime.return = tp_syscall("clock_adjtime,~compat_clock_adjtime,~compat_clock_adjtime64").return !, kernel.trace("sys_exit")
 {
 	@__set_syscall_pt_regs
-	@__syscall_compat_gate(@const("__NR_clock_adjtime"), @const("__NR_compat_clock_adjtime"))
+	@__syscall_compat_gate2(@const("__NR_clock_adjtime"), @const("__NR_compat_clock_adjtime"), @const("__NR_compat_clock_adjtime64"))
 	@_SYSCALL_CLOCK_ADJTIME_NAME
 	@SYSC_RETVALSTR_TP
 }
