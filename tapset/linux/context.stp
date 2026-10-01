@@ -321,7 +321,8 @@ function cpu:long ()
  */
 function registers_valid:long ()
 %{ /* pure */ /* unprivileged */ /* stable */
-	STAP_RETVALUE = (c->user_mode_p
+	STAP_RETVALUE = (CONTEXT->sregs != NULL)
+			|| (c->user_mode_p
 			    ? (CONTEXT->uregs != NULL)
 			    : (CONTEXT->kregs != NULL));
 %}

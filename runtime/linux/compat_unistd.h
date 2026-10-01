@@ -11,6 +11,8 @@
 #ifndef _COMPAT_UNISTD_H_
 #define _COMPAT_UNISTD_H_
 
+#include <linux/version.h>
+
 // Older kernels (like RHEL5) supported __NR_sendfile64. For newer
 // kernels, we'll just define __NR_sendfile64 in terms of
 // __NR_sendfile.

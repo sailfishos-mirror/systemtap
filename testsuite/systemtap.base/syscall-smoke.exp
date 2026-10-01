@@ -1,0 +1,11 @@
+set test syscall-smoke
+set testpath "$srcdir/$subdir"
+
+# PR34702 sentinel: compile-only (-p4) check that the syscall tapsets expand
+# and build cleanly on this architecture.  Catches e.g. aux-file
+# compat_unistd.h -Wundef/-Werror exposure (needs linux/version.h) and
+# sregs-unaware register helpers, which previously only broke non-x86_64
+# builds and thus the full installcheck runs.
+
+set rc [stap_run_batch $srcdir/$subdir/$test.stp]
+if {$rc == 0} then { pass "$test -p4" } else { fail "$test -p4" }

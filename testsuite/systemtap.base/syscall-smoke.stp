@@ -1,0 +1,15 @@
+#! stap -p4
+// PR34702 sentinel: compile-only expansion of the syscall tapsets across
+// architectures.
+//
+// probe syscall.close expands the tp_syscall dispatcher, whose auxiliary C
+// file includes linux/compat_unistd.h -- which needs linux/version.h for its
+// KERNEL_VERSION() conditionals to survive kbuild's default -Wundef/-Werror.
+// The int_arg(1) body also pulls in registers_valid() and
+// _stp_get_register_by_offset(), which must honor syscall-mode pt_regs
+// (CONTEXT->sregs).
+//
+// Compile-only (-p4); the script is never run.
+
+probe syscall.close { println(fd) }
+probe kernel.trace("sys_enter") { println(registers_valid()) }

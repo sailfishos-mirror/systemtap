@@ -72,7 +72,9 @@ probe init {
 function _stp_get_register_by_offset:long (offset:long) %{ /* pure */
 	long value;
 	struct pt_regs *regs;
-	if (CONTEXT->user_mode_p) {
+	if (CONTEXT->sregs)
+		regs = CONTEXT->sregs;
+	else if (CONTEXT->user_mode_p) {
 		regs = CONTEXT->uregs;
 	} else {
 		regs = CONTEXT->kregs;
