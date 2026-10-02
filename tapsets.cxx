@@ -12967,11 +12967,17 @@ struct tracepoint_derived_probe: public derived_probe
   /*
    * True for in-kernel-only tracepoints from DECLARE_TRACE() (stapprobe_
    * function in tracequery DWARF).  False for TRACE_EVENT() tracepoints
-   * (stapprobe_* struct).  Since kernel 6.16, DECLARE_TRACE() expands its
-   * argument with a _tp suffix internally while the registration string
-   * stays unprefixed; see STAPCONF_TRACEPOINT_DECLARE_TP and emit below.
+   * (stapprobe_* struct).
    */
   bool declare_trace_hook;
+  /*
+   * Name the kernel knows this tracepoint by: the __tracepoint_* symbol,
+   * the __tracepoints_strings entry and check_trace_callback_type_* all
+   * use it.  TRACE_EVENT() hooks keep the name as written; DECLARE_TRACE()
+   * hooks gain a _tp suffix, spelled out in headers before kernel 6.16 and
+   * appended by the DECLARE_TRACE() macro itself since then.
+   */
+  string effective_name;
   vector <struct tracepoint_arg> args;
 
   void build_args(dwflpp& dw, Dwarf_Die& func_die);
@@ -13330,6 +13336,32 @@ tracepoint_var_expanding_visitor::visit_target_symbol (target_symbol* e)
 }
 
 
+// The name the kernel knows a tracepoint by: the name of its btf_trace_*
+// callback typedef.  TRACE_EVENT()-style tracepoints keep the name as
+// written (sys_enter); in-kernel-only DECLARE_TRACE() hooks carry a _tp
+// suffix (pelt_cfs_tp), spelled out in headers before kernel 6.16 and
+// appended by the DECLARE_TRACE() macro itself since then.  The
+// __tracepoint_* symbol, the __tracepoints_strings entry and
+// check_trace_callback_type_* all use that effective name.
+static string
+tracepoint_effective_name (systemtap_session& s, dwflpp& dw,
+                           const string& name, bool declare_trace_hook)
+{
+  static const string btf_prefix("btf_trace_");
+  for (const btf_tracepoint_meta& m: get_btf_tracepoint_catalog(s))
+    if (m.hook_name == name)
+      return m.btf_name.substr(btf_prefix.size());
+
+  // Without a BTF catalog, rely on DWARF evidence of a trace_event_raw_*
+  // struct, and then on how the probe point was classified.
+  if (endswith(name, "_tp") || !declare_trace_hook)
+    return name;
+  if (dw.declaration_resolve_other_cus("struct trace_event_raw_" + name) != NULL)
+    return name;
+  return name + "_tp";
+}
+
+
 tracepoint_derived_probe::tracepoint_derived_probe (systemtap_session& s,
                                                     dwflpp& dw, Dwarf_Die& func_die,
                                                     const string& tracepoint_system,
@@ -13339,6 +13371,9 @@ tracepoint_derived_probe::tracepoint_derived_probe (systemtap_session& s,
   tracepoint_system (tracepoint_system), tracepoint_name (tracepoint_name),
   declare_trace_hook (dwarf_tag (&func_die) == DW_TAG_subprogram)
 {
+  effective_name = tracepoint_effective_name(s, dw, tracepoint_name,
+                                             declare_trace_hook);
+
   // create synthetic probe point name; preserve condition
   vector<probe_point::component*> comps;
   comps.push_back (new probe_point::component (TOK_KERNEL));
@@ -13426,6 +13461,9 @@ tracepoint_derived_probe::tracepoint_derived_probe(
   tracepoint_system (""), tracepoint_name (tracepoint_name),
   header ("vmlinux.h"), declare_trace_hook (declare_trace_hook_p)
 {
+  effective_name = tracepoint_effective_name(s, dw, tracepoint_name,
+                                             declare_trace_hook);
+
   vector<probe_point::component*> comps;
   comps.push_back (new probe_point::component (TOK_KERNEL));
   comps.push_back (new probe_point::component (TOK_TRACEPOINT,
@@ -13472,6 +13510,9 @@ tracepoint_derived_probe::tracepoint_derived_probe(
   tracepoint_system (""), tracepoint_name (tracepoint_name),
   header ("vmlinux.h"), declare_trace_hook (declare_trace_hook_p)
 {
+  effective_name = tracepoint_effective_name(s, dw, tracepoint_name,
+                                             declare_trace_hook);
+
   vector<probe_point::component*> comps;
   comps.push_back (new probe_point::component (TOK_MODULE,
                                                new literal_string(module_name)));
@@ -14973,34 +15014,20 @@ tracepoint_derived_probe_group::emit_module_decls (systemtap_session& s)
       s.op->newline() << "int register_tracepoint_probe_" << i << "(void);";
       tpop->newline() << "int register_tracepoint_probe_" << i << "(void);" << endl;
       /*
-       * DECLARE_TRACE() probes (declare_trace_hook): kernel 6.16+ uses
-       * check_trace_callback_type_<name>_tp while registering "<name>".
-       * Older kernels spelled _tp in the header (e.g. pelt_cfs_tp) and
-       * used the same token for both.  TRACE_EVENT() probes are unchanged.
+       * Register under the name the kernel itself uses for this tracepoint.
+       * Its __tracepoint_* symbol, its __tracepoints_strings entry and its
+       * check_trace_callback_type_* helper all spell it the same way, so one
+       * name suffices: pelt_cfs_tp for a DECLARE_TRACE() hook, sys_enter for
+       * a TRACE_EVENT() one.
        */
       tpop->newline() << "int register_tracepoint_probe_" << i << "(void) {";
       if (btf_catalog_p)
-        {
-          tpop->newline(1) << "return stp_tracepoint_probe_register("
-                           << lex_cast_qstring(p->tracepoint_name) << ", (void*)"
-                           << enter_fn << ", NULL);";
-        }
-      else if (p->declare_trace_hook)
-        {
-          tpop->newline(1) << "#ifdef STAPCONF_TRACEPOINT_DECLARE_TP";
-          tpop->newline(1) << "return STP_TRACE_REGISTER2(" << p->tracepoint_name
-                           << ", " << p->tracepoint_name << "_tp, "
-                           << enter_fn << ");";
-          tpop->newline(-1) << "#else";
-          tpop->newline(1) << "return STP_TRACE_REGISTER2(" << p->tracepoint_name
-                           << ", " << p->tracepoint_name << ", "
-                           << enter_fn << ");";
-          tpop->newline(-1) << "#endif";
-        }
+        tpop->newline(1) << "return stp_tracepoint_probe_register("
+                         << lex_cast_qstring(p->effective_name) << ", (void*)"
+                         << enter_fn << ", NULL);";
       else
-        tpop->newline(1) << "return STP_TRACE_REGISTER2(" << p->tracepoint_name
-                         << ", " << p->tracepoint_name << ", "
-                         << enter_fn << ");";
+        tpop->newline(1) << "return STP_TRACE_REGISTER(" << p->effective_name
+                         << ", " << enter_fn << ");";
       tpop->newline(-1) << "}";
 
       // NB: we're not prepared to deal with unreg failures.  However, failures
@@ -15013,27 +15040,12 @@ tracepoint_derived_probe_group::emit_module_decls (systemtap_session& s)
       tpop->newline() << "void unregister_tracepoint_probe_" << i << "(void);" << endl;
       tpop->newline() << "void unregister_tracepoint_probe_" << i << "(void) {";
       if (btf_catalog_p)
-        {
-          tpop->newline(1) << "(void) stp_tracepoint_probe_unregister("
-                           << lex_cast_qstring(p->tracepoint_name) << ", (void*)"
-                           << enter_fn << ", NULL);";
-        }
-      else if (p->declare_trace_hook)
-        {
-          tpop->newline(1) << "#ifdef STAPCONF_TRACEPOINT_DECLARE_TP";
-          tpop->newline(1) << "(void) STP_TRACE_UNREGISTER2(" << p->tracepoint_name
-                           << ", " << p->tracepoint_name << "_tp, "
-                           << enter_fn << ");";
-          tpop->newline(-1) << "#else";
-          tpop->newline(1) << "(void) STP_TRACE_UNREGISTER2(" << p->tracepoint_name
-                           << ", " << p->tracepoint_name << ", "
-                           << enter_fn << ");";
-          tpop->newline(-1) << "#endif";
-        }
+        tpop->newline(1) << "(void) stp_tracepoint_probe_unregister("
+                         << lex_cast_qstring(p->effective_name) << ", (void*)"
+                         << enter_fn << ", NULL);";
       else
-        tpop->newline(1) << "(void) STP_TRACE_UNREGISTER2(" << p->tracepoint_name
-                         << ", " << p->tracepoint_name << ", "
-                         << enter_fn << ");";
+        tpop->newline(1) << "(void) STP_TRACE_UNREGISTER(" << p->effective_name
+                         << ", " << enter_fn << ");";
       tpop->newline(-1) << "}";
       tpop->newline();
 
@@ -15694,12 +15706,11 @@ emit_syscall_dispatcher (systemtap_session& s,
   tpop->newline () << "int register_syscall_dispatch_" << slot << "(void) {";
   if (btf_catalog_p)
     tpop->newline (1) << "return stp_tracepoint_probe_register("
-                      << lex_cast_qstring (tmpl->tracepoint_name) << ", (void*)"
+                      << lex_cast_qstring (tmpl->effective_name) << ", (void*)"
                       << enter_fn << ", NULL);";
   else
-    tpop->newline (1) << "return STP_TRACE_REGISTER2(" << tmpl->tracepoint_name
-                      << ", " << tmpl->tracepoint_name << ", "
-                      << enter_fn << ");";
+    tpop->newline (1) << "return STP_TRACE_REGISTER(" << tmpl->effective_name
+                      << ", " << enter_fn << ");";
   tpop->newline (-1) << "}";
 
   s.op->newline () << "void unregister_syscall_dispatch_" << slot << "(void);";
@@ -15707,12 +15718,11 @@ emit_syscall_dispatcher (systemtap_session& s,
   tpop->newline () << "void unregister_syscall_dispatch_" << slot << "(void) {";
   if (btf_catalog_p)
     tpop->newline (1) << "(void) stp_tracepoint_probe_unregister("
-                      << lex_cast_qstring (tmpl->tracepoint_name) << ", (void*)"
+                      << lex_cast_qstring (tmpl->effective_name) << ", (void*)"
                       << enter_fn << ", NULL);";
   else
-    tpop->newline (1) << "(void) STP_TRACE_UNREGISTER2(" << tmpl->tracepoint_name
-                      << ", " << tmpl->tracepoint_name << ", "
-                      << enter_fn << ");";
+    tpop->newline (1) << "(void) STP_TRACE_UNREGISTER(" << tmpl->effective_name
+                      << ", " << enter_fn << ");";
   tpop->newline (-1) << "}";
   tpop->newline ();
   tpop->assert_0_indent ();
