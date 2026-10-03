@@ -132,6 +132,45 @@ struct tracepoint_entry *get_tracepoint(const char *name)
 }
 
 /*
+ * Look up a tracepoint by name, tolerating both spellings of the name.
+ * Depending on the kernel version, DECLARE_TRACE() hooks are known under a
+ * _tp-suffixed name - spelled out in the headers before kernel 6.16, and
+ * appended by the DECLARE_TRACE() macro itself since then - while
+ * TRACE_EVENT() tracepoints keep their plain name.  Match whichever the
+ * kernel registered, so a script written against one convention still
+ * finds the tracepoint on the other.
+ */
+static
+struct tracepoint_entry *get_tracepoint_spelled(const char *name)
+{
+	struct tracepoint_entry *e;
+	char alt[128];
+	size_t len = strlen(name);
+
+	e = get_tracepoint(name);
+	if (e)
+		return e;
+
+	if (len + 3 < sizeof(alt)) {
+		memcpy(alt, name, len);
+		memcpy(alt + len, "_tp", 4);
+		e = get_tracepoint(alt);
+		if (e)
+			return e;
+	}
+
+	if (len > 3 && !strcmp(name + len - 3, "_tp")) {
+		memcpy(alt, name, len - 3);
+		alt[len - 3] = '\0';
+		e = get_tracepoint(alt);
+		if (e)
+			return e;
+	}
+
+	return NULL;
+}
+
+/*
  * Add the tracepoint to the tracepoint hash table. Must be called with
  * stp_tracepoint_mutex held.
  */
@@ -209,7 +248,7 @@ int stp_tracepoint_probe_register(const char *name, void *probe, void *data)
 
 	might_sleep();
 	mutex_lock(&stp_tracepoint_mutex);
-	e = get_tracepoint(name);
+	e = get_tracepoint_spelled(name);
 	if (!e) {
 		e = add_tracepoint(name);
 		if (IS_ERR(e)) {
@@ -244,7 +283,9 @@ int stp_tracepoint_probe_unregister(const char *name, void *probe, void *data)
 
 	might_sleep();
 	mutex_lock(&stp_tracepoint_mutex);
-	e = get_tracepoint(name);
+	/* Use the same tolerant lookup as registration, so the probe is
+	 * removed from the very entry it was added to. */
+	e = get_tracepoint_spelled(name);
 	if (!e) {
 		ret = -ENOENT;
 		goto end;

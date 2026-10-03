@@ -13336,29 +13336,23 @@ tracepoint_var_expanding_visitor::visit_target_symbol (target_symbol* e)
 }
 
 
-// The name the kernel knows a tracepoint by: the name of its btf_trace_*
-// callback typedef.  TRACE_EVENT()-style tracepoints keep the name as
-// written (sys_enter); in-kernel-only DECLARE_TRACE() hooks carry a _tp
-// suffix (pelt_cfs_tp), spelled out in headers before kernel 6.16 and
-// appended by the DECLARE_TRACE() macro itself since then.  The
+// The name the kernel knows a tracepoint by.  TRACE_EVENT()-style tracepoints
+// keep the name as written (sys_enter); in-kernel-only DECLARE_TRACE() hooks
+// carry a _tp suffix (pelt_cfs_tp), spelled out in headers before kernel 6.16
+// and appended by the DECLARE_TRACE() macro itself since then.  The
 // __tracepoint_* symbol, the __tracepoints_strings entry and
-// check_trace_callback_type_* all use that effective name.
+// check_trace_callback_type_* all use that effective name.  The btf_trace_*
+// callback typedefs carry it exactly, so prefer the catalog; otherwise the
+// name we matched is already the kernel-side one.
 static string
-tracepoint_effective_name (systemtap_session& s, dwflpp& dw,
-                           const string& name, bool declare_trace_hook)
+tracepoint_effective_name (systemtap_session& s, const string& name)
 {
   static const string btf_prefix("btf_trace_");
   for (const btf_tracepoint_meta& m: get_btf_tracepoint_catalog(s))
     if (m.hook_name == name)
       return m.btf_name.substr(btf_prefix.size());
 
-  // Without a BTF catalog, rely on DWARF evidence of a trace_event_raw_*
-  // struct, and then on how the probe point was classified.
-  if (endswith(name, "_tp") || !declare_trace_hook)
-    return name;
-  if (dw.declaration_resolve_other_cus("struct trace_event_raw_" + name) != NULL)
-    return name;
-  return name + "_tp";
+  return name;
 }
 
 
@@ -13371,8 +13365,7 @@ tracepoint_derived_probe::tracepoint_derived_probe (systemtap_session& s,
   tracepoint_system (tracepoint_system), tracepoint_name (tracepoint_name),
   declare_trace_hook (dwarf_tag (&func_die) == DW_TAG_subprogram)
 {
-  effective_name = tracepoint_effective_name(s, dw, tracepoint_name,
-                                             declare_trace_hook);
+  effective_name = tracepoint_effective_name(s, tracepoint_name);
 
   // create synthetic probe point name; preserve condition
   vector<probe_point::component*> comps;
@@ -13461,8 +13454,7 @@ tracepoint_derived_probe::tracepoint_derived_probe(
   tracepoint_system (""), tracepoint_name (tracepoint_name),
   header ("vmlinux.h"), declare_trace_hook (declare_trace_hook_p)
 {
-  effective_name = tracepoint_effective_name(s, dw, tracepoint_name,
-                                             declare_trace_hook);
+  effective_name = tracepoint_effective_name(s, tracepoint_name);
 
   vector<probe_point::component*> comps;
   comps.push_back (new probe_point::component (TOK_KERNEL));
@@ -13510,8 +13502,7 @@ tracepoint_derived_probe::tracepoint_derived_probe(
   tracepoint_system (""), tracepoint_name (tracepoint_name),
   header ("vmlinux.h"), declare_trace_hook (declare_trace_hook_p)
 {
-  effective_name = tracepoint_effective_name(s, dw, tracepoint_name,
-                                             declare_trace_hook);
+  effective_name = tracepoint_effective_name(s, tracepoint_name);
 
   vector<probe_point::component*> comps;
   comps.push_back (new probe_point::component (TOK_MODULE,
