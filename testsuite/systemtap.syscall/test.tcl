@@ -139,10 +139,19 @@ proc run_one_test {filename flags bits suite} {
     catch {eval exec $wrap_cmd} exe_output
 
     # DRAFT: poll the log until we see an exit_group line (the final
-    # syscall for the test binary).  This synchronizes on actual
-    # completion instead of a fixed sleep.
-    set max_wait_ms 2000
+    # syscall for the test binary) and the log stops growing.  This
+    # synchronizes on actual completion instead of a fixed sleep.
+    #
+    # The exit_group line alone is not enough: staprun appends entry and
+    # return text in separate writes, so at the moment exit_group shows up
+    # the return values of the last few traced syscalls may still be in
+    # flight.  Keep draining until two successive reads agree (within the
+    # overall budget, which leaves about a second of extra drain headroom
+    # after exit_group shows up), so those trailing "= retval" bits are not
+    # lost from the comparison below.
+    set max_wait_ms 3000
     set waited 0
+    set prev ""
     while {1} {
         set output ""
         catch {
@@ -150,9 +159,10 @@ proc run_one_test {filename flags bits suite} {
             set output [read $fh]
             close $fh
         }
-        if {[regexp {exit_group} $output]} {
+        if {[regexp {exit_group} $output] && $output eq $prev} {
             break
         }
+        set prev $output
         after 100
         incr waited 100
         if {$waited > $max_wait_ms} {
