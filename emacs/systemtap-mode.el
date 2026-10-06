@@ -1,4 +1,4 @@
-;;; systemtap-mode.el --- A mode for SystemTap
+;;; systemtap-mode.el --- A mode for SystemTap  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2008, 2020 Tomoki Sekiyama <sekiyama@yahoo.co.jp>
 ;; Copyright (C) 2012 Rüdiger Sonderfeld <ruediger@c-plusplus.de>
