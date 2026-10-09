@@ -285,7 +285,11 @@ For hard DWARF cases (`DW_OP_entry_value`, pretty-printed `$$parms$` /
 
 ## Security band-aid examples
 
-For importing or templatizing CVE emergency band-aids under
+For screening which CVEs suit a SystemTap band-aid (high-severity issues in the
+Linux kernel, system libraries, applications/daemons) and collecting the inputs
+(CVE id, upstream fix, minimal reproducer), use the
+**security-band-aid-triage** skill (`.skills/security-band-aid-triage/`).
+For importing or templatizing the resulting script under
 `testsuite/systemtap.examples/security-band-aids/` (including
 regenerating indexes with `examples-index-gen.pl`), use the
 **security-band-aid** skill (`.skills/security-band-aid/`).
