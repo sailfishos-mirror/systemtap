@@ -1,4 +1,4 @@
-#! /usr/bin/stap -g -m CVE_YYYY_ABCD
+#!/usr/bin/env -S stap -g -m CVE_YYYY_ABCD
 
 /* The following is a template for security bandaids for use
  * in live patching CVEs with systemtap
