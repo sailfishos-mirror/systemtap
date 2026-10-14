@@ -105,6 +105,16 @@ Poor fits: bugs whose correct behavior depends on global state spread across
 many functions, or that need a code path the original code does not have.
 Those still want a real code patch; say so rather than half-fixing.
 
+Weigh probe portability into the same judgment.  A mitigation anchored
+to `.statement("f@file.c:N")` breaks on every stable backport; function
+`.call`/`.return` boundaries and named labels
+(`module("m").function("f").label("x")`) survive them.  The fix hunk's
+context lines supply both the candidate labels and the shape of the
+mutation — struct-field writes port across trees, register-resident
+locals do not — and show whether a `return -EINVAL`-style fix lands
+where the flow rejects the value anyway, which a data clamp can then
+imitate.  Record the candidates in the hand-off bundle.
+
 Two quick practical checks before committing to a candidate:
 
 - Is the affected component actually loaded/running on the target hosts
@@ -166,6 +176,9 @@ advisory's package list
 Where the bug is best reproduced: container for userspace, VM for kernel code
 Upstream fix: commit id / lore URL, the diff excerpt of the condition it adds,
 and the first release or package NVR that contains it
+Probe-anchor candidates from the hunk context: enclosing function
+.call/.return, named labels; struct-field vs local mutation; avoid
+file:line anchors
 Minimal reproducer command + expected good-vs-bad observable output
 Where compilation happens (local box, --remote host, --use-server) and what
 matching debuginfo it can reach
