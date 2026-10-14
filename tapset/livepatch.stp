@@ -144,6 +144,29 @@ probe timer.s(1) {
   }
 }
 
+# Periodic status line, so a long-running band-aid is observable in plain
+# staprun output without scraping procfs or prometheus.  The script can add
+# its own counters to cve_metrics to have them reported here too.  The bpf
+# variant lists the standard metric keys literally, since its timer probes
+# run in kernel context where loops are not yet supported (PR24528).
+%( runtime != "bpf" %?
+probe timer.s(60) {
+  if (cve_notify_p) {
+    printf("%s status enabled?%d fix?%d", cve_name, cve_enabled_p, cve_fix_p)
+    foreach (key+ in cve_metrics)
+      printf(" %s#%d", key, cve_metrics[key])
+    printf("\n")
+  }
+}
+%:
+probe timer.s(60) {
+  if (cve_notify_p)
+    printf("%s status enabled?%d fix?%d hit#%d miss#%d\n", cve_name,
+           cve_enabled_p, cve_fix_p,
+           cve_metrics["hit"], cve_metrics["miss"])
+}
+%)
+
 /**
  * sfunction cve_tmpdisable - Disable the cve livepatch
  *
