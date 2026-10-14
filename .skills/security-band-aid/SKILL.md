@@ -45,7 +45,9 @@ Security band-aid:
 - [ ] Decide mitigation style: correct data, or induce the error path
 - [ ] Stand up a matching environment (container for userspace, VM for kernel)
       and note the affected / fixed package NVRs
-- [ ] Draft the script; test against a real reproducer with stap -g -c CMD
+- [ ] Build the vulnerable version from source; keep a fixed build for A/B
+- [ ] Draft the script; run the four-way test (see "Four-way validation"):
+      unfixed, fixed, unfixed+band-aid, fix_p=0
 - [ ] Embed the advisory link, upstream commit id, and the hunk being mirrored
 - [ ] Confirm the fix is off/on toggleable and counts metrics
 - [ ] Add cve-YYYY-NNNN.stp under security-band-aids/
@@ -242,6 +244,53 @@ stap -g --remote guest cve-YYYY-NNNN.stp              # or: passes 1-4 here, run
 Otherwise install `kernel-debuginfo` matching `uname -r` in the guest itself and
 check what the probe sees: `stap -L 'kernel.function("skb_try_coalesce")'`.
 
+### Four-way validation: build the vulnerable version
+
+Do not trust a mitigation that has only ever run against a fixed library.
+**Build the vulnerable upstream version from source**, and validate the
+band-aid with a four-way comparison on the same reproducer:
+
+1. **unfixed** — vulnerable build alone. Confirms the reproducer actually
+   shows the bug on this host (wrong result, crash, failed assertion). If
+   this arm passes, the reproducer or the version choice is wrong.
+2. **fixed** — vulnerable build + the upstream commit cherry-picked. Proves
+   the reproducer detects the *fix*, not just any perturbation, and pins
+   the expected-good behavior the band-aid must reproduce.
+3. **unfixed + band-aid** — vulnerable build with the band-aid attached
+   (`stap -g cve.stp -c CMD`). The same checks as arm 2 must pass.
+   Run once more with `cve_fix_p=1` replaced by `-G cve_fix_p=0`
+   (or the procfs knob) to confirm the *payload*, not merely the probe
+   firing, does the work.
+
+The upstream fix's regression tests are usually the best reproducer: pick
+them out of the fix commit (they often apply to the vulnerable tag with
+`git cherry-pick` or a test-only diff), and build them into the vulnerable
+tree. A `-p4`-clean script whose counters never move, or which "passes"
+because the probes never fire, is worth less than one validated this way.
+
+Source trees are cheap; prefer a bare clone plus `git worktree` per arm over
+duplicate checkouts, and a private `--prefix` install per arm so the A/B
+only differs by the library under test (see `openssl-4.0.2` arms A/B for
+CVE-2026-84782):
+
+```bash
+git clone --bare --single-branch --branch v4.0.2 \
+    https://github.com/their/project.git ~/project.git
+git --git-dir=~/project.git worktree add --detach ~/proj-fix  FIXTAG
+git --git-dir=~/project.git worktree add --detach ~/proj-vuln  v4.0.2
+# per-arm: ./Configure --prefix=~/sslA --debug; make; make install_sw
+```
+
+When the band-aid's probe paths are `process("/lib...")` globs, make a
+test copy of the script with the glob retargeted at the private prefix
+(`process("~/ssl?/lib64/libssl.so*")`); keep the committed script pointing
+at the system paths. The band-aid's own `stap -p2` against the local build
+also proves the debuginfo story before any runtime test.
+
+Record the three arms and their outcomes in the commit message — it is the
+cheapest way to make the claim "validated against the vulnerable version"
+auditable later.
+
 ### Test against a reproducer
 
 Write the smallest thing that shows the bug, then compare before/after. Use
@@ -261,7 +310,10 @@ non-interactive test loops.
 
 Check all four quadrants: hostile input is neutralized, ordinary input still
 works, `cve_fix_p=0` leaves the original behavior visible, and
-`cve_enabled_p=0` costs about nothing. Iterate trace-only first (`cve_fix_p=0`)
+`cve_enabled_p=0` costs about nothing. This is in addition to the mandatory
+four-way build comparison above — running against a host's already-fixed
+system library proves nothing about the payload. Iterate trace-only first
+(`cve_fix_p=0`)
 to confirm the probe fires on realistic traffic and sees the expected values,
 then turn the payload on. Watch `stap -p2` output for unresolved probe points
 or `$` variables before claiming success, and check
@@ -422,6 +474,6 @@ EOF
 ```
 
 Keep the message focused on why it is in-tree (education / emergency
-reference), link the advisory, and state the affected / fixed package pair the
-band-aid was checked against, so a later reader can tell when it became
-redundant.
+reference), link the advisory, and state the affected / fixed package pair —
+and the four-way validation result — so a later reader can tell when the
+band-aid became redundant and why it was believed to work.
