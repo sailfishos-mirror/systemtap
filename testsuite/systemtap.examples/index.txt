@@ -2126,6 +2126,13 @@ keywords: security guru
   only
 
 
+security-band-aids/cve-2026-89969.stp - cve-2026-89969 security band-aid
+keywords: security guru
+
+  EXPERIMENTAL emergency security band-aid, for reference/education
+  only
+
+
 stapgames/2048.stp - 2048
 keywords: _best stapgames
 
