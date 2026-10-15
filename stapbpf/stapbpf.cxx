@@ -120,7 +120,6 @@ int resume_cmd(void);
 
 static int group_fd = -1;		// ??? Need one per cpu.
 static int target_pid_failed_p = 0;
-static int warnings = 1;
 static int exit_phase = 0;
 static int interrupt_message = 0;
 static FILE *output_f = stdout;
@@ -2596,8 +2595,7 @@ main(int argc, char **argv)
       case 'v':
         verbose++;
         break;
-      case 'w':
-        warnings = 0;
+      case 'w': // accepted for staprun compatibility; no warnings issued here
         break;
       case 'c':
         target_cmd = optarg;
