@@ -16,7 +16,6 @@ extern "C" {
 
 using namespace std;
 
-static void* g_hwbkpt_local_module = NULL;
 static decltype(&enter_dyninst_hwbkpt_probe) g_hwbkpt_local_enter = NULL;
 static decltype(&stp_dyninst_ubacktrace_set) g_hwbkpt_ubacktrace_set = NULL;
 
@@ -24,7 +23,6 @@ static decltype(&stp_dyninst_ubacktrace_set) g_hwbkpt_ubacktrace_set = NULL;
 void
 stapdyn_hwbkpt_set_local_module(void* module)
 {
-  g_hwbkpt_local_module = module;
   g_hwbkpt_local_enter = NULL;
   g_hwbkpt_ubacktrace_set = NULL;
   if (module)
