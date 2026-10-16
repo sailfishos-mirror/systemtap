@@ -1040,6 +1040,13 @@ keywords: security guru
   only
 
 
+security-band-aids/cve-2026-99999.stp - cve-2026-99999 security band-aid
+keywords: security guru
+
+  EXPERIMENTAL emergency security band-aid, for reference/education
+  only
+
+
 = INTERACTIVE =
 
 general/eventcount.stp - Interactive Count Specified Events
@@ -3400,6 +3407,13 @@ keywords: security guru
 
 
 security-band-aids/cve-2026-89969.stp - cve-2026-89969 security band-aid
+keywords: security guru
+
+  EXPERIMENTAL emergency security band-aid, for reference/education
+  only
+
+
+security-band-aids/cve-2026-99999.stp - cve-2026-99999 security band-aid
 keywords: security guru
 
   EXPERIMENTAL emergency security band-aid, for reference/education
