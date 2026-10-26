@@ -2100,6 +2100,13 @@ keywords: security guru
   php-fpm 8.5.12~RC1 vs 8.5.12.
 
 
+security-band-aids/cve-2026-15176.stp - cve-2026-15176 security band-aid
+keywords: security guru
+
+  EXPERIMENTAL emergency security band-aid, for reference/education
+  only
+
+
 security-band-aids/cve-2026-31431.stp - cve-2026-31431 security band-aid
 keywords: security guru
 
