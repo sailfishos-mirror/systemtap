@@ -21,6 +21,7 @@ import os
 import glob
 import sys
 import argparse
+import signal
 import subprocess
 import shlex
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -55,18 +56,27 @@ class Session:
     def killem(self):
         if self.process:
             self.process.terminate()
+            try:
+                self.process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                self.process.kill()
+                self.process.wait()
+            self.process = None
             # XXX: "stap -m FOOBAR" leaves around a .ko/.bo/.so file
             for i in glob.glob(self.proc_subdirname + ".*"):
-                os.unlink(i)
+                try:
+                    os.unlink(i)
+                except OSError:
+                    pass
             print("session %s shut down" % (self.name,))
-            
+
     def poll(self):
         # bring out your dead
         if self.process and self.process.poll() is not None: # died?
-            # self.process.wait(0) # clean up zombie?
+            self.process.wait() # clean up zombie
             self.process = None
             print("session %s stopped" % (self.name,))
-                
+
         # (re)start autostarted sessions
         if not self.process and "autostart" in self.name:
             cmd = self.get_cmd()
@@ -76,10 +86,9 @@ class Session:
         # kill any non-autostart scripts that have been unused too long
         if self.process and "autostart" not in self.name:
             if self.killafter is not None and self.killafter < time():
-                self.process.terminate()
+                self.killem()
                 print("session %s autokill" % (self.name,))
 
-                
     def collect_output(self):
         # start it if not already running
         if not self.process:
@@ -94,18 +103,24 @@ class Session:
         path_lkm = proc_path_lkm + "/" + self.proc_subdirname + "/__prometheus"
         path_bpf = proc_path_bpf + "/" + self.proc_subdirname + "/__prometheus"
 
-        try:
-            with open(path_lkm) as metrics:
-                return bytes(metrics.read(), 'utf-8')
-        except FileNotFoundError:
-            pass
+        for path in (path_lkm, path_bpf):
+            try:
+                with open(path) as metrics:
+                    data = metrics.read()
+            except FileNotFoundError:
+                continue
+            except OSError as e:
+                raise Exception("[Error] Unable to read %s: %s. "
+                                "Try again once the script has created the procfs files."
+                                % (path, str(e),))
+            # An empty procfs file means that the script has not produced
+            # any metrics yet.  Report that as "not ready" rather than
+            # handing the client an empty 200 response.
+            if data:
+                return data
 
-        try:
-            with open(path_bpf) as metrics:
-                return bytes(metrics.read(), 'utf-8')
-        except FileNotFoundError:
-            raise Exception("[Error] Unable to find procfs files under search paths. "
-                             "Try again once the script has created the procfs files.")
+        raise Exception("[Error] Unable to find nonempty procfs files under search paths. "
+                        "Try again once the script has created the procfs files.")
 
 class SessionMgr:
     """Represent the set of possible systemtap scripts that can be exported.  Searches the $script_dir
@@ -142,12 +157,25 @@ class SessionMgr:
 
 class HTTPHandler(BaseHTTPRequestHandler):
 
+    # Bound time spent reading a request or writing a response, so that a
+    # stalled client cannot wedge the single-threaded server.
+    timeout = 10
+
     def send_msg(self, code, msg, headers={}):
+        if not isinstance(msg, bytes):
+            msg = bytes(msg, 'utf-8')
         self.send_response(code)
         self.send_header('Content-type', 'text/plain')
+        # Always frame the response and close the connection.  We handle
+        # only one request per connection, and HTTP/1.0 clients (including
+        # those that ask for keep-alive) otherwise cannot tell where the
+        # body ends without waiting for EOF.
+        self.send_header('Content-Length', str(len(msg)))
+        self.send_header('Connection', 'close')
         for (k,v) in headers.items():
             self.send_header(k,v)
         self.end_headers()
+        self.close_connection = True
         self.wfile.write(msg)
 
     def do_GET(self):
@@ -171,7 +199,19 @@ class HTTPHandler(BaseHTTPRequestHandler):
             print("session %s collect-output failure %s" % (name, str(e)))
             
 
+def _terminate(signum, frame):
+    # Turn SIGTERM/SIGHUP into the same cleanup path as SIGINT.
+    raise KeyboardInterrupt
+
+
 if __name__ == "__main__":
+    signal.signal(signal.SIGTERM, _terminate)
+    signal.signal(signal.SIGHUP, _terminate)
+    try:
+        sys.stdout.reconfigure(line_buffering=True)
+    except AttributeError:
+        pass
+
     p = argparse.ArgumentParser(description='systemtap prometheus-exporter')
     p.add_argument('-p', '--port', nargs=1, default=[9900], type=int)
     p.add_argument('-s', '--scripts', nargs=1, default=[script_dir], type=str)

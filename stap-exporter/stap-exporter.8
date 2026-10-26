@@ -72,6 +72,12 @@ options to set a module name.  This predictable module name makes it
 possible for stap-exporter to transcribe a procfs file from that
 running script to HTTP clients.
 
+Until the requested script has produced metrics, the client receives
+an HTTP 503 Service Unavailable response.  Successful responses carry
+an explicit Content-Length and the connection is closed after each
+request, so clients do not have to wait for connection teardown to
+find the end of the data.
+
 After a configurable period of disuse (\fB\-k\fR or
 \fB\-\-keepalive\fR option), a systemtap script is terminated.  It
 will be restarted again if a client requests.

@@ -6,75 +6,103 @@ if {! [installtest_p]} { untested $test; return }
 set old_timeout $timeout
 set timeout 10
 
+# Use a small python client rather than wget: some distributions ship
+# wget2, whose -q suppresses --server-response, and wget's retry loop can
+# otherwise outlive the test.
+set http_get "$srcdir/$subdir/http_get.py"
+set http_timeout 10
+set python3 python3
+if {[info exists env(PYTHON3)]} { set python3 $env(PYTHON3) }
+if {! [file exists $python3]} { set python3 python3 }
+
+# Fetch URL, returning a two element list of {status body}.  A status of 0
+# means the request failed (or timed out).  The helper ignores HTTP proxy
+# settings and enforces its own hard timeout, so a broken local network or
+# a chatty proxy cannot wedge the test.
+proc exporter_get { url } {
+    global http_get http_timeout python3
+    if {[catch {exec $python3 $http_get $url $http_timeout} output]} {
+	return [list 0 $output]
+    }
+    set lines [split $output "\n"]
+    set status [lindex $lines 0]
+    set body [join [lrange $lines 1 end] "\n"]
+    return [list $status $body]
+}
+
+# Poll URL until it produces the desired status and (optional) body regular
+# expression, or until the limit expires.
+proc exporter_wait_for { url wanted_status pattern limit } {
+    set deadline [expr {[clock seconds] + $limit}]
+    set last_status 0
+    set last_body ""
+    while {[clock seconds] < $deadline} {
+	lassign [exporter_get $url] last_status last_body
+	if {$last_status == $wanted_status
+	    && ($pattern eq "" || [regexp -- $pattern $last_body])} {
+	    return [list $last_status $last_body]
+	}
+	sleep 2
+    }
+    return [list $last_status $last_body]
+}
+
 # start the stap-exporter process in the background
 set port [find_random_unused_tcp_port]
+set url "http://127.0.0.1:$port"
 
 # run against the default install-tree
-set s_e_pid [exec stap-exporter -p $port -k 30 >> systemtap.log 2>> systemtap.log  &]
-set url "http://localhost:$port"
+set s_e_pid [exec stap-exporter -p $port -k 30 >> systemtap.log 2>> systemtap.log &]
+set s_e_pid [lindex $s_e_pid 0]
 
 if {$s_e_pid > 0} then { pass "$test startup" } else { fail "$test startup" }
 
-# sleep a little bit, to give the server a chance to start up its http listener
-verbose -log "waiting a few seconds"
-sleep 20
-verbose -log "done waiting"
+# Wait for the listener, and check that an unknown URL gives a 404.
+lassign [exporter_wait_for $url/no_such_script.stp 404 "" 60] status body
+if {$status == 404} then { pass "$test badurl" } else { fail "$test badurl $status" }
 
-spawn wget --server-response -q --retry-on-http-error=503 $url/no_such_script.stp
-set ok 0
-expect {
-    -re {HTTP/1.0 404 Not Found.*} { incr ok }
+# The autostart script is compiled in the background at exporter startup.
+# Wait (with a bound) for metrics rather than racing it with a fixed sleep.
+lassign [exporter_wait_for $url/autostart-also_ran.stp 200 {usage_count} 240] status body
+if {$status == 200 && [regexp {usage_count} $body]} then {
+    pass "$test autostart-also_ran"
+} else {
+    fail "$test autostart-also_ran $status"
 }
-if { $ok > 0 } then { pass "$test badurl" } else  { fail "$test badurl $ok" }
-wait
 
-sleep 10
-spawn wget --server-response -q --retry-on-http-error=503 $url/autostart-also_ran.stp -O -
-set ok 0
-expect {
-    -re {HTTP/1.0 200 OK\r\n} { incr ok; exp_continue }
-    -re {count[^\r\n]*\r\n} { incr ok; exp_continue }
-    default { }
-}
-wait
-if { $ok > 1 } then { pass "$test autostart-also_ran" } else { fail "$test autostart-also_ran $ok" }
+# Now access the default non-autostart script; the first request should
+# return a 503 while the script is starting.
+lassign [exporter_get $url/syscallsbypid.stp] status body
+if {$status == 503} then { pass "$test syscallsbypid startup" } else { fail "$test syscallsbypid startup $status" }
 
-# now we access the default non-autostart script; it should return a 503
-spawn wget --server-response -q $url/syscallsbypid.stp
-set ok 0
-expect {
-    -re {HTTP/1.0 503 Service Unavailable\r\n} { incr ok; exp_continue }
+# Poll until the script has actually produced some syscall data.
+lassign [exporter_wait_for $url/syscallsbypid.stp 200 {syscall_count\{[^\n]*\} [0-9]} 240] status body
+if {$status == 200 && [regexp {syscall_count\{[^\n]*\} [0-9]} $body]} then {
+    pass "$test syscallsbypid"
+} else {
+    fail "$test syscallsbypid $status"
 }
-wait
-if { $ok > 0 } then { pass "$test syscallsbypid startup" } else { fail "$test syscallsbypid startup $ok" }
-
-# now we access it repeatedly until we get some real data
-sleep 10
-spawn wget --server-response -q --retry-on-http-error=503 $url/syscallsbypid.stp -O -
-sleep 10
-# and just once more, to guarantee -some- syscalls
-spawn wget --server-response -q --retry-on-http-error=503 $url/syscallsbypid.stp -O -
-set ok 0
-expect {
-    -re {HTTP/1.0 200 OK\r\n} { incr ok; exp_continue }
-    -re {count[^\r\n]*\r\n} { incr ok; exp_continue }
-    default { }
-}
-wait
-if { $ok > 2 } then { pass "$test syscallsbypid" } else { fail "$test syscallsbypid $ok" }
 
 verbose -log "waiting for exporter to shut syscallsbypid down again"
 sleep 40
 verbose -log "done waiting"
 
-spawn wget --server-response -q $url/syscallsbypid.stp
-set ok 0
-expect {
-    -re {HTTP/1.0 503 Service Unavailable\r\n} { incr ok; exp_continue }
-    default { }
-}
-wait
-if { $ok > 0 } then { pass "$test syscallsbypid autokill" } else { fail "$test syscallsbypid autokill $ok" }
+# The keepalive has expired; the script should have been shut down (the
+# first request after the timeout restarts it and reports a 503).
+lassign [exporter_wait_for $url/syscallsbypid.stp 503 "" 120] status body
+if {$status == 503} then { pass "$test syscallsbypid autokill" } else { fail "$test syscallsbypid autokill $status" }
 
-kill -INT $s_e_pid
+# Stop the exporter, giving it a bounded amount of time to terminate its
+# systemtap children, then mop up anything left behind.
+catch {kill -INT $s_e_pid}
+set waited 0
+while {$waited < 20} {
+    if {[catch {exec ps -o stat= -p $s_e_pid} state]} { break }
+    if {[string match "Z*" [string trim $state]]} { break }
+    sleep 1
+    incr waited
+}
+catch {kill -KILL $s_e_pid}
+catch {exec pkill -TERM -f "__stap_exporter_${s_e_pid}_"}
+
 set timeout $old_timeout
