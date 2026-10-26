@@ -240,7 +240,6 @@ public:
   bool suppress_warnings;
   bool panic_warnings;
   int buffer_size;
-  bool tapset_compile_coverage;
   bool need_uprobes;
   bool need_unwind;
   bool need_symbols;
@@ -392,9 +391,6 @@ public:
   std::vector<embeddedcode*> embeds;
   std::map<interned_string, statistic_decl> stat_decls;
   // track things that are removed
-  std::vector<vardecl*> unused_globals;
-  std::vector<derived_probe*> unused_probes; // see also *_probes groups below
-  std::vector<functiondecl*> unused_functions;
   std::set<derived_probe*> empty_probes;
 
   // resolved/compiled regular expressions for the run

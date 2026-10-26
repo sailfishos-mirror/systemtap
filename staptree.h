@@ -724,7 +724,6 @@ struct functiondecl: public symboldecl
 {
   std::vector<vardecl*> formal_args;
   std::vector<vardecl*> locals;
-  std::vector<vardecl*> unused_locals;
   statement* body;
   bool synthetic;
   bool mangle_oldstyle;
@@ -978,7 +977,6 @@ struct probe
   const token* tok;
   const token* systemtap_v_conditional; //checking systemtap compatibility
   std::vector<vardecl*> locals;
-  std::vector<vardecl*> unused_locals;
   bool privileged;
   bool synthetic;
   unsigned id;

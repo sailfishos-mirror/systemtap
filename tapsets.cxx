@@ -4080,7 +4080,7 @@ var_expanding_visitor::visit_functioncall (functioncall* e)
                   v->unmangled_name = j->unmangled_name;
                   nf->formal_args.push_back (v);
                 }
-              // leave empty locals, unused_locals -- they'll be filled soon
+              // leave empty locals -- they'll be filled soon
               
               // deep_copy the body then process it recursively (no session lock)
               nf->body = deep_copy_visitor::deep_copy(r->body);

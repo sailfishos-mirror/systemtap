@@ -17,8 +17,6 @@ client-nss.cxx
 client-nss.h
 cmdline.cxx
 cmdline.h
-coveragedb.cxx
-coveragedb.h
 csclient.cxx
 csclient.h
 cscommon.cxx

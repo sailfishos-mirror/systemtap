@@ -138,7 +138,6 @@ probe::probe(probe* p, probe_point* l):
   privileged (p->privileged), synthetic (p->synthetic), id (atomic_fetch_add(&last_probeidx,1U))
 {
   assert (p->locals.size() == 0);
-  assert (p->unused_locals.size() == 0);
 }
 
 

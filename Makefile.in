@@ -197,7 +197,6 @@ am__dirstamp = $(am__leading_dot)dirstamp
 @BUILD_TRANSLATOR_TRUE@	stap-mdfour.$(OBJEXT) \
 @BUILD_TRANSLATOR_TRUE@	stap-cache.$(OBJEXT) \
 @BUILD_TRANSLATOR_TRUE@	stap-staputil.$(OBJEXT) \
-@BUILD_TRANSLATOR_TRUE@	stap-coveragedb.$(OBJEXT) \
 @BUILD_TRANSLATOR_TRUE@	stap-dwarf_wrappers.$(OBJEXT) \
 @BUILD_TRANSLATOR_TRUE@	stap-tapset-been.$(OBJEXT) \
 @BUILD_TRANSLATOR_TRUE@	stap-tapset-procfs.$(OBJEXT) \
@@ -329,8 +328,7 @@ am__depfiles_remade = ./$(DEPDIR)/stap-analysis.Po \
 	./$(DEPDIR)/stap-bpf-opt.Po ./$(DEPDIR)/stap-bpf-translate.Po \
 	./$(DEPDIR)/stap-buildrun.Po ./$(DEPDIR)/stap-cache.Po \
 	./$(DEPDIR)/stap-client-nss.Po ./$(DEPDIR)/stap-cmdline.Po \
-	./$(DEPDIR)/stap-coveragedb.Po ./$(DEPDIR)/stap-csclient.Po \
-	./$(DEPDIR)/stap-cscommon.Po \
+	./$(DEPDIR)/stap-csclient.Po ./$(DEPDIR)/stap-cscommon.Po \
 	./$(DEPDIR)/stap-dwarf_wrappers.Po ./$(DEPDIR)/stap-dwflpp.Po \
 	./$(DEPDIR)/stap-elaborate.Po ./$(DEPDIR)/stap-hash.Po \
 	./$(DEPDIR)/stap-interactive.Po ./$(DEPDIR)/stap-loc2stap.Po \
@@ -680,7 +678,7 @@ oldinclude_HEADERS = includes/sys/sdt.h includes/sys/sdt-config.h
 @BUILD_TRANSLATOR_TRUE@	translate.cxx tapsets.cxx \
 @BUILD_TRANSLATOR_TRUE@	tracepoint-vmlinux.cxx buildrun.cxx \
 @BUILD_TRANSLATOR_TRUE@	loc2stap.cxx hash.cxx mdfour.c \
-@BUILD_TRANSLATOR_TRUE@	cache.cxx staputil.cxx coveragedb.cxx \
+@BUILD_TRANSLATOR_TRUE@	cache.cxx staputil.cxx \
 @BUILD_TRANSLATOR_TRUE@	dwarf_wrappers.cxx tapset-been.cxx \
 @BUILD_TRANSLATOR_TRUE@	tapset-procfs.cxx tapset-timers.cxx \
 @BUILD_TRANSLATOR_TRUE@	tapset-netfilter.cxx tapset-perfmon.cxx \
@@ -1194,7 +1192,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stap-cache.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stap-client-nss.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stap-cmdline.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stap-coveragedb.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stap-csclient.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stap-cscommon.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stap-dwarf_wrappers.Po@am__quote@ # am--include-marker
@@ -1502,20 +1499,6 @@ stap-staputil.obj: staputil.cxx
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='staputil.cxx' object='stap-staputil.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(stap_CPPFLAGS) $(CPPFLAGS) $(stap_CXXFLAGS) $(CXXFLAGS) -c -o stap-staputil.obj `if test -f 'staputil.cxx'; then $(CYGPATH_W) 'staputil.cxx'; else $(CYGPATH_W) '$(srcdir)/staputil.cxx'; fi`
-
-stap-coveragedb.o: coveragedb.cxx
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(stap_CPPFLAGS) $(CPPFLAGS) $(stap_CXXFLAGS) $(CXXFLAGS) -MT stap-coveragedb.o -MD -MP -MF $(DEPDIR)/stap-coveragedb.Tpo -c -o stap-coveragedb.o `test -f 'coveragedb.cxx' || echo '$(srcdir)/'`coveragedb.cxx
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/stap-coveragedb.Tpo $(DEPDIR)/stap-coveragedb.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='coveragedb.cxx' object='stap-coveragedb.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(stap_CPPFLAGS) $(CPPFLAGS) $(stap_CXXFLAGS) $(CXXFLAGS) -c -o stap-coveragedb.o `test -f 'coveragedb.cxx' || echo '$(srcdir)/'`coveragedb.cxx
-
-stap-coveragedb.obj: coveragedb.cxx
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(stap_CPPFLAGS) $(CPPFLAGS) $(stap_CXXFLAGS) $(CXXFLAGS) -MT stap-coveragedb.obj -MD -MP -MF $(DEPDIR)/stap-coveragedb.Tpo -c -o stap-coveragedb.obj `if test -f 'coveragedb.cxx'; then $(CYGPATH_W) 'coveragedb.cxx'; else $(CYGPATH_W) '$(srcdir)/coveragedb.cxx'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/stap-coveragedb.Tpo $(DEPDIR)/stap-coveragedb.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='coveragedb.cxx' object='stap-coveragedb.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(stap_CPPFLAGS) $(CPPFLAGS) $(stap_CXXFLAGS) $(CXXFLAGS) -c -o stap-coveragedb.obj `if test -f 'coveragedb.cxx'; then $(CYGPATH_W) 'coveragedb.cxx'; else $(CYGPATH_W) '$(srcdir)/coveragedb.cxx'; fi`
 
 stap-dwarf_wrappers.o: dwarf_wrappers.cxx
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(stap_CPPFLAGS) $(CPPFLAGS) $(stap_CXXFLAGS) $(CXXFLAGS) -MT stap-dwarf_wrappers.o -MD -MP -MF $(DEPDIR)/stap-dwarf_wrappers.Tpo -c -o stap-dwarf_wrappers.o `test -f 'dwarf_wrappers.cxx' || echo '$(srcdir)/'`dwarf_wrappers.cxx
@@ -2442,7 +2425,6 @@ distclean: distclean-recursive
 	-rm -f ./$(DEPDIR)/stap-cache.Po
 	-rm -f ./$(DEPDIR)/stap-client-nss.Po
 	-rm -f ./$(DEPDIR)/stap-cmdline.Po
-	-rm -f ./$(DEPDIR)/stap-coveragedb.Po
 	-rm -f ./$(DEPDIR)/stap-csclient.Po
 	-rm -f ./$(DEPDIR)/stap-cscommon.Po
 	-rm -f ./$(DEPDIR)/stap-dwarf_wrappers.Po
@@ -2561,7 +2543,6 @@ maintainer-clean: maintainer-clean-recursive
 	-rm -f ./$(DEPDIR)/stap-cache.Po
 	-rm -f ./$(DEPDIR)/stap-client-nss.Po
 	-rm -f ./$(DEPDIR)/stap-cmdline.Po
-	-rm -f ./$(DEPDIR)/stap-coveragedb.Po
 	-rm -f ./$(DEPDIR)/stap-csclient.Po
 	-rm -f ./$(DEPDIR)/stap-cscommon.Po
 	-rm -f ./$(DEPDIR)/stap-dwarf_wrappers.Po

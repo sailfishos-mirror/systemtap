@@ -3755,8 +3755,6 @@ void semantic_pass_opt1 (systemtap_session& s, bool& relaxed_p)
       map<string,functiondecl*>::iterator where = s.functions.find (new_unused_functions[i]->name);
       assert (where != s.functions.end());
       s.functions.erase (where);
-      if (s.tapset_compile_coverage)
-        s.unused_functions.push_back (new_unused_functions[i]);
     }
 }
 
@@ -3802,10 +3800,6 @@ void semantic_pass_opt2 (systemtap_session& s, bool& relaxed_p, unsigned iterati
               s.print_warning (_F("Eliding unused variable '%s'",
                                   l->unmangled_name.to_string().c_str()),
 			       l->tok);
-	    if (s.tapset_compile_coverage) {
-	      s.probes[i]->unused_locals.push_back
-		      (s.probes[i]->locals[j]);
-	    }
             s.probes[i]->locals.erase(s.probes[i]->locals.begin() + j);
             relaxed_p = false;
             // don't increment j
@@ -3849,9 +3843,6 @@ void semantic_pass_opt2 (systemtap_session& s, bool& relaxed_p, unsigned iterati
                 s.print_warning (_F("Eliding unused variable '%s'",
                                     l->unmangled_name.to_string().c_str()),
 				 l->tok);
-              if (s.tapset_compile_coverage) {
-                fd->unused_locals.push_back (fd->locals[j]);
-              }
               fd->locals.erase(fd->locals.begin() + j);
               relaxed_p = false;
               // don't increment j
@@ -3894,9 +3885,6 @@ void semantic_pass_opt2 (systemtap_session& s, bool& relaxed_p, unsigned iterati
             s.print_warning (_F("Eliding unused variable '%s'",
                                 l->unmangled_name.to_string().c_str()),
 			     l->tok);
-	  if (s.tapset_compile_coverage) {
-	    s.unused_globals.push_back(s.globals[i]);
-	  }
 	  s.globals.erase(s.globals.begin() + i);
 	  relaxed_p = false;
 	  // don't increment i

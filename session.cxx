@@ -13,7 +13,6 @@
 #include "elaborate.h"
 #include "translate.h"
 #include "buildrun.h"
-#include "coveragedb.h"
 #include "hash.h"
 #include "setupdwfl.h"
 #include "task_finder.h"
@@ -157,7 +156,6 @@ systemtap_session::systemtap_session ():
   use_cache = true;
   use_script_cache = true;
   poison_cache = false;
-  tapset_compile_coverage = false;
   need_uprobes = false;
   need_unwind = false;
   need_symbols = false;
@@ -261,10 +259,6 @@ systemtap_session::systemtap_session ():
 	}
     }
 
-  const char* s_tc = getenv ("SYSTEMTAP_COVERAGE");
-  if (s_tc != NULL)
-    tapset_compile_coverage = true;
-
   const char* s_kr = getenv ("SYSTEMTAP_RELEASE");
   if (s_kr != NULL) {
     setup_kernel_release(s_kr);
@@ -367,7 +361,6 @@ systemtap_session::systemtap_session (const systemtap_session& other,
   use_cache = other.use_cache;
   use_script_cache = other.use_script_cache;
   poison_cache = other.poison_cache;
-  tapset_compile_coverage = other.tapset_compile_coverage;
   need_uprobes = false;
   need_unwind = false;
   need_symbols = false;
@@ -409,9 +402,6 @@ systemtap_session::systemtap_session (const systemtap_session& other,
   // NB: assuming that "other" created these already
   data_path = other.data_path;
   cache_path = other.cache_path;
-
-  tapset_compile_coverage = other.tapset_compile_coverage;
-
 
   // These are fields that were left to their default ctor, but now we want to
   // copy them from "other".  In the same order as declared...
@@ -695,9 +685,6 @@ systemtap_session::usage (int exitcode)
     "              add unwind/symbol data for all loaded kernel objects.\n"
     "   -t         collect probe timing information\n"
     "   -T TIME    terminate the script after TIME seconds\n"
-#ifdef HAVE_LIBSQLITE3
-    "   -q         generate information on tapset coverage\n"
-#endif /* HAVE_LIBSQLITE3 */
     "   --runtime=MODE\n"
     "              set the pass-5 runtime mode, instead of kernel\n"
 #ifdef HAVE_DYNINST
@@ -1069,13 +1056,7 @@ systemtap_session::parse_cmdline (int argc, char * const argv [])
             }
           break;
 
-	case 'q':
-          if (client_options) { cerr << _F("ERROR: %s invalid with %s", "-q", "--client-options") << endl; return 1; } 
-	  server_args.push_back (string ("-") + (char)grc);
-	  tapset_compile_coverage = true;
-	  break;
-
-        case 'h':
+	case 'h':
           usage (0);
           break;
 

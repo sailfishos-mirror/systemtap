@@ -1,5 +1,12 @@
 * What's new in version 5.7, PRERELEASE
 
+- The "stap -q" tapset coverage facility (and the SYSTEMTAP_COVERAGE
+  environment variable) has been removed.  It was undocumented and
+  never widely used; the accompanying SQLite compile-coverage database
+  is no longer updated.  This also retires a null-pointer dereference
+  in the coverage writer that crashed "stap -q" sessions containing
+  process probes.
+
 * What's new in version 5.6, 2026-09-17
 
 - New --semantic-keep-going option (pass-2 make -k): continue elaborating

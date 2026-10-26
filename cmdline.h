@@ -76,7 +76,7 @@ enum {
 
 // NB: when adding new options, consider very carefully whether they
 // should be restricted from stap clients (after --client-options)!
-#define STAP_SHORT_OPTIONS "hVvtp:I:e:E:o:R:r:a:m:kgPc:x:D:bs:uqiwl:d:L:FS:B:J:jWG:T:"
+#define STAP_SHORT_OPTIONS "hVvtp:I:e:E:o:R:r:a:m:kgPc:x:D:bs:uiwl:d:L:FS:B:J:jWG:T:"
 
 extern struct option stap_long_options[];
 

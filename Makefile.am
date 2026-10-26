@@ -54,7 +54,7 @@ endif
 stap_SOURCES = main.cxx session.cxx \
 	parse.cxx staptree.cxx elaborate.cxx translate.cxx \
 	tapsets.cxx tracepoint-vmlinux.cxx buildrun.cxx loc2stap.cxx hash.cxx mdfour.c \
-	cache.cxx staputil.cxx coveragedb.cxx dwarf_wrappers.cxx \
+	cache.cxx staputil.cxx dwarf_wrappers.cxx \
 	tapset-been.cxx tapset-procfs.cxx tapset-timers.cxx tapset-netfilter.cxx \
 	tapset-perfmon.cxx \
 	tapset-utrace.cxx task_finder.cxx dwflpp.cxx rpm_finder.cxx \

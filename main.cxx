@@ -18,7 +18,6 @@
 #include "hash.h"
 #include "cache.h"
 #include "staputil.h"
-#include "coveragedb.h"
 #include "rpm_finder.h"
 #include "task_finder.h"
 #include "cscommon.h"
@@ -1483,15 +1482,6 @@ cleanup (systemtap_session &s, int rc)
   for (systemtap_session::session_map_t::iterator it = s.subsessions.begin();
        it != s.subsessions.end(); ++it)
     cleanup (*it->second, rc);
-
-  // update the database information
-  if (!rc && s.tapset_compile_coverage && !pending_interrupts) {
-#ifdef HAVE_LIBSQLITE3
-    update_coverage_db(s);
-#else
-    cerr << _("Coverage database not available without libsqlite3") << endl;
-#endif
-  }
 
   s.report_suppression();
 

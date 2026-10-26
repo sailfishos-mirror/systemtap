@@ -1763,7 +1763,7 @@ forked_passes_0_4 (systemtap_session &s)
           // NB: no cleanup from the fork!
         }
       // FIXME: what about cleanup(), but only for this session?
-      // i.e. tapset coverage, report_suppression, but not subsessions.
+      // i.e. report_suppression, but not subsessions.
       exit(rc ? EXIT_FAILURE : EXIT_SUCCESS);
     }
 
