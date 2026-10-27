@@ -5242,6 +5242,9 @@ gen_mapped_saved_return(systemtap_session &sess, expression* e,
   symbol* tmpsym = new symbol;
   tmpsym->name = aname + "_tmp";
   tmpsym->tok = e->tok;
+  // PR34907: carry any DWARF type information over to the saved-value
+  // temporary, so a subsequent autocast on @entry(EXPR)->field can use it.
+  tmpsym->type_details = e->type_details;
 
   assignment* a = new assignment;
   a->tok = e->tok;
@@ -5814,6 +5817,24 @@ dwarf_var_expanding_visitor::visit_entry_op (entry_op *e)
           // XXX it would be nice to use gen_kretprobe_saved_return when available,
           // but it requires knowing the types already, which is problematic for
           // arbitrary expressons.
+
+          // PR34907: expand a bare target symbol here so its DWARF type can
+          // be attached to the saved-value temporary.  This lets a following
+          // autocast, as in @entry($var)->field, resolve the field.  Other
+          // expression forms stay unexpanded for the synthetic .call probe
+          // to handle (PR20416).
+          if (dynamic_cast<target_symbol*>(e->operand))
+            {
+              // Pretend we are not in a .return probe, so the expansion
+              // reads the variable where @entry() captures it.  Without
+              // this, visit_target_symbol() would take its .return path:
+              // it would emit a "confusing usage, value is captured as
+              // @entry($var)" warning for an already-explicit @entry(),
+              // and set up a second kretprobe/mapped save for the operand
+              // rather than simply typing the value we are about to save.
+              save_and_restore<bool> temp_return (& q.has_return, false);
+              replace (e->operand);
+            }
 
           repl = gen_mapped_saved_return (e->operand, "entry");
         }

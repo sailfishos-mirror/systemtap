@@ -1,0 +1,17 @@
+#! stap -gp2
+
+probe kernel.function("schedule_tail").return ?
+{
+    // PR34907: @entry($var) must preserve DWARF type information so that
+    // autocast can resolve fields on the saved pointer, for both reads
+    // and lvalue writes.
+    println(@entry($prev)->pid)
+    @entry($prev)->pid = @entry($prev)->pid
+}
+
+probe process("stap").function("main").return ?
+{
+    // Userspace variant: the type from @entry($argv) must survive for
+    // the array-index dereference.
+    println(@entry($argv)[0])
+}
