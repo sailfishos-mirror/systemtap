@@ -2706,12 +2706,18 @@ cscope:
 @BUILD_CRASHMOD_TRUE@$(STAPLOG): staplog.c
 @BUILD_CRASHMOD_TRUE@	$(CC) $(staplog_CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -shared -rdynamic \
 @BUILD_CRASHMOD_TRUE@		$(AM_LDFLAGS) $(LDFLAGS) -fPIC -o $@ $<
-@BUILD_CRASHMOD_TRUE@all-local: $(STAPLOG) example_index $(TAPSET_PYTHON3_STP)
+@BUILD_CRASHMOD_TRUE@all-local: $(STAPLOG) $(TAPSET_PYTHON3_STP)
 @BUILD_CRASHMOD_TRUE@install-exec-local: $(STAPLOG)
 @BUILD_CRASHMOD_TRUE@	$(MKDIR_P) $(DESTDIR)$(pkglibdir)
 @BUILD_CRASHMOD_TRUE@	$(INSTALL) $(STAPLOG) $(DESTDIR)$(pkglibdir)
-@BUILD_CRASHMOD_FALSE@all-local: example_index $(TAPSET_PYTHON3_STP)
+@BUILD_CRASHMOD_FALSE@all-local: $(TAPSET_PYTHON3_STP)
 
+# The example index files are checked in.  Regenerate them explicitly with
+# `make example_index` after adding or editing .meta files; this is
+# intentionally not part of all-local, since mtime comparison against the
+# checked-in index.html is unreliable (a fresh git checkout writes .meta
+# files after it) and produced a spurious "index is outdated" message on
+# every build.
 example_index: $(EXAMPLE_SOURCE_DIR)/index.html
 
 $(EXAMPLE_SOURCE_DIR)/index.html: $(EXAMPLE_META_FILES) $(EXAMPLE_INDEX_GEN)

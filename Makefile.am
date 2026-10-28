@@ -284,12 +284,12 @@ STAPLOG=staplog.so
 $(STAPLOG): staplog.c
 	$(CC) $(staplog_CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -shared -rdynamic \
 		$(AM_LDFLAGS) $(LDFLAGS) -fPIC -o $@ $<
-all-local: $(STAPLOG) example_index $(TAPSET_PYTHON3_STP)
+all-local: $(STAPLOG) $(TAPSET_PYTHON3_STP)
 install-exec-local: $(STAPLOG)
 	$(MKDIR_P) $(DESTDIR)$(pkglibdir)
 	$(INSTALL) $(STAPLOG) $(DESTDIR)$(pkglibdir)
 else
-all-local: example_index $(TAPSET_PYTHON3_STP)
+all-local: $(TAPSET_PYTHON3_STP)
 endif
 
 # Get extra libs as needed
@@ -298,6 +298,12 @@ LDADD =
 EXAMPLE_SOURCE_DIR = $(srcdir)/testsuite/systemtap.examples
 EXAMPLE_META_FILES = $(EXAMPLE_SOURCE_DIR)/*/*.meta
 
+# The example index files are checked in.  Regenerate them explicitly with
+# `make example_index` after adding or editing .meta files; this is
+# intentionally not part of all-local, since mtime comparison against the
+# checked-in index.html is unreliable (a fresh git checkout writes .meta
+# files after it) and produced a spurious "index is outdated" message on
+# every build.
 example_index: $(EXAMPLE_SOURCE_DIR)/index.html
 
 $(EXAMPLE_SOURCE_DIR)/index.html: $(EXAMPLE_META_FILES) $(EXAMPLE_INDEX_GEN)
