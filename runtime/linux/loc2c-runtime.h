@@ -365,16 +365,37 @@ static void ursl_store64 (const struct usr_regset_lut* lut,unsigned lutsize,  in
  * but without a call to might_sleep(). Since we're disabling page
  * faults when we read, we want to use the 'inatomic' variants when
  * available.
+ *
+ * x86 dropped the unchecked __get_user()/__put_user() accessors in
+ * upstream commit f748af39e335 ("x86/uaccess: Remove __get_user() and
+ * __put_user()").  Fall back to the checked get_user()/put_user() when
+ * they are gone.
+ *
+ * INVARIANT: __stp_{get,put}_user() may only be called with pagefaults
+ * disabled, i.e. between pagefault_disable() and pagefault_enable(),
+ * as every current caller in this file does (the *_nofault deref/store
+ * helpers).  __get_user() was the "unchecked, no might_sleep" primitive;
+ * the get_user() fallback above is only equally quiet in atomic/probe
+ * context because __might_fault() returns immediately when
+ * pagefault_disabled().  A new user-memory deref site that skips
+ * pagefault_disable() could thus emit a spurious "sleeping function
+ * called from invalid context" warning.  Its extra access_ok()-style
+ * range check is harmless here: stp_mem_access_begin() has already
+ * validated user addresses, and kernel addresses use get_kernel_nofault().
  */
 #ifdef __get_user_inatomic
 #define __stp_get_user __get_user_inatomic
-#else
+#elif defined(__get_user)
 #define __stp_get_user __get_user
+#else
+#define __stp_get_user get_user
 #endif
 #ifdef __put_user_inatomic
 #define __stp_put_user __put_user_inatomic
-#else
+#elif defined(__put_user)
 #define __stp_put_user __put_user
+#else
+#define __stp_put_user put_user
 #endif
 
 /*
