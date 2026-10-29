@@ -1065,6 +1065,13 @@ keywords: security guru
   only
 
 
+security-band-aids/cve-2026-98432.stp - cve-2026-98432 security band-aid
+keywords: security guru
+
+  EXPERIMENTAL emergency security band-aid, for reference/education
+  only
+
+
 security-band-aids/cve-2026-99999.stp - cve-2026-99999 security band-aid
 keywords: security guru
 
@@ -3457,6 +3464,13 @@ keywords: security guru
 
 
 security-band-aids/cve-2026-89969.stp - cve-2026-89969 security band-aid
+keywords: security guru
+
+  EXPERIMENTAL emergency security band-aid, for reference/education
+  only
+
+
+security-band-aids/cve-2026-98432.stp - cve-2026-98432 security band-aid
 keywords: security guru
 
   EXPERIMENTAL emergency security band-aid, for reference/education
