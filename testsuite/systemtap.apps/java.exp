@@ -6,6 +6,7 @@ if {[catch { exec which javac } res]} {
 
 if {! [installtest_p]} then { untested $test; return }
 if {! [java_p]} then { untested $test; return }
+if {! [byteman_p]} then { untested "$test - no byteman"; return }
 
 set test "multiparams"
 

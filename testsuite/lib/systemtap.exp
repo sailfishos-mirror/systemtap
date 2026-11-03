@@ -235,6 +235,11 @@ proc java_p {} {
     return $systemtap_java_p
 }
 
+proc byteman_p {} {
+    global systemtap_byteman_p
+    return $systemtap_byteman_p
+}
+
 proc python3_p {} {
     global systemtap_python3_p
     return $systemtap_python3_p
@@ -375,7 +380,7 @@ proc systemtap_check_users {} {
 
 proc setup_systemtap_environment {} {
     global srcdir env server_pid systemtap_dyninst_p
-    global systemtap_nss_p systemtap_java_p
+    global systemtap_nss_p systemtap_java_p systemtap_byteman_p
     global systemtap_python3_p
     global have_hw_breakpoint_p systemtap_readline_p
     global kill_needs_doubledash
@@ -453,6 +458,16 @@ proc setup_systemtap_environment {} {
         set systemtap_java_p 1
     } else {
         set systemtap_java_p 0
+    }
+
+    # Java per-method probes also need the byteman runtime tools, which
+    # are not part of the systemtap build/install tree.
+    set systemtap_byteman_p 1
+    foreach tool {bminstall bmsubmit} {
+        if {[catch {exec sh -c "command -v $tool >/dev/null 2>&1"}]} {
+            verbose -log "byteman_p: missing $tool"
+            set systemtap_byteman_p 0
+        }
     }
 
     # Remember if this selfsame version of systemtap compiled with
