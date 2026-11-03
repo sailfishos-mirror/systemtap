@@ -153,6 +153,12 @@ int main()
 
     mlockall(MCL_CURRENT);
 
+    /* The server child may still be sending its second message when the
+     * parent closes the socket after receiving the first one.  Ignore
+     * SIGPIPE (inherited by the child) so that racing writes don't kill
+     * the server and make the final recvmmsg() wait forever. */
+    signal(SIGPIPE, SIG_IGN);
+
     /* initialize sockaddr's */
     sin1.sin_family = AF_INET;
     sin1.sin_port = htons((getpid() % 32768) + 11000);
