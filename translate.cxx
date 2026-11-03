@@ -3354,6 +3354,17 @@ c_unparser::collect_map_index_types(vector<vardecl *> const & vars,
       vardecl *v = vars[i];
       if (v->arity > 0)
 	{
+	  /* map-gen.c supports at most 9 key fields; reject larger
+	     arrays here rather than letting the generated C fail.  The
+	     BPF runtime uses a different representation.  */
+	  if (v->arity > 9 &&
+	      session->runtime_mode != systemtap_session::bpf_runtime)
+	    {
+	      string name = (v->unmangled_name != "" ? v->unmangled_name : v->name).to_string();
+	      throw SEMANTIC_ERROR (_F("array %s has too many indexes (%d); the C map runtime supports at most 9",
+				     name.c_str(), v->arity), v->tok);
+	    }
+
 	  types.insert(make_pair(v->index_types, v->type));
 	}
     }

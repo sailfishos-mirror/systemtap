@@ -55,8 +55,9 @@ enum bpf_target {
 // TODO: BPF_MAX{STRING,FORMAT}LEN,BPF_MAXMAPENTRIES,BPF_MAXSPRINTFLEN should be user-configurable.
 
 #define MAX_BPF_KERNEL_STACK 512
-// PR24758: 64k ought to be enough for anyone
-#define MAX_BPF_USER_STACK 65536
+// BPF memory offsets are signed 16-bit, so only 32k of the user-space
+// interpreter's stack is addressable.
+#define MAX_BPF_USER_STACK 32768
 #define MAX_BPF_STACK(target) (((target) == target_kernel_bpf) ? \
                                MAX_BPF_KERNEL_STACK : MAX_BPF_USER_STACK)
 #define BPF_REG_SIZE 8
@@ -395,7 +396,9 @@ struct program
   {
     if (max_tmp_space < bytes)
       max_tmp_space = bytes;
-    assert(max_tmp_space <= MAX_BPF_STACK(target));
+    if (max_tmp_space > MAX_BPF_STACK(target))
+      throw std::runtime_error(_F("BPF stack limit exceeded (need %u bytes, limit %u)",
+				  max_tmp_space, MAX_BPF_STACK(target)));
   }
 
   // After register allocation, record the lowest offset actually
