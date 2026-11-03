@@ -2511,7 +2511,8 @@ bpf_unparser::visit_next_statement (next_statement* s)
 {
   if (!func_return.empty ())
     throw SEMANTIC_ERROR(_("bpf unhandled next statement in function"), s->tok);
-  emit_jmp(exit_block);
+  // PR28202: exit block may not have been created yet, use the lazy accessor
+  emit_jmp(get_exit_block());
 }
 
 void
