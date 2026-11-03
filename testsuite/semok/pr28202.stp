@@ -1,0 +1,16 @@
+#! stap --runtime=bpf -p4
+# PR28202: bpf should handle statements after 'next'
+
+probe oneshot {
+  print("foo\n")
+  next
+  print("unreachable\n")
+}
+
+probe oneshot {
+  for (i = 0; i < 3; i++) {
+    if (i == 1)
+      next
+    printf("foo%d\n", i)
+  }
+}
