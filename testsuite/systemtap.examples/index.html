@@ -59,7 +59,7 @@
 <li><a href="#virtualization/kvm_service_time.stp">virtualization/kvm_service_time.stp - Time Statistics on KVM Exit Reasons</a></li>
 </ul>
 
-<h2>All 209 Examples</h2>
+<h2>All 210 Examples</h2>
 <ul>
 <li><a name="apps/gmalloc_watch.stp"></a><a href="#apps/gmalloc_watch.stp">&para;</a> <a href="apps/gmalloc_watch.stp">apps/gmalloc_watch.stp</a> - Tracing glib2 memory allocations<br>
 keywords: <a href="keyword-index.html#TRACE">TRACE</a> <br>
@@ -666,6 +666,9 @@ keywords: <a href="keyword-index.html#SECURITY">SECURITY</a> <a href="keyword-in
 </li><li><a name="security-band-aids/cve-2026-89969.stp"></a><a href="#security-band-aids/cve-2026-89969.stp">&para;</a> <a href="security-band-aids/cve-2026-89969.stp">security-band-aids/cve-2026-89969.stp</a> - cve-2026-89969 security band-aid<br>
 keywords: <a href="keyword-index.html#SECURITY">SECURITY</a> <a href="keyword-index.html#GURU">GURU</a> <br>
 <p>EXPERIMENTAL emergency security band-aid, for reference/education only</p></p>
+</li><li><a name="security-band-aids/cve-2026-93479.stp"></a><a href="#security-band-aids/cve-2026-93479.stp">&para;</a> <a href="security-band-aids/cve-2026-93479.stp">security-band-aids/cve-2026-93479.stp</a> - cve-2026-93479 security band-aid<br>
+keywords: <a href="keyword-index.html#SECURITY">SECURITY</a> <a href="keyword-index.html#GURU">GURU</a> <br>
+<p>EXPERIMENTAL emergency security band-aid, for reference/education only. nginx script-engine heap overflow (CVE-2026-93479, 1.30.0-1.30.5, 1.31.2-1.31.6): clamps the engine&#39;s overstated ngx_str_t length back to the buffer it allocated, so callers such as ngx_http_map_uri_to_path() stop writing past it, as in 1.30.6/1.31.7. Needs nginx-core-debuginfo; no-op on fixed builds. Validated ASAN on 1.30.4 vs 1.30.6.</p></p>
 </li><li><a name="security-band-aids/cve-2026-98432.stp"></a><a href="#security-band-aids/cve-2026-98432.stp">&para;</a> <a href="security-band-aids/cve-2026-98432.stp">security-band-aids/cve-2026-98432.stp</a> - cve-2026-98432 security band-aid<br>
 keywords: <a href="keyword-index.html#SECURITY">SECURITY</a> <a href="keyword-index.html#GURU">GURU</a> <br>
 <p>EXPERIMENTAL emergency security band-aid, for reference/education only</p></p>
