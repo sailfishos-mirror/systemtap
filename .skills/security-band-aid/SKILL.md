@@ -49,7 +49,8 @@ Security band-aid:
 - [ ] Draft the script; run the four-way test (see "Four-way validation"):
       unfixed, fixed, unfixed+band-aid, fix_p=0
 - [ ] Embed the advisory link, upstream commit id, and the hunk being mirrored
-- [ ] Confirm the fix is off/on toggleable and counts metrics
+- [ ] Confirm the fix is off/on toggleable, and that `hit` still counts with
+      `cve_fix_p=0` (occurrences, not just payload applications)
 - [ ] Add cve-YYYY-NNNN.stp under security-band-aids/
 - [ ] Templatize against security-bandaid-template.stp + peers
 - [ ] Add matching cve-YYYY-NNNN.meta
@@ -428,8 +429,13 @@ Models: `security-bandaid-template.stp`, `cve-2018-6485-templatized.stp`,
    Print per-hit diagnostics only when `cve_notify_p`.
 
 5. **Metrics:** call `cve_count_metric("hit")` for each suspect event
-   (and `"miss"` when the script distinguishes clean vs bad paths). Optional
-   `probe timer.s(60)` status line matching peer band-aids.
+   (and `"miss"` when the script distinguishes clean vs bad paths). The hit
+   counter records how often the vulnerable condition *occurs*, so call it as
+   soon as the suspect event is recognized, **outside** the `if (cve_fix_p)`
+   block. Counting only when the payload runs means a host running the
+   band-aid in observation mode (`cve_fix_p=0`) reports zero hits, and that
+   count is exactly what tells an operator whether the mitigation is still
+   needed. Optional `probe timer.s(60)` status line matching peer band-aids.
 
 6. **Procfs / prometheus** come from `livepatch.stp` automatically when
    those symbols are used. End with a note like:
