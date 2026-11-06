@@ -7643,32 +7643,13 @@ typeresolution_info::visit_symbol (symbol* e)
 
   if (e->type == e->referent->type)
     {
-
-      // If both have type details, then they either must agree;
-      // otherwise force them both to null.
-       if (e->type_details && e->referent->type_details &&
-           *e->type_details != *e->referent->type_details) 
-         {
-           // NB: Don't bother warn users about this.  With enough
-           // verbosity (5), they can discover the mismatch details,
-           // should an expected autocast expression fail to resolve.
-           //
-           // There are tapset functions like task_dentry_path() that
-           // have some harmless polymorphism over variables.  These
-           // are protected by @defined() guards which are resolved at
-           // a pass later than this one.  That one would always warn,
-           // without offering any possible user action to help.
-           
-           // this->session.print_warning(_("Potential type mismatch in reassignment"), e->tok);
-
-           resolve_details(e->tok, null_type, e->type_details);
-           resolve_details(e->referent->tok, null_type, e->referent->type_details);
-         }
-       else if (e->type_details && !e->referent->type_details)
-         resolve_details(e->referent->tok, e->type_details, e->referent->type_details);	
-       else if (!e->type_details && e->referent->type_details)
-         resolve_details(e->tok, e->referent->type_details, e->type_details);
-
+      // If both have type details, then they either must agree; otherwise
+      // latch both to null_type, which falls back to plain-long behaviour.
+      // (There are tapset functions like task_dentry_path() that have some
+      // harmless polymorphism over variables, protected by @defined()
+      // guards resolved later; propagation_type_details() warns only when
+      // two distinct target types actually conflict.)
+      propagate_type_details (e, e->referent, true);
     }
 
 }
@@ -7931,6 +7912,13 @@ typeresolution_info::visit_arrayindex (arrayindex* e)
   assert (array);
   assert (array->referent != 0);
   resolve_2types (e, array->referent, this, t);
+
+  // PR34953: like visit_symbol() does for scalars, let target-type details
+  // travel between the element expression and the map's declaration, so a
+  // $context value stored into a global map in one probe can be
+  // dereferenced with autocast in another.
+  if (e->type == array->referent->type)
+    propagate_type_details (e, array->referent, true);
 
   // now resolve the array indexes
 
@@ -8742,6 +8730,76 @@ typeresolution_info::resolve_details (const token* tok,
   if (session.verbose > 4)
     clog << "resolved type details " << *dest << " to " << *tok << endl;
 }
+
+// Is this token from library (tapset) code rather than the user's script?
+// Conflicts there are usually deliberate polymorphism that the user cannot
+// act on, so they latch silently.
+static bool
+type_details_in_library (systemtap_session& sess, const token* tok)
+{
+  if (tok == NULL || tok->location.file == NULL)
+    return false;
+
+  const string& f = tok->location.file->name;
+  for (unsigned i = 0; i < sess.include_path.size (); i++)
+    if (startswith (f, sess.include_path[i]))
+      return true;
+
+  return false;
+}
+
+void
+typeresolution_info::propagate_type_details (expression* expr, symboldecl* decl,
+                                             bool warn)
+{
+  // PR34953: carry DWARF target-type details between an expression and the
+  // declaration it refers to (a global scalar, or the element of a global
+  // map), so a $context pointer stored in one probe can be dereferenced with
+  // autocast in another.  A declaration that receives incompatible types
+  // latches onto null_type: autocast then falls back to plain long (as it
+  // always did), and latching keeps this propagation monotone so the
+  // type-inference fixpoint below still terminates.
+  if (expr->type != decl->type)
+    return;
+
+  if (expr->type_details && decl->type_details &&
+      *expr->type_details != *decl->type_details)
+    {
+      const bool latched = (*expr->type_details == *null_type &&
+                            *decl->type_details == *null_type);
+      if (latched)
+        return; // already decided, nothing new to record
+
+      const bool library_p =
+        type_details_in_library (session, expr->tok)
+        || type_details_in_library (session, decl->tok);
+      if (warn && !library_p
+          && *expr->type_details != *null_type &&
+          *decl->type_details != *null_type)
+        {
+          std::ostringstream msg;
+          msg << _F("variable '%s' is assigned incompatible target types",
+                    decl->unmangled_name.to_string().c_str());
+          // only name the types when that is actually informative; two casts
+          // of the same struct from different headers print identically
+          std::ostringstream t1, t2;
+          t1 << *expr->type_details;
+          t2 << *decl->type_details;
+          if (t1.str() != t2.str())
+            msg << " (" << t1.str() << ", " << t2.str() << ")";
+          msg << _("; autocast access degrades to plain long, use @cast");
+          session.print_warning (msg.str(), expr->tok);
+        }
+
+      resolve_details(expr->tok, null_type, expr->type_details);
+      resolve_details(decl->tok, null_type, decl->type_details);
+    }
+  else if (expr->type_details && !decl->type_details)
+    resolve_details(decl->tok, expr->type_details, decl->type_details);
+  else if (!expr->type_details && decl->type_details)
+    resolve_details(expr->tok, decl->type_details, expr->type_details);
+}
+
 
 /* t  type to attempt to resolve to
  * e  the expression to resolve

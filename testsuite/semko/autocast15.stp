@@ -1,0 +1,12 @@
+#! stap -p2
+
+global suns
+
+probe begin
+{
+    // Test that incompatible DWARF assigned to a global map latches to
+    // plain long, so autocast access to that map fails (as it always did).
+    suns[0] = & @cast(0, "sockaddr_un", "<sys/un.h>");
+    suns[1] = & @cast(1, "sockaddr_un", "<sys/socket.h><sys/un.h>");
+    println(suns[0]->sun_family)
+}

@@ -12,6 +12,16 @@
   in the coverage writer that crashed "stap -q" sessions containing
   process probes.
 
+- DWARF target-type details now propagate through globals: a $context
+  pointer saved in one probe can be dereferenced with the autocast "->"
+  operator in another probe, for scalars and for global maps alike.
+  Previously this worked only for probe locals, so band-aid style scripts
+  needed make-work @cast() expressions.  A variable that receives
+  incompatible target types keeps its plain-long behaviour (autocast then
+  fails, as before) and now warns at compile time; library/tapset code,
+  where such polymorphism is often deliberate, stays quiet.  Use @cast()
+  in those cases.
+
 * What's new in version 5.6, 2026-09-17
 
 - New --semantic-keep-going option (pass-2 make -k): continue elaborating

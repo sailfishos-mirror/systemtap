@@ -1,0 +1,25 @@
+#! stap -p2
+
+global suns
+global dent
+
+probe begin
+{
+    // Test DWARF assigned to a global map propagates to other probes, so a
+    // $context pointer stored in one probe can be dereferenced with autocast
+    // in another.  (autocast11 covers the same for probe locals.)
+    suns[0] = & @cast(0, "sockaddr_un", "<sys/un.h>");
+}
+
+probe end
+{
+    println(suns[0]->sun_family)
+
+    // A conflict in an @defined()-guarded arm must not disable autocast:
+    // the guarded branch is folded away before type inference runs.
+    if (@defined(& @cast(0, "sockaddr_un", "<sys/un.h>")->sun_family))
+        dent = & @cast(0, "sockaddr_un", "<sys/un.h>");
+    else
+        dent = & @cast(0, "sockaddr_in", "<netinet/in.h>");
+    println(dent->sun_family)
+}
