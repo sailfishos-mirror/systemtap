@@ -406,6 +406,10 @@ bpf_unparser::emit_expr(expression *e)
   e->visit (this);
   value *v = result;
   result = NULL;
+  // PR22392: must ignore void result of expressions typed as values
+  // in pass2 but used purely for their side effect e.g. printf()
+  if (v == NULL)
+    throw SEMANTIC_ERROR (_("invalid use of void expression"), e->tok);
   return v;
 }
 
@@ -2135,7 +2139,10 @@ bpf_unparser::visit_null_statement (null_statement *)
 void
 bpf_unparser::visit_expr_statement (expr_statement *s)
 {
-  (void) emit_expr (s->value);
+  // PR22392: discard result, don't call emit_expr()
+  // to properly handle void-valued expr statements
+  s->value->visit (this);
+  result = NULL;
 }
 
 void

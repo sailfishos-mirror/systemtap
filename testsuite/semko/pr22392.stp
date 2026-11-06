@@ -1,0 +1,11 @@
+#! stap --runtime=bpf -p4
+// PR22392: should raise 'void value not ignored' for result of printf
+probe oneshot {
+  x = printf("foo")
+  if (x) print("oops")
+}
+
+probe oneshot {
+  x = print("boo")
+  if (x) print("oops")
+}
