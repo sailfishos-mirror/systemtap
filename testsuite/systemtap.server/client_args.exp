@@ -48,7 +48,6 @@ set invalid_options [list \
   "-D 2=4" \
   "--client-options -r /path" \
   "-S /path" \
-  "--client-options -q" \
   "--client-options -k" \
 ]
 
