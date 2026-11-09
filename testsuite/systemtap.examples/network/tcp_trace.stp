@@ -129,6 +129,10 @@ global rcvwnd;
 global length_flg;
 global length;
 
+// Fetch skb->len through a helper so the global map does not accumulate
+// incompatible DWARF target-type details from different probe contexts.
+function skb_len(skb) { return @cast(skb, "struct sk_buff")->len }
+
 probe begin
 {
 	number_of_rules = process_cmdline()
@@ -187,7 +191,7 @@ probe kernel.{function("tcp_rcv_established"),
 	if ( !key ) next;
 
 	if ( is_packet_updated(key,sk) ) {
-		length[key] = $skb->len;
+		length[key] = skb_len($skb);
 		print_packet_info(key, 0)
 	}
 }
@@ -199,7 +203,7 @@ probe kernel.function("tcp_transmit_skb")
 	if ( !key ) next;
 
 	if ( is_packet_updated(key,sk) ) {
-		length[key] = $skb->len;
+		length[key] = skb_len($skb);
 		print_packet_info(key, 1)
 	}
 }
@@ -266,7 +270,7 @@ probe kernel.function("tcp_retransmit_skb")
 		find_timer[key] = 0
 		tx_timer[key] = 1;
 		is_packet_updated(key,sk)
-		length[key] = $skb->len
+		length[key] = skb_len($skb)
 		print_packet_info(key,1)
 		tx_timer[key] = 0;
 	}
