@@ -252,7 +252,7 @@ location_context::new_symref(vardecl *var)
 symbol *
 location_context::new_local(const char *namebase)
 {
-  static int counter;
+  static std::atomic<unsigned> counter {0};
   vardecl *var = new vardecl;
   var->unmangled_name = var->name = std::string(namebase) + lex_cast(counter++);
   var->type = pe_long;
