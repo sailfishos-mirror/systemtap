@@ -4033,8 +4033,6 @@ var_expanding_visitor::visit_functioncall (functioncall* e)
           r->body->visit(& cop);
           if (cop.context_op_p) // need to clone
             {
-              r->cloned_p = true; // so don't warn about elision later
-              
               if (sess.verbose > 2)
                 clog << _("need a clone of context-op function ") << *r->tok << endl;
 
@@ -4048,6 +4046,7 @@ var_expanding_visitor::visit_functioncall (functioncall* e)
                                          stap_dwarf_timing.sess_wait_ns,
                                          stap_dwarf_timing.sess_hold_ns,
                                          stap_dwarf_timing.sess_n);
+                r->cloned_p = true; // so don't warn about elision later
                 auto johnny = sess.functions.find(clone_function_name);
                 if (johnny != sess.functions.end())
                   {
