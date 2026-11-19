@@ -11,6 +11,7 @@
 #include "rpm_finder.h"
 
 #include <iostream>
+#include <mutex>
 #include <fstream>
 #include <sstream>
 #include <cerrno>
@@ -44,6 +45,9 @@ extern "C" {
 #include "nsscommon.h"
 #endif
 
+// RPM transactions share process-wide crypto state across sessions.
+static mutex rpm_query_mutex;
+
 /* Returns the count of newly added rpms.  */
 /* based on the code in F11 gdb-6.8.50.20090302 source rpm */
 /* Added in the rpm_type parameter to specify what rpm to look for */
@@ -71,6 +75,7 @@ missing_rpm_enlist (systemtap_session& sess, const char *filename, const char *r
   if (!rpm_init_done)
     return 0;
 
+  lock_guard<mutex> lock (rpm_query_mutex);
   /* If we've seen this combo before, don't check again... */
   if (!sess.rpms_checked.insert(string(filename) + rpm_type).second)
     return 0;
@@ -199,6 +204,7 @@ missing_rpm_enlist (systemtap_session& sess, const char *filename, const char *r
 void
 missing_rpm_list_print (systemtap_session &sess, const char* rpm_type)
 {
+  lock_guard<mutex> lock (rpm_query_mutex);
   if (sess.rpms_to_install.size() > 0 && ! sess.suppress_warnings) {
 
     if(strcmp(rpm_type,"-devel")==0)
