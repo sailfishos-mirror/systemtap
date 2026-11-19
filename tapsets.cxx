@@ -1588,11 +1588,13 @@ dwarf_query::query_module_symtab()
 {
   // Get the symbol table if we don't already have it
   module_info *mi = focus.mod_info;
+  unique_lock<recursive_mutex> lock (mi->symtab_mutex);
   if (mi->symtab_status == info_unknown)
     mi->get_symtab();
   if (mi->symtab_status == info_absent)
     return;
 
+  vector<func_info> matches;
   func_info *fi = NULL;
   symbol_table *sym_table = mi->sym_table;
 
@@ -1609,7 +1611,7 @@ dwarf_query::query_module_symtab()
                   || fi->descriptor) // ppc opd (and also undefined symbols)
                 continue;
               if (dw.function_name_matches_pattern(fi->name, function_str_val))
-                query_symtab_func_info(*fi, this);
+                matches.push_back (*fi);
             }
         }
       else
@@ -1619,10 +1621,14 @@ dwarf_query::query_module_symtab()
             {
               fi = *it;
               if (fi && null_die(&fi->die))
-                query_symtab_func_info(*fi, this);
+                matches.push_back (*fi);
             }
         }
     }
+
+  lock.unlock ();
+  for (auto &match : matches)
+    query_symtab_func_info (match, this);
 }
 
 void
