@@ -9933,7 +9933,7 @@ suggest_dwarf_functions(systemtap_session& sess,
   if (pos != string::npos)
     func.erase(pos);
 
-  if (func.empty() || modules.empty() || sess.module_cache == NULL || sess.suppress_costly_diagnostics)
+  if (func.empty() || modules.empty() || sess.suppress_costly_diagnostics)
     return "";
 
   // PR18577: There isn't any point in generating a suggestion list if
@@ -9945,13 +9945,16 @@ suggest_dwarf_functions(systemtap_session& sess,
 
   // We must first aggregate all the functions from the cache
   set<interned_string> funcs;
-  const auto &cache = sess.module_cache->cache;
 
   for (auto itmod = modules.begin();
        itmod != modules.end(); ++itmod)
     {
       module_info *module;
 
+      unique_lock<recursive_mutex> cache_lock (sess.session_data_mutex);
+      if (!sess.module_cache)
+        return "";
+      const auto &cache = sess.module_cache->cache;
       // retrieve module_info from cache
       auto itcache = cache.find(*itmod);
       if (itcache != cache.end())
@@ -9959,6 +9962,8 @@ suggest_dwarf_functions(systemtap_session& sess,
       else // module not found
         continue;
 
+      cache_lock.unlock ();
+      lock_guard<recursive_mutex> module_lock (module->symtab_mutex);
       // add inlines
       funcs.insert(module->inlined_funcs.begin(),
                    module->inlined_funcs.end());
