@@ -4008,8 +4008,7 @@ var_expanding_visitor::visit_functioncall (functioncall* e)
       sess.symbol_resolver && // from some sort of symbol-resolution context
       cur_probe) // prevent being called from semantic_pass_symbols function-only loop
     {
-      // Hold session_data_mutex only around table lookups/mutations so
-      // parallel $$parms expand can overlap deep_copy/require work.
+      unique_lock<recursive_mutex> bodies (sess.function_body_mutex);
       vector<functiondecl*> refs;
       {
         timed_recursive_lock gl (sess.session_data_mutex,
@@ -4082,9 +4081,11 @@ var_expanding_visitor::visit_functioncall (functioncall* e)
               
               // deep_copy the body then process it recursively (no session lock)
               nf->body = deep_copy_visitor::deep_copy(r->body);
+              bodies.unlock ();
               early_resolution_in_progress.insert(r);
               require (nf->body, false); // process it recursively
               early_resolution_in_progress.erase(r);
+              bodies.lock ();
 
               {
                 timed_recursive_lock gl (sess.session_data_mutex,
@@ -4131,6 +4132,7 @@ var_expanding_visitor::visit_functioncall (functioncall* e)
               continue;
             }
 
+          lock_guard<recursive_mutex> bodies (sess.function_body_mutex);
           early_resolution_in_progress.insert(r);
           require (r->body, false); // process it recursively
           early_resolution_in_progress.erase(r);

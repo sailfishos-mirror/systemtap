@@ -2768,6 +2768,7 @@ varuse_collecting_visitor::visit_functioncall (functioncall* e)
 
   // but function body shouldn't all be marked used
   current_lvalue_read = false;
+  lock_guard<recursive_mutex> bodies (session.function_body_mutex);
   functioncall_traversing_visitor::enter_functioncall(e);
 
   current_lvalue_read = last_lvalue_read;

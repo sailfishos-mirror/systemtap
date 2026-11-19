@@ -462,6 +462,9 @@ public:
   // concurrent derive_probes() (files, unwindsym_modules, etc.).
   std::recursive_mutex session_data_mutex;
 
+  // Protect shared helper bodies. Take this before session_data_mutex.
+  std::recursive_mutex function_body_mutex;
+
   // resource limits
   std::map<int, struct rlimit> rlimits;
   int apply_rlimits ();
