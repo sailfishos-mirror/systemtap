@@ -1251,12 +1251,14 @@ Dwarf_Die *
 dwflpp::declaration_resolve_other_cus(const string& name)
 {
   iterate_over_cus(global_alias_caching_callback_cus, this, true);
+  std::lock_guard<std::mutex> lock (cache_mutex);
   for (auto i = global_alias_cache.begin();
          i != global_alias_cache.end(); ++i)
     {
       cu_type_cache_t *v = (*i).second;
-      if (v->find(name) != v->end())
-        return & ((*v)[name]);
+      auto it = v->find (name);
+      if (it != v->end ())
+        return &it->second;
     }
 
   return NULL;
