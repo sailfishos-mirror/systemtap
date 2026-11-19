@@ -229,10 +229,12 @@ inline uint8_t lex_cast(std::string const & in)
 
 template <typename IN>
 inline std::string
-lex_cast_hex(IN const & in)
+lex_cast_hex(IN const & in, bool showbase = true)
 {
   std::ostringstream ss;
-  if (!(ss << std::showbase << std::hex << in << std::dec))
+  if (showbase)
+    ss << std::showbase;
+  if (!(ss << std::hex << in << std::dec))
     throw std::runtime_error(_("bad lexical cast"));
   return ss.str();
 }

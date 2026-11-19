@@ -794,10 +794,8 @@ setup_dwfl_kernel (unsigned *modules_found, systemtap_session &s)
           (void) dwfl_module_info (kmod, NULL, &start, &end, NULL, NULL,
                                    &mainf, &dbgf);
           if (elf != NULL && dw != NULL)
-            // NB: this function also has a local string named hex (build-id).
             clog << _("Opened kernel ELF+DWARF ")
-                 << "[" << std::hex << std::showbase << start << "-" << end
-                 << std::noshowbase << std::dec << "] "
+                 << "[" << lex_cast_hex (start) << "-" << lex_cast_hex (end) << "] "
                  << (mainf ?: dbgf ?: "?") << endl;
           else
             clog << _F("Kernel ELF/DWARF still missing after build-id lookup: %s",
@@ -1575,7 +1573,7 @@ build_id_from_raw_notes (const vector<unsigned char> &blob,
         clog << "  " << cands[i].hex
              << " owner_size=" << cands[i].owner_size
              << " score=" << cands[i].score
-             << " @" << hex << cands[i].off << dec << endl;
+             << " @" << lex_cast_hex(cands[i].off, false) << endl;
     }
 
   // Require either a dominant owner (the flat image itself) or some

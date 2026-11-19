@@ -1928,7 +1928,7 @@ dwarf_query::add_probe_point(interned_string dw_funcname,
       else if (has_process)
         clog << _(" process=") << module;
       if (reloc_section != "") clog << " reloc=" << reloc_section;
-      clog << " pc=0x" << hex << addr << dec;
+      clog << " pc=0x" << lex_cast_hex(addr, false);
     }
 
   dwflpp::blocklisted_type blocklisted = dw.blocklisted_p (funcname, filename,
@@ -2488,7 +2488,7 @@ query_addr(Dwarf_Addr addr, dwarf_query *q)
   uint64_t t0 = 0;
 
   if (q->sess.verbose > 2)
-    clog << "query_addr 0x" << hex << addr << dec << endl;
+    clog << "query_addr 0x" << lex_cast_hex(addr, false) << endl;
 
   // First pick which CU contains this address
   if (time_p) t0 = dwarf_timing_now_ns ();
@@ -2634,7 +2634,7 @@ query_plt_statement(dwarf_query *q)
 
   Dwarf_Addr addr = q->statement_num_val;
   if (q->sess.verbose > 2)
-    clog << "query_plt_statement 0x" << hex << addr << dec << endl;
+    clog << "query_plt_statement 0x" << lex_cast_hex(addr, false) << endl;
 
   // First adjust the raw address to dwfl's elf bias.
   Dwarf_Addr elf_bias;
@@ -9333,13 +9333,13 @@ sdt_query::handle_probe_entry()
       switch (probe_type)
 	{
 	case uprobe1_type:
-	  clog << "uprobe1 at 0x" << hex << pc << dec << endl;
+	  clog << "uprobe1 at 0x" << lex_cast_hex(pc, false) << endl;
 	  break;
 	case uprobe2_type:
-	  clog << "uprobe2 at 0x" << hex << pc << dec << endl;
+	  clog << "uprobe2 at 0x" << lex_cast_hex(pc, false) << endl;
 	  break;
 	case uprobe3_type:
-	  clog << "uprobe3 at 0x" << hex << pc << dec << endl;
+	  clog << "uprobe3 at 0x" << lex_cast_hex(pc, false) << endl;
 	  break;
 	default:
 	  clog << "unknown!" << endl;
@@ -9605,7 +9605,7 @@ sdt_query::setup_note_probe_entry (const string& scn_name,
   semaphore += bias;
 
   if (sess.verbose > 4)
-    clog << _F(" saw .note.stapsdt %s%s ", probe_name.c_str(), (provider_name != "" ? _(" (provider ")+provider_name+") " : "").c_str()) << "@0x" << hex << pc << dec << endl;
+    clog << _F(" saw .note.stapsdt %s%s ", probe_name.c_str(), (provider_name != "" ? _(" (provider ")+provider_name+") " : "").c_str()) << "@0x" << lex_cast_hex(pc, false) << endl;
 
   handle_probe_entry();
 }
@@ -9665,7 +9665,7 @@ sdt_query::iterate_over_probe_entries()
 	}
       if (sess.verbose > 4)
 	clog << _("saw .probes ") << probe_name << (provider_name != "" ? _(" (provider ")+provider_name+") " : "")
-	     << "@0x" << hex << pc << dec << endl;
+	     << "@0x" << lex_cast_hex(pc, false) << endl;
 
       focus.mod_info->marks.insert(make_pair(provider_name, probe_name));
 
@@ -9705,7 +9705,7 @@ sdt_query::record_semaphore (vector<derived_probe *> & results, unsigned start)
         for (unsigned i = start; i < results.size(); ++i)
           results[i]->sdt_semaphore_addr = addr;
         if (sess.verbose > 2)
-          clog << _(", found at 0x") << hex << addr << dec << endl;
+          clog << _(", found at 0x") << lex_cast_hex(addr, false) << endl;
         return;
       }
     else
@@ -9762,15 +9762,15 @@ sdt_query::convert_location ()
 	    {
 	    case uprobe1_type:
               clog << _("probe_type == uprobe1, use statement addr: 0x")
-		   << hex << pc << dec << endl;
+		   << lex_cast_hex(pc, false) << endl;
 	      break;
 	    case uprobe2_type:
               clog << _("probe_type == uprobe2, use statement addr: 0x")
-		   << hex << pc << dec << endl;
+		   << lex_cast_hex(pc, false) << endl;
             break;
 	    case uprobe3_type:
               clog << _("probe_type == uprobe3, use statement addr: 0x")
-		   << hex << pc << dec << endl;
+		   << lex_cast_hex(pc, false) << endl;
 	      break;
 	    default:
               clog << _F("probe_type == use_uprobe_no_dwarf, use label name: _stapprobe1_%s",

@@ -2087,8 +2087,7 @@ dwflpp::get_cu_lines_sorted_by_lineno(const char *srcfile)
          {
            clog << _F("found the following lines for %s:", src.c_str()) << endl;
            for (auto i  = lines->begin(); i != lines->end(); ++i)
-             cout << DWARF_LINENO(*i) << " = " << hex
-                  << DWARF_LINEADDR(*i) << dec << endl;
+             cout << DWARF_LINENO(*i) << " = " << lex_cast_hex(DWARF_LINEADDR(*i), false) << endl;
          }
        return lines;
      });
@@ -2993,7 +2992,7 @@ dwflpp::resolve_prologue_endings (func_info_map_t & funcs)
           if (DWARF_LINEPROLOGUEEND(postprologue_srcline))
             clog << _(" (marked)");
 
-          clog << " = 0x" << hex << postprologue_addr << dec << "\n";
+          clog << " = 0x" << lex_cast_hex(postprologue_addr, false) << "\n";
         }
 
     } // loop over functions
@@ -5421,8 +5420,8 @@ dwflpp::get_cfa_ops (Dwarf_Addr pc)
   Dwarf_Op *cfa_ops = NULL;
 
   if (sess.verbose > 2)
-    clog << "get_cfa_ops @0x" << hex << pc << dec
-	 << ", foc().module_start @0x" << hex << foc().module_start << dec << endl;
+    clog << "get_cfa_ops @0x" << lex_cast_hex(pc, false)
+	 << ", foc().module_start @0x" << lex_cast_hex(foc().module_start, false) << endl;
 
   // Try debug_frame first, then fall back on eh_frame.
   size_t cfa_nops = 0;
@@ -5432,7 +5431,7 @@ dwflpp::get_cfa_ops (Dwarf_Addr pc)
   if (cfi != NULL)
     {
       if (sess.verbose > 3)
-	clog << "got dwarf cfi bias: 0x" << hex << bias << dec << endl;
+	clog << "got dwarf cfi bias: 0x" << lex_cast_hex(bias, false) << endl;
       if (dwarf_cfi_addrframe (cfi, pc - bias, &frame) == 0)
 	dwarf_frame_cfa (frame, &cfa_ops, &cfa_nops);
       else if (sess.verbose > 3)
@@ -5447,7 +5446,7 @@ dwflpp::get_cfa_ops (Dwarf_Addr pc)
       if (cfi != NULL)
 	{
 	  if (sess.verbose > 3)
-	    clog << "got eh cfi bias: 0x" << hex << bias << dec << endl;
+	    clog << "got eh cfi bias: 0x" << lex_cast_hex(bias, false) << endl;
 	  Dwarf_Frame *frame = NULL;
 	  if (dwarf_cfi_addrframe (cfi, pc - bias, &frame) == 0)
 	    dwarf_frame_cfa (frame, &cfa_ops, &cfa_nops);
