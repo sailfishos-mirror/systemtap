@@ -353,7 +353,7 @@ string atvar_op::sym_name ()
 // results.
 bool memo_tagged_p (const interned_string& haystack, const string& needle)
 {
-  static map <pair<interned_string,string>,bool> string_find_memoized;
+  static thread_local map <pair<interned_string,string>,bool> string_find_memoized;
   auto key = make_pair(haystack,needle);
   
   auto it = string_find_memoized.find(key);
