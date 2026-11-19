@@ -33,7 +33,7 @@ Dwfl *setup_dwfl_kernel(const std::set<std::string> &names,
 			  unsigned *found,
 			  systemtap_session &s);
 
-Dwfl *setup_dwfl_user(const std::string &name);
+Dwfl *setup_dwfl_user(const std::string &name, systemtap_session &s);
 Dwfl *setup_dwfl_user(std::vector<std::string>::const_iterator &begin,
 		        const std::vector<std::string>::const_iterator &end,
 		        bool all_needed, systemtap_session &s);
@@ -42,14 +42,14 @@ Dwfl *setup_dwfl_user(std::vector<std::string>::const_iterator &begin,
 bool is_user_module(const std::string &m);
 
 int internal_find_debuginfo (Dwfl_Module *mod,
-			      void **userdata __attribute__ ((unused)),
+			      void **userdata,
 			      const char *modname __attribute__ ((unused)),
 			      GElf_Addr base __attribute__ ((unused)),
 			      const char *file_name,
 			      const char *debuglink_file,
 			      GElf_Word debuglink_crc,
 			      char **debuginfo_file_name);
-int execute_abrt_action_install_debuginfo_to_abrt_cache (std::string hex);
+int execute_abrt_action_install_debuginfo_to_abrt_cache (std::string hex, systemtap_session *s);
 std::string get_kernel_build_id (systemtap_session &s);
 int download_kernel_debuginfo (systemtap_session &s, std::string hex);
 void debuginfo_path_insert_sysroot(std::string sysroot);

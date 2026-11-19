@@ -8469,7 +8469,7 @@ emit_symbol_data (systemtap_session& s)
       assert (modname.length() != 0);
       if (! is_user_module (modname)) continue;
 
-      dwfl = setup_dwfl_user (modname);
+      dwfl = setup_dwfl_user (modname, s);
 
       if (dwfl != NULL) // tolerate missing data; will warn below
         {

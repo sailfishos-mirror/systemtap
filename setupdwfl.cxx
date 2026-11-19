@@ -75,13 +75,7 @@ static const char *debuginfo_usr_path_arr = "+:.debug:/usr/lib/debug:/var/cache/
 static char *debuginfo_usr_path = (char *)(debuginfo_env_arr
 					   ?: debuginfo_usr_path_arr);
 
-// A pointer to the current systemtap session for use only by a few
-// dwfl calls. DO NOT rely on this, as it is cleared after use.
-// This is a kludge.
-static systemtap_session* current_session_for_find_debuginfo;
-
-// Serializes all setup_dwfl_* entry points: file-static search state,
-// current_session_for_find_debuginfo, and libelf's one-time elf_version
+// Serializes file-static search state and libelf's one-time elf_version
 // init via dwfl_begin.  Recursive for the download-retry re-enter.
 // Dwfl reporting must stay single-threaded; after dwfl_report_end,
 // concurrent read-only module use is gated on HAVE_ELFUTILS_THREAD_SAFETY.
@@ -324,6 +318,8 @@ using namespace std;
 static const char *offline_search_modname;
 static set<string> offline_search_names;
 static unsigned offline_modules_found;
+// The synchronous kernel report predicate has no userdata argument.
+static const systemtap_session *kernel_report_session;
 
 // Whether or not we are done reporting kernel modules in
 // set_dwfl_report_kernel_p().
@@ -401,10 +397,8 @@ setup_mod_deps()
     }
   else
     {
-      string sysroot = "";
-      if (current_session_for_find_debuginfo)
-        sysroot = current_session_for_find_debuginfo->sysroot;
-      kernel_path = sysroot + "/lib/modules/" + elfutils_kernel_path;
+      kernel_path = (kernel_report_session->sysroot + "/lib/modules/"
+                     + elfutils_kernel_path);
     }
   modulesdep = kernel_path + "/modules.dep";
   in.open(modulesdep.c_str());
@@ -494,8 +488,7 @@ setup_dwfl_report_kernel_p(const char* modname, const char* filename)
   if (setup_dwfl_done)
     return -1;
 
-  assert (current_session_for_find_debuginfo);
-  if (current_session_for_find_debuginfo->verbose > 4)
+  if (kernel_report_session->verbose > 4)
     clog << _F("checking pattern '%s' vs. module '%s' file '%s'\n",
                offline_search_modname ?: "",
                modname ?: "",
@@ -655,9 +648,24 @@ setup_debuginfod_progress(Dwfl *dwfl)
 #endif
 
 
+// Bind lazy debuginfo callbacks to the session that reported the module.
+static void
+finish_dwfl_report (Dwfl *dwfl, systemtap_session &s)
+{
+  DWFL_ASSERT ("dwfl_report_end", dwfl_report_end (dwfl, NULL, NULL));
+  auto set_session = [] (Dwfl_Module *, void **userdata, const char *,
+                         Dwarf_Addr, void *arg) -> int {
+    *userdata = arg;
+    return DWARF_CB_OK;
+  };
+  DWFL_ASSERT ("dwfl_getmodules",
+               dwfl_getmodules (dwfl, set_session, &s, 0) == 0);
+}
+
 static Dwfl *
 setup_dwfl_kernel (unsigned *modules_found, systemtap_session &s)
 {
+  save_and_restore<const systemtap_session *> session (&kernel_report_session, &s);
   Dwfl *dwfl = dwfl_begin (&kernel_callbacks);
   DWFL_ASSERT ("dwfl_begin", dwfl);
   dwfl_report_begin (dwfl);
@@ -767,7 +775,7 @@ setup_dwfl_kernel (unsigned *modules_found, systemtap_session &s)
         }
     }
 
-  DWFL_ASSERT ("dwfl_report_end", dwfl_report_end(dwfl, NULL, NULL));
+  finish_dwfl_report (dwfl, s);
 
   // For the offline-reported kernel (local .build-id or debuginfod),
   // open ELF+DWARF now so failures surface early.  Keep
@@ -809,7 +817,6 @@ setup_dwfl_kernel(const std::string &name,
 		  systemtap_session &s)
 {
   lock_guard<recursive_mutex> g (setup_dwfl_mutex);
-  current_session_for_find_debuginfo = &s;
   const char *modname = name.c_str();
   set<string> names; // Default to empty
 
@@ -833,7 +840,6 @@ setup_dwfl_kernel(const std::set<std::string> &names,
 		  systemtap_session &s)
 {
   lock_guard<recursive_mutex> g (setup_dwfl_mutex);
-  current_session_for_find_debuginfo = &s;
 
   offline_search_modname = NULL;
   offline_search_names = names;
@@ -841,7 +847,7 @@ setup_dwfl_kernel(const std::set<std::string> &names,
 }
 
 Dwfl*
-setup_dwfl_user(const std::string &name)
+setup_dwfl_user(const std::string &name, systemtap_session &s)
 {
   lock_guard<recursive_mutex> g (setup_dwfl_mutex);
   Dwfl *dwfl = dwfl_begin (&user_callbacks);
@@ -855,7 +861,7 @@ setup_dwfl_user(const std::string &name)
   // XXX: should support buildid-based naming
   const char *cname = name.c_str();
   Dwfl_Module *mod = dwfl_report_offline (dwfl, cname, cname, -1);
-  DWFL_ASSERT ("dwfl_report_end", dwfl_report_end(dwfl, NULL, NULL));
+  finish_dwfl_report (dwfl, s);
   if (! mod)
     {
       dwfl_end(dwfl);
@@ -871,7 +877,6 @@ setup_dwfl_user(std::vector<std::string>::const_iterator &begin,
 		bool all_needed, systemtap_session &s)
 {
   lock_guard<recursive_mutex> g (setup_dwfl_mutex);
-  current_session_for_find_debuginfo = &s;
   // See if we have this dwfl already cached
   set<string> modset(begin, end);
 
@@ -897,6 +902,9 @@ setup_dwfl_user(std::vector<std::string>::const_iterator &begin,
       begin++;
     }
 
+  if (dwfl)
+    finish_dwfl_report (dwfl, s);
+
   /* Extract the build id and add it to the session variable
    * so it will be added to the script hash */
   if (mod)
@@ -915,9 +923,6 @@ setup_dwfl_user(std::vector<std::string>::const_iterator &begin,
       s.build_ids.push_back(hex);
     }
 
-  if (dwfl)
-    DWFL_ASSERT ("dwfl_report_end", dwfl_report_end(dwfl, NULL, NULL));
-
   return dwfl;
 }
 
@@ -934,7 +939,7 @@ is_user_module(const std::string &m)
 
 int
 internal_find_debuginfo (Dwfl_Module *mod,
-      void **userdata __attribute__ ((unused)),
+      void **userdata,
       const char *modname __attribute__ ((unused)),
       GElf_Addr base __attribute__ ((unused)),
       const char *file_name,
@@ -949,7 +954,8 @@ internal_find_debuginfo (Dwfl_Module *mod,
   /* To Keep track of whether the abrt successfully installed the debuginfo */
   static int install_dbinfo_failed = 0;
 
-  /* Make sure the current session variable is not null */
+  auto *current_session_for_find_debuginfo =
+    userdata ? static_cast<systemtap_session *> (*userdata) : NULL;
   if(current_session_for_find_debuginfo == NULL)
     goto call_dwfl_standard_find_debuginfo;
 
@@ -1018,7 +1024,7 @@ internal_find_debuginfo (Dwfl_Module *mod,
       struct timeval tv_after;
       gettimeofday (&tv_before, NULL);
 
-      if(execute_abrt_action_install_debuginfo_to_abrt_cache (hex) < 0)
+      if(execute_abrt_action_install_debuginfo_to_abrt_cache (hex, current_session_for_find_debuginfo) < 0)
         {
           install_dbinfo_failed = -1;
           current_session_for_find_debuginfo->print_warning(_F("%s failed.", abrt_path.c_str()));
@@ -1049,7 +1055,7 @@ internal_find_debuginfo (Dwfl_Module *mod,
 }
 
 int
-execute_abrt_action_install_debuginfo_to_abrt_cache (string hex)
+execute_abrt_action_install_debuginfo_to_abrt_cache (string hex, systemtap_session *current_session_for_find_debuginfo)
 {
   /* Be sure that abrt exists */
   if (abrt_path.empty())
@@ -1738,7 +1744,7 @@ int download_kernel_debuginfo (systemtap_session &s, string hex)
   // Attempt to download the debuginfo
   if(s.verbose > 1)
     clog << _F("Success! Extracted kernel debuginfo build ID: %s", hex.c_str()) << endl;
-  int rc = execute_abrt_action_install_debuginfo_to_abrt_cache(hex);
+  int rc = execute_abrt_action_install_debuginfo_to_abrt_cache(hex, &s);
   already_tried_downloading_kernel_debuginfo = 1;
   if (rc < 0)
     return -1;
