@@ -51,7 +51,6 @@ extern "C" {
 static int
 missing_rpm_enlist (systemtap_session& sess, const char *filename, const char *rpm_type)
 {
-  static int rpm_init_done = 0;
   rpmts ts;
   rpmdbMatchIterator mi;
   int count = 0;
@@ -59,23 +58,18 @@ missing_rpm_enlist (systemtap_session& sess, const char *filename, const char *r
   if (filename == NULL)
     return 0;
 
-  if (!rpm_init_done)
+  static const bool rpm_init_done = []
     {
-      static int init_tried;
-
-      /* Already failed the initialization before?  */
-      if (init_tried)
-      	return 0;
-      init_tried = 1;
-
       if (rpmReadConfigFiles(NULL, NULL) != 0)
 	{
 	  cerr << _("Error reading the rpm configuration files") << endl;
-	  return 0;
+	  return false;
 	}
 
-      rpm_init_done = 1;
-    }
+      return true;
+    }();
+  if (!rpm_init_done)
+    return 0;
 
   /* If we've seen this combo before, don't check again... */
   if (!sess.rpms_checked.insert(string(filename) + rpm_type).second)
