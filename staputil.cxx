@@ -641,6 +641,8 @@ string find_executable(const string& name, const string& sysroot,
       if (retpath == "")
         {
           // Query debuginfod for the executable.
+          static mutex client_mutex;
+          lock_guard<mutex> g (client_mutex);
           static unique_ptr <debuginfod_client, void (*)(debuginfod_client*)>
             client (debuginfod_begin(), &debuginfod_end);
           
