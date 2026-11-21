@@ -855,7 +855,7 @@ parser::parse_library_macros ()
 bool eval_pp_conditional (systemtap_session& s,
                           const token* l, const token* op, const token* r)
 {
-  lock_guard<recursive_mutex> s_lock (session_lock); // because s.kernel_config[] accesses etc. might mutate
+  lock_guard<recursive_mutex> s_lock (session_lock);
   
   if (l->type == tok_identifier && (l->content == "kernel_v" ||
                                     l->content == "kernel_vr" || 

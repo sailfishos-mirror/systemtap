@@ -194,7 +194,17 @@ public:
   std::string kernel_build_tree;
   std::string kernel_source_tree;
   std::vector<std::string> kernel_extra_cflags; 
-  std::map<interned_string,interned_string> kernel_config;
+  struct kernel_configuration
+  {
+    std::map<interned_string,interned_string> values;
+
+    const interned_string& operator[] (const interned_string& key) const
+    {
+      static const interned_string empty;
+      auto it = values.find (key);
+      return it == values.end () ? empty : it->second;
+    }
+  } kernel_config;
   std::set<interned_string> kernel_exports;
   std::set<interned_string> kernel_functions;
   int parse_kernel_config ();

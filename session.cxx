@@ -2140,12 +2140,12 @@ systemtap_session::parse_kernel_config ()
       if (off == string::npos) continue;
       string key = line.substr(0, off);
       string value = line.substr(off+1, string::npos);
-      kernel_config[key] = value;
+      kernel_config.values[key] = value;
     }
   if (verbose > 2)
     clog << _F("Parsed kernel \"%s\", ", kernel_config_file.c_str())
          << _NF("containing %zu tuple", "containing %zu tuples",
-                kernel_config.size(), kernel_config.size()) << endl;
+                kernel_config.values.size(), kernel_config.values.size()) << endl;
 
 
   kcf.close();
