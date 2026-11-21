@@ -1943,7 +1943,7 @@ location_context::handle_GNU_parameter_ref (Dwarf_Op expr)
 
   // Generate an error
   vardecl *var = new vardecl;
-  static int counter = 0;
+  static std::atomic<unsigned> counter {0};
   var->name = std::string("_e_") + lex_cast(counter++);
   var->type = pe_string;
   var->arity = 0;
