@@ -9569,7 +9569,10 @@ sdt_query::setup_note_probe_entry (const string& scn_name,
   probe_name = name;
   arg_string = args;
 
-  focus.mod_info->marks.insert(make_pair(provider, name));
+  {
+    lock_guard<recursive_mutex> g (sess.session_data_mutex);
+    focus.mod_info->marks.insert(make_pair(provider, name));
+  }
 
   // Did we find a matching probe?
   if (! (dw.function_name_matches_pattern (probe_name, pp_mark)
@@ -9667,7 +9670,10 @@ sdt_query::iterate_over_probe_entries()
 	clog << _("saw .probes ") << probe_name << (provider_name != "" ? _(" (provider ")+provider_name+") " : "")
 	     << "@0x" << lex_cast_hex(pc, false) << endl;
 
-      focus.mod_info->marks.insert(make_pair(provider_name, probe_name));
+      {
+        lock_guard<recursive_mutex> g (sess.session_data_mutex);
+        focus.mod_info->marks.insert(make_pair(provider_name, probe_name));
+      }
 
       if (dw.function_name_matches_pattern (probe_name, pp_mark)
           && ((pp_provider == "") || dw.function_name_matches_pattern (provider_name, pp_provider)))
@@ -9821,6 +9827,7 @@ suggest_marks(systemtap_session& sess,
               const string& mark,
               const string& provider)
 {
+  unique_lock<recursive_mutex> guard (sess.session_data_mutex);
   if (mark.empty() || modules.empty() || sess.module_cache == NULL || sess.suppress_costly_diagnostics)
     return "";
 
@@ -9866,6 +9873,7 @@ suggest_marks(systemtap_session& sess,
         }
     }
 
+  guard.unlock ();
   if (sess.verbose > 2)
     {
       clog << "suggesting " << marks.size() << " marks "
