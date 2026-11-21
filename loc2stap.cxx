@@ -1755,6 +1755,7 @@ get_call_site_values(Dwarf_Die *die, Dwarf_Die *function, location_context *ctx)
 	location_context new_ctx (ctx->e);
 	new_ctx.attr = &op_attr;
 	new_ctx.dwbias = ctx->dwbias;
+	new_ctx.userspace_p = ctx->userspace_p;
 	new_ctx.pc = lowpc;
 	new_ctx.function = function;
 	new_ctx.param_ref_depth = ctx->param_ref_depth + 1;
