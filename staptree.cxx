@@ -76,7 +76,8 @@ arrayindex::arrayindex ():
 {
 }
 
-functioncall::functioncall ()
+functioncall::functioncall ():
+  synthetic (false)
 {
 }
 
