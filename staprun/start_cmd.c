@@ -63,6 +63,30 @@ closefrom(int lowfd)
   }
 }
 
+/* Drop to the invoking user before running the target command.  This
+ * mirrors the credential drop in run_as() in staprun/staprun.c, and is
+ * needed because stapbpf can be installed setuid-root (the 04110 chmod
+ * in stapbpf/Makefile.am's install-exec-hook).  Note that RPMs built
+ * from systemtap.spec instead leave stapbpf at ordinary 0755, so the
+ * call is a no-op there. */
+static void
+drop_target_cmd_privileges(void)
+{
+  uid_t target_uid = getuid();
+  gid_t target_gid = getgid();
+
+  if (setresgid(target_gid, target_gid, target_gid) < 0)
+    {
+      _perr("setresgid");
+      _exit(1);
+    }
+  if (setresuid(target_uid, target_uid, target_uid) < 0)
+    {
+      _perr("setresuid");
+      _exit(1);
+    }
+}
+
 #if WORKAROUND_BZ467568
 /* When a SIGUSR1 signal arrives, set this variable. */
 volatile sig_atomic_t usr1_interrupt = 0;
@@ -133,6 +157,8 @@ void start_cmd(void)
 
     a.sa_handler = SIG_DFL;
     sigaction(SIGINT, &a, NULL);
+
+    drop_target_cmd_privileges();
 
     /* Close any FDs we still hold, similarly as though this were
      * a program being spawned due to an system("") tapset function. */
