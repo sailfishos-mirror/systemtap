@@ -1491,8 +1491,10 @@ lexer::lexer (istream& input, const string& in, systemtap_session& s, bool cc):
       keywords.insert("catch");
     }
 
-  if (atwords.empty())
-    {
+  // NB: atwords is process-global, and lexer constructors may run
+  // concurrently (parse_all), so guard the one-time population.
+  static once_flag atwords_once;
+  call_once (atwords_once, [&]() {
       // NB: adding new @words is mildly disruptive to existing
       // scripts that define macros with the same name, but not
       // really. The user will merely receive a warning that they are
@@ -1529,7 +1531,7 @@ lexer::lexer (istream& input, const string& in, systemtap_session& s, bool cc):
         atwords.insert("enum");
       if (has_version("5.6"))
         atwords.insert("enumname");
-    }
+    });
 }
 
 unordered_set<string> lexer::atwords;
