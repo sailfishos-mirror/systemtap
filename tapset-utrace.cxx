@@ -20,7 +20,6 @@
 
 
 using namespace std;
-using namespace __gnu_cxx;
 
 
 static const string TOK_PROCESS("process");

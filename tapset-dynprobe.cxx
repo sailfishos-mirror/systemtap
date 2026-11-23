@@ -18,7 +18,6 @@
 #include <string>
 
 using namespace std;
-using namespace __gnu_cxx;
 
 // ------------------------------------------------------------------------
 // dynprobe derived 'probes': These don't really exist. The purpose of

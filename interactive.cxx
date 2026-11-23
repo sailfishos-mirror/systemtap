@@ -20,11 +20,11 @@
 #include <cstdlib>
 #include <stack>
 #include <sstream>
+#include <fstream>
 #include <iterator>
-#include <ext/stdio_filebuf.h>
+#include "fd_filebuf.h"
 
 using namespace std;
-using namespace __gnu_cxx;
 
 extern "C" {
 #include <unistd.h>
@@ -1749,7 +1749,7 @@ forked_passes_0_4 (systemtap_session &s)
       try
         {
           rc = passes_0_4 (s);
-          stdio_filebuf<char> buf(ret.second, ios_base::out);
+          fd_filebuf buf(ret.second, ios_base::out);
           ostream o(&buf);
           if (rc == 0 && s.last_pass > 4)
             {

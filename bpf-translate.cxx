@@ -977,7 +977,7 @@ is_numeric (const std::string &str)
 {
   size_t pos = 0;
   try {
-    stol(str, &pos, 0);
+    (void) stol(str, &pos, 0);
   } catch (const std::invalid_argument &e) {
     return false;
   } catch (const std::out_of_range &e) {

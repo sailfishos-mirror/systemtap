@@ -13,10 +13,9 @@
 
 #include <cstring>
 #include <string>
-#include <ext/stdio_filebuf.h>
+#include "fd_filebuf.h"
 
 using namespace std;
-using namespace __gnu_cxx;
 
 static const string TOK_PYTHON3("python3");
 static const string TOK_MODULE("module");
@@ -374,14 +373,14 @@ python_builder::resolve(systemtap_session& s,
   // Read stderr from the child.
   if (s.verbose > 2)
     {
-      stdio_filebuf<char> in(child_err, ios_base::in);
+      fd_filebuf in(child_err, ios_base::in);
       clog << &in;
       in.close();
     }
 
   // Read stdout from the child. Each line should contain 'MODULE
   // FUNCTION [FLAG]'
-  stdio_filebuf<char> buf(child_out, ios_base::in);
+  fd_filebuf buf(child_out, ios_base::in);
   istream in(&buf);
   string line;
   while (getline(in, line))

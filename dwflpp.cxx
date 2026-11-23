@@ -72,7 +72,6 @@ extern "C" {
 
 
 using namespace std;
-using namespace __gnu_cxx;
 
 thread_local dwflpp_focus *dwflpp::tls_focus = nullptr;
 

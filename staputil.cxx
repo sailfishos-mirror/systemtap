@@ -23,7 +23,7 @@
 #include <string>
 #include <fstream>
 #include <cassert>
-#include <ext/stdio_filebuf.h>
+#include "fd_filebuf.h"
 #include <algorithm>
 #include <mutex>
 #include <functional> 
@@ -58,7 +58,6 @@ extern "C" {
 
 
 using namespace std;
-using namespace __gnu_cxx;
 
 
 // Return current users home directory or die.
@@ -1111,7 +1110,7 @@ stap_system_read(int verbose, const vector<string>& args, ostream& out)
   if (child > 0)
     {
       // read everything from the child
-      stdio_filebuf<char> in(child_fd, ios_base::in);
+      fd_filebuf in(child_fd, ios_base::in);
       out << &in;
       return stap_waitpid(verbose, child);
     }
@@ -1155,7 +1154,7 @@ stap_fork_read(int verbose, ostream& out)
 
   // read everything from the child
   close(pipefd[1]);
-  stdio_filebuf<char> in(pipefd[0], ios_base::in);
+  fd_filebuf in(pipefd[0], ios_base::in);
   out << &in;
   return make_pair(false, stap_waitpid(verbose, child));
 }

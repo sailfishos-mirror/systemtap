@@ -19,7 +19,6 @@
 #include <unistd.h>
 
 using namespace std;
-using namespace __gnu_cxx;
 
 static const string TOK_DEBUGINFOD("debuginfod");
 static const string TOK_ARCHIVE("archive");

@@ -28,7 +28,6 @@ extern "C" {
 }
 
 using namespace std;
-using namespace __gnu_cxx;
 
 static const string TOK_CLASS ("class");
 static const string TOK_METHOD ("method");

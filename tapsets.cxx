@@ -119,7 +119,6 @@ extern "C" {
 }
 
 using namespace std;
-using namespace __gnu_cxx;
 
 // Nested add_probe_point from expand (@entry / query_addr) plants
 // synchronously into this worker-local list instead of re-posting.
