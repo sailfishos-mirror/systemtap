@@ -348,6 +348,49 @@ fatal_elf()
   fatal("%s\n", elf_errmsg(-1));
 }
 
+static FILE *
+open_output_file(const char *path)
+{
+  uid_t real_uid = getuid();
+  uid_t saved_euid = geteuid();
+  bool drop_privileges = saved_euid == 0 && real_uid != 0;
+
+  // Open user-selected paths with the invoking user's permissions.
+  if (drop_privileges && seteuid(real_uid) < 0)
+    return NULL;
+
+  int fd = open(path, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0666);
+  int open_errno = fd < 0 ? errno : 0;
+
+  if (drop_privileges)
+    {
+      if (seteuid(saved_euid) < 0)
+        {
+          int restore_errno = errno;
+          if (fd >= 0)
+            close(fd);
+          fatal("failed to restore effective user ID: %s\n",
+                strerror(restore_errno));
+        }
+    }
+
+  if (fd < 0)
+    {
+      errno = open_errno;
+      return NULL;
+    }
+
+  FILE *output = fdopen(fd, "w");
+  if (output == NULL)
+    {
+      int fdopen_errno = errno;
+      close(fd);
+      errno = fdopen_errno;
+    }
+
+  return output;
+}
+
 // XXX: based on get_online_cpus()/read_cpu_range()
 // in bcc src/cc/common.cc
 //
@@ -2685,7 +2728,7 @@ main(int argc, char **argv)
         break;
 
       case 'o':
-        output_f = fopen(optarg, "w");
+        output_f = open_output_file(optarg);
         if (output_f == NULL)
           {
             fprintf(stderr, "Error opening %s for output: %s\n",
