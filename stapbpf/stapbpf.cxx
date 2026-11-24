@@ -802,7 +802,7 @@ collect_uprobe(const char *name, unsigned name_idx, unsigned fd_idx)
   unsigned long long off = 0;
   char path[PATH_MAX];
 
-  int res = sscanf(name, "uprobe/%c/%d/%llu%s", &type, &pid, &off, path);
+  int res = sscanf(name, "uprobe/%c/%d/%llu%4095s", &type, &pid, &off, path);
 
   if (!pid)
     pid = -1; // indicates to perf_event_open that we're tracing all processes
@@ -863,7 +863,7 @@ collect_tracepoint(const char *name, unsigned name_idx, unsigned fd_idx)
   char tp_system[512];
   char tp_name[512];
 
-  int res = sscanf(name, "trace/%[^/]/%s", tp_system, tp_name);
+  int res = sscanf(name, "trace/%511[^/]/%511s", tp_system, tp_name);
   if (res != 2 || strlen(name) > 512)
     fatal("unable to parse name of probe %u section %u\n", name_idx, fd_idx);
 
@@ -880,7 +880,7 @@ collect_raw_tracepoint(const char *name, unsigned name_idx, unsigned fd_idx)
   char tp_system[512];
   char tp_name[512];
 
-  int res = sscanf(name, "raw_trace/%[^/]/%s", tp_system, tp_name);
+  int res = sscanf(name, "raw_trace/%511[^/]/%511s", tp_system, tp_name);
   if (res != 2 || strlen(name) > 512)
     fatal("unable to parse name of probe %u section %u\n", name_idx, fd_idx);
 
