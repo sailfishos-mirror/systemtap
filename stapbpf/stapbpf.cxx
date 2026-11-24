@@ -30,6 +30,7 @@
 #include <thread>
 #include <vector>
 #include <mutex>
+#include <atomic>
 #include <unistd.h>
 #include <limits.h>
 #include <inttypes.h>
@@ -131,6 +132,8 @@ static const char *script_name; // name of original systemtap script
 static const char *module_license;
 
 static const char *user;  // username
+static std::atomic<bool> procfs_dir_ready(false);
+static std::atomic<size_t> procfs_created_fifos(0);
 static std::string procfs_dir_prefix; // used to create procfs-like probe directory
 
 static Elf *module_elf;
@@ -2336,11 +2339,11 @@ procfs_read_event_loop (procfsprobe_data* data, bpf_transport_context* uctx)
 
   while (true) 
     {
-      int fd = open(path, O_WRONLY);
+      int fd = open(path, O_WRONLY | O_NOFOLLOW);
 
       if (fd == -1)
         {
-          if (errno == ENOENT)
+          if (errno == ENOENT || errno == ELOOP)
             fatal("an error occured while opening procfs fifo (%s). %s.\n", path, strerror(errno));
           
           fprintf(stderr, "WARNING: an error occurred while opening procfs fifo (%s). %s.\n", 
@@ -2378,7 +2381,7 @@ procfs_read_event_loop (procfsprobe_data* data, bpf_transport_context* uctx)
 
       do {
 
-        fd = open(path, O_WRONLY | O_NONBLOCK);
+        fd = open(path, O_WRONLY | O_NONBLOCK | O_NOFOLLOW);
 
         if (fd != -1) close(fd);
 
@@ -2397,11 +2400,11 @@ procfs_write_event_loop (procfsprobe_data* data, bpf_transport_context* uctx)
 
   while (true) 
     {
-      int fd = open(path, O_RDONLY);
+      int fd = open(path, O_RDONLY | O_NOFOLLOW);
 
       if (fd == -1)
         {
-          if (errno == ENOENT)
+          if (errno == ENOENT || errno == ELOOP)
             fatal("an error occured while opening procfs fifo (%s). %s.\n", path, strerror(errno));
           
           fprintf(stderr, "WARNING: an error occurred while opening procfs fifo (%s). %s.\n", 
@@ -2446,8 +2449,12 @@ procfs_write_event_loop (procfsprobe_data* data, bpf_transport_context* uctx)
 static void
 procfs_cleanup()
 {
-  // Delete files and directories created for procfs-like probes.
-  for (size_t k = 0; k < procfsprobes.size(); ++k)
+  if (!procfs_dir_ready.exchange(false))
+    return;
+
+  // Delete only the FIFO entries created by this session.
+  size_t created = procfs_created_fifos;
+  for (size_t k = 0; k < created; ++k)
     {
       std::string file_s = procfs_dir_prefix + procfsprobes[k].path;
       const char* file = file_s.c_str();
@@ -2464,17 +2471,89 @@ procfs_cleanup()
 }
 
 
+static bool
+procfs_valid_component(const std::string& name)
+{
+  return !name.empty() && name != "." && name != "..";
+}
+
+static bool
+procfs_check_directory(const std::string& path, bool create)
+{
+  bool created = create && mkdir(path.c_str(), 0755) == 0;
+  if (create && !created && errno != EEXIST)
+    fatal("cannot create procfs directory %s: %s\n", path.c_str(), strerror(errno));
+
+  struct stat st;
+  if (lstat(path.c_str(), &st) < 0)
+    fatal("cannot stat procfs directory %s: %s\n", path.c_str(), strerror(errno));
+  if (!S_ISDIR(st.st_mode) || st.st_uid != geteuid())
+    fatal("unsafe owner, type or permissions on procfs directory %s\n", path.c_str());
+  // Older systemtap versions created these directories world-writable
+  // (create_dir() used mode 0777).  Tighten a pre-existing directory we
+  // own instead of refusing to run; only the owner can undo the chmod.
+  if ((st.st_mode & 0022) && !(st.st_mode & S_ISVTX))
+    {
+      if (chmod(path.c_str(), 0755) < 0)
+        fatal("cannot fix permissions on procfs directory %s: %s\n",
+              path.c_str(), strerror(errno));
+    }
+  return created;
+}
+
+static void
+procfs_check_path(const std::string& path)
+{
+  std::string dir = procfs_dir_prefix;
+  size_t start = 0;
+  for (;;)
+    {
+      size_t end = path.find('/', start);
+      std::string component = path.substr(start, end - start);
+      if (!procfs_valid_component(component))
+        fatal("invalid procfs path: %s\n", path.c_str());
+      if (end == std::string::npos)
+        break;
+      dir += component;
+      procfs_check_directory(dir, false);
+      dir += '/';
+      start = end + 1;
+    }
+}
+
+
 static void
 procfs_spawn(bpf_transport_context* uctx)
 {
-  // Enable cleanup routine.
+  if (procfsprobes.empty())
+    return;
+
+  // Verify parents from the trusted temporary directory downwards.
+  // Once owned by us and not writable by others, they cannot be replaced.
+  std::string dir = procfs_dir_prefix.substr(0, procfs_dir_prefix.size() - 1);
+  size_t separator = dir.rfind('/');
+  if (!procfs_valid_component(dir.substr(separator + 1)))
+    fatal("invalid procfs module directory\n");
+  std::string parent = dir.substr(0, separator);
+  std::string base = parent.substr(0, parent.rfind('/'));
+  struct stat st;
+  if (stat(base.c_str(), &st) < 0 || !S_ISDIR(st.st_mode)
+      || (st.st_uid != 0 && st.st_uid != geteuid())
+      || ((st.st_mode & 0022) && !(st.st_mode & S_ISVTX)))
+    fatal("unsafe procfs base directory %s\n", base.c_str());
+
+  mode_t saved_umask = umask(0);
+  procfs_check_directory(parent, true);
+  if (!procfs_check_directory(dir, true))
+    umask(saved_umask);
+  for (size_t k = 0; k < procfsprobes.size(); ++k)
+    procfs_check_path(procfsprobes[k].path);
+
+  // Only validated paths and successfully created FIFOs may be cleaned up.
+  procfs_dir_ready = true;
   if (atexit(procfs_cleanup))
     fatal("an error occurred while setting up procfs cleaner. %s.\n", strerror(errno));
 
-  // Create directory for procfs-like probes.
-  if (procfsprobes.size() > 0 && create_dir(procfs_dir_prefix.c_str()))
-    fatal("an error occurred while making procfs directory. %s.\n", strerror(errno)); 
-  
   // Create all of the fifos used for procfs-like probes and spawn threads.
   for (size_t k =0; k < procfsprobes.size(); ++k)
     {
@@ -2489,6 +2568,7 @@ procfs_spawn(bpf_transport_context* uctx)
 
       if ((mkfifo(path.c_str(), mode) == -1))
         fatal("an error occured while making procfs fifos. %s.\n", strerror(errno));
+      procfs_created_fifos = k + 1;
 
       if (verbose)
         fprintf(stderr, "created %c fifo %s\n", data->type, path.c_str());
