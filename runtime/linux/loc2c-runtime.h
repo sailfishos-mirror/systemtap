@@ -63,12 +63,10 @@
 
 /* PR 10601: user-space (user_regset) register access.
    Needs arch specific code, only i386 and x86_64 for now.  */
-#if ((defined(STAPCONF_REGSET)) \
+#if ((defined(STAPCONF_REGSET) || defined(STAPCONF_REGSET_GET2)) \
      && (defined (__i386__) || defined (__x86_64__)))
 
-#if defined(STAPCONF_REGSET)
 #include <linux/regset.h>
-#endif
 
 // PR13489, inodes-uprobes export kludge
 #if !defined(STAPCONF_TASK_USER_REGSET_VIEW_EXPORTED)
@@ -159,6 +157,35 @@ static const struct usr_regset_lut url_x86_64[] = {
 /* XXX: insert other architectures here. */
 
 
+/* Linux 5.10 replaced struct user_regset::get with regset_get() and a
+ * membuf.  Fetch the first pos+count bytes of the regset through it and
+ * extract the wanted slot.  */
+#if defined(STAPCONF_REGSET_GET2)
+static int
+_stp_ursl_regset_fetch (const struct user_regset *rs, unsigned pos, unsigned count, void *dst)
+{
+  unsigned char buf[512]; /* covers general, fp and xmm regsets */
+  unsigned want = pos + count;
+  int rc;
+
+  if (want > rs->n * rs->size)
+    want = rs->n * rs->size;
+  if (want > sizeof(buf))
+    return -1;
+  rc = regset_get (current, rs, want, buf);
+  if (rc < 0)
+    return rc;
+  if ((unsigned) rc < pos + count)
+    return -1;
+  memcpy (dst, buf + pos, count);
+  return 0;
+}
+#else
+#define _stp_ursl_regset_fetch(rs,pos,count,dst) \
+  ((rs)->get (current, (rs), (pos), (count), (dst), NULL))
+#endif
+
+
 static u32 ursl_fetch32 (const struct usr_regset_lut* lut, unsigned lutsize, int e_machine, unsigned regno)
 {
   u32 value = ~0;
@@ -183,7 +210,7 @@ static u32 ursl_fetch32 (const struct usr_regset_lut* lut, unsigned lutsize, int
     if (rsv->regsets[rsi].core_note_type == rsn)
       {
         const struct user_regset *rs = & rsv->regsets[rsi];
-        rc = (rs->get)(current, rs, pos, count, & value, NULL);
+        rc = _stp_ursl_regset_fetch (rs, pos, count, & value);
         WARN_ON (rc);
         /* success */
         goto out;
@@ -252,7 +279,7 @@ static u64 ursl_fetch64 (const struct usr_regset_lut* lut, unsigned lutsize, int
     if (rsv->regsets[rsi].core_note_type == rsn)
       {
         const struct user_regset *rs = & rsv->regsets[rsi];
-        rc = (rs->get)(current, rs, pos, count, & value, NULL);
+        rc = _stp_ursl_regset_fetch (rs, pos, count, & value);
         if (rc)
           goto out;
         /* success */
