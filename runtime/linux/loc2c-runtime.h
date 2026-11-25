@@ -332,6 +332,35 @@ static void ursl_store64 (const struct usr_regset_lut* lut,unsigned lutsize,  in
 #define u_fetch_register(regno) \
   check_fetch_register(c->uregs,regno,pt_regs_maxno,pt_regs_fetch_register)
 
+#elif defined (__x86_64__)
+/* i386 code uses i386 DWARF register numbers (esp=4, ebp=5, ...), which
+ * differ from the x86_64 ones pt_dwarf_register_* implements.  Map a
+ * compat task's regno through the 32-bit numbering instead.  */
+static inline intptr_t
+_stp_compat_fetch_register (struct pt_regs *regs, unsigned regno)
+{
+  switch (regno)
+    {
+    case 0: return regs->ax;
+    case 1: return regs->cx;
+    case 2: return regs->dx;
+    case 3: return regs->bx;
+    case 4: return regs->sp;
+    case 5: return regs->bp;
+    case 6: return regs->si;
+    case 7: return regs->di;
+    case 8: return regs->ip;
+    default: return -1;
+    }
+}
+
+/* Parenthesize: bare '&' binds tighter than '+' in SDT EA expressions. */
+#define u_fetch_register(regno) \
+  ((_stp_is_compat_task() \
+    ? check_fetch_register(c->uregs,regno,8,_stp_compat_fetch_register) \
+    : check_fetch_register(c->uregs,regno,pt_regs_maxno,pt_regs_fetch_register)) \
+   & (_stp_is_compat_task() ? 0xffffffff : ~(int64_t)0))
+
 #else
 /* Parenthesize: bare '&' binds tighter than '+' in SDT EA expressions. */
 #define u_fetch_register(regno) \
