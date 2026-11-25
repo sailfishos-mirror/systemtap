@@ -36,8 +36,10 @@ int main() {
     readahead(-1, 0, 0);
     //staptest// readahead (-1, 0, 0) = NNNN
 
+    /* Linux 7.1 (commit 0fd66c343ce7) rejects a negative offset with
+     * -EINVAL; earlier kernels quietly returned 0. */
     readahead(fd, -1LL, 0);
-    //staptest// readahead (NNNN, -1, 0) = 0
+    //staptest// readahead (NNNN, -1, 0) = NNNN
 
     readahead(fd, 0, -1);
 #if __WORDSIZE == 64
